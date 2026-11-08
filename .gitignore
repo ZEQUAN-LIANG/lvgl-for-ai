@@ -1,0 +1,10 @@
+/user/.trash/
+*.pyc
+__pycache__/
+.scratch/tmp/
+sessions/
+/lvgl-src/*
+!/lvgl-src/README.md
+/build/
+.claude/scheduled_tasks.lock
+.claude/settings.local.json

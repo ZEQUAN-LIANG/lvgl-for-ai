@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>应用变体 · 索引指针</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --fg: #1f2328;
+    --muted: #656d76;
+    --line: #d8dee4;
+    --accent: #0969da;
+    --code-bg: #eef0f3;
+    --warn-bg: #fff8e1;
+    --warn-line: #e3b341;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171c;
+      --fg: #e6e8eb;
+      --muted: #9aa3ad;
+      --line: #2c313a;
+      --accent: #58a6ff;
+      --code-bg: #1d2229;
+      --warn-bg: #2a2416;
+      --warn-line: #8d6e1f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.65 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem 1.1rem;
+    padding: .85rem 1.25rem;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
+  nav a { color: var(--muted); text-decoration: none; }
+  nav a:hover { color: var(--accent); }
+  nav a[aria-current="page"] { color: var(--fg); font-weight: 600; }
+  header, main, footer { max-width: 980px; margin: 0 auto; padding: 0 1.5rem; }
+  header { padding-top: 2rem; }
+  h1 { margin: 0 0 .35rem; font-size: 1.7rem; letter-spacing: -.01em; }
+  .lede { margin: 0 0 .4rem; color: var(--muted); max-width: 62ch; }
+  .scope { margin: 0 0 1.6rem; color: var(--muted); font-size: 13px; }
+  h2 {
+    margin: 2.1rem 0 .7rem;
+    padding-left: .55rem;
+    border-left: 3px solid var(--accent);
+    font-size: 1.12rem;
+  }
+  p { margin: .55rem 0; }
+  code {
+    padding: .08em .34em;
+    border-radius: 4px;
+    background: var(--code-bg);
+    font-family: "Cascadia Mono", Consolas, "SFMono-Regular", monospace;
+    font-size: .92em;
+  }
+  .ptr {
+    color: var(--muted);
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 12px;
+  }
+  a { color: var(--accent); }
+  ul, ol { margin: .5rem 0; padding-left: 1.35rem; }
+  li { margin: .3rem 0; }
+  .note {
+    margin: 1rem 0;
+    padding: .7rem .9rem;
+    border: 1px solid var(--warn-line);
+    border-radius: 8px;
+    background: var(--warn-bg);
+    font-size: 13.5px;
+  }
+  .note strong { margin-right: .35rem; }
+  footer {
+    margin-top: 2.4rem;
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+<nav>
+  <a href="app.html" aria-current="page">应用变体</a>
+  <a href="scenario-server.html">场景与服务端常量</a>
+  <a href="../CONTEXT.md">CONTEXT.md</a>
+  <a href="../CLAUDE.md">CLAUDE.md</a>
+</nav>
+
+<header>
+  <h1>应用变体（App variant）</h1>
+  <p class="lede">同一个入口 <code>app_create</code> 下，由 <code>LVGL_AI_DEMO</code> 选择的用户界面实现。工具只转发名字，不维护应用清单。</p>
+  <p class="scope">本页是索引指针：不复制应用清单、入口签名、选择顺序、默认值或行号。每个主题只指向真源文件与符号，链接目标才是真源。路径均相对仓库根。</p>
+</header>
+
+<main>
+  <h2>1. 真源索引</h2>
+  <ul>
+    <li>
+      固定入口、变体注册与未知名字处理：
+      <a href="../user/app/app.c">user/app/app.c</a>
+      · <span class="ptr">app_create, apps[], app_find</span>。
+      实际应用清单以这里的注册表为准。
+    </li>
+    <li>
+      变体创建签名与注册：
+      <a href="../user/app/README.md">user/app/README.md</a>「C 代码结构」与
+      <a href="../user/app/app.c">user/app/app.c</a>
+      · <span class="ptr">app_create_fn, app_create, apps[], app_find, app_canonical</span>。
+    </li>
+    <li>
+      对象名兼容：
+      <a href="../user/app/app.h">user/app/app.h</a>
+      · <span class="ptr">app_set_name, app_get_name</span>。
+    </li>
+    <li>
+      选择方式与优先级：
+      <a href="../user/app/README.md">user/app/README.md</a>「选择方式」；
+      CLI 读取与转发见 <a href="../core/cli.py">core/cli.py</a>
+      · <span class="ptr">_load_scenario, main</span>。
+    </li>
+    <li>
+      环境变量转发与 manifest 记录：
+      <a href="../core/lvgl_ai/control/runtime.py">core/lvgl_ai/control/runtime.py</a>
+      · <span class="ptr">Runtime.__init__, Runtime._engine_env</span>；
+      <a href="../core/lvgl_ai/control/session.py">core/lvgl_ai/control/session.py</a>
+      · <span class="ptr">SessionStore.write_manifest</span>。
+    </li>
+    <li>
+      场景顶层 <code>app</code> 字段：
+      <a href="../core/lvgl_ai/scenario.py">core/lvgl_ai/scenario.py</a>
+      · <span class="ptr">load_scenario</span>。
+    </li>
+    <li>
+      网页「应用」下拉：
+      <a href="../core/lvgl_ai/web/webapp.py">core/lvgl_ai/web/webapp.py</a>
+      · <span class="ptr">WebApp.scenario_apps</span>；
+      应用管理台领域层：
+      <a href="../core/lvgl_ai/apps/__init__.py">core/lvgl_ai/apps/</a>。
+    </li>
+    <li>
+      新增应用：
+      <a href="../user/app/README.md">user/app/README.md</a>「新增一个应用」与
+      <a href="../user/app/GUIDE.md">user/app/GUIDE.md</a>；
+      脚手架 <a href="../core/tools/new_app.py">core/tools/new_app.py</a>
+      · <span class="ptr">build_parser, main</span>。
+    </li>
+    <li>
+      用户目录与资源契约：
+      <a href="../user/app/README.md">user/app/README.md</a>、
+      <a href="../user/asset/README.md">user/asset/README.md</a>。
+    </li>
+    <li>
+      设计真源与术语：
+      <a href="../.scratch/ai-tools/SPEC.md">.scratch/ai-tools/SPEC.md</a>、
+      <a href="../CONTEXT.md">CONTEXT.md</a>（「应用变体」）。
+    </li>
+  </ul>
+
+  <h2>2. 硬约束</h2>
+  <ul>
+    <li>用户只写 <code>user/app/**/*.c</code>、<code>user/scenarios/</code>、<code>user/asset/</code>；不写 <code>main</code>、不注册控件、不碰构建。</li>
+    <li>工具层不写死应用名；应用列表只来自 <code>apps[]</code> 表与场景的 <code>app</code> 字段，本页不维护副本。</li>
+    <li>没有对象树、<code>inspect</code>、<code>set</code>、<code>param</code>；精确状态只能用用户 C 代码 <code>printf</code> 到 <code>engine.log</code>。</li>
+    <li>改过 <code>user/app/*.c</code> 后必须走源码构建，不要用 <code>--no-build</code> 跑旧二进制。</li>
+  </ul>
+
+  <h2>3. 相关文件</h2>
+  <ul>
+    <li><a href="../user/app/README.md">user/app/README.md</a> — 应用目录、选择方式、新增应用步骤</li>
+    <li><a href="../user/app/GUIDE.md">user/app/GUIDE.md</a> — 从零写一个应用变体的完整教程</li>
+    <li><a href="../user/app/app.c">user/app/app.c</a> — 入口、注册表与未知名字处理</li>
+    <li><a href="../user/app/app.h">user/app/app.h</a> — 变体签名、对象名兼容与 demo harness</li>
+    <li><a href="../user/app/">user/app/</a> — 应用实现目录</li>
+    <li><a href="../user/scenarios/">user/scenarios/</a> — 场景脚本目录</li>
+    <li><a href="../core/tools/new_app.py">core/tools/new_app.py</a> — 生成应用骨架并自动注册</li>
+    <li><a href="../core/lvgl_ai/apps/__init__.py">core/lvgl_ai/apps/</a> — 应用注册、回收站、目录树与最近改动</li>
+    <li><a href="../core/lvgl_ai/scenario.py">core/lvgl_ai/scenario.py</a> — 场景校验与 <code>app</code> 字段</li>
+    <li><a href="../core/lvgl_ai/control/runtime.py">core/lvgl_ai/control/runtime.py</a> — 应用选择与启动环境</li>
+    <li><a href="../core/lvgl_ai/control/session.py">core/lvgl_ai/control/session.py</a> — 会话目录、manifest 与日志</li>
+    <li><a href="../core/README.md">core/README.md</a> — 工具用法</li>
+    <li><a href="../CONTEXT.md">CONTEXT.md</a> — 「应用变体」术语</li>
+    <li><a href="../.scratch/ai-tools/SPEC.md">.scratch/ai-tools/SPEC.md</a> — 设计真源</li>
+  </ul>
+</main>
+
+<footer>索引指针 · 以链接文件为准 · 本页不定义验收标准</footer>
+</body>
+</html>

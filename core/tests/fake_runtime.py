@@ -1,0 +1,139 @@
+"""Runtime test double; never imported by production code.
+
+Records the commands that ``play_scenario`` and the CLI send, without
+spawning an engine or touching the filesystem. It mirrors the Runtime surface
+those callers use: lifecycle methods and attributes, ``pointer``, ``wait``,
+``mark`` and ``snapshot``.
+
+``start_error`` / ``stop_error`` / ``errors`` inject typed failures so tests
+can verify error mapping (RuntimeCrash -> exit 1, ScenarioError -> exit 2).
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+FAKE_SESSION_ID = "20260102-030405-abcd"
+FAKE_PID = 4242
+
+
+class FakeRuntime:
+    def __init__(
+        self,
+        lvgl: str | None = None,
+        *,
+        build: bool = True,
+        record: bool = True,
+        headless: bool = True,
+        start_error: BaseException | None = None,
+        stop_error: BaseException | None = None,
+        errors: dict[str, BaseException] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        self.lvgl = lvgl or "9.6"
+        self.build = build
+        self.record = record
+        self.headless = headless
+        self.extra_kwargs = dict(kwargs)
+        self.app = kwargs.get("app")
+        self.start_error = start_error
+        self.stop_error = stop_error
+        self.errors = dict(errors or {})
+
+        self.commands: list[tuple[Any, ...]] = []
+        self.recorded_errors: list[BaseException] = []
+        self.start_calls = 0
+        self.stop_calls = 0
+        self.is_running = False
+        self.pid: int | None = None
+        self.mode = "headless"
+        self.exit_code: int | None = None
+        self.session_id: str | None = None
+        self.session_dir: Path | None = None
+        self.manifest_path: Path | None = None
+        self.engine_log_path: Path | None = None
+        self._snapshots = 0
+
+    # ---- lifecycle -----------------------------------------------------
+
+    def start(self) -> FakeRuntime:
+        self.start_calls += 1
+        if self.start_error is not None:
+            raise self.start_error
+        if not self.is_running:
+            self.is_running = True
+            self.pid = FAKE_PID
+            self.session_id = FAKE_SESSION_ID
+            self.session_dir = Path("/fake/sessions") / FAKE_SESSION_ID
+            self.manifest_path = self.session_dir / "manifest.json"
+            self.engine_log_path = self.session_dir / "engine.log"
+        return self
+
+    def log_tail(self, n: int = 40) -> list[str]:
+        return []
+
+    def record_error(self, error: BaseException) -> None:
+        # Runtime.record_error is idempotent for the same exception object.
+        if not self.recorded_errors or self.recorded_errors[-1] is not error:
+            self.recorded_errors.append(error)
+
+    def stop(self) -> None:
+        self.stop_calls += 1
+        if self.stop_error is not None:
+            raise self.stop_error
+        self.is_running = False
+        self.pid = None
+
+    def __enter__(self) -> FakeRuntime:
+        return self.start()
+
+    def __exit__(self, exc_type, exc, traceback) -> bool:
+        self.stop()
+        return False
+
+    def _raise_if(self, name: str) -> None:
+        error = self.errors.get(name)
+        if error is not None:
+            raise error
+
+    # ---- commands ------------------------------------------------------
+
+    def pointer(self, action: str, x: int, y: int) -> dict[str, Any]:
+        self._raise_if("pointer")
+        self.commands.append(("pointer", action, x, y))
+        return {"seq": len(self.commands), "hit": "fake_button", "hit_class": "lv_button"}
+
+    def key(self, action: str, key: str) -> dict[str, Any]:
+        self._raise_if("key")
+        self.commands.append(("key", action, key))
+        return {"seq": len(self.commands), "delivered": True, "key": key}
+
+    def encoder(self, action: str, diff: int) -> dict[str, Any]:
+        self._raise_if("encoder")
+        self.commands.append(("encoder", action, diff))
+        return {"seq": len(self.commands), "delivered": True, "diff": diff}
+
+    def wait(self, ms: int | None = None, *, frames: int | None = None) -> dict[str, Any]:
+        self._raise_if("wait")
+        if (ms is None) == (frames is None):
+            raise ValueError("wait needs exactly one of ms or frames")
+        if frames is not None:
+            self.commands.append(("wait", "frames", frames))
+        else:
+            self.commands.append(("wait", ms))
+        return {"seq": len(self.commands)}
+
+    def mark(self, mark_id: str) -> dict[str, Any]:
+        self._raise_if("mark")
+        self.commands.append(("mark", mark_id))
+        return {"seq": len(self.commands)}
+
+    def snapshot(self, label: str) -> dict[str, Any]:
+        self._raise_if("snapshot")
+        self._snapshots += 1
+        self.commands.append(("snapshot", label))
+        return {
+            "seq": len(self.commands),
+            "file": f"snapshots/{self._snapshots:03d}_{label}.png",
+        }

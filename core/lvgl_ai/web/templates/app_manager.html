@@ -1,0 +1,51 @@
+<dialog id="app-manager" class="app-manager" aria-labelledby="app-manager-title">
+  <header class="manager-head">
+    <div>
+      <span class="eyebrow">APP MANAGEMENT · 应用管理</span>
+      <h2 id="app-manager-title">应用与回收站</h2>
+    </div>
+    <div class="manager-head-actions">
+      <button id="manager-refresh" type="button" class="ghost-btn">刷新</button>
+      <button id="app-manager-close" type="button" class="ghost-btn" aria-label="关闭">关闭</button>
+    </div>
+  </header>
+  <div class="manager-body">
+    <div class="manager-col">
+      <section class="manager-section">
+        <h3>新建应用</h3>
+        <form id="app-create-form" class="manager-form" autocomplete="off">
+          <label class="field">应用名
+            <input id="manager-create-name" name="name" type="text"
+                   pattern="[a-z][a-z0-9_]{0,31}" maxlength="32"
+                   placeholder="myapp" required>
+          </label>
+          <button id="manager-create" type="submit" class="primary-btn">创建</button>
+        </form>
+        <p class="manager-hint">创建后会写入源文件、场景和注册表；不会自动启动预览。</p>
+      </section>
+      <section class="manager-section">
+        <h3>应用</h3>
+        <p id="manager-roots" class="manager-hint"></p>
+        <div id="manager-app-list" class="manager-list"></div>
+      </section>
+      <section class="manager-section">
+        <h3>回收站</h3>
+        <p class="manager-hint">删除会移到 user/.trash/apps/&lt;id&gt;/，可恢复，也可再次确认后永久删除。</p>
+        <div id="manager-trash-list" class="manager-list"></div>
+      </section>
+    </div>
+    <div class="manager-col">
+      <section class="manager-section">
+        <h3 id="manager-tree-title">目录结构</h3>
+        <div id="manager-tree" class="manager-tree"></div>
+      </section>
+      <section class="manager-section">
+        <h3>最近改动</h3>
+        <p id="manager-last" class="manager-hint"></p>
+        <ul id="manager-recent" class="manager-recent"></ul>
+      </section>
+    </div>
+  </div>
+  <p id="manager-live-hint" class="manager-hint" hidden>测试或录制运行中不能修改应用；停止后再试。</p>
+  <p id="manager-status" class="manager-hint" role="status"></p>
+</dialog>

@@ -1,0 +1,11 @@
+{
+  "schema": "lvgl-ai-scenario-v1",
+  "name": "settings",
+  "steps": [
+    {"type": "click_at", "x": 112, "y": 324},
+    {"type": "wait", "ms": 64},
+    {"type": "mark", "id": "after_click"},
+    {"type": "snapshot", "label": "after_click"},
+    {"type": "drag", "from": [112, 324], "to": [240, 324], "steps": 4}
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "schema": "lvgl-ai-scenario-v1",
+  "name": "spectrum",
+  "app": "spectrum",
+  "steps": [
+    {"type": "mark", "id": "orbit"},
+    {"type": "wait", "ms": 400},
+    {"type": "snapshot", "label": "orbit"},
+
+    {"type": "click_at", "x": 741, "y": 350},
+    {"type": "wait", "ms": 600},
+    {"type": "mark", "id": "dual"},
+    {"type": "snapshot", "label": "dual"},
+
+    {"type": "click_at", "x": 669, "y": 392},
+    {"type": "wait", "ms": 600},
+    {"type": "mark", "id": "radial"},
+    {"type": "snapshot", "label": "radial"},
+
+    {"type": "click_at", "x": 741, "y": 392},
+    {"type": "wait", "ms": 600},
+    {"type": "mark", "id": "spiral"},
+    {"type": "snapshot", "label": "spiral"},
+
+    {"type": "click_at", "x": 669, "y": 434},
+    {"type": "wait", "ms": 600},
+    {"type": "mark", "id": "sonar"},
+    {"type": "snapshot", "label": "sonar"},
+
+    {"type": "click_at", "x": 741, "y": 434},
+    {"type": "wait", "ms": 600},
+    {"type": "mark", "id": "stars"},
+    {"type": "snapshot", "label": "stars"},
+
+    {"type": "click_at", "x": 440, "y": 551},
+    {"type": "wait", "ms": 400},
+    {"type": "mark", "id": "next_track"},
+    {"type": "snapshot", "label": "next_track"},
+
+    {"type": "click_at", "x": 199, "y": 551},
+    {"type": "wait", "ms": 300},
+    {"type": "mark", "id": "palette"},
+    {"type": "snapshot", "label": "palette"},
+
+    {"type": "click_at", "x": 689, "y": 551},
+    {"type": "wait", "ms": 200},
+    {"type": "mark", "id": "like"},
+    {"type": "snapshot", "label": "like"},
+
+    {"type": "click_at", "x": 400, "y": 551},
+    {"type": "wait", "ms": 200},
+    {"type": "mark", "id": "paused"},
+    {"type": "snapshot", "label": "paused"},
+
+    {"type": "click_at", "x": 500, "y": 510},
+    {"type": "wait", "ms": 300},
+    {"type": "mark", "id": "seek"},
+    {"type": "snapshot", "label": "seek"},
+
+    {"type": "drag", "from": [732, 543], "to": [770, 543], "steps": 4}
+  ]
+}

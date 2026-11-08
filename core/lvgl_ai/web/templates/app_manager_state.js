@@ -1,0 +1,19 @@
+  const appManageButton = $("app-manage");
+  const appManager = $("app-manager");
+  const managerClose = $("app-manager-close");
+  const managerRefresh = $("manager-refresh");
+  const managerForm = $("app-create-form");
+  const managerName = $("manager-create-name");
+  const managerStatus = $("manager-status");
+  const managerRoots = $("manager-roots");
+  const managerList = $("manager-app-list");
+  const managerTrash = $("manager-trash-list");
+  const managerTree = $("manager-tree");
+  const managerTreeTitle = $("manager-tree-title");
+  const managerLast = $("manager-last");
+  const managerRecent = $("manager-recent");
+  const managerLiveHint = $("manager-live-hint");
+  const manageRequested =
+    new URLSearchParams(window.location.search).get("manage") === "1";
+  let managerToken = 0;
+  let managerApps = {};

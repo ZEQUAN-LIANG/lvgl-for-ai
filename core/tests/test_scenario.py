@@ -1,0 +1,406 @@
+"""Scenario schema, command expansion, and the settings scenario on real LVGL.
+
+Unit tests use ``FakeRuntime`` and never spawn a process. The integration test
+plays ``user/scenarios/settings.json`` against the real engine; the demo
+button covers x=32..192, y=300..348, so its center is (112, 324).
+"""
+
+from __future__ import annotations
+
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from fake_runtime import FakeRuntime
+from lvgl_ai import Recording, Runtime, ScenarioError, play_scenario
+from lvgl_ai import paths
+from lvgl_ai.scenario import load_scenario
+
+SETTINGS_SCENARIO = paths.REPO_ROOT / "user" / "scenarios" / "settings.json"
+BUTTON_CENTER = (112, 324)
+
+
+def scenario_file(root: Path, steps: list[dict], **extra) -> Path:
+    document = {"schema": "lvgl-ai-scenario-v1", "name": "test", "steps": steps}
+    document.update(extra)
+    path = root / "scenario.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    return path
+
+
+class ScenarioExpansionTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.runtime = FakeRuntime()
+
+    def test_click_at_expands_to_down_wait_up(self) -> None:
+        replies = play_scenario(
+            self.runtime, [{"type": "click_at", "x": 112, "y": 324}]
+        )
+        self.assertEqual(
+            self.runtime.commands,
+            [
+                ("pointer", "down", 112, 324),
+                ("wait", 64),
+                ("pointer", "up", 112, 324),
+            ],
+        )
+        self.assertEqual(len(replies), 3)
+
+    def test_click_at_honours_hold_ms(self) -> None:
+        play_scenario(
+            self.runtime,
+            [{"type": "click_at", "x": 1, "y": 2, "hold_ms": 0}],
+        )
+        self.assertEqual(self.runtime.commands[1], ("wait", 0))
+
+    def test_drag_expands_to_down_moves_up_and_drag_end_snapshot(self) -> None:
+        play_scenario(
+            self.runtime,
+            [{"type": "drag", "from": [0, 0], "to": [100, 40], "steps": 4}],
+        )
+        self.assertEqual(
+            self.runtime.commands,
+            [
+                ("pointer", "down", 0, 0),
+                ("pointer", "move", 25, 10),
+                ("pointer", "move", 50, 20),
+                ("pointer", "move", 75, 30),
+                ("pointer", "move", 100, 40),
+                ("pointer", "up", 100, 40),
+                ("snapshot", "drag_end"),
+            ],
+        )
+
+    def test_drag_defaults_to_eight_moves(self) -> None:
+        play_scenario(
+            self.runtime,
+            [{"type": "drag", "from": [0, 0], "to": [80, 0]}],
+        )
+        moves = [command for command in self.runtime.commands if command[:2] == ("pointer", "move")]
+        self.assertEqual(len(moves), 8)
+        self.assertEqual(moves[-1], ("pointer", "move", 80, 0))
+
+    def test_wait_accepts_ms_or_frames(self) -> None:
+        play_scenario(
+            self.runtime,
+            [
+                {"type": "wait", "ms": 48},
+                {"type": "wait", "frames": 3},
+            ],
+        )
+        self.assertEqual(
+            self.runtime.commands,
+            [("wait", 48), ("wait", "frames", 3)],
+        )
+
+    def test_key_and_encoder_steps_expand_to_runtime_calls(self) -> None:
+        play_scenario(
+            self.runtime,
+            [
+                {"type": "key", "action": "press", "key": "enter"},
+                {"type": "key", "action": "release", "key": "ENTER"},
+                {"type": "encoder", "action": "turn", "diff": -2},
+            ],
+        )
+        self.assertEqual(
+            self.runtime.commands,
+            [
+                ("key", "press", "ENTER"),
+                ("key", "release", "ENTER"),
+                ("encoder", "turn", -2),
+            ],
+        )
+
+    def test_mark_and_snapshot_are_passed_through(self) -> None:
+        play_scenario(
+            self.runtime,
+            [
+                {"type": "mark", "id": "checkpoint"},
+                {"type": "snapshot", "label": "after_click"},
+            ],
+        )
+        self.assertEqual(
+            self.runtime.commands,
+            [("mark", "checkpoint"), ("snapshot", "after_click")],
+        )
+
+    def test_path_and_step_list_produce_the_same_commands(self) -> None:
+        steps = [
+            {"type": "click_at", "x": 112, "y": 324},
+            {"type": "wait", "frames": 2},
+            {"type": "drag", "from": [10, 10], "to": [20, 30], "steps": 2},
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = scenario_file(Path(tmp), steps)
+            play_scenario(self.runtime, path)
+            from_path = list(self.runtime.commands)
+            self.runtime.commands.clear()
+            play_scenario(self.runtime, steps)
+            from_list = list(self.runtime.commands)
+        self.assertEqual(from_path, from_list)
+        # click_at: 3 commands; wait: 1; drag: down + 2 moves + up + snapshot.
+        self.assertEqual(len(from_path), 3 + 1 + 5)
+
+    def test_play_scenario_does_not_manage_the_runtime_lifecycle(self) -> None:
+        play_scenario(self.runtime, [{"type": "wait", "ms": 16}])
+        self.assertEqual(self.runtime.start_calls, 0)
+        self.assertEqual(self.runtime.stop_calls, 0)
+
+    def test_fake_runtime_start_and_stop_are_idempotent(self) -> None:
+        self.assertIs(self.runtime.start(), self.runtime)
+        session_id = self.runtime.session_id
+        self.runtime.start()
+        self.assertTrue(self.runtime.is_running)
+        self.assertEqual(self.runtime.session_id, session_id)
+        self.runtime.stop()
+        self.runtime.stop()
+        self.assertFalse(self.runtime.is_running)
+
+
+class ScenarioValidationTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.runtime = FakeRuntime()
+
+    def assert_scenario_error(self, steps, fragment: str) -> ScenarioError:
+        with self.assertRaises(ScenarioError) as caught:
+            play_scenario(self.runtime, steps)
+        self.assertIn(fragment, str(caught.exception))
+        return caught.exception
+
+    def test_invalid_steps_are_rejected_before_any_command_runs(self) -> None:
+        error = self.assert_scenario_error(
+            [
+                {"type": "wait", "ms": 16},
+                {"type": "click_at", "x": 1},
+            ],
+            "step 1",
+        )
+        self.assertEqual(error.step, 1)
+        self.assertEqual(self.runtime.commands, [])
+
+    def test_unknown_step_type_is_rejected(self) -> None:
+        self.assert_scenario_error([{"type": "toggle", "id": "demo_button"}], "type")
+
+    def test_key_step_rejects_unknown_key_with_step_index(self) -> None:
+        error = self.assert_scenario_error(
+            [
+                {"type": "wait", "ms": 16},
+                {"type": "key", "action": "press", "key": "INSERT"},
+            ],
+            "step 1",
+        )
+        self.assertEqual(error.step, 1)
+        self.assertIn("INSERT", str(error))
+
+    def test_key_and_encoder_steps_are_validated(self) -> None:
+        self.assert_scenario_error(
+            [{"type": "key", "action": "tap", "key": "ENTER"}], "action"
+        )
+        self.assert_scenario_error(
+            [{"type": "key", "action": "press"}], "key"
+        )
+        self.assert_scenario_error(
+            [{"type": "encoder", "action": "turn", "diff": 32768}], "diff"
+        )
+
+    def test_unknown_field_is_rejected(self) -> None:
+        self.assert_scenario_error(
+            [{"type": "mark", "id": "ok", "label": "typo"}], "unexpected field"
+        )
+
+    def test_wait_needs_exactly_one_of_ms_and_frames(self) -> None:
+        self.assert_scenario_error([{"type": "wait"}], "exactly one")
+        self.assert_scenario_error(
+            [{"type": "wait", "ms": 1, "frames": 1}], "exactly one"
+        )
+
+    def test_negative_and_boolean_coordinates_are_rejected(self) -> None:
+        self.assert_scenario_error([{"type": "click_at", "x": -1, "y": 0}], "x")
+        self.assert_scenario_error(
+            [{"type": "click_at", "x": True, "y": 0}], "x must be an integer"
+        )
+        self.assert_scenario_error(
+            [{"type": "drag", "from": [0, 0], "to": [1]}], "to"
+        )
+
+    def test_drag_steps_must_be_positive(self) -> None:
+        self.assert_scenario_error(
+            [{"type": "drag", "from": [0, 0], "to": [1, 1], "steps": 0}],
+            "steps",
+        )
+
+    def test_mark_and_snapshot_tokens_are_validated(self) -> None:
+        self.assert_scenario_error([{"type": "mark", "id": "bad id"}], "id")
+        self.assert_scenario_error(
+            [{"type": "snapshot", "label": ""}], "label"
+        )
+
+    def test_empty_step_list_is_rejected(self) -> None:
+        self.assert_scenario_error([], "must not be empty")
+
+    def test_path_and_unsupported_object_are_rejected(self) -> None:
+        self.assert_scenario_error({"steps": []}, "path or a list")
+
+
+class ScenarioFileTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        self.runtime = FakeRuntime()
+
+    def test_missing_file_raises_scenario_error(self) -> None:
+        with self.assertRaises(ScenarioError) as caught:
+            play_scenario(self.runtime, self.root / "missing.json")
+        self.assertIn("cannot read scenario", str(caught.exception))
+
+    def test_invalid_json_raises_scenario_error(self) -> None:
+        path = self.root / "bad.json"
+        path.write_text("{not json", encoding="utf-8")
+        with self.assertRaises(ScenarioError) as caught:
+            play_scenario(self.runtime, path)
+        self.assertIn("invalid JSON", str(caught.exception))
+
+    def test_wrong_schema_is_rejected(self) -> None:
+        path = scenario_file(self.root, [{"type": "wait", "ms": 16}])
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["schema"] = "lvgl-ai-scenario-v0"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaises(ScenarioError) as caught:
+            play_scenario(self.runtime, path)
+        self.assertIn("lvgl-ai-scenario-v1", str(caught.exception))
+
+    def test_unknown_top_level_field_is_rejected(self) -> None:
+        path = scenario_file(self.root, [{"type": "wait", "ms": 16}])
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["target"] = "demo_button"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaises(ScenarioError) as caught:
+            play_scenario(self.runtime, path)
+        self.assertIn("target", str(caught.exception))
+
+    def test_app_is_preserved_in_the_normalized_document(self) -> None:
+        path = scenario_file(
+            self.root, [{"type": "wait", "ms": 16}], app="coffee"
+        )
+        self.assertEqual(load_scenario(path)["app"], "coffee")
+
+    def test_invalid_app_is_rejected(self) -> None:
+        path = scenario_file(
+            self.root, [{"type": "wait", "ms": 16}], app="bad app"
+        )
+        with self.assertRaises(ScenarioError) as caught:
+            load_scenario(path)
+        self.assertIn("app", str(caught.exception))
+
+
+class ScenarioErrorMappingTest(unittest.TestCase):
+    def test_runtime_errors_propagate_unchanged(self) -> None:
+        from lvgl_ai import RuntimeCrash
+
+        crash = RuntimeCrash("engine died", exit_code=3)
+        runtime = FakeRuntime(errors={"pointer": crash})
+        with self.assertRaises(RuntimeCrash) as caught:
+            play_scenario(runtime, [{"type": "click_at", "x": 1, "y": 2}])
+        self.assertIs(caught.exception, crash)
+
+
+class SettingsScenarioIntegrationTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.sessions_root = Path(self._tmp.name) / "sessions"
+
+    def test_settings_scenario_runs_on_the_real_engine(self) -> None:
+        rt = Runtime(lvgl="9.6", build=True, sessions_root=self.sessions_root)
+        self.addCleanup(rt.stop)
+        rt.start()
+        replies = play_scenario(rt, SETTINGS_SCENARIO)
+        self.assertEqual(len(replies), 3 + 1 + 1 + 1 + 7)
+        rt.stop()
+
+        recording = Recording.open(rt.session_dir)
+        self.assertEqual(recording.manifest["status"], "ok")
+        rows = recording.timeline()
+        self.assertEqual(
+            [row["type"] for row in rows],
+            [
+                "frame",
+                "input",
+                "frame",
+                "frame",
+                "frame",
+                "frame",
+                "wait",
+                "input",
+                "frame",
+                "frame",
+                "frame",
+                "frame",
+                "wait",
+                "mark",
+                "snapshot",
+                "input",
+                "input",
+                "input",
+                "input",
+                "input",
+                "input",
+                "snapshot",
+                "end",
+            ],
+        )
+        inputs = [row for row in rows if row["type"] == "input"]
+        self.assertEqual(
+            [(row["action"], row["x"], row["y"]) for row in inputs],
+            [
+                ("down", 112, 324),
+                ("up", 112, 324),
+                ("down", 112, 324),
+                ("move", 144, 324),
+                ("move", 176, 324),
+                ("move", 208, 324),
+                ("move", 240, 324),
+                ("up", 240, 324),
+            ],
+        )
+        wait_rows = [row for row in rows if row["type"] == "wait"]
+        self.assertEqual(len(wait_rows), 2)
+        self.assertEqual(
+            [row["id"] for row in rows if row["type"] == "mark"], ["after_click"]
+        )
+        snapshots = [row for row in rows if row["type"] == "snapshot"]
+        self.assertEqual(
+            [(row["label"], row["file"]) for row in snapshots],
+            [
+                ("after_click", "snapshots/001_after_click.png"),
+                ("drag_end", "snapshots/002_drag_end.png"),
+            ],
+        )
+        for row in snapshots:
+            self.assertTrue((recording.path / row["file"]).is_file())
+        self.assertEqual(len(recording.frames), 9)
+        self.assertIn("[app] demo_button clicked", recording.log())
+
+    def test_path_and_list_forms_produce_the_same_timeline(self) -> None:
+        steps = json.loads(SETTINGS_SCENARIO.read_text(encoding="utf-8"))["steps"]
+
+        def play(source, name: str) -> list[dict]:
+            rt = Runtime(
+                lvgl="9.6",
+                build=True,
+                sessions_root=self.sessions_root / name,
+            )
+            try:
+                rt.start()
+                play_scenario(rt, source)
+            finally:
+                rt.stop()
+            return Recording.open(rt.session_dir).timeline()
+
+        self.assertEqual(play(SETTINGS_SCENARIO, "path"), play(steps, "list"))
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

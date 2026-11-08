@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>场景与服务端常量 · 索引指针</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --fg: #1f2328;
+    --muted: #656d76;
+    --line: #d8dee4;
+    --accent: #0969da;
+    --code-bg: #eef0f3;
+    --warn-bg: #fff8e1;
+    --warn-line: #e3b341;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171c;
+      --fg: #e6e8eb;
+      --muted: #9aa3ad;
+      --line: #2c313a;
+      --accent: #58a6ff;
+      --code-bg: #1d2229;
+      --warn-bg: #2a2416;
+      --warn-line: #8d6e1f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.65 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem 1.1rem;
+    padding: .85rem 1.25rem;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
+  nav a { color: var(--muted); text-decoration: none; }
+  nav a:hover { color: var(--accent); }
+  nav a[aria-current="page"] { color: var(--fg); font-weight: 600; }
+  header, main, footer { max-width: 980px; margin: 0 auto; padding: 0 1.5rem; }
+  header { padding-top: 2rem; }
+  h1 { margin: 0 0 .35rem; font-size: 1.7rem; letter-spacing: -.01em; }
+  .lede { margin: 0 0 .4rem; color: var(--muted); max-width: 62ch; }
+  .scope { margin: 0 0 1.6rem; color: var(--muted); font-size: 13px; }
+  h2 {
+    margin: 2.1rem 0 .7rem;
+    padding-left: .55rem;
+    border-left: 3px solid var(--accent);
+    font-size: 1.12rem;
+  }
+  p { margin: .55rem 0; }
+  code {
+    padding: .08em .34em;
+    border-radius: 4px;
+    background: var(--code-bg);
+    font-family: "Cascadia Mono", Consolas, "SFMono-Regular", monospace;
+    font-size: .92em;
+  }
+  .ptr {
+    color: var(--muted);
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 12px;
+  }
+  a { color: var(--accent); }
+  ul, ol { margin: .5rem 0; padding-left: 1.35rem; }
+  li { margin: .3rem 0; }
+  .note {
+    margin: 1rem 0;
+    padding: .7rem .9rem;
+    border: 1px solid var(--warn-line);
+    border-radius: 8px;
+    background: var(--warn-bg);
+    font-size: 13.5px;
+  }
+  .note strong { margin-right: .35rem; }
+  footer {
+    margin-top: 2.4rem;
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+<nav>
+  <a href="app.html">应用变体</a>
+  <a href="scenario-server.html" aria-current="page">场景与服务端常量</a>
+  <a href="../CONTEXT.md">CONTEXT.md</a>
+  <a href="../CLAUDE.md">CLAUDE.md</a>
+</nav>
+
+<header>
+  <h1>场景与服务端常量</h1>
+  <p class="lede">场景（scenario）是手势脚本；服务端是 <code>core/lvgl_ai/web/</code> 的 HTTP/UI 适配层。</p>
+  <p class="scope">本页是索引指针：不复制 schema 版本、步骤字段、字段默认值、路由表、常量值或行号。每个主题只指向真源文件与符号，链接目标才是真源。路径均相对仓库根。</p>
+</header>
+
+<main>
+  <h2>1. 场景格式</h2>
+  <ul>
+    <li>
+      schema、顶层字段、步骤类型与默认值：
+      <a href="../core/lvgl_ai/scenario.py">core/lvgl_ai/scenario.py</a>
+      · <span class="ptr">SCENARIO_SCHEMA, STEP_TYPES, _STEP_FIELDS, load_scenario, normalize_steps</span>。
+      模块 docstring 同时是格式示例与各步骤字段说明的真源。
+    </li>
+    <li>
+      步骤执行与展开：
+      <a href="../core/lvgl_ai/scenario.py">core/lvgl_ai/scenario.py</a>
+      · <span class="ptr">play_scenario, _play_step, _interpolate</span>。
+    </li>
+    <li>
+      校验错误与 CLI 映射：
+      <a href="../core/lvgl_ai/control/errors.py">core/lvgl_ai/control/errors.py</a>
+      · <span class="ptr">ScenarioError</span>；
+      <a href="../core/cli.py">core/cli.py</a> · <span class="ptr">main</span>。
+    </li>
+    <li>
+      与 <code>Runtime.input</code> 事件列表的关系：
+      <a href="../core/lvgl_ai/control/runtime.py">core/lvgl_ai/control/runtime.py</a>
+      · <span class="ptr">Runtime.input</span>；
+      设计说明见 <a href="../.scratch/ai-tools/SPEC.md">.scratch/ai-tools/SPEC.md</a>「输入」。
+    </li>
+  </ul>
+
+  <h2>2. 网页服务端</h2>
+  <ul>
+    <li>
+      HTTP 路由、方法、请求校验与错误映射：
+      <a href="../core/lvgl_ai/web/webapp.py">core/lvgl_ai/web/webapp.py</a>
+      · <span class="ptr">_WebHandler._route, WebApp</span>。
+      路由表以这里为准，本页不转抄。
+    </li>
+    <li>
+      服务端常量与上限：
+      <a href="../core/lvgl_ai/web/webapp.py">core/lvgl_ai/web/webapp.py</a>
+      模块级常量。值以代码为准，本页不转抄。
+    </li>
+    <li>
+      live 时间语义与 ticker：
+      <a href="../core/lvgl_ai/web/live_session.py">core/lvgl_ai/web/live_session.py</a>
+      · <span class="ptr">TICK_PROFILE, LiveSession._default_runtime, LiveSession._start_ticker_locked</span>。
+    </li>
+    <li>
+      raw 预览帧格式与页面心跳：
+      <a href="../core/lvgl_ai/web/wire.py">core/lvgl_ai/web/wire.py</a>
+      · <span class="ptr">header_fields, page_config, PAGE_HEARTBEAT_INTERVAL_MS</span>；
+      帧编码与 hub 见 <a href="../core/lvgl_ai/web/transport.py">core/lvgl_ai/web/transport.py</a>
+      · <span class="ptr">encode_frame, LiveFrameHub</span>。
+    </li>
+    <li>
+      启动参数与默认值：
+      <a href="../core/web.py">core/web.py</a>
+      · <span class="ptr">build_parser, main</span>；用法见
+      <a href="../core/README.md">core/README.md</a>。
+    </li>
+    <li>
+      Windows 下子进程无控制台窗口：
+      <a href="../core/lvgl_ai/control/engine_link.py">core/lvgl_ai/control/engine_link.py</a>
+      · <span class="ptr">spawn_engine</span>；
+      构建侧子进程见 <a href="../core/lvgl_ai/control/build.py">core/lvgl_ai/control/build.py</a>
+      · <span class="ptr">run_capture</span>。
+    </li>
+  </ul>
+
+  <h2>3. 相关文件</h2>
+  <ul>
+    <li><a href="../core/lvgl_ai/scenario.py">core/lvgl_ai/scenario.py</a> — 场景 schema、校验、<code>play_scenario</code></li>
+    <li><a href="../core/lvgl_ai/control/errors.py">core/lvgl_ai/control/errors.py</a> — 错误类型与错误层</li>
+    <li><a href="../core/lvgl_ai/control/runtime.py">core/lvgl_ai/control/runtime.py</a> — <code>Runtime</code> 与 <code>input</code></li>
+    <li><a href="../core/lvgl_ai/web/webapp.py">core/lvgl_ai/web/webapp.py</a> — HTTP 适配、常量、路由</li>
+    <li><a href="../core/lvgl_ai/web/live_session.py">core/lvgl_ai/web/live_session.py</a> — <code>LiveSession</code>、live 状态机与 ticker</li>
+    <li><a href="../core/lvgl_ai/web/replay_model.py">core/lvgl_ai/web/replay_model.py</a> — 回放视图模型：帧、关键画面、时间线、diff、notes 与日志尾部一次读取</li>
+    <li><a href="../core/lvgl_ai/web/wire.py">core/lvgl_ai/web/wire.py</a> — raw 预览帧 magic、帧头、上限与页面心跳的单源</li>
+    <li><a href="../core/lvgl_ai/web/transport.py">core/lvgl_ai/web/transport.py</a> — raw 预览帧编码与 <code>LiveFrameHub</code></li>
+    <li><a href="../core/web.py">core/web.py</a> — 启动参数与默认地址</li>
+    <li><a href="../core/web.pyw">core/web.pyw</a> — Windows 无控制台启动器（自动开浏览器、关闭页面即停服务）</li>
+    <li><a href="../core/README.md">core/README.md</a> — 工具用法</li>
+    <li><a href="../user/scenarios/">user/scenarios/</a> — 场景脚本目录</li>
+    <li><a href="../.scratch/ai-tools/SPEC.md">.scratch/ai-tools/SPEC.md</a> — 设计真源</li>
+  </ul>
+</main>
+
+<footer>索引指针 · 以链接文件为准 · 本页不定义验收标准</footer>
+</body>
+</html>
