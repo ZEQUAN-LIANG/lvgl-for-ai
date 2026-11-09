@@ -23,8 +23,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DISPLAY_WIDTH 800u
-#define DISPLAY_HEIGHT 600u
+#define DEFAULT_DISPLAY_WIDTH 800u
+#define DEFAULT_DISPLAY_HEIGHT 600u
+#define MAX_DISPLAY_DIMENSION 4096u
 #define DEFAULT_MAX_FRAMES 600
 
 extern void app_create(void);
@@ -45,6 +46,8 @@ static void print_usage(FILE * out)
             "                  [--live-frame] [--record-changed-only]\n"
             "                  [--diff-threshold 0-255]\n"
             "                  [--reference PNG] [--max-frames N]\n"
+            "                  [--width W --height H] (default 800x600, "
+            "1..4096)\n"
             "                  [--window|--headless]\n");
 }
 
@@ -517,6 +520,10 @@ int main(int argc, char ** argv)
     const char * reference_path = NULL;
     long diff_threshold = 10;
     long max_frames = DEFAULT_MAX_FRAMES;
+    unsigned long display_width = DEFAULT_DISPLAY_WIDTH;
+    unsigned long display_height = DEFAULT_DISPLAY_HEIGHT;
+    bool width_given = false;
+    bool height_given = false;
     bool record = false;
     bool live_frame = false;
     bool record_changed_only = false;
@@ -542,6 +549,24 @@ int main(int argc, char ** argv)
                 fprintf(stderr, "[engine] --max-frames must be >= 0\n");
                 return 2;
             }
+        }
+        else if(strcmp(argv[i], "--width") == 0 && i + 1 < argc) {
+            if(!parse_ulong(argv[++i], &display_width) || display_width < 1 ||
+               display_width > MAX_DISPLAY_DIMENSION) {
+                fprintf(stderr, "[engine] --width must be 1..%u\n",
+                        MAX_DISPLAY_DIMENSION);
+                return 2;
+            }
+            width_given = true;
+        }
+        else if(strcmp(argv[i], "--height") == 0 && i + 1 < argc) {
+            if(!parse_ulong(argv[++i], &display_height) || display_height < 1 ||
+               display_height > MAX_DISPLAY_DIMENSION) {
+                fprintf(stderr, "[engine] --height must be 1..%u\n",
+                        MAX_DISPLAY_DIMENSION);
+                return 2;
+            }
+            height_given = true;
         }
         else if(strcmp(argv[i], "--record") == 0) {
             record = true;
@@ -577,6 +602,12 @@ int main(int argc, char ** argv)
         print_usage(stderr);
         return 2;
     }
+    if(width_given != height_given) {
+        fprintf(stderr,
+                "[engine] --width and --height must be given together\n");
+        print_usage(stderr);
+        return 2;
+    }
 
     /* Unbuffered stdout matters beyond latency: MinGW keeps pipes fully
      * buffered despite _IOLBF, so user printf() from an event handler could
@@ -585,8 +616,8 @@ int main(int argc, char ** argv)
     setvbuf(stderr, NULL, _IONBF, 0);
 
     bool window_supported = window_requested && window_available();
-    adapter_t * adapter = adapter_create(DISPLAY_WIDTH,
-                                                 DISPLAY_HEIGHT,
+    adapter_t * adapter = adapter_create((uint32_t)display_width,
+                                                 (uint32_t)display_height,
                                                  window_supported);
     if(adapter == NULL) {
         fprintf(stderr, "[engine] failed to create the LVGL display\n");
@@ -604,12 +635,12 @@ int main(int argc, char ** argv)
             adapter_destroy(adapter);
             return 2;
         }
-        if(reference_width != DISPLAY_WIDTH ||
-           reference_height != DISPLAY_HEIGHT) {
+        if(reference_width != (uint32_t)display_width ||
+           reference_height != (uint32_t)display_height) {
             fprintf(stderr,
                     "[engine] reference is %ux%u, expected %ux%u\n",
-                    reference_width, reference_height, DISPLAY_WIDTH,
-                    DISPLAY_HEIGHT);
+                    reference_width, reference_height,
+                    (uint32_t)display_width, (uint32_t)display_height);
             adapter_free_pixels(reference_pixels);
             adapter_destroy(adapter);
             return 2;
@@ -624,8 +655,8 @@ int main(int argc, char ** argv)
     memset(&session_config, 0, sizeof(session_config));
     session_config.adapter = adapter;
     session_config.session_dir = session_dir;
-    session_config.width = DISPLAY_WIDTH;
-    session_config.height = DISPLAY_HEIGHT;
+    session_config.width = (uint32_t)display_width;
+    session_config.height = (uint32_t)display_height;
     session_config.record = record;
     session_config.live = live_frame;
     session_config.record_changed_only = record_changed_only;
@@ -641,8 +672,8 @@ int main(int argc, char ** argv)
     if(window_requested) {
         char title[256];
         session_window_title(session_dir, title, sizeof(title));
-        engine.window = window_create(DISPLAY_WIDTH,
-                                          DISPLAY_HEIGHT, title,
+        engine.window = window_create((uint32_t)display_width,
+                                          (uint32_t)display_height, title,
                                           engine_real_input, &engine);
         if(engine.window == NULL) {
             fprintf(stderr,

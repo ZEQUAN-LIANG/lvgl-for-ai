@@ -23,6 +23,7 @@ from .input import (
     is_token,
     normalize_input_events,
     require_action,
+    require_display_pair,
     require_int16,
     require_non_negative_int,
     require_token,
@@ -69,6 +70,9 @@ class Runtime:
     a test session shows frames without recording evidence.
     ``app`` selects the user app variant by setting ``LVGL_AI_DEMO`` for the
     engine and is recorded in the manifest; ``None`` inherits the environment.
+    ``width``/``height`` set the display size at startup and must be provided
+    together; ``None`` keeps the engine default (800x600) and is recorded from
+    the engine's ``ready`` message.
     ``window=True`` asks the engine for a Win32 GDI window; real mouse and
     keyboard input then work alongside the virtual indevs. ``headless`` stays
     the default, and non-Windows engines fall back to headless.
@@ -79,6 +83,8 @@ class Runtime:
         lvgl: str | None = None,
         *,
         app: str | None = None,
+        width: int | None = None,
+        height: int | None = None,
         build: bool = True,
         record: bool = True,
         live_frame: bool = False,
@@ -101,6 +107,7 @@ class Runtime:
             raise ValueError("pass either _engine_path or _engine_command, not both")
         if app is not None and not is_token(app):
             raise ValueError(f"app must match {TOKEN_PATTERN}; got {app!r}")
+        display = require_display_pair(width, height)
         if (
             isinstance(diff_threshold, bool)
             or not isinstance(diff_threshold, int)
@@ -119,6 +126,9 @@ class Runtime:
             if app is not None
             else (os.environ.get("LVGL_AI_DEMO") or None)
         )
+        # ``None`` means the engine default; otherwise both dimensions exist.
+        self.width = None if display is None else display[0]
+        self.height = None if display is None else display[1]
         self.build = bool(build)
         self.record = bool(record)
         # Keep one overwritten live.rgba raw preview for the web stream. It
@@ -498,8 +508,12 @@ class Runtime:
             "--record" if self.record else "--no-record",
             "--diff-threshold", str(self.diff_threshold),
             "--max-frames", str(self.max_frames),
-            "--window" if self.window else "--headless",
         ]
+        if self.width is not None and self.height is not None:
+            engine_args.extend(
+                ["--width", str(self.width), "--height", str(self.height)]
+            )
+        engine_args.append("--window" if self.window else "--headless")
         if self.live_frame:
             engine_args.append("--live-frame")
         if self.record_changed_only:

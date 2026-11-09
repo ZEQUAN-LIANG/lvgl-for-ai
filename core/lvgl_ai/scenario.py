@@ -6,6 +6,7 @@ A scenario file is a JSON object with the ``lvgl-ai-scenario-v1`` schema::
       "schema": "lvgl-ai-scenario-v1",
       "name": "settings",
       "app": "coffee",
+      "display": {"width": 800, "height": 600},
       "steps": [
         {"type": "click_at", "x": 112, "y": 324},
         {"type": "wait", "ms": 64},
@@ -19,6 +20,11 @@ A scenario file is a JSON object with the ``lvgl-ai-scenario-v1`` schema::
 ``[A-Za-z0-9_-]+``). The CLI forwards it as ``LVGL_AI_DEMO`` before starting the
 engine and the session manifest records it; omit it to use the user code
 default.
+
+``display`` is optional and declares the LVGL screen size. ``width`` and
+``height`` are integers in ``1..4096``; omit the object to use the engine
+default (800x600). The size is passed to the engine at startup, so changing it
+does not require a rebuild.
 
 Step types (the schema is intentionally this small):
 
@@ -59,6 +65,7 @@ from .control.input import (
     INT16_MAX,
     INT16_MIN,
     TOKEN_PATTERN,
+    display_problem,
     integer_problem,
     is_token,
     point_problem,
@@ -74,7 +81,7 @@ DEFAULT_DRAG_STEPS = 8
 MAX_DRAG_STEPS = 1000
 DRAG_SNAPSHOT_LABEL = "drag_end"
 
-_FILE_FIELDS = {"schema", "name", "app", "steps"}
+_FILE_FIELDS = {"schema", "name", "app", "display", "steps"}
 _STEP_FIELDS = {
     "click_at": {"type", "x", "y", "hold_ms"},
     "drag": {"type", "from", "to", "steps"},
@@ -128,6 +135,11 @@ def load_scenario(path: str | Path) -> dict[str, Any]:
         raise ScenarioError(
             f"scenario {scenario_path}: app must match {TOKEN_PATTERN}"
         )
+    display = data.get("display")
+    if display is not None:
+        problem = display_problem(display)
+        if problem is not None:
+            raise ScenarioError(f"scenario {scenario_path}: {problem}")
     if "steps" not in data:
         raise ScenarioError(f"scenario {scenario_path}: steps is required")
 
@@ -136,6 +148,11 @@ def load_scenario(path: str | Path) -> dict[str, Any]:
         document["name"] = name
     if app is not None:
         document["app"] = app
+    if display is not None:
+        document["display"] = {
+            "width": display["width"],
+            "height": display["height"],
+        }
     document["steps"] = normalize_steps(data["steps"])
     return document
 

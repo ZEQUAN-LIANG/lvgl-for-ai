@@ -266,7 +266,7 @@ class ContractSnapshotTest(unittest.TestCase):
         )
         self.assertEqual(
             session["optional_manifest_fields"],
-            ["app", "record_changed_only"],
+            ["app", "display", "record_changed_only"],
         )
         self.assertIn(
             "artifacts", session["required_manifest_fields"]
@@ -274,6 +274,10 @@ class ContractSnapshotTest(unittest.TestCase):
         self.assertEqual(session["manifest_values"]["schema"],
                          "lvgl-ai-session-v1")
         self.assertEqual(session["manifest_values"]["status"], "ok")
+        self.assertEqual(
+            session["manifest_values"]["display"],
+            {"width": 800, "height": 600},
+        )
         self.assertEqual(session["manifest_values"]["build"],
                          {"status": "skipped", "log": "build.log"})
         self.assertEqual(session["manifest_values"]["frame_count"], 2)

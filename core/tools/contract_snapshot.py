@@ -1100,6 +1100,7 @@ def _session_section(
             "schema": manifest["schema"],
             "status": manifest["status"],
             "app": manifest["app"],
+            "display": manifest["display"],
             "record_changed_only": manifest["record_changed_only"],
             "mode": manifest["mode"],
             "input": manifest["input"],

@@ -332,6 +332,7 @@ class LiveSessionTest(unittest.TestCase):
             session.start("test", "coffee")
             test_root = Path(str(captured["sessions_root"]))
             self.assertNotEqual(test_root, (self.root / "sessions").resolve())
+            self.assertEqual(test_root.parent, (self.root / "sessions").resolve())
             self.assertTrue(test_root.is_dir())
             self.assertIs(captured["record"], False)
             self.assertEqual(captured["app"], "coffee")
@@ -343,7 +344,7 @@ class LiveSessionTest(unittest.TestCase):
 
             captured.clear()
             record_root = self.root / "sessions"
-            record_root.mkdir()
+            record_root.mkdir(exist_ok=True)
             session.start("record", None)
             self.assertEqual(
                 Path(str(captured["sessions_root"])), record_root.resolve()
@@ -351,6 +352,24 @@ class LiveSessionTest(unittest.TestCase):
             self.assertIs(captured["record"], True)
             session.stop()
             self.assertTrue(record_root.is_dir())
+
+    def test_live_start_forwards_display_to_the_default_runtime(self) -> None:
+        captured: dict[str, object] = {}
+
+        class CapturingRuntime(FakeRuntime):
+            def __init__(self, **kwargs: object) -> None:
+                captured.update(kwargs)
+                super().__init__(**kwargs)
+
+        with mock.patch(
+            "lvgl_ai.web.live_session.Runtime", CapturingRuntime
+        ):
+            session = LiveSession(self.root / "sessions")
+            self.addCleanup(_quiet_stop_session, session)
+            session.start("test", "coffee", display=(640, 480))
+            self.assertEqual(captured["width"], 640)
+            self.assertEqual(captured["height"], 480)
+            session.stop()
 
     def test_start_failure_discards_the_test_root_and_closes_the_stream(
         self,
@@ -688,6 +707,105 @@ class LiveHttpTest(unittest.TestCase):
             )
         (scenarios / "broken.json").write_text("{broken", encoding="utf-8")
         return scenarios
+
+    def _write_display_scenarios(self) -> Path:
+        scenarios = Path(
+            tempfile.mkdtemp(prefix="display-scenarios-", dir=self.root)
+        )
+        documents = {
+            "coffee.json": {
+                "name": "coffee",
+                "app": "coffee",
+                "display": {"width": 640, "height": 480},
+            },
+            "coffee_alt.json": {
+                "name": "coffee_alt",
+                "app": "coffee",
+                "display": {"width": 320, "height": 240},
+            },
+            "plain.json": {"name": "plain", "app": "plain"},
+        }
+        for filename, fields in documents.items():
+            (scenarios / filename).write_text(
+                json.dumps(
+                    {
+                        "schema": "lvgl-ai-scenario-v1",
+                        "steps": [{"type": "wait", "ms": 16}],
+                        **fields,
+                    }
+                ),
+                encoding="utf-8",
+            )
+        return scenarios
+
+    def test_scenario_apps_include_display(self) -> None:
+        harness = WebHarness(
+            self.root,
+            runtime_factory=Factory(lambda index: FakeRuntime()),
+            scenarios_dir=self._write_display_scenarios(),
+        )
+        self.addCleanup(harness.close)
+
+        by_app = {
+            entry["app"]: entry
+            for entry in harness.server.app.scenario_apps()
+        }
+        self.assertEqual(
+            by_app["coffee"]["display"], {"width": 640, "height": 480}
+        )
+        self.assertIsNone(by_app["plain"]["display"])
+
+    def test_live_start_forwards_the_scenario_display(self) -> None:
+        captured: dict[str, object] = {}
+
+        class CapturingRuntime(FakeRuntime):
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+                super().__init__(**kwargs)
+
+        with mock.patch("lvgl_ai.web.live_session.Runtime", CapturingRuntime):
+            harness = WebHarness(
+                self.root,
+                scenarios_dir=self._write_display_scenarios(),
+            )
+            self.addCleanup(harness.close)
+            self.addCleanup(lambda: _quiet_stop(harness))
+            status, _, live = harness.json(
+                "POST", "/api/live/start?app=coffee"
+            )
+            self.assertEqual(status, 200, live)
+            self.assertEqual(captured["width"], 640)
+            self.assertEqual(captured["height"], 480)
+            harness.json("POST", "/api/live/stop")
+
+    def test_live_start_without_a_scenario_display_uses_the_default(
+        self,
+    ) -> None:
+        for query in ("", "?app=plain", "?app=missing"):
+            with self.subTest(query=query):
+                captured: dict[str, object] = {}
+
+                class CapturingRuntime(FakeRuntime):
+                    def __init__(self, **kwargs):
+                        captured.update(kwargs)
+                        super().__init__(**kwargs)
+
+                with mock.patch(
+                    "lvgl_ai.web.live_session.Runtime", CapturingRuntime
+                ):
+                    harness = WebHarness(
+                        self.root,
+                        scenarios_dir=self._write_display_scenarios(),
+                    )
+                    self.addCleanup(harness.close)
+                    self.addCleanup(lambda: _quiet_stop(harness))
+                    status, _, live = harness.json(
+                        "POST", "/api/live/start" + query
+                    )
+                    self.assertEqual(status, 200, live)
+                    self.assertNotIn("width", captured)
+                    self.assertNotIn("height", captured)
+                    harness.json("POST", "/api/live/stop")
 
     def test_live_page_lists_apps_declared_by_scenarios(self) -> None:
         scenarios = self._write_scenarios()

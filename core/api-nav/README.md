@@ -22,7 +22,7 @@
 ## 使用约定
 
 - 用户只写 `user/app/*.c`，入口固定为 `void app_create(void)`；不写 main，不注册 display / indev，不碰构建。
-- 工具（运行时）负责 `lv_init`、800×600 XRGB8888 display、标准虚拟 pointer / keypad / encoder indev 与虚拟时间；焦点组由 `user/app` 自己创建和挂载。
+- 工具（运行时）负责 `lv_init`、运行时尺寸的 XRGB8888 display（默认 800×600）、标准虚拟 pointer / keypad / encoder indev 与虚拟时间；焦点组由 `user/app` 自己创建和挂载。
 - 精确状态（checked / value / text / focus / scroll）只能 `printf` 到 stdout，最终进入 `engine.log`；没有 tree、inspect、set、param，也不要在 app 里造运行时查询入口。
 - 这份导航是静态文档，只服务写代码，不参与判定；验收标准由人类在聊天里给。
 - 8.x 的 `lvgl_compat.h` 提供 `lv_screen_active()`、`lv_image_create()`、`lv_image_set_src()` 三个 9.x 同名 shim，分别展开为 `lv_scr_act()`、`lv_img_create()`、`lv_img_set_src()`。

@@ -151,6 +151,25 @@ class ChangedFramesTest(unittest.TestCase):
         self.assertEqual(recording.frames, [])
         self.assertIs(recording.manifest["record_changed_only"], True)
 
+    def test_live_frame_uses_the_configured_display_size(self) -> None:
+        rt = self._runtime(
+            record=False,
+            live_frame=True,
+            record_changed_only=True,
+            width=640,
+            height=480,
+        )
+        self.addCleanup(rt.stop)
+        rt.start()
+
+        live_path = rt.session_dir / "live.rgba"
+        raw = live_path.read_bytes()
+        self.assertEqual(len(raw), 640 * 480 * 4)
+        self.assertEqual(set(raw[3::4]), {255})
+
+        rt.stop()
+        self.assertFalse(live_path.exists())
+
     def test_changed_only_keeps_reference_rows_aligned_with_retained_frames(
         self,
     ) -> None:

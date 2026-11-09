@@ -264,8 +264,23 @@ class WebApp:
                 "app": app,
                 "name": document.get("name") or app,
                 "scenario": path.name,
+                "display": document.get("display"),
             }
         return sorted(apps.values(), key=lambda entry: (entry["name"], entry["app"]))
+
+    def _scenario_display_locked(
+        self, app: str | None
+    ) -> tuple[int, int] | None:
+        """The display declared by the first sorted scenario for ``app``."""
+        if app is None:
+            return None
+        for entry in self._scenario_apps_locked():
+            if entry["app"] == app:
+                display = entry.get("display")
+                if display is None:
+                    return None
+                return display["width"], display["height"]
+        return None
 
     # ---- app management -------------------------------------------------
 
@@ -534,7 +549,10 @@ class WebApp:
         self._live_call(lambda: validate_live_kind(kind))
         app = _input_app(app)
         with self._apps_lock:
-            return self._live_call(lambda: self.live.start(kind, app))
+            display = self._scenario_display_locked(app)
+            return self._live_call(
+                lambda: self.live.start(kind, app, display=display)
+            )
 
     def stop_live(self) -> dict[str, Any]:
         return self._live_call(self.live.stop)

@@ -198,6 +198,56 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(factory.call_args.kwargs["app"], "xiaohongshu")
 
+    def test_scenario_display_is_forwarded(self) -> None:
+        fake = FakeRuntime()
+        with mock.patch.object(cli, "Runtime", return_value=fake) as factory:
+            code, _, err = run_cli(
+                [
+                    "--scenario",
+                    str(
+                        self._scenario(
+                            display={"width": 640, "height": 480}
+                        )
+                    ),
+                ]
+            )
+
+        self.assertEqual(code, 0)
+        self.assertEqual(err, "")
+        self.assertEqual(factory.call_args.kwargs["width"], 640)
+        self.assertEqual(factory.call_args.kwargs["height"], 480)
+
+    def test_scenario_without_display_keeps_the_engine_default(self) -> None:
+        fake = FakeRuntime()
+        with mock.patch.object(cli, "Runtime", return_value=fake) as factory:
+            code, _, _ = run_cli(["--scenario", str(self._scenario())])
+
+        self.assertEqual(code, 0)
+        self.assertNotIn("width", factory.call_args.kwargs)
+        self.assertNotIn("height", factory.call_args.kwargs)
+
+    def test_app_override_keeps_the_scenario_display(self) -> None:
+        fake = FakeRuntime()
+        with mock.patch.object(cli, "Runtime", return_value=fake) as factory:
+            code, _, _ = run_cli(
+                [
+                    "--scenario",
+                    str(
+                        self._scenario(
+                            app="coffee",
+                            display={"width": 640, "height": 480},
+                        )
+                    ),
+                    "--app",
+                    "xiaohongshu",
+                ]
+            )
+
+        self.assertEqual(code, 0)
+        self.assertEqual(factory.call_args.kwargs["app"], "xiaohongshu")
+        self.assertEqual(factory.call_args.kwargs["width"], 640)
+        self.assertEqual(factory.call_args.kwargs["height"], 480)
+
     def test_invalid_app_is_a_harness_error(self) -> None:
         code, _, err = run_cli(["--app", "bad app"])
         self.assertEqual(code, 2)

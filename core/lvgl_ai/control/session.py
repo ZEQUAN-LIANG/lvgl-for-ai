@@ -381,6 +381,7 @@ class SessionStore:
             lvgl=ready.get("lvgl"),
             lvgl_src=ready.get("lvgl_src") or self._lvgl_src,
             adapter=ready.get("adapter", "9x"),
+            display=_display_metadata(ready),
             tool_version=self.tool_version,
             frame_count=len(frames),
             truncated=self._truncated,
@@ -418,3 +419,22 @@ class SessionStore:
                 for path in snapshots
             ]
         return artifacts
+
+
+def _display_metadata(ready: Mapping[str, Any]) -> dict[str, int] | None:
+    """The actual display size from ``ready``; ``None`` before startup."""
+    display = ready.get("display")
+    if not isinstance(display, Mapping):
+        return None
+    width = display.get("width")
+    height = display.get("height")
+    if (
+        isinstance(width, bool)
+        or not isinstance(width, int)
+        or width < 1
+        or isinstance(height, bool)
+        or not isinstance(height, int)
+        or height < 1
+    ):
+        return None
+    return {"width": width, "height": height}

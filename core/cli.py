@@ -16,6 +16,8 @@ Exit codes: 0 = session finished ok; 1 = build, link or engine crash;
 the default remains ``--build``. ``--app NAME`` selects
 the user app variant by setting ``LVGL_AI_DEMO``; when ``--scenario`` is used and
 the scenario declares ``app``, omitting the flag uses the scenario value.
+A scenario's optional ``display`` object sets the engine width/height; an
+explicit ``--app`` overrides only the app, not that scene's display.
 
 ``--json`` prints exactly one JSON object on stdout: ``session_id``,
 ``manifest_path``, ``app`` and ``error`` (``null`` on success). Diagnostics
@@ -166,6 +168,10 @@ def main(argv: list[str] | None = None) -> int:
         runtime_kwargs["app"] = app
     if args.record_changed_only:
         runtime_kwargs["record_changed_only"] = True
+    display = None if scenario is None else scenario.get("display")
+    if display is not None:
+        runtime_kwargs["width"] = display["width"]
+        runtime_kwargs["height"] = display["height"]
     runtime = Runtime(**runtime_kwargs)
     error: Exception | None = None
     started = False

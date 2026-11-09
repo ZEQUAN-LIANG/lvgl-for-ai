@@ -29,6 +29,7 @@ MANIFEST_FIELDS = (
     "lvgl",
     "lvgl_src",
     "adapter",
+    "display",
     "tool_version",
     "record_changed_only",
     "frame_count",
@@ -123,6 +124,7 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
         self.assertEqual(manifest["input"], ["real", "virtual"])
         self.assertEqual(manifest["lvgl"], "9.6.0")
         self.assertEqual(manifest["adapter"], "9x")
+        self.assertEqual(manifest["display"], {"width": 800, "height": 600})
         self.assertEqual(manifest["frame_count"], len(recording.frames))
         self.assertIs(manifest["truncated"], False)
         self.assertIs(manifest["log_truncated"], False)
