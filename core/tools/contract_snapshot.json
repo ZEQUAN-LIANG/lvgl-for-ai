@@ -4383,6 +4383,16 @@
                 "name": "app"
               },
               {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "width"
+              },
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "height"
+              },
+              {
                 "default": true,
                 "kind": "KEYWORD_ONLY",
                 "name": "build"
@@ -4659,6 +4669,12 @@
               }
             ]
           },
+          "display": {
+            "object": {
+              "height": "integer",
+              "width": "integer"
+            }
+          },
           "error": "null",
           "frame_count": "integer",
           "id": "string",
@@ -4684,6 +4700,10 @@
         "build": {
           "log": "build.log",
           "status": "skipped"
+        },
+        "display": {
+          "height": 600,
+          "width": 800
         },
         "error": null,
         "frame_count": 2,
@@ -4724,6 +4744,7 @@
       ],
       "optional_manifest_fields": [
         "app",
+        "display",
         "record_changed_only"
       ],
       "plain_artifacts": {

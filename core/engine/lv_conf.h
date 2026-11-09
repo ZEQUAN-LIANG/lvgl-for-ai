@@ -14,8 +14,8 @@
  * family gets its own block. */
 #ifdef LVGL_MAJOR_8
 
-/* 800x600 headless display at 32-bit color (flush copies BGRX straight into
- * the XRGB8888 framebuffer), 16 MiB LVGL heap. */
+/* Runtime-sized headless display (default 800x600) at 32-bit color (flush
+ * copies BGRX straight into the XRGB8888 framebuffer), 16 MiB LVGL heap. */
 #define LV_COLOR_DEPTH 32
 #define LV_MEM_CUSTOM 0
 #define LV_MEM_SIZE (16U * 1024U * 1024U)
@@ -50,7 +50,8 @@
 
 #else /* 9.x */
 
-/* 800x600 XRGB8888 headless display, 16 MiB LVGL heap. */
+/* Runtime-sized XRGB8888 headless display (default 800x600), 16 MiB LVGL
+ * heap. */
 #define LV_COLOR_FORMAT_DEFAULT LV_COLOR_FORMAT_XRGB8888
 #define LV_USE_STDLIB_MALLOC LV_STDLIB_BUILTIN
 #define LV_MEM_SIZE (16 * 1024 * 1024U)

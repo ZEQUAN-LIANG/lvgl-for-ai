@@ -367,12 +367,17 @@ class EngineLink:
                 f"ready.inputs must be ['real', 'virtual'], got {message['inputs']!r}"
             )
         display = message["display"]
+        width = display.get("width") if isinstance(display, dict) else None
+        height = display.get("height") if isinstance(display, dict) else None
         if (
-            not isinstance(display, dict)
-            or not isinstance(display.get("width"), int)
-            or not isinstance(display.get("height"), int)
+            isinstance(width, bool)
+            or not isinstance(width, int)
+            or width < 1
+            or isinstance(height, bool)
+            or not isinstance(height, int)
+            or height < 1
         ):
-            raise invalid("ready.display must carry width and height")
+            raise invalid("ready.display must carry positive width and height")
         if not isinstance(message["inputs"], list) or not isinstance(
             message["capabilities"], list
         ):

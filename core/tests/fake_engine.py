@@ -30,6 +30,8 @@ def main() -> int:
     session_dir = None
     record = False
     max_frames = 600
+    display_width = 800
+    display_height = 600
     args = sys.argv[1:]
     index = 0
     while index < len(args):
@@ -44,6 +46,12 @@ def main() -> int:
             index += 1
         elif args[index] == "--max-frames" and index + 1 < len(args):
             max_frames = int(args[index + 1])
+            index += 2
+        elif args[index] == "--width" and index + 1 < len(args):
+            display_width = int(args[index + 1])
+            index += 2
+        elif args[index] == "--height" and index + 1 < len(args):
+            display_height = int(args[index + 1])
             index += 2
         else:
             index += 1
@@ -71,7 +79,11 @@ def main() -> int:
                 "seq": 0,
                 "lvgl": "9.6.0",
                 "lvgl_src": "/fake/lvgl-src/9.6",
-                "display": {"width": 800, "height": 600, "format": "XRGB8888"},
+                "display": {
+                    "width": display_width,
+                    "height": display_height,
+                    "format": "XRGB8888",
+                },
                 "mode": "headless",
                 "inputs": ["real", "virtual"],
                 "capabilities": [

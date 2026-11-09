@@ -46,6 +46,7 @@ MANIFEST_FIELDS = (
     "lvgl",
     "lvgl_src",
     "adapter",
+    "display",
     "tool_version",
     "frame_count",
     "truncated",
@@ -54,9 +55,9 @@ MANIFEST_FIELDS = (
     "error",
     "artifacts",
 )
-# ``app`` and ``record_changed_only`` were added after the first sessions, so
-# they stay optional and old sessions keep opening.
-MANIFEST_OPTIONAL_FIELDS = ("app", "record_changed_only")
+# ``app``, ``display`` and ``record_changed_only`` were added after the first
+# sessions, so they stay optional and old sessions keep opening.
+MANIFEST_OPTIONAL_FIELDS = ("app", "display", "record_changed_only")
 MANIFEST_REQUIRED_FIELDS = tuple(
     field for field in MANIFEST_FIELDS if field not in MANIFEST_OPTIONAL_FIELDS
 )
@@ -113,6 +114,23 @@ def validate_manifest(data: dict[str, Any], path: Path) -> dict[str, Any]:
     if status not in SESSION_STATUSES:
         allowed = ", ".join(sorted(SESSION_STATUSES))
         raise ValueError(f"{path}: status must be one of {allowed}; got {status!r}")
+    display = data.get("display")
+    if display is not None:
+        if not isinstance(display, dict):
+            raise ValueError(f"{path}: display must be null or an object")
+        width = display.get("width")
+        height = display.get("height")
+        if (
+            isinstance(width, bool)
+            or not isinstance(width, int)
+            or width < 1
+            or isinstance(height, bool)
+            or not isinstance(height, int)
+            or height < 1
+        ):
+            raise ValueError(
+                f"{path}: display must carry positive width and height"
+            )
     _require_int(data, "frame_count", path)
     if not isinstance(data["checks"], list):
         raise ValueError(f"{path}: checks must be a list")

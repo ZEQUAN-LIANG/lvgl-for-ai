@@ -66,7 +66,7 @@ http://127.0.0.1:8765/
 ```
 
 - 页面包含回放（完整帧、关键画面、时间轴、框选标注）和 live（启动 / 停止独立 Runtime）。
-- 顶部「应用」下拉从 `user/scenarios/*.json` 中声明了 `app` 的 scenario 生成；第一个应用是默认值，打开页面就会自动以测试模式预览它，选中其他应用立即切换，不需要再点「测试」，也不需要重启 `web.py`。选项里没有写死应用名。
+- 顶部「应用」下拉从 `user/scenarios/*.json` 中声明了 `app` 的 scenario 生成；第一个应用是默认值，打开页面就会自动以测试模式预览它，选中其他应用立即切换，不需要再点「测试」，也不需要重启 `web.py`。选项里没有写死应用名。live 分辨率跟随该应用对应场景的 `display`；同一应用有多个场景时取文件名字典序第一个，画布按帧头自适应。
 - 技术细节（manifest、checks、原始 diff、engine.log、build.log）默认折叠在 `<details>` 中。
 - 只读像素 diff 默认关闭；打开后按 `frame_diffs.ndjson`（以及可选的参考图 diff）覆盖显示 bbox，只作证据。
 - 网页端只通过 `Runtime` / `Recording` 工作，没有第二套协议客户端；live 使用独立 Runtime 和独立 engine 进程。
@@ -95,7 +95,9 @@ python -I core/web.py --app myapp --open
 ```
 
 完整教程见 `user/app/GUIDE.md`。脚手架只生成骨架，界面仍由人/AI 写 C；新代码必须
-源码构建，不能依赖预编译 engine。
+源码构建，不能依赖预编译 engine。需要非默认分辨率时，在生成的场景顶层加
+`"display": {"width": 640, "height": 480}`；尺寸在 engine 启动时传入，改尺寸不需要
+重新编译 engine。
 
 ## 应用管理台
 
@@ -137,6 +139,9 @@ python -I core/cli.py --scenario user/scenarios/settings.json --json
 继承的环境变量，显式 `--app` 再覆盖 scenario。scenario 的 `app` 字段匹配
 `[A-Za-z0-9_-]+`，工具不维护应用清单。
 
+scenario 顶层可选 `"display": {"width": W, "height": H}`（`1..4096`）；CLI 把宽高传给
+engine，不写时使用默认 800×600。显式 `--app` 只覆盖应用，不覆盖场景的 `display`。
+
 `--record-changed-only` 只保存相对上一张保留帧发生 RGB 变化的帧；默认关闭，网页 live 默认开启。开启后 `frame_count` 是保留帧数，静态画面不消耗 `max_frames` 预算；live 预览也遵循同一变化门控。
 
 `--build/--no-build` 默认 `--build`；`--no-build` 复用仓库根
@@ -158,13 +163,16 @@ recording = Recording.open("sessions/<id>")
 print(recording.manifest["app"], recording.manifest["frame_count"])
 ```
 
+嵌入方可以用 `Runtime(lvgl="9.6", width=640, height=480)` 指定显示尺寸；宽高必须成对且
+为 `1..4096`，省略时使用 engine 默认 800×600。实际尺寸以 engine 的 `ready.display` 为准。
+
 `Recording.annotations` 是唯一可写入口；写入使用临时文件加替换。
 
 ## 会话产物
 
 `sessions/<id>/`：
 
-- `manifest.json`（`lvgl-ai-session-v1`）：status / app / record_changed_only / mode / input / build / lvgl / frame_count / checks / error / artifacts
+- `manifest.json`（`lvgl-ai-session-v1`）：status / app / display / record_changed_only / mode / input / build / lvgl / frame_count / checks / error / artifacts
 - `frames/`、`snapshots/`：保留帧与命名快照的完整 PNG；changed-only 时静态帧不落盘，`frame_count` 是保留帧数
 - `timeline.ndjson`、`frame_diffs.ndjson`、`engine.log`、`build.log`
 - `annotations.json`（`lvgl-ai-annotations-v1`）：`notes` 数组，每条含 `id` / `frame_no` / `t_ms` / `regions` / `tags` / `text`

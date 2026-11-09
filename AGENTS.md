@@ -82,7 +82,7 @@ python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root .
 
 **多版本**：`core/engine/adapter_9x.c` / `adapter_8x.c` 是唯一 include LVGL / lodepng 的文件；engine 其余部分只依赖 `adapter.h`。9.x 用 `lv_indev_create`/`lv_indev_set_read_cb`，8.x 用 `lv_indev_drv_*`。9.2+ 开启 `LV_USE_OBJ_NAME`；9.1 与 8.x 没有对象名，`hit` 为空，只能看 `hit_class`。支持 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3；跨版本只比较事件语义与 session 文件集合，不比较像素。
 
-**证据**：`sessions/<id>/` 包含 `manifest.json`（`lvgl-ai-session-v1`，status 只有 `ok` / `build_error` / `link_error` / `crash` / `harness_error`，并记录 `app` 与 `record_changed_only`）、`timeline.ndjson`（`lvgl-ai-timeline-v1`）、`frame_diffs.ndjson`（`lvgl-ai-frame-diffs-v1`）、`frames/`、`snapshots/`、`engine.log`、`build.log`、`annotations.json`（`lvgl-ai-annotations-v1`）。changed-only 跳过静态帧时，`frame_count` 是保留帧数，`wait` 行可能出现 `frame_start == frame_end`；`record=false`（网页测试模式）不写 frames / timeline / frame_diffs，只写临时 `live.rgba` 预览，停止时删除。默认上限 600 帧、日志 16 MB。
+**证据**：`sessions/<id>/` 包含 `manifest.json`（`lvgl-ai-session-v1`，status 只有 `ok` / `build_error` / `link_error` / `crash` / `harness_error`，并记录 `app`、`display` 与 `record_changed_only`）、`timeline.ndjson`（`lvgl-ai-timeline-v1`）、`frame_diffs.ndjson`（`lvgl-ai-frame-diffs-v1`）、`frames/`、`snapshots/`、`engine.log`、`build.log`、`annotations.json`（`lvgl-ai-annotations-v1`）。changed-only 跳过静态帧时，`frame_count` 是保留帧数，`wait` 行可能出现 `frame_start == frame_end`；`record=false`（网页测试模式）不写 frames / timeline / frame_diffs，只写临时 `live.rgba` 预览，停止时删除。默认上限 600 帧、日志 16 MB。
 
 ## 目录与产物
 

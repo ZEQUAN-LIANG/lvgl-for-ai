@@ -135,6 +135,7 @@ class LiveSession:
         self._runtime: Runtime | None = None
         self._test = False
         self._app: str | None = None
+        self._display: tuple[int, int] | None = None
         self._hub: LiveFrameHub | None = None
         self._ticker: threading.Thread | None = None
         self._ticker_stop: threading.Event | None = None
@@ -200,9 +201,16 @@ class LiveSession:
             # A test session is a recording with record=False: the engine
             # keeps only the overwritten live.rgba preview, and the private
             # root is discarded on stop so no replay session is left behind.
-            self._test_root = Path(tempfile.mkdtemp(prefix="test-"))
+            # Keep it under the sessions root: the engine already has write
+            # access there, while %TEMP% may be blocked for child processes.
+            self.sessions_root.mkdir(parents=True, exist_ok=True)
+            self._test_root = Path(
+                tempfile.mkdtemp(
+                    prefix=".live-test-", dir=self.sessions_root
+                )
+            )
             sessions_root = self._test_root
-        return Runtime(
+        options = dict(
             lvgl=self.lvgl,
             app=self._app,
             build=self.build,
@@ -212,9 +220,16 @@ class LiveSession:
             headless=True,
             sessions_root=sessions_root,
         )
+        if self._display is not None:
+            options["width"], options["height"] = self._display
+        return Runtime(**options)
 
     def start(
-        self, kind: str = "record", app: str | None = None
+        self,
+        kind: str = "record",
+        app: str | None = None,
+        *,
+        display: tuple[int, int] | None = None,
     ) -> dict[str, Any]:
         validate_live_kind(kind)
         self._stop_ticker()
@@ -235,6 +250,7 @@ class LiveSession:
                     self._retire_locked()
                 self._test = kind == "test"
                 self._app = app
+                self._display = display
                 self._hub = LiveFrameHub()
                 runtime = self._runtime_factory()
                 self._runtime = runtime

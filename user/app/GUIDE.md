@@ -199,8 +199,17 @@ static const app_entry_t apps[] = {
 2. 把点击、拖拽、等待写成可重复的输入。
 3. `mark` / `snapshot` 给证据加锚点。
 
-屏幕是 **800×600**。按钮 160×48 居中，所以中心点是 `(400, 300)`。`click_at` 默认按下
-64 ms 再抬起；坐标就是屏幕逻辑像素。
+顶层还可以选 `"display"` 声明屏幕尺寸：
+
+```json
+"display": {"width": 640, "height": 480}
+```
+
+不写时使用引擎默认 **800×600**；宽高是 `1..4096` 的整数。尺寸在 engine 启动时传入，
+改分辨率不需要重新编译 engine，但应用布局必须按该尺寸编写。网页顶部「应用」下拉会
+跟随该应用对应场景的 `display`；同一应用有多个场景时取文件名字典序第一个，CLI 不受
+此限制。示例按钮 160×48 居中，在默认 800×600 下中心点是 `(400, 300)`。`click_at` 默认
+按下 64 ms 再抬起；坐标就是屏幕逻辑像素。
 
 ---
 
@@ -256,7 +265,7 @@ python -I core/cli.py --lvgl 9.6 --app hello --idle
 
 | 文件 | 看什么 |
 |---|---|
-| `manifest.json` | `status` 是否为 `ok`、`app` 是否为 `hello`、`frame_count` |
+| `manifest.json` | `status` 是否为 `ok`、`app` 是否为 `hello`、`display` 与 `frame_count` |
 | `engine.log` | `[app] apps=...`、`[app] app=hello`、你自己的 `[hello] ...` |
 | `timeline.ndjson` | 输入行的 `hit` / `hit_class`，例如 `hit: "hello_button"` |
 | `snapshots/` | `mark` / `snapshot` 对应的命名画面 |
@@ -284,7 +293,10 @@ python -I core/cli.py --lvgl 9.6 --app hello --idle
 
 ### 4.1 屏幕与布局
 
-- 屏幕固定 800×600，32 位色，LVGL heap 16 MiB。
+- 默认屏幕 800×600，32 位色，LVGL heap 16 MiB；场景顶层 `display` 可覆盖（`1..4096`）。
+- 非默认尺寸时用 `lv_display_get_horizontal_resolution()` /
+  `lv_display_get_vertical_resolution()` 读取实际宽高再布局，不要写死 800×600。
+- 使用 `--reference` 时，参考 PNG 必须与本次会话的分辨率一致。
 - 用 `lv_obj_set_pos` / `lv_obj_set_size` / `lv_obj_align` 做绝对布局，或用 `LV_USE_FLEX`
   / `LV_USE_GRID` 做弹性布局。
 - 控件默认继承父对象；先创建父容器，再创建子控件。

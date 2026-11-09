@@ -91,6 +91,44 @@ class RuntimeIntegrationTest(unittest.TestCase):
         self.assertEqual(final_manifest["status"], "ok")
         self.assertGreaterEqual(final_manifest["frame_count"], 1)
 
+    def test_custom_display_size_drives_frames_and_manifest(self) -> None:
+        rt = Runtime(
+            lvgl="9.6",
+            build=True,
+            width=640,
+            height=480,
+            sessions_root=self.sessions_root,
+        )
+        self.addCleanup(rt.stop)
+        rt.start()
+        rt.tick(16)
+
+        self.assertEqual(
+            (
+                rt.ready["display"]["width"],
+                rt.ready["display"]["height"],
+            ),
+            (640, 480),
+        )
+        frame_path = rt.session_dir / "frames" / "000001.png"
+        width, height, _ = read_png_rgb(frame_path)
+        self.assertEqual((width, height), (640, 480))
+        manifest = json.loads(
+            (rt.session_dir / "manifest.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["display"], {"width": 640, "height": 480})
+        diff_rows = [
+            json.loads(line)
+            for line in (rt.session_dir / "frame_diffs.ndjson")
+            .read_text(encoding="utf-8")
+            .splitlines()
+            if line.strip()
+        ]
+        self.assertTrue(diff_rows)
+        self.assertEqual(
+            (diff_rows[0]["width"], diff_rows[0]["height"]), (640, 480)
+        )
+
     def test_app_is_forwarded_as_demo_and_recorded_in_the_manifest(self) -> None:
         rt = Runtime(
             lvgl="9.6",
@@ -180,6 +218,57 @@ class RuntimeProcessSeamTest(unittest.TestCase):
             sessions_root=self.sessions_root,
             _engine_command=[sys.executable, "-I", str(FAKE_ENGINE)],
         )
+
+    def test_display_dimensions_are_forwarded_and_reported(self) -> None:
+        rt = Runtime(
+            lvgl="9.6",
+            build=False,
+            width=640,
+            height=480,
+            sessions_root=self.sessions_root,
+            _engine_command=[sys.executable, "-I", str(FAKE_ENGINE)],
+        )
+        self.addCleanup(rt.stop)
+        rt.start()
+
+        self.assertEqual(rt.width, 640)
+        self.assertEqual(rt.height, 480)
+        self.assertEqual(
+            (
+                rt.ready["display"]["width"],
+                rt.ready["display"]["height"],
+            ),
+            (640, 480),
+        )
+        rt.stop()
+
+    def test_width_and_height_must_be_given_together(self) -> None:
+        with self.assertRaises(ValueError) as missing_height:
+            Runtime(lvgl="9.6", width=640)
+        self.assertIn("together", str(missing_height.exception))
+        with self.assertRaises(ValueError) as missing_width:
+            Runtime(lvgl="9.6", height=480)
+        self.assertIn("together", str(missing_width.exception))
+
+    def test_invalid_display_dimensions_are_rejected(self) -> None:
+        cases = [
+            {"width": 0, "height": 480},
+            {"width": 640, "height": -1},
+            {"width": True, "height": 480},
+            {"width": 640, "height": 1.5},
+            {"width": "640", "height": 480},
+            {"width": 4097, "height": 480},
+        ]
+        for case in cases:
+            with self.subTest(**case):
+                with self.assertRaises(ValueError):
+                    Runtime(lvgl="9.6", **case)
+        for dimensions in ((1, 1), (4096, 4096)):
+            with self.subTest(dimensions=dimensions):
+                rt = Runtime(
+                    lvgl="9.6", width=dimensions[0], height=dimensions[1]
+                )
+                self.assertEqual((rt.width, rt.height), dimensions)
 
     def test_fake_engine_ready_and_quit(self) -> None:
         rt = self._runtime()

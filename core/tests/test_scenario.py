@@ -294,6 +294,75 @@ class ScenarioFileTest(unittest.TestCase):
             load_scenario(path)
         self.assertIn("app", str(caught.exception))
 
+    def test_display_is_preserved_in_the_normalized_document(self) -> None:
+        path = scenario_file(
+            self.root,
+            [{"type": "wait", "ms": 16}],
+            display={"width": 640, "height": 480},
+        )
+        self.assertEqual(
+            load_scenario(path)["display"], {"width": 640, "height": 480}
+        )
+
+    def test_display_is_optional_and_null_keeps_the_engine_default(self) -> None:
+        path = scenario_file(self.root, [{"type": "wait", "ms": 16}])
+        self.assertNotIn("display", load_scenario(path))
+        path = scenario_file(
+            self.root, [{"type": "wait", "ms": 16}], display=None
+        )
+        self.assertNotIn("display", load_scenario(path))
+
+    def test_display_bounds_are_inclusive(self) -> None:
+        for width, height in ((1, 1), (4096, 4096)):
+            with self.subTest(width=width, height=height):
+                path = scenario_file(
+                    self.root,
+                    [{"type": "wait", "ms": 16}],
+                    display={"width": width, "height": height},
+                )
+                self.assertEqual(
+                    load_scenario(path)["display"],
+                    {"width": width, "height": height},
+                )
+
+    def test_invalid_display_is_rejected(self) -> None:
+        cases = [
+            ("640x480", "display must be an object"),
+            ({"width": 640}, "display.height is required"),
+            (
+                {"width": 640, "height": 480, "depth": 32},
+                "display has unexpected field(s) depth",
+            ),
+            ({"width": 0, "height": 480}, "display.width must be >= 1"),
+            ({"width": 640, "height": -1}, "display.height must be >= 1"),
+            (
+                {"width": 4097, "height": 480},
+                "display.width must be <= 4096",
+            ),
+            (
+                {"width": True, "height": 480},
+                "display.width must be an integer",
+            ),
+            (
+                {"width": 640.0, "height": 480},
+                "display.width must be an integer",
+            ),
+            (
+                {"width": "640", "height": 480},
+                "display.width must be an integer",
+            ),
+        ]
+        for display, fragment in cases:
+            with self.subTest(display=display):
+                path = scenario_file(
+                    self.root,
+                    [{"type": "wait", "ms": 16}],
+                    display=display,
+                )
+                with self.assertRaises(ScenarioError) as caught:
+                    load_scenario(path)
+                self.assertIn(fragment, str(caught.exception))
+
 
 class ScenarioErrorMappingTest(unittest.TestCase):
     def test_runtime_errors_propagate_unchanged(self) -> None:

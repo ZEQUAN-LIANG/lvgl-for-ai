@@ -83,10 +83,13 @@ python -I core/tools/new_app.py <name>             # 生成并注册
 1. 新建 `user/app/<name>/`，实现 `void <name>_create(lv_obj_t * screen)`。
 2. 在 `app.c` 的 `apps[]` 中加一行 `{"<name>", <name>_create}`。
 3. 在 `user/scenarios/<name>.json` 顶层写 `"app": "<name>"`。
-4. 不需要改 `core/`：CLI、web 下拉和 manifest 都按这个字段工作。
+4. 需要非默认分辨率时，再写可选 `"display": {"width": W, "height": H}`（`1..4096`）；
+   省略时使用引擎默认 800×600。尺寸在 engine 启动时传入，不需要重新编译。
+5. 不需要改 `core/`：CLI、web 下拉和 manifest 都按这些字段工作。
 
 ## 证据
 
-- `manifest.json` 的 `app` 字段记录本次会话选择的应用（未指定时为 `null`）。
+- `manifest.json` 的 `app` 字段记录本次会话选择的应用（未指定时为 `null`），
+  `display` 记录实际宽高（启动失败时为 `null`）。
 - `engine.log` 中 `[app] apps=...` 列出已实现的应用，`[app] app=...` 记录本次选择。
 - `settings.json` 不声明 `app`，走用户代码默认值，并保留隐藏的 `demo_button` 供工具测试使用。

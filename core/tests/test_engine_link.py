@@ -258,6 +258,24 @@ class EngineLinkTest(unittest.TestCase):
         self.assertIn("ready is missing", str(caught.exception))
         self._shutdown(link)
 
+    def test_ready_display_must_be_positive_integers(self) -> None:
+        cases = [
+            {"width": 0, "height": 600},
+            {"width": 800, "height": -1},
+            {"width": True, "height": 600},
+            {"width": 800, "height": 1.5},
+        ]
+        for display in cases:
+            with self.subTest(display=display):
+                self.process = ScriptedProcess()
+                self.process.stdout.feed(ready_line(display=display))
+                link = self._link()
+                link.start()
+                with self.assertRaises(ProtocolError) as caught:
+                    link.await_ready(0.5)
+                self.assertIn("ready.display", str(caught.exception))
+                self._shutdown(link)
+
     def test_ready_with_a_nonzero_seq_is_rejected(self) -> None:
         self.process.stdout.feed(ready_line(seq=1))
         link = self._link()

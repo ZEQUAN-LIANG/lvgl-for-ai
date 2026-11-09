@@ -49,6 +49,7 @@ TOKEN_PATTERN = "[A-Za-z0-9_-]+"
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{1,64}\Z")
 INT16_MIN = -32768
 INT16_MAX = 32767
+MAX_DISPLAY_DIMENSION = 4096
 
 _COMMON_FIELDS = {"at_ms", "device", "action"}
 _DEVICE_FIELDS = {
@@ -87,6 +88,29 @@ def integer_problem(
         return f"{name} must be >= {minimum}; got {value}"
     if maximum is not None and value > maximum:
         return f"{name} must be <= {maximum}; got {value}"
+    return None
+
+
+def dimension_problem(value: Any, name: str) -> str | None:
+    """Return the display-dimension diagnostic, or ``None`` when valid."""
+    return integer_problem(
+        value, name, minimum=1, maximum=MAX_DISPLAY_DIMENSION
+    )
+
+
+def display_problem(value: Any) -> str | None:
+    """Return the scenario ``display`` object diagnostic, or ``None``."""
+    if not isinstance(value, dict):
+        return "display must be an object with width and height"
+    unknown = sorted(set(value) - {"width", "height"})
+    if unknown:
+        return f"display has unexpected field(s) {', '.join(unknown)}"
+    for name in ("width", "height"):
+        if name not in value:
+            return f"display.{name} is required"
+        problem = dimension_problem(value[name], f"display.{name}")
+        if problem is not None:
+            return problem
     return None
 
 
@@ -165,6 +189,21 @@ def require_integer(
 
 def require_non_negative_int(value: Any, name: str) -> int:
     return require_integer(value, name, minimum=0)
+
+
+def require_display_pair(
+    width: Any, height: Any
+) -> tuple[int, int] | None:
+    """Validate Runtime width/height; ``None`` means the engine default."""
+    if width is None and height is None:
+        return None
+    if width is None or height is None:
+        raise ValueError("width and height must be provided together")
+    for value, name in ((width, "width"), (height, "height")):
+        problem = dimension_problem(value, name)
+        if problem is not None:
+            raise ValueError(problem)
+    return width, height
 
 
 def require_int16(value: Any, name: str) -> int:

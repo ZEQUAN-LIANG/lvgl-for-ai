@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -310,6 +311,11 @@ class SessionStoreTest(unittest.TestCase):
                 "lvgl": "9.6.0",
                 "lvgl_src": str(self.root / "lvgl-src" / "9.6"),
                 "adapter": "9x",
+                "display": {
+                    "width": 640,
+                    "height": 480,
+                    "format": "XRGB8888",
+                },
             }
         )
         store.append_check("tick 16", True, 1)
@@ -333,6 +339,7 @@ class SessionStoreTest(unittest.TestCase):
             manifest["lvgl_src"], str(self.root / "lvgl-src" / "9.6")
         )
         self.assertEqual(manifest["adapter"], "9x")
+        self.assertEqual(manifest["display"], {"width": 640, "height": 480})
         self.assertEqual(manifest["frame_count"], 1)
         self.assertIs(manifest["truncated"], True)
         self.assertIs(manifest["log_truncated"], False)
@@ -376,6 +383,7 @@ class SessionStoreTest(unittest.TestCase):
             manifest["lvgl_src"], str(self.root / "lvgl-src" / "9.6")
         )
         self.assertEqual(manifest["adapter"], "9x")
+        self.assertIsNone(manifest["display"])
         self.assertEqual(manifest["build"], {"status": "skipped", "log": "build.log"})
         self.assertEqual(manifest["frame_count"], 0)
         self.assertEqual(
@@ -466,7 +474,27 @@ class SessionSchemaTest(unittest.TestCase):
         recording = Recording.open(session)
         self.assertEqual(recording.manifest["schema"], MANIFEST_SCHEMA)
         self.assertNotIn("app", recording.manifest)
+        self.assertNotIn("display", recording.manifest)
         self.assertNotIn("record_changed_only", recording.manifest)
+
+    def test_invalid_display_is_rejected(self) -> None:
+        cases = [
+            "640x480",
+            {"width": 0, "height": 480},
+            {"width": 640, "height": -1},
+            {"width": True, "height": 480},
+            {"width": 640, "height": 1.5},
+            {"width": 640},
+        ]
+        for display in cases:
+            with self.subTest(display=display):
+                session = self.write_session(
+                    self.legacy_manifest(display=display)
+                )
+                with self.assertRaises(ValueError) as caught:
+                    Recording.open(session)
+                self.assertIn("display", str(caught.exception))
+                shutil.rmtree(session)
 
     def test_required_fields_and_schema_are_shared_with_recording(self) -> None:
         from lvgl_ai.control import recording
