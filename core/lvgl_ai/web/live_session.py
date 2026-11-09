@@ -140,6 +140,7 @@ class LiveSession:
         self._ticker: threading.Thread | None = None
         self._ticker_stop: threading.Event | None = None
         self._test_root: Path | None = None
+        self._last_error: dict[str, Any] | None = None
 
     # ---- state ---------------------------------------------------------
 
@@ -260,19 +261,24 @@ class LiveSession:
                 # tick still has something to draw.
                 self._publish_locked(runtime, self._hub)
                 self._start_ticker_locked()
+                self._last_error = None
                 self._state = RUNNING
             except Exception as exc:  # noqa: BLE001 - map every failure layer
                 live = None if runtime is None else self._status_for(runtime)
+                error_payload = dump_error(exc)
+                self._last_error = error_payload
                 hub = self._hub
                 self._hub = None
                 if hub is not None:
                     hub.close()
                 self._discard_test_root()
+                if self._test:
+                    self._runtime = None
                 self._state = IDLE
                 raise LiveError(
                     "live_start_error",
                     str(exc),
-                    detail={"error": dump_error(exc), "live": live},
+                    detail={"error": error_payload, "live": live},
                 ) from exc
         return self.status()
 
@@ -344,6 +350,7 @@ class LiveSession:
                 else empty_live_status()
             )
             payload["starting"] = self._state == STARTING
+            payload["last_error"] = self._last_error
             return payload
 
     def _status_for(self, runtime: Runtime) -> dict[str, Any]:

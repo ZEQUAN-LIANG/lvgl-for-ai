@@ -172,24 +172,42 @@ class DumpErrorShapeTest(unittest.TestCase):
             {"file": "app.c", "line": index, "severity": "error"}
             for index in range(25)
         ]
-        error = BuildError("compile failed", diagnostics=diagnostics)
+        error = BuildError(
+            "compile failed",
+            diagnostics=diagnostics,
+            log_text="# phase: build\napp.c:3:5: error: boom\n",
+            command=["ninja"],
+        )
         self.assertEqual(
             dump_error(error),
             {
                 "code": "build_error",
                 "message": "compile failed",
-                "detail": {"diagnostics": diagnostics[:20]},
+                "detail": {
+                    "diagnostics": diagnostics[:20],
+                    "log_tail": ["# phase: build", "app.c:3:5: error: boom"],
+                    "command": ["ninja"],
+                },
             },
         )
 
     def test_link_error_keeps_unresolved_symbols(self) -> None:
-        error = LinkError("link failed", unresolved_symbols=["missing_symbol"])
+        error = LinkError(
+            "link failed",
+            unresolved_symbols=["missing_symbol"],
+            log_text="collect2: error: ld returned 1 exit status",
+            command=["gcc"],
+        )
         self.assertEqual(
             dump_error(error),
             {
                 "code": "link_error",
                 "message": "link failed",
-                "detail": {"unresolved_symbols": ["missing_symbol"]},
+                "detail": {
+                    "unresolved_symbols": ["missing_symbol"],
+                    "log_tail": ["collect2: error: ld returned 1 exit status"],
+                    "command": ["gcc"],
+                },
             },
         )
 

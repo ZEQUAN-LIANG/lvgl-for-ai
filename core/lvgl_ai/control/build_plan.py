@@ -32,7 +32,9 @@ from .build import (
     needs_configure as cache_needs_configure,
     run_capture,
 )
+from .engine_guard import ensure_engine_stopped
 from .errors import BuildError, EngineNotFound, LinkError
+from .locks import build_lock
 
 BUILD_TIMEOUT_S = 600.0
 
@@ -80,16 +82,18 @@ class BuildPlan:
         self.lvgl_src = (
             Path(lvgl_src) if lvgl_src is not None else paths.lvgl_src_for(version)
         )
-        self.build_dir = (
-            Path(build_dir) if build_dir is not None else paths.build_dir_for(version)
-        )
-        self.engine_dir = (
-            Path(engine_dir) if engine_dir is not None else paths.ENGINE_DIR
-        )
         self.user_app_dir = (
             Path(user_app_dir)
             if user_app_dir is not None
-            else paths.USER_APP_DIR
+            else paths.user_app_dir_from_env()
+        )
+        self.build_dir = (
+            Path(build_dir)
+            if build_dir is not None
+            else paths.build_dir_for(version, self.user_app_dir)
+        )
+        self.engine_dir = (
+            Path(engine_dir) if engine_dir is not None else paths.ENGINE_DIR
         )
         self.user_asset_dir = (
             Path(user_asset_dir)
@@ -226,20 +230,22 @@ class BuildPlan:
     def _run_build(self) -> str:
         self.preflight()
         parts: list[str] = []
-        try:
-            if self.needs_configure():
-                parts.append(self.configure())
-            else:
-                parts.append(
-                    "# phase: configure\n"
-                    f"# skipped: cache matches {self.cache_path}\n"
-                )
-            parts.append(self.build())
-        except (BuildError, LinkError) as exc:
-            # Keep the successful phases in build.log; the failing phase's
-            # output is already in exc.log_text.
-            exc.log_text = "\n".join([*parts, exc.log_text or ""])
-            raise
+        with build_lock(self.build_dir):
+            try:
+                ensure_engine_stopped(self.build_dir / paths.engine_filename())
+                if self.needs_configure():
+                    parts.append(self.configure())
+                else:
+                    parts.append(
+                        "# phase: configure\n"
+                        f"# skipped: cache matches {self.cache_path}\n"
+                    )
+                parts.append(self.build())
+            except (BuildError, LinkError) as exc:
+                # Keep the successful phases in build.log; the failing phase's
+                # output is already in exc.log_text.
+                exc.log_text = "\n".join([*parts, exc.log_text or ""])
+                raise
         return "\n".join(parts)
 
     def _run_step(self, command: Sequence[str], phase: str) -> str:

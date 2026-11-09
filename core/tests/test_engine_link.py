@@ -10,8 +10,10 @@ from __future__ import annotations
 import json
 import queue
 import subprocess
+import tempfile
 import time
 import unittest
+from pathlib import Path
 
 from lvgl_ai import ProtocolError, RuntimeCrash
 from lvgl_ai.control.engine_link import PROTOCOL_VERSION, EngineLink
@@ -470,6 +472,28 @@ class EngineLinkTest(unittest.TestCase):
         if len(parts) >= 2 and parts[1] == "quit":
             self.process.stdout.feed(reply_line(int(parts[0])))
             self.process.exit(exit_code)
+
+
+class EnginePidFileTest(unittest.TestCase):
+    def test_start_writes_pid_and_shutdown_clears_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            engine = root / "lvgl_engine.exe"
+            engine.write_bytes(b"")
+            process = ScriptedProcess()
+            process.exit(0)
+            link = EngineLink(
+                [str(engine)],
+                process_factory=lambda command, env, cwd: process,
+            )
+            link.quit_timeout = 0.05
+            link.start()
+            pid_path = root / ".engine.pid"
+            self.assertTrue(pid_path.is_file())
+            payload = json.loads(pid_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["pid"], process.pid)
+            link.shutdown(send_quit=False)
+            self.assertFalse(pid_path.exists())
 
 
 if __name__ == "__main__":

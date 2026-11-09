@@ -16,6 +16,7 @@ from pathlib import Path
 from lvgl_ai import BuildError, EngineNotFound, LinkError, paths
 from lvgl_ai.control.build import BuildResult, format_build_log
 from lvgl_ai.control.build_plan import BUILD_TIMEOUT_S, BuildPlan
+from lvgl_ai.control.locks import BuildLock
 
 
 def build_result(
@@ -430,6 +431,46 @@ class EngineResolutionTest(BuildPlanCase):
         error = plan.missing_engine_error()
         assert error is not None
         self.assertEqual(error.engine_path, str(explicit))
+
+
+class BuildDirIsolationTest(unittest.TestCase):
+    def test_default_user_app_keeps_the_version_directory(self) -> None:
+        self.assertEqual(
+            paths.build_dir_for("9.6"),
+            paths.build_dir_for("9.6", paths.USER_APP_DIR),
+        )
+
+    def test_exported_app_gets_a_stable_separate_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            first = root / "hspi_watch" / "src" / "app"
+            second = root / "coffee" / "src" / "app"
+            first.mkdir(parents=True)
+            second.mkdir(parents=True)
+            first_dir = paths.build_dir_for("9.6", first)
+            self.assertEqual(first_dir, paths.build_dir_for("9.6", first))
+            self.assertIn("_export_", first_dir.name)
+            self.assertNotEqual(first_dir, paths.build_dir_for("9.6"))
+            self.assertNotEqual(
+                first_dir, paths.build_dir_for("9.6", second)
+            )
+
+
+class BuildLockTest(unittest.TestCase):
+    def test_second_lock_times_out(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with BuildLock(tmp):
+                with self.assertRaises(BuildError) as raised:
+                    with BuildLock(tmp, timeout=0.2):
+                        pass
+            self.assertIn("build lock timeout", str(raised.exception))
+
+    def test_lock_is_reusable_after_release(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with BuildLock(tmp):
+                pass
+            with BuildLock(tmp, timeout=0.2):
+                pass
 
 
 if __name__ == "__main__":

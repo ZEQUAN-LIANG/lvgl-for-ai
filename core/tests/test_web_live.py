@@ -20,7 +20,7 @@ from pathlib import Path
 from unittest import mock
 
 from fake_runtime import FAKE_PID, FakeRuntime
-from lvgl_ai import Recording, Runtime, RuntimeCrash, ScenarioError
+from lvgl_ai import BuildError, Recording, Runtime, RuntimeCrash, ScenarioError
 from lvgl_ai.web.live_session import LiveError, LiveSession
 from lvgl_ai.web.wire import page_config
 from web_support import SESSION_ID, WebHarness, make_web_session
@@ -660,6 +660,35 @@ class LiveHttpTest(unittest.TestCase):
         self.assertEqual(factory.calls, 2)
         harness.json("POST", "/api/live/stop")
 
+    def test_build_failure_detail_keeps_log_tail_and_last_error(self) -> None:
+        error = BuildError(
+            "build failed: ninja: build stopped",
+            log_text="# phase: build\napp.c:3:5: error: boom\n",
+            command=["ninja"],
+        )
+        factory = Factory(lambda index: FakeRuntime(start_error=error))
+        harness = self._harness(factory)
+
+        status, _, payload = harness.json(
+            "POST", "/api/live/start?mode=test"
+        )
+        self.assertEqual(status, 500, payload)
+        detail = payload["error"]["detail"]["error"]["detail"]
+        self.assertEqual(
+            detail["log_tail"],
+            ["# phase: build", "app.c:3:5: error: boom"],
+        )
+        self.assertEqual(detail["command"], ["ninja"])
+
+        status, _, live = harness.json("GET", "/api/live")
+        self.assertEqual(status, 200)
+        self.assertIsNotNone(live["last_error"])
+        self.assertEqual(live["last_error"]["code"], "build_error")
+        self.assertIsNone(live["session_id"])
+        self.assertIsNone(live["session_dir"])
+
+        harness.json("POST", "/api/live/stop")
+
     def test_live_start_does_not_spawn_a_process(self) -> None:
         """The web adapter reaches the engine only through the Runtime seam."""
         factory = Factory(lambda index: FakeRuntime())
@@ -1114,7 +1143,7 @@ class LiveIndependentEngineTest(unittest.TestCase):
         self.assertEqual(recording.manifest["status"], "ok")
 
         other = Runtime(
-            lvgl="9.6", build=True, sessions_root=self.root / "other"
+            lvgl="9.6", build=False, sessions_root=self.root / "other"
         )
         self.addCleanup(other.stop)
         other.start()
