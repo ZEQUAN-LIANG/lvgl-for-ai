@@ -360,45 +360,6 @@ void adapter_prim_timer_handler(void)
     lv_timer_handler();
 }
 
-int adapter_prim_png_encode(const unsigned char * rgba,
-                            uint32_t width,
-                            uint32_t height,
-                            unsigned char ** png,
-                            size_t * png_size)
-{
-    *png = NULL;
-    *png_size = 0;
-
-    unsigned char * encoded = NULL;
-    size_t encoded_size = 0;
-    LodePNGState state;
-    lodepng_state_init(&state);
-    state.info_raw.colortype = LCT_RGBA;
-    state.info_raw.bitdepth = 8;
-    state.info_png.color.colortype = LCT_RGB;
-    state.info_png.color.bitdepth = 8;
-    state.encoder.auto_convert = 0;
-    state.encoder.filter_strategy = LFS_ZERO;
-    unsigned error = lodepng_encode(&encoded, &encoded_size, rgba, width,
-                                    height, &state);
-    lodepng_state_cleanup(&state);
-    if(error != 0) {
-        fprintf(stderr, "[engine] lodepng error %u: %s\n", error,
-                lodepng_error_text(error));
-        if(encoded != NULL) lv_mem_free(encoded);
-        return -1;
-    }
-
-    *png = encoded;
-    *png_size = encoded_size;
-    return 0;
-}
-
-void adapter_prim_png_free(unsigned char * png)
-{
-    lv_mem_free(png);
-}
-
 int adapter_prim_png_decode(const unsigned char * data,
                             size_t size,
                             const char * path,

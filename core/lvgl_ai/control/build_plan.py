@@ -71,6 +71,8 @@ class BuildPlan:
         engine_dir: str | Path | None = None,
         user_app_dir: str | Path | None = None,
         user_asset_dir: str | Path | None = None,
+        zlib_src: str | Path | None = None,
+        libpng_src: str | Path | None = None,
         ccache: bool | None = None,
         configure: Sequence[str] | None = None,
         build: Sequence[str] | None = None,
@@ -100,6 +102,12 @@ class BuildPlan:
             if user_asset_dir is not None
             else paths.USER_ASSET_DIR
         )
+        self.zlib_src = (
+            Path(zlib_src) if zlib_src is not None else paths.zlib_src()
+        )
+        self.libpng_src = (
+            Path(libpng_src) if libpng_src is not None else paths.libpng_src()
+        )
         self._build_explicit = build is not None
         self._engine_explicit = engine_path is not None
         self._missing_tools = missing_tools
@@ -117,6 +125,8 @@ class BuildPlan:
                 user_app_dir=self.user_app_dir,
                 user_asset_dir=self.user_asset_dir,
                 ccache=uses_ccache,
+                zlib_src=self.zlib_src,
+                libpng_src=self.libpng_src,
             )
         )
         self.build_command = (
@@ -155,12 +165,18 @@ class BuildPlan:
             else missing_build_tools
         )
         missing_tools = list(check())
-        if not self.lvgl_src.is_dir() or missing_tools:
+        png_sources = (self.zlib_src, self.libpng_src)
+        if (
+            not self.lvgl_src.is_dir()
+            or missing_tools
+            or any(not path.is_dir() for path in png_sources)
+        ):
             raise BuildError(
                 build_environment_message(
                     lvgl_src=self.lvgl_src,
                     lvgl_version=self.version,
                     missing_tools=missing_tools,
+                    png_sources=png_sources,
                 ),
                 command=list(self.configure_command),
             )
@@ -174,6 +190,8 @@ class BuildPlan:
             user_app_dir=self.user_app_dir,
             user_asset_dir=self.user_asset_dir,
             engine_dir=self.engine_dir,
+            zlib_src=self.zlib_src,
+            libpng_src=self.libpng_src,
         )
 
     # ---- configure and build -------------------------------------------

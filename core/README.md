@@ -15,6 +15,7 @@
 - `tests/`：`python -I` 测试套件。
 - `api-nav/`：每个 LVGL 版本一份 API 导航。
 - `tools/fetch_lvgl.py`：下载官方 LVGL、校验版本并应用本地 patch。
+- `tools/fetch_png.py`：下载 pin 的 zlib / libpng 源码到 `third_party/`，供 engine 编码 PNG。
 - `tools/new_app.py`：生成应用变体的源文件与场景，并注册到 `user/app/app.c`。
 - `tools/contract_snapshot.py`：记录/对比六类外部契约快照，用于重构行为冻结；用法见
   [CONTRACT_SNAPSHOT.md](CONTRACT_SNAPSHOT.md)。
@@ -22,7 +23,7 @@
 ## 环境准备
 
 需要 Python 3.9+（仅标准库）、CMake 3.20+、Ninja、GCC（Windows 为 MinGW-w64）和 curl；
-ccache 可选，git 仅在应用 `patches/` 时需要。
+ccache 可选，git 用于拉取 `third_party/` 的 PNG 编码器源码以及应用 `patches/`。
 
 Windows 安装、PATH 配置、首次运行与常见错误见仓库根 [README.md](../README.md)。
 本文件只保留工具用法。
@@ -39,6 +40,19 @@ python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root .
 `lvgl-src/<version>/`；安装后写入 `.lvgl-ai-source.json` 记录 tag 与 patch。跳过 patch 用
 `--no-patch`，自定义 patch 根用 `--patch-dir`。patch 的组织、生成与手动应用见
 `patches/README.md`。
+
+## 准备 PNG 编码器源码
+
+engine 用 libpng + zlib 编码录制帧与 snapshot，不再使用 LVGL 内置 lodepng 的编码器。
+`third_party/` 不随仓库提交，源码构建前先执行：
+
+```bash
+python -I core/tools/fetch_png.py --repo-root .
+```
+
+脚本按固定 tag/commit 拉取 zlib 1.3.1 与 libpng 1.6.44，校验版本后安装到
+`third_party/zlib/` 和 `third_party/libpng/`；CMake 静态编译这两个库。无法访问 GitHub 时，
+可先手动准备好这两个目录，或设置 `LVGL_AI_ZLIB_SRC` / `LVGL_AI_LIBPNG_SRC` 指向已有源码。
 
 ## 启动网页端
 

@@ -55,7 +55,11 @@ def configure_command(
     user_app_dir: Path,
     user_asset_dir: Path,
     ccache: bool,
+    zlib_src: Path | None = None,
+    libpng_src: Path | None = None,
 ) -> list[str]:
+    zlib_path = zlib_src if zlib_src is not None else paths.zlib_src()
+    libpng_path = libpng_src if libpng_src is not None else paths.libpng_src()
     command = [
         "cmake",
         "-S", str(engine_dir),
@@ -67,6 +71,8 @@ def configure_command(
         f"-DLVGL_AI_LVGL_VERSION={lvgl_version}",
         f"-DLVGL_AI_USER_APP_DIR={user_app_dir}",
         f"-DLVGL_AI_USER_ASSET_DIR={user_asset_dir}",
+        f"-DLVGL_AI_ZLIB_SRC={zlib_path}",
+        f"-DLVGL_AI_LIBPNG_SRC={libpng_path}",
     ]
     if ccache:
         command.append("-DCMAKE_C_COMPILER_LAUNCHER=ccache")
@@ -193,6 +199,8 @@ def needs_configure(
     user_app_dir: Path,
     user_asset_dir: Path,
     engine_dir: Path | None = None,
+    zlib_src: Path | None = None,
+    libpng_src: Path | None = None,
 ) -> bool:
     cache_path = build_dir / "CMakeCache.txt"
     # A failed configure can leave CMakeCache.txt without build.ninja; always
@@ -204,7 +212,11 @@ def needs_configure(
         "LVGL_AI_LVGL_VERSION": lvgl_version,
         "LVGL_AI_USER_APP_DIR": user_app_dir,
         "LVGL_AI_USER_ASSET_DIR": user_asset_dir,
-        # Moving the checkout leaves the four LVGL_AI_* values unchanged, but the
+        "LVGL_AI_ZLIB_SRC": zlib_src if zlib_src is not None else paths.zlib_src(),
+        "LVGL_AI_LIBPNG_SRC": (
+            libpng_src if libpng_src is not None else paths.libpng_src()
+        ),
+        # Moving the checkout leaves the LVGL_AI_* values unchanged, but the
         # generated build files still embed the old engine directory.
         "CMAKE_HOME_DIRECTORY": paths.ENGINE_DIR if engine_dir is None else engine_dir,
     }
@@ -265,6 +277,7 @@ def build_environment_message(
     lvgl_src: Path,
     lvgl_version: str,
     missing_tools: Sequence[str],
+    png_sources: Sequence[Path] = (),
 ) -> str:
     """Compose an actionable message for a source-build preflight failure."""
     if not lvgl_src.is_dir():
@@ -274,6 +287,13 @@ def build_environment_message(
             f"LVGL {lvgl_version} tree there; tools/fetch_lvgl.py can download "
             f"supported versions. If a build/ engine already exists, use "
             f"build=False / --no-build."
+        )
+    missing_png = [str(path) for path in png_sources if not path.is_dir()]
+    if missing_png:
+        return (
+            "PNG encoder source not found: "
+            + ", ".join(missing_png)
+            + ". Run: python -I core/tools/fetch_png.py --repo-root ."
         )
     tools = ", ".join(missing_tools)
     return (

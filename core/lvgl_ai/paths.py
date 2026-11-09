@@ -40,6 +40,9 @@ REPO_ROOT = _repo_root_for(TOOL_ROOT)
 ENGINE_DIR = TOOL_ROOT / "engine"
 BUILD_ROOT = REPO_ROOT / "build"
 LVGL_SRC_ROOT = REPO_ROOT / "lvgl-src"
+THIRD_PARTY_ROOT = REPO_ROOT / "third_party"
+ZLIB_SRC_ROOT = THIRD_PARTY_ROOT / "zlib"
+LIBPNG_SRC_ROOT = THIRD_PARTY_ROOT / "libpng"
 USER_DIR = REPO_ROOT / "user"
 USER_APP_DIR = USER_DIR / "app"
 USER_ASSET_DIR = USER_DIR / "asset"
@@ -66,6 +69,20 @@ def user_app_dir_from_env() -> Path:
     if override:
         return Path(override).expanduser().resolve()
     return USER_APP_DIR
+
+
+def zlib_src() -> Path:
+    override = os.environ.get("LVGL_AI_ZLIB_SRC")
+    if override:
+        return Path(override).expanduser().resolve()
+    return ZLIB_SRC_ROOT
+
+
+def libpng_src() -> Path:
+    override = os.environ.get("LVGL_AI_LIBPNG_SRC")
+    if override:
+        return Path(override).expanduser().resolve()
+    return LIBPNG_SRC_ROOT
 
 
 def sessions_root_from_env() -> Path:
