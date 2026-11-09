@@ -38,8 +38,10 @@ class ScriptedRunner:
         self.results = list(results)
         self.calls: list[dict] = []
 
-    def __call__(self, command, *, timeout):  # noqa: ANN001 - test seam
-        self.calls.append({"command": list(command), "timeout": timeout})
+    def __call__(self, command, *, timeout, env=None):  # noqa: ANN001
+        self.calls.append(
+            {"command": list(command), "timeout": timeout, "env": env}
+        )
         result = (
             self.results.pop(0)
             if self.results
@@ -196,6 +198,17 @@ class PreflightTest(BuildPlanCase):
 
 
 class ConfigureTriggerTest(BuildPlanCase):
+    def test_build_subprocesses_get_a_writable_temp_dir(self) -> None:
+        runner = ScriptedRunner()
+        plan = self.plan(runner=runner)
+        plan.configure()
+        call = runner.calls[0]
+        temp_dir = (self.build_dir / ".build-tmp").resolve()
+        self.assertEqual(call["env"]["TMP"], str(temp_dir))
+        self.assertEqual(call["env"]["TEMP"], str(temp_dir))
+        self.assertTrue(temp_dir.is_dir())
+
+
     def test_an_absent_cache_requires_configure(self) -> None:
         self.assertTrue(self.plan().needs_configure())
 

@@ -243,9 +243,11 @@ class ChangedFramesTest(unittest.TestCase):
         self.assertNotEqual(
             hashlib.sha256(live_path.read_bytes()).hexdigest(), before
         )
-        self.assertGreaterEqual(len(list((rt.session_dir / "frames").glob("*.png"))), 2)
 
         rt.stop()
+        self.assertGreaterEqual(
+            len(list((rt.session_dir / "frames").glob("*.png"))), 2
+        )
         self.assertFalse(live_path.exists())
         self.assertTrue(frame_path.is_file())
         recording = Recording.open(rt.session_dir)

@@ -14,6 +14,7 @@ path resolution.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -268,8 +269,13 @@ class BuildPlan:
 
     def _run_step(self, command: Sequence[str], phase: str) -> str:
         runner = self._runner if self._runner is not None else run_capture
+        temp_dir = (self.build_dir / ".build-tmp").resolve()
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        env = os.environ.copy()
+        for name in ("TMP", "TEMP", "TMPDIR"):
+            env[name] = str(temp_dir)
         try:
-            result = runner(list(command), timeout=BUILD_TIMEOUT_S)
+            result = runner(list(command), timeout=BUILD_TIMEOUT_S, env=env)
         except subprocess.TimeoutExpired as exc:
             raise BuildError(
                 f"{phase} timed out after {BUILD_TIMEOUT_S:.0f}s",

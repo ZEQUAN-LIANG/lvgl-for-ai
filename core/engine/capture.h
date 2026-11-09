@@ -14,6 +14,7 @@
 #include <stdint.h>
 
 #include "adapter.h"
+#include "frame_encoder.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,6 +31,8 @@ typedef struct {
     long frame_no;
     long snapshot_no;
     bool truncated;
+    /** Non-NULL when recording uses the background encoder. */
+    frame_encoder_t * encoder;
 } capture_t;
 
 /** What one capture call actually wrote. */
@@ -54,7 +57,9 @@ bool capture_init(capture_t * capture,
                   const char * session_dir,
                   bool record,
                   long max_frames,
-                  bool live);
+                  bool live,
+                  bool async_encode,
+                  uint64_t encode_budget_bytes);
 
 /**
  * Save the current framebuffer. With record=true and room left this writes
@@ -70,6 +75,12 @@ int capture_frame(capture_t * capture,
 
 /** Release capture state; safe to call more than once. */
 void capture_close(capture_t * capture);
+
+/** Wait until every queued raw frame has been encoded. */
+void capture_drain(capture_t * capture);
+
+/** True when the background encoder failed. */
+bool capture_encoder_failed(capture_t * capture);
 
 /**
  * Save the current framebuffer as snapshots/NNN_<label>.png. Snapshots are

@@ -52,6 +52,8 @@ typedef struct {
     bool record;
     bool live;
     bool record_changed_only;
+    bool async_encode;
+    uint64_t encode_budget_bytes;
     long max_frames;
     int diff_threshold;
     /** Borrowed XRGB8888 reference pixels; NULL when no reference was given. */
@@ -134,6 +136,12 @@ int session_snapshot(session_t * session,
                      const char * label,
                      char * relative,
                      size_t relative_size);
+
+/** Wait until the background encoder has published every queued frame. */
+void session_drain_encoding(session_t * session);
+
+/** True when the background encoder failed. */
+bool session_encoder_failed(session_t * session);
 
 /** Write the timeline end row once; safe to call more than once. */
 void session_end(session_t * session);

@@ -13,7 +13,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
 
 from .. import paths
 from .errors import BuildError, LinkError
@@ -83,7 +83,12 @@ def build_command(build_dir: Path) -> list[str]:
     return ["cmake", "--build", str(build_dir), "--target", "lvgl_engine"]
 
 
-def run_capture(command: Sequence[str], *, timeout: float | None) -> BuildResult:
+def run_capture(
+    command: Sequence[str],
+    *,
+    timeout: float | None,
+    env: Mapping[str, str] | None = None,
+) -> BuildResult:
     start = time.perf_counter()
     # cmake/ninja are console programs; when the web runs under pythonw this
     # stops each incremental build from flashing a console window.
@@ -99,6 +104,7 @@ def run_capture(command: Sequence[str], *, timeout: float | None) -> BuildResult
         encoding="utf-8",
         errors="replace",
         timeout=timeout,
+        env=env,
         **flags,
     )
     return BuildResult(

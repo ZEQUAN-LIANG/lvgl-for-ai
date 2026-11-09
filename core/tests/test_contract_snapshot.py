@@ -215,6 +215,7 @@ class ContractSnapshotTest(unittest.TestCase):
                 "12",
                 "--max-frames",
                 "42",
+                "--async-encode",
                 "--headless",
                 "--live-frame",
                 "--record-changed-only",

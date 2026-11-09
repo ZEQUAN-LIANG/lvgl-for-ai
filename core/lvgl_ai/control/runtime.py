@@ -30,7 +30,7 @@ from .input import (
     resolve_key,
 )
 from .recording import Recording
-from .engine_link import EngineLink
+from .engine_link import RECORD_QUIT_TIMEOUT_S, QUIT_TIMEOUT_S, EngineLink
 from .session import DEFAULT_MAX_LOG_BYTES, SessionOutcome, SessionStore
 
 DEFAULT_MAX_FRAMES = 600
@@ -223,9 +223,9 @@ class Runtime:
         # the session evidence.
         self._link: EngineLink | None = None
         self._session_used = False
-        # Newest retained frame number the engine reported. With record=False
-        # there are no frame files, but live.rgba still changes and this
-        # counter lets the web layer know a new preview frame arrived.
+        # Newest reserved frame number the engine reported. Recording uses a
+        # background encoder, so the PNG for the newest frame may still be
+        # queued; stop() drains it before the final manifest is written.
         self.frame_count = 0
         # Current virtual time from the newest engine reply. Static live
         # screens keep frame_count unchanged but t_ms keeps advancing.
@@ -313,6 +313,9 @@ class Runtime:
                 log_tail=self._store.log_tail,
                 log_path=self._store.engine_log_path,
                 on_check=self._record_reply,
+                quit_timeout=(
+                    RECORD_QUIT_TIMEOUT_S if self.record else QUIT_TIMEOUT_S
+                ),
             )
             self._link.start()
             self.ready = self._link.await_ready(
@@ -509,6 +512,8 @@ class Runtime:
             "--diff-threshold", str(self.diff_threshold),
             "--max-frames", str(self.max_frames),
         ]
+        if self.record:
+            engine_args.append("--async-encode")
         if self.width is not None and self.height is not None:
             engine_args.extend(
                 ["--width", str(self.width), "--height", str(self.height)]
