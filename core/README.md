@@ -84,7 +84,7 @@ http://127.0.0.1:8765/
 - 技术细节（manifest、checks、原始 diff、engine.log、build.log）默认折叠在 `<details>` 中。
 - 只读像素 diff 默认关闭；打开后按 `frame_diffs.ndjson`（以及可选的参考图 diff）覆盖显示 bbox，只作证据。
 - 网页端只通过 `Runtime` / `Recording` 工作，没有第二套协议客户端；live 使用独立 Runtime 和独立 engine 进程。
-- 测试模式每 33 ms 推进一次虚拟时间（约 30 fps），录制模式保持 100 ms；无输入时 timer、toast 和动画继续运行。录制/测试默认 `record_changed_only=True`，只保留画面发生变化的帧，HUD 时间使用虚拟时间 `t_ms`。
+- 测试模式每 33 ms 推进一次虚拟时间（约 30 fps），录制模式保持 100 ms；PNG 编码在 engine 后台线程完成，不阻塞 tick。无输入时 timer、toast 和动画继续运行。录制/测试默认 `record_changed_only=True`，只保留画面发生变化的帧，HUD 时间使用虚拟时间 `t_ms`。
 - 测试/录制预览走 raw 帧流：engine 写 `live.rgba`，页面通过 `GET /api/live/stream` 接到 canvas，不再轮询 PNG。`live.rgba` 是临时预览文件，停止时删除，不是证据。
 - Windows 下 engine 与 cmake/ninja 子进程使用 `CREATE_NO_WINDOW`；从 `web.pyw` / `pythonw` 启动时不会弹出控制台黑框，切换应用也不会闪。
 - 非 Windows、无浏览器环境不影响服务启动；`web.py` 默认不自动打开浏览器，需要时加 `--open`；`web.pyw` 会自动打开。
@@ -158,6 +158,8 @@ engine，不写时使用默认 800×600。显式 `--app` 只覆盖应用，不�
 
 `--record-changed-only` 只保存相对上一张保留帧发生 RGB 变化的帧；默认关闭，网页 live 默认开启。开启后 `frame_count` 是保留帧数，静态画面不消耗 `max_frames` 预算；live 预览也遵循同一变化门控。
 
+录制默认使用后台 PNG 编码：主线程把保留帧写入会话内 `.encode/` 的原始 XRGB8888 文件，worker 编码后发布到 `frames/` 并删除 raw。`start()` 返回时首帧 PNG 已落盘；运行中 `frames/` 可能滞后于 `timeline.ndjson` 的 frame 行，`stop()` 会等待全部编码完成再写 `end` 行。原始帧积压默认最多 1 GiB，可用 `LVGL_AI_ENCODE_BUDGET_BYTES` 覆盖；超过预算时主线程等待编码，队列为空时允许单个超预算帧。
+
 `--build/--no-build` 默认 `--build`；`--no-build` 复用仓库根
 `build/lvgl_<version>/lvgl_engine`，不重新编译 `user/app`。产物不存在时抛
 `EngineNotFound`；改过 C 代码后仍要用源码构建。
@@ -192,6 +194,7 @@ print(recording.manifest["app"], recording.manifest["frame_count"])
 - `timeline.ndjson`、`frame_diffs.ndjson`、`engine.log`、`build.log`
 - `annotations.json`（`lvgl-ai-annotations-v1`）：`notes` 数组，每条含 `id` / `frame_no` / `t_ms` / `regions` / `tags` / `text`
 - `live.rgba`：仅 live 预览期间存在，原始 RGBA8888，停止时删除；不列入 manifest artifacts
+- `.encode/`：录制期间的原始帧暂存目录；正常停止后删除，不列入证据
 
 保留策略：每次新建会话后，`build_error` 会话一律删除，其余只保留最新的 10 条；没有 `manifest.json` 的目录不会动。
 

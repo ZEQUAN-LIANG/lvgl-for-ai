@@ -36,9 +36,9 @@ LIVE_KINDS = ("record", "test")
 # inside a tick, so the live session must advance time after forwarding input.
 LIVE_INPUT_STEP_MS = 16
 # Test mode advances one 33 ms frame (about 30 fps) and writes only a raw
-# preview, so it can track real time. Recording mode keeps the 100 ms evidence
-# cadence: its PNG encode dominates the tick even though the preview itself is
-# now a raw stream.
+# preview, so it can track real time. Recording keeps the 100 ms evidence
+# cadence; PNG encoding now runs in the engine's background encoder, so it no
+# longer blocks the tick.
 LIVE_TEST_TICK_MS = 33
 LIVE_TEST_INTERVAL_S = 0.033
 LIVE_TICK_MS = 100
@@ -659,15 +659,17 @@ def _latest_frame_t_ms(session_dir: Path, frame_file: str) -> int | None:
     """Read the newest matching frame row from the tail of timeline.ndjson.
 
     Live sessions are polled every few seconds; reading the whole timeline on
-    each poll would grow with the recording. The frame rows are small and the
-    newest one is near the end, so a bounded tail read is enough.
+    each poll would grow with the recording. Async recording writes frame rows
+    as soon as a raw frame is queued, so the newest published PNG can trail
+    the file end by the encoder backlog; 256 KiB covers max_frames and input
+    rows for the supported display sizes.
     """
     path = session_dir / TIMELINE_FILE
     try:
         with path.open("rb") as handle:
             handle.seek(0, 2)
             size = handle.tell()
-            chunk = min(size, 65536)
+            chunk = min(size, 262144)
             handle.seek(size - chunk)
             data = handle.read()
     except OSError:

@@ -21,6 +21,7 @@ from .errors import ToolError, ProtocolError, RuntimeCrash
 
 PROTOCOL_VERSION = "lvgl-ai-engine-v1"
 QUIT_TIMEOUT_S = 2.0
+RECORD_QUIT_TIMEOUT_S = 120.0
 ENGINE_NAMES = {"lvgl_engine", "lvgl_engine.exe"}
 
 _EOF = object()

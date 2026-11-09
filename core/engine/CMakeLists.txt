@@ -185,6 +185,7 @@ add_executable(lvgl_engine
     protocol.c
     session.c
     capture.c
+    frame_encoder.c
     timeline.c
     frame_analysis.c
     frame_diff.c
@@ -194,6 +195,10 @@ add_executable(lvgl_engine
     stdin_queue.c
 )
 target_link_libraries(lvgl_engine PRIVATE adapter user_app lvgl_ai_libpng)
+if(NOT WIN32)
+    find_package(Threads REQUIRED)
+    target_link_libraries(lvgl_engine PRIVATE Threads::Threads)
+endif()
 target_include_directories(lvgl_engine PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(lvgl_engine PRIVATE -Wall -Wextra)
 # window.c is a stub on other platforms; only Win32 needs GDI/user32.

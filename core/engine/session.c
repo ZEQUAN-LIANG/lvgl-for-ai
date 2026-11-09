@@ -108,7 +108,9 @@ void session_init(session_t * session, const session_config_t * config)
 
     bool capture_ok = capture_init(&session->capture, config->adapter,
                                    config->session_dir, config->record,
-                                   config->max_frames, config->live);
+                                   config->max_frames, config->live,
+                                   config->async_encode,
+                                   config->encode_budget_bytes);
     bool timeline_ok = timeline_init(&session->timeline, config->session_dir,
                                      config->record);
     bool diff_ok = frame_diff_open_previous(
@@ -255,9 +257,22 @@ int session_snapshot(session_t * session,
     return 0;
 }
 
+void session_drain_encoding(session_t * session)
+{
+    if(session == NULL) return;
+    capture_drain(&session->capture);
+}
+
+bool session_encoder_failed(session_t * session)
+{
+    if(session == NULL) return false;
+    return capture_encoder_failed(&session->capture);
+}
+
 void session_end(session_t * session)
 {
     if(session == NULL || session->ended) return;
+    session_drain_encoding(session);
     timeline_end(&session->timeline, capture_frame_count(&session->capture),
                  session->t_ms, capture_truncated(&session->capture));
     session->ended = true;

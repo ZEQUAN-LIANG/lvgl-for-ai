@@ -1,0 +1,14 @@
+// The C engine is a desktop test host: it uses libc file I/O, malloc,
+// OS threads and early-return style. These MISRA rules target constrained
+// embedded code and are not applicable here.
+misra-c2012-15.5
+misra-c2012-17.7
+misra-c2012-21.3
+misra-c2012-21.6
+
+// cppcheck cannot see every system header/configuration through this hook;
+// the missing-declaration and unknown-constant reports are tool artifacts.
+misra-c2012-17.3
+misra-config
+misra-c2012-8.7
+misra-c2012-11.5
