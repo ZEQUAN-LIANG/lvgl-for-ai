@@ -123,6 +123,7 @@ class RegistrySeamTest(_TempRepo):
             '    {"coffee", coffee_create},\n',
             '    {"xiaohongshu", xhs_page_create},\n',
             '    {"spectrum", spectrum_create},\n',
+            '    {"hspi_watch", hspi_watch_create},\n',
         ):
             text = text.replace(row, "")
         registered, changed = registry.register_app(text, "hello")

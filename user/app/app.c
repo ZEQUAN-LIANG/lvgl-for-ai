@@ -10,9 +10,9 @@
  * because the tool's integration tests target its named button; older LVGL
  * targets show that demo as-is.
  *
- * Every app exposes the same ``void create(lv_obj_t * screen)`` entry. Adding
- * an app means one row in ``apps`` plus its implementation; the tool layer
- * never learns app names.
+ * Every app exposes the same ``void create(void)`` entry. Adding an app means
+ * one row in ``apps`` plus its implementation; the tool layer never learns app
+ * names.
  */
 
 #include "lvgl.h"
@@ -30,7 +30,7 @@
 #include <string.h>
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
-typedef void (* app_create_fn)(lv_obj_t * screen);
+typedef void (* app_create_fn)(void);
 
 typedef struct {
     const char * name;
@@ -95,7 +95,7 @@ void app_create(void)
      * tool's integration tests target its named button. */
     demo_harness_create(false);
     printf("[app] app=%s\n", app->name);
-    app->create(lv_screen_active());
+    app->create();
 #else
     printf("[app] app=harness (LVGL < 9.6)\n");
     demo_harness_create(true);

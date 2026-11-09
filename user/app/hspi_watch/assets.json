@@ -1,0 +1,40 @@
+{
+  "schema": "lvgl-ai-assets-v1",
+  "local_header": "watch_assets.h",
+  "assets": {
+    "watch_bg": {
+      "file": "watch_bg.png",
+      "mode": "ezip",
+      "placement": "flash",
+      "transform": "none"
+    },
+    "watch_ring": {
+      "file": "watch_ring.png",
+      "mode": "raw",
+      "placement": "psram",
+      "transform": "rotate"
+    },
+    "watch_hour": {
+      "file": "watch_hour.png",
+      "mode": "raw",
+      "placement": "psram",
+      "transform": "rotate"
+    },
+    "watch_minute": {
+      "file": "watch_minute.png",
+      "mode": "raw",
+      "placement": "psram",
+      "transform": "rotate"
+    },
+    "watch_second": {
+      "file": "watch_second.png",
+      "mode": "raw",
+      "placement": "psram",
+      "transform": "rotate"
+    }
+  },
+  "cache": {
+    "image_cache_psram_size": 524288,
+    "rotate_mem": "psram"
+  }
+}

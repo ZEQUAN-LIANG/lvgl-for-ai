@@ -3,11 +3,7 @@
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
-#if defined(LVGL_AI_EZIP_ASSETS)
-#include "assets_ezip.h"
-#else
-#include "watch_assets.h"
-#endif
+#include "assets.h"
 
 #if defined(LVGL_AI_SDK_H)
 #define WATCH_FPS() lv_get_fps()
@@ -95,8 +91,9 @@ static void fps_timer_cb(lv_timer_t * timer)
     lv_label_set_text_fmt(fps_label, "FPS %d.%d", fps10 / 10, fps10 % 10);
 }
 
-void hspi_watch_create(lv_obj_t * screen)
+void hspi_watch_create(void)
 {
+    lv_obj_t * screen = lv_screen_active();
     lv_obj_t * face = lv_obj_create(screen);
     lv_obj_set_size(face, WATCH_FACE_W, WATCH_FACE_H);
     lv_obj_center(face);

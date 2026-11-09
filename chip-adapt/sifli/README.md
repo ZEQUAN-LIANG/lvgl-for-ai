@@ -12,46 +12,71 @@
 | SDK | SiFli-SDK v2.5.1，下载到 `chip-adapt/sdk/sifli-sdk`（Gitee `SiFli/sifli-sdk`，release/v2.5） |
 | LVGL | 9.4.0（SDK 内 `external/lvgl_v9`） |
 | 屏幕 | CO5300，390x450，触摸 FT6146 |
-| 固件构建 | `scons --board=sf32lb52-lchspi-ulp -j8`（需先运行 SDK 的 `set_env.bat` / `source export.sh`） |
+| 固件构建 | `cd project && scons --board=sf32lb52-lchspi-ulp -j8`（需先运行 SDK 的 `set_env.bat` / `source export.sh`） |
 
 ## 导出产物结构
 
 ```
 <app>/
-  SConstruct
-  project/{SConscript,Kconfig,Kconfig.proj,proj.conf,rtconfig.py}
+  project/
+    SConstruct              # 官方结构；从 project/ 里执行 scons
+    SConscript,Kconfig,Kconfig.proj,proj.conf,rtconfig.py
   src/
     SConscript
     main.c                  # SDK 入口
     app/
-      app.c                 # 固定入口，调用 <app>_create(lv_screen_active())
+      app.c                 # 固定入口：app_assets_init(); <app>_create();
+      assets.h/.c           # 生成的资源层
       app.h, lvgl_compat.h  # 从 user/app 复制
       lvgl_ai_sdk.h         # SDK 头或模拟桩的二选一入口
       sim_sifli.h/.c        # 仅运行时验证使用；SDK 构建排除
-      <app>/...             # 应用源码原样副本（应用需兼容 LVGL 9.4）
-  src/ezip/                 # ezip.exe 生成的 EZIP C 数组（SDK 构建编译）
+      <app>/
+        assets.json         # 资源清单副本
+        assets.h/.c         # 生成的资源层（覆盖本地包装头）
+        ...                 # 应用源码原样副本（应用需兼容 LVGL 9.4，入口为 void）
+    ezip/<name>.c           # 冷 EZIP C 数组
+    raw/<name>.c            # 热/旋转 raw 像素 C 数组
+  export.json               # 资源角色、缓存配置与生成结果
 ```
 
-## 图片资源与 EZIP
+## 图片资源与 assets.json
 
-应用把 PNG 源放在 `user/app/<app>/assets/*.png`。导出时 `ezip.exe` 自动把每张 PNG 转成
-EZIP C 数组：
+应用把 PNG 源放在 `user/app/<app>/assets/*.png`，并在 `user/app/<app>/assets.json`
+声明每张图的角色：
 
-```text
-ezip -convert <png> -rgb565 -cfile 2 -section ROM3_IMG -lvgl_version 9 -outdir <tmp>
+```json
+{
+  "schema": "lvgl-ai-assets-v1",
+  "local_header": "watch_assets.h",
+  "assets": {
+    "watch_bg":   {"file": "watch_bg.png",   "mode": "ezip", "placement": "flash", "transform": "none"},
+    "watch_hour": {"file": "watch_hour.png", "mode": "raw",  "placement": "psram", "transform": "rotate"}
+  },
+  "cache": {"image_cache_psram_size": 524288, "rotate_mem": "psram"}
+}
 ```
 
-导出目录产生 `src/ezip/<name>.c` 和 `src/app/<app>/assets_ezip.h`。SDK 构建中
-`lvgl_ai_sdk.h` 定义 `LVGL_AI_EZIP_ASSETS`，应用 include `assets_ezip.h`；本地运行时
-构建不定义该宏，应用使用 `watch_assets.h` 里的 PNG/像素数组。应用代码的切换方式：
+- `mode=ezip`：构建期转成 EZIP C 数组，放 `src/ezip/`，运行时由 EPIC 解码；不能旋转/缩放。
+- `mode=raw`：构建期转成 raw 像素 C 数组，放 `src/raw/`；`placement=psram/sram` 时生成
+  `app_assets_init()`，用 `app_cache_copy_alloc()` 把热图复制到 PSRAM/SRAM。
+- `mode=ezip` 且 `transform != none` 会直接报 `asset_transform_conflict`，不会生成错误工程。
+- 未在 `assets.json` 里声明的 PNG 会报 `asset_unlisted`；文件名必须与资源名一致。
+- `cache` 可覆盖脚本按资源大小算出的默认值；`image_cache_psram_size`、
+  `image_cache_sram_size`、`rotate_mem`、`lv_cache_def_size`、
+  `lv_image_header_cache_cnt` 都会写进 `project/proj.conf`。
 
-```c
-#if defined(LVGL_AI_EZIP_ASSETS)
-#include "assets_ezip.h"
-#else
-#include "watch_assets.h"
-#endif
-```
+导出目录生成 `src/app/<app>/assets.h` 和 `assets.c`：
+
+- SDK 构建（`LVGL_AI_EZIP_ASSETS`）声明 EZIP/raw 符号；热图通过
+  `app_asset_<name>()` 返回 PSRAM/SRAM 副本。
+- 本地运行时构建不定义该宏，`assets.h` 包含 `local_header` 指定的头（例如
+  `watch_assets.h`），并提供空的 `app_assets_init()`。
+
+应用代码只写 `#include "assets.h"`，不再自己判断 `LVGL_AI_EZIP_ASSETS`。
+
+导出脚本调用 `ezip.exe` 时会在临时目录里用相对文件名运行，并读取自动生成的
+`output/<name>.c`；不再依赖 `-outdir`。常用参数是
+`-convert <png> -rgb565 -cfile 2/1 -section ROM3_IMG/ROM2_IMG -lvgl_version 9 -chip sf52x`。
 
 `src/main.c` 是 SDK 入口：
 
@@ -66,6 +91,10 @@ while (1) {
 
 `littlevgl2rtt_init` 自动注册 LCD、触摸、按键和 FPS 统计，应用不需要自己调用
 `lv_init`、`lv_display_create` 或注册 flush/read 回调。
+
+导出的 `src/app/app.c` 入口是 `void app_create(void)`；它先调用 `app_assets_init()`，
+再调用 `void <app>_create(void)`。应用入口不接收 `lv_obj_t *`，内部用
+`lv_screen_active()` 取屏幕。
 
 ## 应用基线：直接按 LVGL 9.4 编写
 
@@ -105,18 +134,18 @@ LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/sifli/hspi_watch/src/app" \
 `lvgl_ai_sdk.h` 用 `__has_include("littlevgl2rtt.h")` 判断环境：SDK 构建拿真实头，
 运行时验证拿 `sim_sifli.h`。桩只用于验证，不代表 EPIC、触摸或真实刷新行为。
 
-## 高帧率：SF32LB52x 实际加速能力
+## SF32LB52x 加速能力与资源规则
 
 | 能力 | 52x 可用 | 说明 |
 | --- | --- | --- |
-| EPIC 2D | 是 | 填充、图片旋转/缩放、掩码、A2/A4/A8/L8、YUV、字体合成 |
+| EPIC 2D | 是 | 填充、图片混叠/缩放/旋转（EZIP 仅混叠/缩放，不可旋转）、掩码、A2/A4/A8/L8、YUV、字体合成；渲染列表模式另支持圆角矩形、边框、圆弧、线、多边形、点阵字 |
 | EZIP 硬件解压 | 是 | 大图/动画优先转 EZIP，EPIC 直接解码合成 |
 | LCDC | 是 | 异步刷屏，PSRAM framebuffer |
 | GE2D / DMA2D | 否 | SDK 无对应驱动 |
 | VGLITE / V2D GPU | 否 | 仅 SF32LB58x |
 | 硬件 JPEGD | 否 | 仅 SF32LB57x（`LV_USE_SIFLI_JPEGD`） |
 
-模板 `proj.conf` 已启用：
+模板 `proj.conf` 的基础项：
 
 ```ini
 CONFIG_LV_DEF_REFR_PERIOD=16
@@ -124,23 +153,34 @@ CONFIG_CONFIG_LV_OS_RTTHREAD=y
 CONFIG_LV_FB_TWO_NOT_SCREEN_SIZE=y
 CONFIG_LV_FB_LINE_NUM=100
 CONFIG_LV_USE_EZIP=y
-CONFIG_IMAGE_CACHE_IN_PSRAM_SIZE=1048576
-CONFIG_ROTATE_MEM_IN_PSRAM=y
 ```
 
-`LV_USE_DRAW_EPIC` 由 `lv_conf_sifli.h` 在板级 `CONFIG_BSP_USING_EPIC=y` 时强制开启，
-不要写不存在的 `LV_USE_DRAW_SIFLI`。
+导出脚本按 `assets.json` 追加缓存配置：
 
-### AI 写 UI 的高帧率规则
+```ini
+CONFIG_IMAGE_CACHE_IN_PSRAM_SIZE=<热图 PSRAM 池>
+CONFIG_IMAGE_CACHE_IN_SRAM_SIZE=<热图 SRAM 池>
+CONFIG_ROTATE_MEM_IN_PSRAM=y   # 或 CONFIG_ROTATE_MEM_IN_SRAM=y
+CONFIG_LV_CACHE_DEF_SIZE=<v9 图片缓存字节数>
+CONFIG_LV_IMAGE_HEADER_CACHE_DEF_CNT=<文件图片头缓存条目数>
+```
 
-1. 大图、背景、动画帧先转 EZIP：
-   `tools/png2ezip/ezip.exe -convert x.png -rgb565 -binfile 2 -binext .ezip -lvgl_version 9`，
-   运行时 `lv_image_set_src(img, "A:/x.ezip")`。
-2. 旋转/缩放的图片先复制到 RAM（`app_cache_copy_alloc(..., ROTATE_MEM)`），不要直接旋转
-   Flash 上的图。
+`LV_USE_DRAW_EPIC` 在 `lv_conf_sifli.h` 中对非 MSVC 构建恒为 1；板级
+`CONFIG_BSP_USING_EPIC=y` 决定 EPIC 驱动源码是否编译。不要写不存在的
+`LV_USE_DRAW_SIFLI`。
+
+### AI 写 UI 的资源与路径规则
+
+1. 静态冷图用 `mode=ezip`；旋转/缩放/热图用 `mode=raw`，由 `assets.json` 的
+   `placement` 决定放 flash、PSRAM 还是 SRAM。脚本会生成 `app_assets_init()` 和
+   `app_asset_<name>()`，不要在 app 里手写 `app_cache_copy_alloc()`。
+2. 需要文件加载的大图/可替换资源，在 app 内用 `lv_image_set_src(img, "A:/x.ezip")`；
+   导出器当前只生成 C 数组，不复制 `.ezip` 文件。
 3. 只失效变化区域：`lv_obj_invalidate_area()`；重活挂到 `LV_EVENT_REFR_START` 或只在
    数值变化时执行。
-4. 动画区域避免圆角、阴影、圆弧、复杂渐变，这些会回退到软件绘制。
+4. 单步渲染模式下，圆角、阴影、圆弧、线、复杂渐变会回退软件绘制；开启
+   `CONFIG_DRV_EPIC_NEW_API=y`（渲染列表）后，圆角矩形、边框、圆弧、线、多边形、点阵字
+   可走 EPIC，阴影仍走软件。
 5. 用 `lv_get_fps()`、`set_display_fps_and_cpu_load(1)`、串口 `fps2` 测量，不猜。
 6. 不要使用 52x 不存在的加速 API（`LV_USE_VGLITE`、GE2D、硬件 JPEG）。
 
@@ -150,4 +190,6 @@ CONFIG_ROTATE_MEM_IN_PSRAM=y
 - 黄山派实际屏幕 390x450；非 390x450 设计的应用需要自行适配布局。
 - `coffee` 等 9.6 应用不导出；导出器会返回 `unsupported_api` 诊断。
 - EZIP 转换依赖 SDK 的 `tools/png2ezip/ezip.exe`（Windows）；其他平台使用同目录的 `ezip_linux` / `ezip_mac` 需另行适配。
-- `hspi_watch` 是 390x450 的表盘示例，本地运行时验证使用 PNG 像素数组，真机使用 EZIP。
+- `assets.json` 必须声明 `assets/*.png` 里的每张图；缺失会报 `asset_unlisted`。
+- `hspi_watch` 是 390x450 的表盘示例；`watch_bg` 用 EZIP，旋转表针/ring 用 raw PSRAM。
+  本地运行时验证使用 `watch_assets.h`，真机使用 `assets.h` 生成的资源层。

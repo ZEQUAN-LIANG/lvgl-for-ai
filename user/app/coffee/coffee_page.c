@@ -316,8 +316,9 @@ static void build_standby(lv_obj_t * screen)
     coffee_hide(standby_layer, true);
 }
 
-void coffee_create(lv_obj_t * screen)
+void coffee_create(void)
 {
+    lv_obj_t * screen = lv_screen_active();
     build_backdrop(screen);
     build_top_bar(screen);
     build_nav(screen);

@@ -11,7 +11,7 @@
  * hit_class only. Branches on LVGL_VERSION_MAJOR / LVGL_VERSION_MINOR keep
  * this file compiling against every target version without a tool-side
  * registry. */
-static inline void app_set_name(lv_obj_t * obj, const char * name)
+static inline void app_obj_set_name(lv_obj_t * obj, const char * name)
 {
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 2
     lv_obj_set_name(obj, name);
@@ -19,6 +19,11 @@ static inline void app_set_name(lv_obj_t * obj, const char * name)
     (void)obj;
     (void)name;
 #endif
+}
+
+static inline void app_set_name(const char * name)
+{
+    app_obj_set_name(lv_screen_active(), name);
 }
 
 static inline const char * app_get_name(const lv_obj_t * obj)
@@ -32,7 +37,8 @@ static inline const char * app_get_name(const lv_obj_t * obj)
 }
 
 /* Internal to user/app: app.c builds the screen and delegates the panel. */
-lv_obj_t * app_panel_create(lv_obj_t * parent);
+void app_panel_create(void);
+lv_obj_t * app_panel_get(void);
 
 /* The original demo tree is kept because the tool's integration tests use its
  * named button at (32,300,160,48) as a stable hit target. On 9.6 the page is

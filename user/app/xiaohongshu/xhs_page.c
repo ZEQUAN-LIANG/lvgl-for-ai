@@ -144,8 +144,9 @@ static void xhs_bottom_nav(lv_obj_t * panel)
     lv_obj_set_style_bg_opa(home, 60, 0);
 }
 
-void xhs_page_create(lv_obj_t * screen)
+void xhs_page_create(void)
 {
+    lv_obj_t * screen = lv_screen_active();
     lv_obj_set_scrollable(screen, false);
     lv_obj_set_style_pad_all(screen, 0, 0);
     lv_obj_set_style_bg_color(screen, lv_color_hex(0xF6F2EC), 0);
