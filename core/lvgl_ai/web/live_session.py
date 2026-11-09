@@ -35,14 +35,13 @@ LIVE_KINDS = ("record", "test")
 # One virtual frame per browser input event. LVGL only reads indevs and draws
 # inside a tick, so the live session must advance time after forwarding input.
 LIVE_INPUT_STEP_MS = 16
-# Test mode advances one 33 ms frame (about 30 fps) and writes only a raw
-# preview, so it can track real time. Recording keeps the 100 ms evidence
-# cadence; PNG encoding now runs in the engine's background encoder, so it no
-# longer blocks the tick.
+# Both modes advance one 33 ms frame (about 30 fps). Recording hands PNG
+# encoding to the engine's worker pool, so its ticker can share the test
+# preview's cadence.
 LIVE_TEST_TICK_MS = 33
 LIVE_TEST_INTERVAL_S = 0.033
-LIVE_TICK_MS = 100
-LIVE_TICK_INTERVAL_S = 0.1
+LIVE_TICK_MS = 33
+LIVE_TICK_INTERVAL_S = 0.033
 # kind -> (virtual ms per tick, wall-clock seconds between ticks)
 TICK_PROFILE = {
     "test": (LIVE_TEST_TICK_MS, LIVE_TEST_INTERVAL_S),

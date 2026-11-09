@@ -21,16 +21,18 @@
 #endif
 
 #define ENCODER_PATH_SIZE 1200
+#define FRAME_ENCODER_WORKERS 3
 
 typedef struct frame_job {
     long frame_no;
     uint64_t bytes;
+    uint8_t * pixels;
     struct frame_job * next;
 } frame_job_t;
 
 struct frame_encoder {
     char session_dir[1024];
-    char raw_dir[ENCODER_PATH_SIZE];
+    char temp_dir[ENCODER_PATH_SIZE];
     char frames_dir[ENCODER_PATH_SIZE];
     uint32_t width;
     uint32_t height;
@@ -42,16 +44,17 @@ struct frame_encoder {
     uint64_t pending_bytes;
     bool stopping;
     bool failed;
+    long worker_count;
 #ifdef _WIN32
     CRITICAL_SECTION lock;
     HANDLE work_event;
     HANDLE progress_event;
-    HANDLE thread;
+    HANDLE threads[FRAME_ENCODER_WORKERS];
 #else
     pthread_mutex_t lock;
     pthread_cond_t work_cond;
     pthread_cond_t progress_cond;
-    pthread_t thread;
+    pthread_t threads[FRAME_ENCODER_WORKERS];
 #endif
 };
 
@@ -94,6 +97,7 @@ static void encoder_signal_progress(frame_encoder_t * encoder)
 static void encoder_wait_work(frame_encoder_t * encoder)
 {
 #ifdef _WIN32
+    (void)ResetEvent(encoder->work_event);
     LeaveCriticalSection(&encoder->lock);
     (void)WaitForSingleObject(encoder->work_event, INFINITE);
     EnterCriticalSection(&encoder->lock);
@@ -129,18 +133,6 @@ static bool numbered_name(char * out, size_t out_size, long frame_no,
     return (written > 0) && ((size_t)written < out_size);
 }
 
-static bool raw_path_for(const frame_encoder_t * encoder,
-                         long frame_no,
-                         char * out,
-                         size_t out_size)
-{
-    char name[64];
-    if(!numbered_name(name, sizeof(name), frame_no, ".xrgb")) {
-        return false;
-    }
-    return build_path(out, out_size, encoder->raw_dir, name);
-}
-
 static bool tmp_path_for(const frame_encoder_t * encoder,
                          long frame_no,
                          char * out,
@@ -150,7 +142,7 @@ static bool tmp_path_for(const frame_encoder_t * encoder,
     if(!numbered_name(name, sizeof(name), frame_no, ".png.tmp")) {
         return false;
     }
-    return build_path(out, out_size, encoder->raw_dir, name);
+    return build_path(out, out_size, encoder->temp_dir, name);
 }
 
 static bool final_path_for(const frame_encoder_t * encoder,
@@ -165,46 +157,21 @@ static bool final_path_for(const frame_encoder_t * encoder,
     return build_path(out, out_size, encoder->frames_dir, name);
 }
 
-static bool encode_job(const frame_encoder_t * encoder,
-                       const frame_job_t * job)
+static bool encode_job(const frame_encoder_t * encoder, const frame_job_t * job)
 {
-    char raw_path[ENCODER_PATH_SIZE];
     char tmp_path[ENCODER_PATH_SIZE];
     char final_path[ENCODER_PATH_SIZE];
     bool ok = false;
-    FILE * file = NULL;
-    uint8_t * raw = NULL;
 
-    if(!raw_path_for(encoder, job->frame_no, raw_path, sizeof(raw_path)) ||
-       !tmp_path_for(encoder, job->frame_no, tmp_path, sizeof(tmp_path)) ||
+    if(!tmp_path_for(encoder, job->frame_no, tmp_path, sizeof(tmp_path)) ||
        !final_path_for(encoder, job->frame_no, final_path,
                        sizeof(final_path))) {
         fprintf(stderr, "[engine] encoder path is too long\n");
         return false;
     }
 
-    file = fopen(raw_path, "rb");
-    if(file == NULL) {
-        fprintf(stderr, "[engine] cannot read %s\n", raw_path);
-        (void)remove(raw_path);
-        return false;
-    }
-    raw = (uint8_t *)malloc((size_t)job->bytes);
-    if(raw == NULL) {
-        fprintf(stderr, "[engine] cannot allocate the encoder buffer\n");
-        (void)fclose(file);
-        (void)remove(raw_path);
-        return false;
-    }
-    size_t read = fread(raw, 1, (size_t)job->bytes, file);
-    int closed = fclose(file);
-    file = NULL;
-    ok = (read == (size_t)job->bytes) && (closed == 0) &&
-         (png_writer_write_xrgb(raw, encoder->width, encoder->height,
-                                tmp_path) == 0);
-    free(raw);
-    raw = NULL;
-
+    ok = png_writer_write_xrgb(job->pixels, encoder->width, encoder->height,
+                               tmp_path) == 0;
     if(ok) {
         (void)remove(final_path);
         if(rename(tmp_path, final_path) != 0) {
@@ -212,7 +179,6 @@ static bool encode_job(const frame_encoder_t * encoder,
             ok = false;
         }
     }
-    (void)remove(raw_path);
     if(!ok) {
         (void)remove(tmp_path);
         fprintf(stderr, "[engine] cannot encode frames/%06ld.png\n",
@@ -256,6 +222,7 @@ static void worker_main(frame_encoder_t * encoder)
         }
         encoder_signal_progress(encoder);
         encoder_unlock(encoder);
+        free(job->pixels);
         free(job);
     }
 }
@@ -278,7 +245,7 @@ static bool init_sync(frame_encoder_t * encoder)
 {
 #ifdef _WIN32
     InitializeCriticalSection(&encoder->lock);
-    encoder->work_event = CreateEventW(NULL, FALSE, FALSE, NULL);
+    encoder->work_event = CreateEventW(NULL, TRUE, FALSE, NULL);
     encoder->progress_event = CreateEventW(NULL, FALSE, FALSE, NULL);
     if((encoder->work_event == NULL) || (encoder->progress_event == NULL)) {
         if(encoder->work_event != NULL) {
@@ -311,7 +278,11 @@ static bool init_sync(frame_encoder_t * encoder)
 static void destroy_sync(frame_encoder_t * encoder)
 {
 #ifdef _WIN32
-    (void)CloseHandle(encoder->thread);
+    for(long i = 0; i < encoder->worker_count; i++) {
+        if(encoder->threads[i] != NULL) {
+            (void)CloseHandle(encoder->threads[i]);
+        }
+    }
     (void)CloseHandle(encoder->work_event);
     (void)CloseHandle(encoder->progress_event);
     DeleteCriticalSection(&encoder->lock);
@@ -322,14 +293,35 @@ static void destroy_sync(frame_encoder_t * encoder)
 #endif
 }
 
-static bool start_thread(frame_encoder_t * encoder)
+static bool start_workers(frame_encoder_t * encoder)
 {
+    for(long i = 0; i < FRAME_ENCODER_WORKERS; i++) {
 #ifdef _WIN32
-    encoder->thread = CreateThread(NULL, 0, worker_entry, encoder, 0, NULL);
-    return encoder->thread != NULL;
+        encoder->threads[i] = CreateThread(NULL, 0, worker_entry, encoder, 0,
+                                           NULL);
+        if(encoder->threads[i] == NULL) {
+            return false;
+        }
 #else
-    return pthread_create(&encoder->thread, NULL, worker_entry, encoder) == 0;
+        if(pthread_create(&encoder->threads[i], NULL, worker_entry, encoder)
+           != 0) {
+            return false;
+        }
 #endif
+        encoder->worker_count++;
+    }
+    return true;
+}
+
+static void join_workers(frame_encoder_t * encoder)
+{
+    for(long i = 0; i < encoder->worker_count; i++) {
+#ifdef _WIN32
+        (void)WaitForSingleObject(encoder->threads[i], INFINITE);
+#else
+        (void)pthread_join(encoder->threads[i], NULL);
+#endif
+    }
 }
 
 static void rollback_bytes(frame_encoder_t * encoder, uint64_t bytes)
@@ -362,27 +354,26 @@ frame_encoder_t * frame_encoder_start(const char * session_dir,
     }
     int session_len = snprintf(encoder->session_dir,
                                sizeof(encoder->session_dir), "%s", session_dir);
-    int raw_len = snprintf(encoder->raw_dir, sizeof(encoder->raw_dir),
-                           "%s/.encode", session_dir);
+    int temp_len = snprintf(encoder->temp_dir, sizeof(encoder->temp_dir),
+                            "%s/.encode", session_dir);
     int frames_len = snprintf(encoder->frames_dir, sizeof(encoder->frames_dir),
                               "%s/frames", session_dir);
     if((session_len <= 0) ||
        ((size_t)session_len >= sizeof(encoder->session_dir)) ||
-       (raw_len <= 0) ||
-       ((size_t)raw_len >= sizeof(encoder->raw_dir)) ||
+       (temp_len <= 0) || ((size_t)temp_len >= sizeof(encoder->temp_dir)) ||
        (frames_len <= 0) ||
        ((size_t)frames_len >= sizeof(encoder->frames_dir))) {
         free(encoder);
         return NULL;
     }
     // cppcheck-suppress misra-c2012-22.10
-    if((make_dir(encoder->raw_dir) != 0) && (errno != EEXIST)) {
+    if((make_dir(encoder->temp_dir) != 0) && (errno != EEXIST)) {
         free(encoder);
         return NULL;
     }
     // cppcheck-suppress misra-c2012-22.10
     if((make_dir(encoder->frames_dir) != 0) && (errno != EEXIST)) {
-        (void)remove_dir(encoder->raw_dir);
+        (void)remove_dir(encoder->temp_dir);
         free(encoder);
         return NULL;
     }
@@ -391,13 +382,18 @@ frame_encoder_t * frame_encoder_start(const char * session_dir,
     encoder->frame_bytes = pixels * 4u;
     encoder->byte_budget = byte_budget;
     if(!init_sync(encoder)) {
-        (void)remove_dir(encoder->raw_dir);
+        (void)remove_dir(encoder->temp_dir);
         free(encoder);
         return NULL;
     }
-    if(!start_thread(encoder)) {
+    if(!start_workers(encoder)) {
+        encoder_lock(encoder);
+        encoder->stopping = true;
+        encoder_signal_work(encoder);
+        encoder_unlock(encoder);
+        join_workers(encoder);
         destroy_sync(encoder);
-        (void)remove_dir(encoder->raw_dir);
+        (void)remove_dir(encoder->temp_dir);
         free(encoder);
         return NULL;
     }
@@ -412,7 +408,6 @@ int frame_encoder_submit(frame_encoder_t * encoder,
         return -1;
     }
     frame_job_t * job = NULL;
-    char raw_path[ENCODER_PATH_SIZE];
 
     encoder_lock(encoder);
     while(!encoder->stopping && !encoder->failed &&
@@ -428,32 +423,18 @@ int frame_encoder_submit(frame_encoder_t * encoder,
     encoder->pending_bytes += encoder->frame_bytes;
     encoder_unlock(encoder);
 
-    if(!raw_path_for(encoder, frame_no, raw_path, sizeof(raw_path))) {
-        rollback_bytes(encoder, encoder->frame_bytes);
-        return -1;
-    }
-    FILE * file = fopen(raw_path, "wb");
-    if(file == NULL) {
-        fprintf(stderr, "[engine] cannot write %s\n", raw_path);
-        rollback_bytes(encoder, encoder->frame_bytes);
-        return -1;
-    }
-    size_t written = fwrite(xrgb, 1u, (size_t)encoder->frame_bytes, file);
-    int closed = fclose(file);
-    if((written != (size_t)encoder->frame_bytes) || (closed != 0)) {
-        fprintf(stderr, "[engine] short write to %s\n", raw_path);
-        (void)remove(raw_path);
-        rollback_bytes(encoder, encoder->frame_bytes);
-        return -1;
-    }
-
     job = (frame_job_t *)malloc(sizeof(*job));
-    if(job == NULL) {
-        fprintf(stderr, "[engine] cannot allocate an encoder job\n");
-        (void)remove(raw_path);
+    if(job != NULL) {
+        job->pixels = (uint8_t *)malloc((size_t)encoder->frame_bytes);
+    }
+    if((job == NULL) || (job->pixels == NULL)) {
+        if(job != NULL) {
+            free(job);
+        }
         rollback_bytes(encoder, encoder->frame_bytes);
         return -1;
     }
+    memcpy(job->pixels, xrgb, (size_t)encoder->frame_bytes);
     job->frame_no = frame_no;
     job->bytes = encoder->frame_bytes;
     job->next = NULL;
@@ -461,8 +442,8 @@ int frame_encoder_submit(frame_encoder_t * encoder,
     encoder_lock(encoder);
     if(encoder->stopping || encoder->failed) {
         encoder_unlock(encoder);
+        free(job->pixels);
         free(job);
-        (void)remove(raw_path);
         rollback_bytes(encoder, encoder->frame_bytes);
         return -1;
     }
@@ -501,12 +482,8 @@ void frame_encoder_stop(frame_encoder_t * encoder)
     encoder->stopping = true;
     encoder_signal_work(encoder);
     encoder_unlock(encoder);
-#ifdef _WIN32
-    (void)WaitForSingleObject(encoder->thread, INFINITE);
-#else
-    (void)pthread_join(encoder->thread, NULL);
-#endif
-    (void)remove_dir(encoder->raw_dir);
+    join_workers(encoder);
+    (void)remove_dir(encoder->temp_dir);
     destroy_sync(encoder);
     free(encoder);
 }

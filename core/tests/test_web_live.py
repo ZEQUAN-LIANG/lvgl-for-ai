@@ -976,11 +976,11 @@ class LiveHttpTest(unittest.TestCase):
         status, _, live = harness.json("POST", "/api/live/start")
         self.assertEqual(status, 200, live)
         self.assertTrue(runtime.tick_event.wait(2.0), "live ticker did not tick")
-        self.assertIn(("tick", 100, False), runtime.commands)
+        self.assertIn(("tick", 33, False), runtime.commands)
 
         status, _, current = harness.json("GET", "/api/live")
         self.assertEqual(status, 200)
-        self.assertGreaterEqual(current["t_ms"], 100)
+        self.assertGreaterEqual(current["t_ms"], 33)
 
         calls = runtime.tick_calls
         status, _, _ = harness.json("POST", "/api/live/stop")

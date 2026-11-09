@@ -1,6 +1,6 @@
 /**
  * @file frame_encoder.h
- * Background PNG encoding: raw staging plus one FIFO worker.
+ * Background PNG encoding: bounded in-memory staging plus worker threads.
  */
 
 #ifndef FRAME_ENCODER_H
@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 // cppcheck-suppress misra-c2012-2.5
-#define FRAME_ENCODER_BUDGET_BYTES ((uint64_t)1u << 30)
+#define FRAME_ENCODER_BUDGET_BYTES ((uint64_t)1u << 28)
 
 typedef struct frame_encoder frame_encoder_t;
 

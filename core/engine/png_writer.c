@@ -32,6 +32,7 @@ int png_writer_write_xrgb(const uint8_t * xrgb, uint32_t width,
                 image.width = width;
                 image.height = height;
                 image.format = PNG_FORMAT_RGB;
+                image.flags = PNG_IMAGE_FLAG_FAST;
                 // cppcheck-suppress misra-c2012-17.3
                 if(png_image_write_to_file(&image, path, 0, rgb,
                                            (png_int_32)((size_t)width * 3u),
