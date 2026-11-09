@@ -5,6 +5,8 @@ __pycache__/
 sessions/
 /lvgl-src/*
 !/lvgl-src/README.md
+/third_party/*
+!/third_party/README.md
 /build/
 /chip-adapt/sdk/
 /chip-adapt/sifli/coffee/

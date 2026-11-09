@@ -58,12 +58,15 @@ python -I core/tools/check_api_nav.py
 
 # 准备 LVGL 源码（不随仓库提交；全新 clone 先下载 9.6，其他版本同理）
 python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root .
+
+# 准备 PNG 编码器源码（zlib / libpng，安装到 third_party/，不随仓库提交）
+python -I core/tools/fetch_png.py --repo-root .
 ```
 
 - `--no-build` 复用 `build/lvgl_<token>/lvgl_engine.exe`，缺失时报 `EngineNotFound`；默认 `--build` 会重新配置/编译 `user/app`。
 - `--record-changed-only` 只在重新渲染后的 RGB 与上一张保留帧不同时才写 PNG 与 timeline frame / diff 行；`frame_no` 保持连续，`frame_count` 是保留帧数，`max_frames` 也按保留帧计。
 - 环境变量：`LVGL_AI_LVGL_VERSION`（默认 9.6）、`LVGL_AI_LVGL_SRC`、`LVGL_AI_SESSIONS_ROOT`、`LVGL_AI_MAX_FRAMES`、`LVGL_AI_MAX_LOG_BYTES`、`LVGL_AI_DEMO`（用户应用变体；CLI `--app` / scenario `app` 会设置它）。
-- 构建依赖：CMake + Ninja + GCC；构建产物在仓库根 `build/lvgl_<token>/`。
+- 构建依赖：CMake + Ninja + GCC；首次构建需要 git 拉取 `third_party/` 的 zlib/libpng 源码；构建产物在仓库根 `build/lvgl_<token>/`。
 
 ## 架构
 
@@ -75,12 +78,12 @@ python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root .
 - `core/lvgl_ai/control/recording.py`：`Recording` 只读视图（manifest / timeline / frames / snapshots / frame_diffs / log），`Recording.open()` 不启动 engine；`annotations` 是唯一可写入口。
 - `core/lvgl_ai/scenario.py`：`play_scenario` 把 `lvgl-ai-scenario-v1` 步骤翻译成 Runtime 调用；可选顶层 `app` 让 CLI 在启动前选中应用；`click_at`、`drag` 只在控制层展开，不是 engine 命令。
 - `core/lvgl_ai/control/build.py`：CMake/Ninja 配置与构建、GCC 诊断解析；`needs_configure()` 比较 `LVGL_AI_*` 与 `CMAKE_HOME_DIRECTORY`，仓库/构建目录移动后会重新 configure。
-- `core/lvgl_ai/paths.py`：`TOOL_ROOT` = `core/`，`REPO_ROOT` = 仓库根；`user/`、`lvgl-src/`、`sessions/`、`build/`、`licenses/` 相对仓库根。兼容工具子目录、扁平仓库与旧 `.scratch` 布局。
+- `core/lvgl_ai/paths.py`：`TOOL_ROOT` = `core/`，`REPO_ROOT` = 仓库根；`user/`、`lvgl-src/`、`third_party/`、`sessions/`、`build/`、`licenses/` 相对仓库根。兼容工具子目录、扁平仓库与旧 `.scratch` 布局。
 - `core/lvgl_ai/web/`：仅 HTTP/UI 适配，回放走 `Recording`，live 走独立 `Runtime`；顶部「应用」下拉从声明了 `app` 的 scenario 生成，没有第二套协议客户端。「录制」写普通会话；「测试」用 `record=False` + `live_frame=True`，会话根是临时目录并在停止后删除。测试与录制预览都走 raw 帧流（`live.rgba` → `GET /api/live/stream` → canvas），不再轮询 PNG。「应用管理」对话框调用 `core/lvgl_ai/apps.py` 和 `/api/apps`，默认不弹出，`--manage` / `?manage=1` 才打开。`core/web.pyw` 是 Windows 无控制台入口：自动开浏览器，并在最后一个页面关闭后停止服务；不带参数启动时若默认地址已有服务，只打开页面（暖启动）；`web.py --exit-on-close` 可显式启用同一行为。`open-web.vbs` 只负责无黑框启动 `core/web.pyw`，端口探测在 Python。Windows 下 engine 与 cmake/ninja 子进程使用 `CREATE_NO_WINDOW`，切换应用或增量构建不会弹出控制台黑框。
 
-**C engine**（`core/engine/`）：stdin/stdout 行协议，每条命令带 `seq`，回执带同一 `seq`；命令为 `ready`、`pointer`、`key`、`encoder`、`tick`、`wait`、`mark`、`snapshot`、`quit`。虚拟时间顺序是 `lv_tick_inc` → `lv_timer_handler` → `lv_refr_now` → 录制一帧。录制写完整 PNG；`timeline.ndjson` 与 `frame_diffs.ndjson` 由 C engine 写；live 预览另写 `live.rgba`（原始 RGBA8888），不进入文本协议。changed-only 在编码前按 RGB 严格比较上一张保留帧，相同帧不写 PNG / timeline frame / diff 行 / raw 预览，`frame_no` 保持连续；录制达到 `max_frames` 后 raw 预览仍继续。engine 仍保留 Win32 GDI 窗口实现，但 CLI 与测试不暴露窗口模式。
+**C engine**（`core/engine/`）：stdin/stdout 行协议，每条命令带 `seq`，回执带同一 `seq`；命令为 `ready`、`pointer`、`key`、`encoder`、`tick`、`wait`、`mark`、`snapshot`、`quit`。虚拟时间顺序是 `lv_tick_inc` → `lv_timer_handler` → `lv_refr_now` → 录制一帧。录制写完整 PNG（`png_writer.c` 用 libpng + zlib 编码）；`timeline.ndjson` 与 `frame_diffs.ndjson` 由 C engine 写；live 预览另写 `live.rgba`（原始 RGBA8888），不进入文本协议。changed-only 在编码前按 RGB 严格比较上一张保留帧，相同帧不写 PNG / timeline frame / diff 行 / raw 预览，`frame_no` 保持连续；录制达到 `max_frames` 后 raw 预览仍继续。engine 仍保留 Win32 GDI 窗口实现，但 CLI 与测试不暴露窗口模式。
 
-**多版本**：`core/engine/adapter_9x.c` / `adapter_8x.c` 是唯一 include LVGL / lodepng 的文件；engine 其余部分只依赖 `adapter.h`。9.x 用 `lv_indev_create`/`lv_indev_set_read_cb`，8.x 用 `lv_indev_drv_*`。9.2+ 开启 `LV_USE_OBJ_NAME`；9.1 与 8.x 没有对象名，`hit` 为空，只能看 `hit_class`。支持 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3；跨版本只比较事件语义与 session 文件集合，不比较像素。
+**多版本**：`core/engine/adapter_9x.c` / `adapter_8x.c` 是唯一 include LVGL / lodepng 的文件；engine 其余部分只依赖 `adapter.h`。PNG 编码在 `png_writer.c`，只依赖 libpng/zlib，不 include LVGL。9.x 用 `lv_indev_create`/`lv_indev_set_read_cb`，8.x 用 `lv_indev_drv_*`。9.2+ 开启 `LV_USE_OBJ_NAME`；9.1 与 8.x 没有对象名，`hit` 为空，只能看 `hit_class`。支持 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3；跨版本只比较事件语义与 session 文件集合，不比较像素。
 
 **证据**：`sessions/<id>/` 包含 `manifest.json`（`lvgl-ai-session-v1`，status 只有 `ok` / `build_error` / `link_error` / `crash` / `harness_error`，并记录 `app`、`display` 与 `record_changed_only`）、`timeline.ndjson`（`lvgl-ai-timeline-v1`）、`frame_diffs.ndjson`（`lvgl-ai-frame-diffs-v1`）、`frames/`、`snapshots/`、`engine.log`、`build.log`、`annotations.json`（`lvgl-ai-annotations-v1`）。changed-only 跳过静态帧时，`frame_count` 是保留帧数，`wait` 行可能出现 `frame_start == frame_end`；`record=false`（网页测试模式）不写 frames / timeline / frame_diffs，只写临时 `live.rgba` 预览，停止时删除。默认上限 600 帧、日志 16 MB。
 
@@ -89,6 +92,7 @@ python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root .
 - `core/`：工具根。`cli.py`、`web.py`、`lvgl_ai/`、`engine/`、`tests/`、`tools/`、`api-nav/`、文档。`core/README.md` 是工具用法，`core/CONTRACT_SNAPSHOT.md` 是契约快照用法，`core/THIRD_PARTY_NOTICES.md` 是第三方许可声明。
 - `docs/`：两份索引网页。`app.html` 是应用变体写法，`scenario-server.html` 是场景格式与服务端常量；只列契约与真源路径，不复制实现。
 - `build/`、`licenses/`：仓库根下的构建产物与第三方许可文本。
+- `third_party/`：`fetch_png.py` 安装的 zlib / libpng 源码，不进 Git（仅 `third_party/README.md` 被跟踪）。
 - `.scratch/ai-tools/`：设计真源 `SPEC.md` 与票据 `issues/`；`.scratch/tmp/` 忽略。
 - `user/`：用户只写 `user/app/**/*.c`（入口 `void app_create(void)`；应用在 `app.c` 的 `apps[]` 表里登记）、`user/scenarios/`、`user/asset/`；不写 main、不注册控件、不碰构建。`user/.trash/` 是管理台的本地回收站，不参与构建。
 - `lvgl-src/<version>/`：LVGL 源码，不进 Git（仅 `lvgl-src/README.md` 被跟踪）；用 `python -I core/tools/fetch_lvgl.py --version <version> --repo-root .` 下载。需要改 LVGL 时把 unified diff 放进 `patches/<version>/`（`series` 控制应用顺序），由 `fetch_lvgl.py` 应用；不要直接修改已安装的源码树；没有 patch 时 `patches/` 只保留 `README.md`。

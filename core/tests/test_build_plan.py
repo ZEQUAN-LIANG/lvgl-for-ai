@@ -66,11 +66,15 @@ class BuildPlanCase(unittest.TestCase):
         self.engine_dir = self.root / "core" / "engine"
         self.user_app_dir = self.root / "user" / "app"
         self.user_asset_dir = self.root / "user" / "asset"
+        self.zlib_src = self.root / "third_party" / "zlib"
+        self.libpng_src = self.root / "third_party" / "libpng"
         for path in (
             self.lvgl_src,
             self.engine_dir,
             self.user_app_dir,
             self.user_asset_dir,
+            self.zlib_src,
+            self.libpng_src,
         ):
             path.mkdir(parents=True, exist_ok=True)
 
@@ -81,6 +85,8 @@ class BuildPlanCase(unittest.TestCase):
             "engine_dir": self.engine_dir,
             "user_app_dir": self.user_app_dir,
             "user_asset_dir": self.user_asset_dir,
+            "zlib_src": self.zlib_src,
+            "libpng_src": self.libpng_src,
             "ccache": False,
             "missing_tools": lambda: [],
             "runner": runner or ScriptedRunner(),
@@ -108,6 +114,8 @@ class BuildPlanCase(unittest.TestCase):
             "LVGL_AI_USER_ASSET_DIR": (
                 self.user_asset_dir if user_asset_dir is None else user_asset_dir
             ),
+            "LVGL_AI_ZLIB_SRC": self.zlib_src,
+            "LVGL_AI_LIBPNG_SRC": self.libpng_src,
             "CMAKE_HOME_DIRECTORY": (
                 self.engine_dir if home is None else home
             ),
@@ -141,6 +149,17 @@ class PreflightTest(BuildPlanCase):
         self.assertIn("fetch_lvgl.py", message)
         self.assertIn("LVGL_AI_LVGL_SRC", message)
         self.assertIn("--no-build", message)
+        self.assertEqual(caught.exception.command, plan.configure_command)
+
+    def test_missing_png_sources_report_the_fetch_command(self) -> None:
+        missing = self.root / "missing-zlib"
+        plan = self.plan(zlib_src=missing)
+        with self.assertRaises(BuildError) as caught:
+            plan.preflight()
+        message = str(caught.exception)
+        self.assertIn("PNG encoder source not found", message)
+        self.assertIn(str(missing), message)
+        self.assertIn("fetch_png.py", message)
         self.assertEqual(caught.exception.command, plan.configure_command)
 
     def test_missing_tools_are_named_with_the_install_hint(self) -> None:

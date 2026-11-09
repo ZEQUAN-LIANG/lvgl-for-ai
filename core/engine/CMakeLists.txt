@@ -25,7 +25,27 @@ if(NOT DEFINED LVGL_AI_USER_APP_DIR OR NOT EXISTS "${LVGL_AI_USER_APP_DIR}")
 endif()
 file(TO_CMAKE_PATH "${LVGL_AI_USER_APP_DIR}" LVGL_AI_USER_APP_DIR)
 
+# PNG evidence is written with libpng + zlib, not LVGL's bundled lodepng.
+# tools/fetch_png.py installs the pinned sources under third_party/.
+if(NOT DEFINED LVGL_AI_ZLIB_SRC OR LVGL_AI_ZLIB_SRC STREQUAL "")
+    message(FATAL_ERROR "LVGL_AI_ZLIB_SRC is required; run: python -I core/tools/fetch_png.py --repo-root .")
+endif()
+if(NOT DEFINED LVGL_AI_LIBPNG_SRC OR LVGL_AI_LIBPNG_SRC STREQUAL "")
+    message(FATAL_ERROR "LVGL_AI_LIBPNG_SRC is required; run: python -I core/tools/fetch_png.py --repo-root .")
+endif()
+file(TO_CMAKE_PATH "${LVGL_AI_ZLIB_SRC}" LVGL_AI_ZLIB_SRC)
+file(TO_CMAKE_PATH "${LVGL_AI_LIBPNG_SRC}" LVGL_AI_LIBPNG_SRC)
+if(NOT EXISTS "${LVGL_AI_ZLIB_SRC}/zlib.h")
+    message(FATAL_ERROR "zlib source not found at ${LVGL_AI_ZLIB_SRC}; run: python -I core/tools/fetch_png.py --repo-root .")
+endif()
+if(NOT EXISTS "${LVGL_AI_LIBPNG_SRC}/png.h"
+   OR NOT EXISTS "${LVGL_AI_LIBPNG_SRC}/scripts/pnglibconf.h.prebuilt")
+    message(FATAL_ERROR "libpng source not found at ${LVGL_AI_LIBPNG_SRC}; run: python -I core/tools/fetch_png.py --repo-root .")
+endif()
+
 message(STATUS "lvgl_engine: LVGL ${LVGL_AI_LVGL_VERSION} from ${LVGL_AI_LVGL_SRC}")
+message(STATUS "lvgl_engine: zlib from ${LVGL_AI_ZLIB_SRC}")
+message(STATUS "lvgl_engine: libpng from ${LVGL_AI_LIBPNG_SRC}")
 
 # Version family: the adapter is the only engine-owned target allowed to
 # include LVGL headers (user/app is user code), and the lodepng copy moves
@@ -78,6 +98,61 @@ endif()
 
 add_subdirectory(${LVGL_AI_LVGL_SRC} ${CMAKE_CURRENT_BINARY_DIR}/lvgl)
 
+# Third-party PNG encoder, built statically from the fetched sources.
+add_library(lvgl_ai_zlib STATIC
+    ${LVGL_AI_ZLIB_SRC}/adler32.c
+    ${LVGL_AI_ZLIB_SRC}/compress.c
+    ${LVGL_AI_ZLIB_SRC}/crc32.c
+    ${LVGL_AI_ZLIB_SRC}/deflate.c
+    ${LVGL_AI_ZLIB_SRC}/infback.c
+    ${LVGL_AI_ZLIB_SRC}/inffast.c
+    ${LVGL_AI_ZLIB_SRC}/inflate.c
+    ${LVGL_AI_ZLIB_SRC}/inftrees.c
+    ${LVGL_AI_ZLIB_SRC}/trees.c
+    ${LVGL_AI_ZLIB_SRC}/uncompr.c
+    ${LVGL_AI_ZLIB_SRC}/zutil.c
+)
+target_include_directories(lvgl_ai_zlib PUBLIC ${LVGL_AI_ZLIB_SRC})
+target_compile_options(lvgl_ai_zlib PRIVATE -w)
+
+# png.h includes "pnglibconf.h"; use the prebuilt configuration instead of
+# libpng's full configure step.
+set(LVGL_AI_PNGCONF_DIR "${CMAKE_CURRENT_BINARY_DIR}/pnglibconf")
+file(MAKE_DIRECTORY "${LVGL_AI_PNGCONF_DIR}")
+configure_file(
+    "${LVGL_AI_LIBPNG_SRC}/scripts/pnglibconf.h.prebuilt"
+    "${LVGL_AI_PNGCONF_DIR}/pnglibconf.h"
+    COPYONLY
+)
+add_library(lvgl_ai_libpng STATIC
+    ${LVGL_AI_LIBPNG_SRC}/png.c
+    ${LVGL_AI_LIBPNG_SRC}/pngerror.c
+    ${LVGL_AI_LIBPNG_SRC}/pngget.c
+    ${LVGL_AI_LIBPNG_SRC}/pngmem.c
+    ${LVGL_AI_LIBPNG_SRC}/pngpread.c
+    ${LVGL_AI_LIBPNG_SRC}/pngread.c
+    ${LVGL_AI_LIBPNG_SRC}/pngrio.c
+    ${LVGL_AI_LIBPNG_SRC}/pngrtran.c
+    ${LVGL_AI_LIBPNG_SRC}/pngrutil.c
+    ${LVGL_AI_LIBPNG_SRC}/pngset.c
+    ${LVGL_AI_LIBPNG_SRC}/pngtrans.c
+    ${LVGL_AI_LIBPNG_SRC}/pngwio.c
+    ${LVGL_AI_LIBPNG_SRC}/pngwrite.c
+    ${LVGL_AI_LIBPNG_SRC}/pngwtran.c
+    ${LVGL_AI_LIBPNG_SRC}/pngwutil.c
+)
+target_include_directories(lvgl_ai_libpng PUBLIC
+    ${LVGL_AI_PNGCONF_DIR}
+    ${LVGL_AI_LIBPNG_SRC}
+    ${LVGL_AI_ZLIB_SRC}
+)
+target_compile_definitions(lvgl_ai_libpng PRIVATE
+    PNG_ARM_NEON_OPT=0
+    PNG_INTEL_SSE_OPT=0
+)
+target_link_libraries(lvgl_ai_libpng PUBLIC lvgl_ai_zlib)
+target_compile_options(lvgl_ai_libpng PRIVATE -w)
+
 # Adapter target: adapter_common.c holds the version-independent mechanics;
 # the version-specific source is the only engine source that includes LVGL
 # and lodepng headers.
@@ -114,10 +189,11 @@ add_executable(lvgl_engine
     frame_analysis.c
     frame_diff.c
     json.c
+    png_writer.c
     window.c
     stdin_queue.c
 )
-target_link_libraries(lvgl_engine PRIVATE adapter user_app)
+target_link_libraries(lvgl_engine PRIVATE adapter user_app lvgl_ai_libpng)
 target_include_directories(lvgl_engine PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(lvgl_engine PRIVATE -Wall -Wextra)
 # window.c is a stub on other platforms; only Win32 needs GDI/user32.

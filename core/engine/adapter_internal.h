@@ -119,20 +119,6 @@ void adapter_prim_tick_inc(uint32_t ms);
 void adapter_prim_timer_handler(void);
 
 /**
- * Encode RGBA8888 pixels as an RGB PNG into a lodepng-owned buffer. On
- * success the caller releases ``*png`` with adapter_prim_png_free().
- * Returns 0 on success.
- */
-int adapter_prim_png_encode(const unsigned char * rgba,
-                            uint32_t width,
-                            uint32_t height,
-                            unsigned char ** png,
-                            size_t * png_size);
-
-/** Release a buffer returned by adapter_prim_png_encode(). */
-void adapter_prim_png_free(unsigned char * png);
-
-/**
  * Decode PNG bytes into packed B, G, R, X pixels (framebuffer layout)
  * allocated with malloc. Logs decode failures against ``path``. Returns 0 on
  * success; the caller releases ``*pixels`` with free().
