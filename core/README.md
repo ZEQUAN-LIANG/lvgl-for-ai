@@ -173,6 +173,7 @@ print(recording.manifest["app"], recording.manifest["frame_count"])
 `sessions/<id>/`：
 
 - `manifest.json`（`lvgl-ai-session-v1`）：status / app / display / record_changed_only / mode / input / build / lvgl / frame_count / checks / error / artifacts
+- `error.detail`：build / link 失败包含 `log_tail`（最后 40 行、最多 8 KB）和 `command`；crash 包含 `exit_code` 与 `log_tail`
 - `frames/`、`snapshots/`：保留帧与命名快照的完整 PNG；changed-only 时静态帧不落盘，`frame_count` 是保留帧数
 - `timeline.ndjson`、`frame_diffs.ndjson`、`engine.log`、`build.log`
 - `annotations.json`（`lvgl-ai-annotations-v1`）：`notes` 数组，每条含 `id` / `frame_no` / `t_ms` / `regions` / `tags` / `text`
@@ -182,7 +183,7 @@ print(recording.manifest["app"], recording.manifest["frame_count"])
 
 ## 版本
 
-`LVGL_AI_LVGL_VERSION` 选择 `lvgl-src/<version>`，支持 `9.6` / `9.5` / `9.4` / `9.1` / `8.4` / `8.3`；`LVGL_AI_LVGL_SRC` 可覆盖源码路径。跨版本比较事件语义，不比较像素。
+`LVGL_AI_LVGL_VERSION` 选择 `lvgl-src/<version>`，支持 `9.6` / `9.5` / `9.4` / `9.1` / `8.4` / `8.3`；`LVGL_AI_LVGL_SRC` 可覆盖源码路径。`LVGL_AI_USER_APP_DIR` 可指向导出的应用目录（例如 `chip-adapt/sifli/<app>/src/app`），用于运行时验证；非默认目录的构建输出在 `build/lvgl_<token>_export_<label>_<hash>`，与 `user/app` 的 `build/lvgl_<token>` 隔离。构建前会获取该目录的跨进程锁，并等待或终止 PID 文件记录的残留 engine。跨版本比较事件语义，不比较像素。
 
 ## 测试
 

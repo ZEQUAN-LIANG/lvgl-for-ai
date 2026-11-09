@@ -1,0 +1,15 @@
+{
+  "schema": "lvgl-ai-scenario-v1",
+  "name": "hspi_watch",
+  "app": "hspi_watch",
+  "steps": [
+    {"type": "mark", "id": "start"},
+    {"type": "snapshot", "label": "start"},
+
+    {"type": "wait", "ms": 2000},
+    {"type": "snapshot", "label": "tick"},
+
+    {"type": "wait", "ms": 1000},
+    {"type": "snapshot", "label": "tick_late"}
+  ]
+}
