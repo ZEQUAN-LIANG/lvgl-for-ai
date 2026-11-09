@@ -11,6 +11,7 @@
   "build_command": ["scons", "--board=sf32lb52-lchspi-ulp", "-j8"],
   "templates": "templates",
   "ezip": "../sdk/sifli-sdk/tools/png2ezip/ezip.exe",
+  "ezip_chip": "sf52x",
   "accelerators": {
     "epic": true,
     "ezip": true,

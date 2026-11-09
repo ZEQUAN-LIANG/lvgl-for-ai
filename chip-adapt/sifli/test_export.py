@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import shutil
 import tempfile
 import unittest
@@ -30,6 +31,10 @@ class SifliExportTest(unittest.TestCase):
         shutil.copy2(
             REPO / "user" / "app" / "hspi_watch" / "hspi_watch.h",
             watch / "hspi_watch.h",
+        )
+        shutil.copy2(
+            REPO / "user" / "app" / "hspi_watch" / "assets.json",
+            watch / "assets.json",
         )
         shutil.copytree(
             REPO / "user" / "app" / "hspi_watch" / "assets",
@@ -67,14 +72,41 @@ class SifliExportTest(unittest.TestCase):
         (REPO / "chip-adapt/sdk/sifli-sdk/tools/png2ezip/ezip.exe").is_file(),
         "SiFli SDK is not downloaded",
     )
-    def test_images_are_converted_to_ezip(self):
+    def test_images_follow_asset_manifest(self):
         result = self._export("hspi_watch", output_dir=self.output)
         self.assertIn("src/ezip/watch_bg.c", result["files"])
-        self.assertIn("src/ezip/watch_ring.c", result["files"])
+        self.assertIn("src/raw/watch_ring.c", result["files"])
+        self.assertIn("src/raw/watch_hour.c", result["files"])
+        self.assertNotIn("src/ezip/watch_ring.c", result["files"])
         header = (
-            self.output / "src" / "app" / "hspi_watch" / "assets_ezip.h"
+            self.output / "src" / "app" / "hspi_watch" / "assets.h"
         ).read_text(encoding="utf-8")
         self.assertIn("extern const lv_image_dsc_t watch_bg;", header)
+        self.assertIn("extern const lv_image_dsc_t watch_hour_raw;", header)
+        self.assertIn("#define watch_hour (*app_asset_watch_hour())", header)
+        source = (
+            self.output / "src" / "app" / "hspi_watch" / "assets.c"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "app_cache_copy_alloc(&watch_hour_raw, ROTATE_MEM)", source
+        )
+        proj = (self.output / "project" / "proj.conf").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("CONFIG_IMAGE_CACHE_IN_PSRAM_SIZE=524288", proj)
+        self.assertIn("CONFIG_ROTATE_MEM_IN_PSRAM=y", proj)
+        self.assertIn("CONFIG_LV_CACHE_DEF_SIZE=0", proj)
+        self.assertTrue((self.output / "export.json").is_file())
+
+    def test_ezip_transform_is_rejected(self):
+        manifest = self.user_app / "hspi_watch" / "assets.json"
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        payload["assets"]["watch_bg"]["transform"] = "rotate"
+        manifest.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        with self.assertRaises(sifli_export.ExportError) as raised:
+            self._export("hspi_watch", output_dir=self.output)
+        self.assertEqual(raised.exception.code, "asset_transform_conflict")
+        self.assertFalse(self.output.exists())
 
     def test_unsupported_api_is_reported(self):
         bad = self.user_app / "coffee"

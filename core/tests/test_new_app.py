@@ -71,9 +71,9 @@ class NewAppTest(unittest.TestCase):
             "#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6",
             header,
         )
-        self.assertIn("void hello_create(lv_obj_t * screen);", header)
+        self.assertIn("void hello_create(void);", header)
         self.assertIn('printf("[hello] created\\n");', source)
-        self.assertIn('app_set_name(button, "hello_button");', source)
+        self.assertIn('app_obj_set_name(button, "hello_button");', source)
 
         app_c = self.app_c.read_text(encoding="utf-8")
         self.assertNotEqual(original, self.app_c.read_bytes())
@@ -89,7 +89,7 @@ class NewAppTest(unittest.TestCase):
         )
         self.assertEqual(
             [name for name, _ in self._entries()],
-            ["coffee", "xiaohongshu", "spectrum", "hello"],
+            ["coffee", "xiaohongshu", "spectrum", "hspi_watch", "hello"],
         )
 
         scenario = load_scenario(
@@ -161,7 +161,7 @@ class NewAppTest(unittest.TestCase):
         other = self.root / "user/app/other"
         other.mkdir()
         (other / "other.c").write_text(
-            "void hello_create(lv_obj_t * screen) { (void)screen; }\n",
+            "void hello_create(void) { }\n",
             encoding="utf-8",
         )
         original = self.app_c.read_bytes()

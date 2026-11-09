@@ -195,7 +195,7 @@ void spectrum_toggle_like(void);
 void spectrum_set_volume(float ratio);
 
 /* Page shell. */
-void spectrum_create(lv_obj_t * screen);
+void spectrum_create(void);
 void spectrum_page_refresh_track(void);
 void spectrum_page_refresh_theme(void);
 void spectrum_page_refresh_mode(void);

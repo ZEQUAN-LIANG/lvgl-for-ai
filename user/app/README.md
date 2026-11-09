@@ -44,11 +44,13 @@ python -I core/cli.py --lvgl 9.6 --app spectrum --idle
 
 ## C 代码结构
 
-每个应用暴露同一个签名：
+每个应用暴露同一个签名，不接收对象：
 
 ```c
-void <name>_create(lv_obj_t * screen);
+void <name>_create(void);
 ```
+
+入口内部用 `lv_screen_active()` 取活动屏幕；应用根用 `app_set_name("<name>")` 命名，控件用 `app_obj_set_name(obj, "...")` 命名。
 
 `app.c` 用 `apps[]` 表把名字映射到函数：
 
@@ -81,7 +83,7 @@ python -I core/tools/new_app.py <name>             # 生成并注册
 
 手工步骤：
 
-1. 新建 `user/app/<name>/`，实现 `void <name>_create(lv_obj_t * screen)`。
+1. 新建 `user/app/<name>/`，实现 `void <name>_create(void)`；入口内用 `lv_screen_active()` 取屏幕。
 2. 在 `app.c` 的 `apps[]` 中加一行 `{"<name>", <name>_create}`。
 3. 在 `user/scenarios/<name>.json` 顶层写 `"app": "<name>"`。
 4. 需要非默认分辨率时，再写可选 `"display": {"width": W, "height": H}`（`1..4096`）；

@@ -42,7 +42,7 @@ static lv_obj_t * demo_button_create(lv_obj_t * parent)
 #else
     lv_obj_t * button = lv_btn_create(parent);
 #endif
-    app_set_name(button, "demo_button");
+    app_obj_set_name(button, "demo_button");
     lv_obj_set_pos(button, 32, 300);
     lv_obj_set_size(button, 160, 48);
     lv_obj_add_event_cb(button, demo_button_event, LV_EVENT_CLICKED, NULL);
@@ -133,19 +133,20 @@ void demo_harness_create(bool visible)
 
         demo_asset_prepare();
         logo = lv_image_create(screen);
-        app_set_name(logo, "logo");
+        app_obj_set_name(logo, "logo");
         lv_image_set_src(logo, &demo_asset_logo);
         lv_obj_set_pos(logo, 32, 28);
     }
 
     title = lv_label_create(screen);
-    app_set_name(title, "title");
+    app_obj_set_name(title, "title");
     lv_label_set_text(title, "LAT");
     lv_obj_set_style_text_font(title, &demo_asset_font_8, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(0x38BDF8), 0);
     lv_obj_set_pos(title, 68, 32);
 
-    lv_obj_t * panel = app_panel_create(screen);
+    app_panel_create();
+    lv_obj_t * panel = app_panel_get();
     lv_obj_t * button = demo_button_create(screen);
     lv_obj_add_event_cb(panel, focus_event, LV_EVENT_FOCUSED, NULL);
     lv_obj_add_event_cb(button, focus_event, LV_EVENT_FOCUSED, NULL);
