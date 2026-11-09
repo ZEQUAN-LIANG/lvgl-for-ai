@@ -6,5 +6,8 @@ sessions/
 /lvgl-src/*
 !/lvgl-src/README.md
 /build/
+/chip-adapt/sdk/
+/chip-adapt/sifli/coffee/
+/chip-adapt/sifli/hspi_watch/
 .claude/scheduled_tasks.lock
 .claude/settings.local.json

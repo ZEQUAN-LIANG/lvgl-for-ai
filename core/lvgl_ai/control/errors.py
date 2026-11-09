@@ -142,12 +142,39 @@ EXIT_FAILURE = 1
 EXIT_HARNESS = 2
 
 
+LOG_TAIL_LINES = 40
+LOG_TAIL_CHARS = 8192
+
+
+def _bounded_tail(text: str | None) -> list[str]:
+    if not text:
+        return []
+    lines = text.splitlines()[-LOG_TAIL_LINES:]
+    picked: list[str] = []
+    used = 0
+    for line in reversed(lines):
+        if used + len(line) + 1 > LOG_TAIL_CHARS:
+            break
+        picked.append(line)
+        used += len(line) + 1
+    picked.reverse()
+    return picked
+
+
 def _build_detail(error: BuildError) -> dict[str, Any]:
-    return {"diagnostics": error.diagnostics[:20]}
+    return {
+        "diagnostics": error.diagnostics[:20],
+        "log_tail": _bounded_tail(error.log_text),
+        "command": list(error.command) if error.command else [],
+    }
 
 
 def _link_detail(error: LinkError) -> dict[str, Any]:
-    return {"unresolved_symbols": error.unresolved_symbols}
+    return {
+        "unresolved_symbols": error.unresolved_symbols,
+        "log_tail": _bounded_tail(error.log_text),
+        "command": list(error.command) if error.command else [],
+    }
 
 
 def _crash_detail(error: RuntimeCrash) -> dict[str, Any]:

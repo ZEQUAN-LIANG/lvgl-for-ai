@@ -13,12 +13,15 @@ import os
 import queue
 import subprocess
 import threading
+from pathlib import Path
 from typing import Any, Callable, Mapping, Optional, Sequence
 
+from .engine_guard import clear_engine_pid, write_engine_pid
 from .errors import ToolError, ProtocolError, RuntimeCrash
 
 PROTOCOL_VERSION = "lvgl-ai-engine-v1"
 QUIT_TIMEOUT_S = 2.0
+ENGINE_NAMES = {"lvgl_engine", "lvgl_engine.exe"}
 
 _EOF = object()
 
@@ -110,6 +113,7 @@ class EngineLink:
             process_factory if process_factory is not None else spawn_engine
         )
         self._proc: subprocess.Popen[str] | None = None
+        self._engine_path = Path(self._command[0]) if self._command else None
         self._lines: queue.Queue[Any] = queue.Queue()
         self._stdout_thread: threading.Thread | None = None
         self._stderr_thread: threading.Thread | None = None
@@ -147,6 +151,14 @@ class EngineLink:
     def start(self) -> None:
         """Spawn the engine and start the stdout/stderr pumps."""
         self._proc = self._spawn(self._command, self._env, self._cwd)
+        if (
+            self._engine_path is not None
+            and self._engine_path.name in ENGINE_NAMES
+        ):
+            try:
+                write_engine_pid(self._engine_path, self._proc.pid)
+            except OSError:
+                pass
         self._seq = 0
         self._lines = queue.Queue()
         self._stdout_thread = threading.Thread(
@@ -163,28 +175,39 @@ class EngineLink:
         proc = self._proc
         if proc is None:
             return None
-        if proc.poll() is None and send_quit:
-            try:
-                # A malformed quit reply must not replace the real reason the
-                # session is stopping.
-                self.command("quit", timeout=self.quit_timeout)
-            except ToolError:
-                pass
         try:
-            proc.wait(timeout=self.quit_timeout)
-        except subprocess.TimeoutExpired:
-            proc.terminate()
+            if proc.poll() is None and send_quit:
+                try:
+                    # A malformed quit reply must not replace the real reason
+                    # the session is stopping.
+                    self.command("quit", timeout=self.quit_timeout)
+                except ToolError:
+                    pass
             try:
                 proc.wait(timeout=self.quit_timeout)
             except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait(timeout=self.quit_timeout)
-        exit_code = proc.returncode
-        for thread in (self._stdout_thread, self._stderr_thread):
-            if thread is not None:
-                thread.join(timeout=self.quit_timeout)
-        self._proc = None
-        return exit_code
+                proc.terminate()
+                try:
+                    proc.wait(timeout=self.quit_timeout)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait(timeout=self.quit_timeout)
+            exit_code = proc.returncode
+            for thread in (self._stdout_thread, self._stderr_thread):
+                if thread is not None:
+                    thread.join(timeout=self.quit_timeout)
+            return exit_code
+        finally:
+            if (
+                self._engine_path is not None
+                and self._engine_path.name in ENGINE_NAMES
+                and proc.poll() is not None
+            ):
+                try:
+                    clear_engine_pid(self._engine_path, proc.pid)
+                except OSError:
+                    pass
+            self._proc = None
 
     # ---- protocol ------------------------------------------------------
 

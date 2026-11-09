@@ -10,6 +10,7 @@ Build output lives beside the tool root, not inside it: ``build/`` belongs to
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 from pathlib import Path
@@ -60,6 +61,13 @@ def lvgl_src_for(version: str) -> Path:
     return LVGL_SRC_ROOT / version
 
 
+def user_app_dir_from_env() -> Path:
+    override = os.environ.get("LVGL_AI_USER_APP_DIR")
+    if override:
+        return Path(override).expanduser().resolve()
+    return USER_APP_DIR
+
+
 def sessions_root_from_env() -> Path:
     override = os.environ.get("LVGL_AI_SESSIONS_ROOT")
     if override:
@@ -67,15 +75,30 @@ def sessions_root_from_env() -> Path:
     return DEFAULT_SESSIONS_ROOT
 
 
-def build_dir_for(version: str) -> Path:
-    """Return the build directory for ``version``.
+def build_dir_for(
+    version: str, user_app_dir: str | Path | None = None
+) -> Path:
+    """Return the build directory for ``version`` and one user app directory.
 
     Every non-alphanumeric run becomes ``_`` so local patched trees get a
     distinct directory: ``9.6`` -> ``build/lvgl_9_6`` and ``9.6-patched`` ->
     ``build/lvgl_9_6_patched``. Labels that normalize to the same token share
     a directory, so keep version labels distinct.
+
+    The default ``user/app`` keeps the version-only directory for ``--no-build``
+    compatibility. Any other source tree gets its own directory so an exported
+    project and the workspace app never share a CMake cache or engine binary.
     """
-    return BUILD_ROOT / f"lvgl_{_version_token(version)}"
+    token = _version_token(version)
+    if user_app_dir is None:
+        return BUILD_ROOT / f"lvgl_{token}"
+    app_dir = Path(user_app_dir).expanduser().resolve()
+    if app_dir == USER_APP_DIR.resolve():
+        return BUILD_ROOT / f"lvgl_{token}"
+    digest = hashlib.sha256(str(app_dir).encode("utf-8")).hexdigest()[:8]
+    label_source = app_dir.parent.parent.name or app_dir.name
+    label = re.sub(r"[^0-9A-Za-z]+", "_", label_source).strip("_")[:24] or "app"
+    return BUILD_ROOT / f"lvgl_{token}_export_{label}_{digest}"
 
 
 def _version_token(version: str) -> str:
