@@ -12,6 +12,7 @@ import argparse
 import json
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -128,7 +129,7 @@ def export_app(
         f"cd {destination / 'project'} && scons --board={adapter['board']} -j8",
         (
             f'LVGL_AI_USER_APP_DIR="{destination / "src" / "app"}" '
-            f"python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/{app}.json"
+            f"python -I core/cli.py --lvgl 9.4 --scenario user/scenarios/{app}.json"
         ),
     ]
     return {
@@ -309,7 +310,7 @@ def _export_readme(app: str, app_symbol: str) -> str:
         "\n"
         "```bash\n"
         f'LVGL_AI_USER_APP_DIR="chip-adapt/sifli/{app}/src/app" '
-        f"python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/{app}.json\n"
+        f"python -I core/cli.py --lvgl 9.4 --scenario user/scenarios/{app}.json\n"
         "```\n"
     )
 
@@ -351,6 +352,7 @@ def _asset_plan(
         tmp_path = Path(tmp)
         for name, spec in assets.items():
             png = assets_dir / spec["file"]
+            width, height = _png_size(png)
             shutil.copy2(png, tmp_path / png.name)
             cfile = "2" if spec["mode"] == "ezip" else "1"
             section = "ROM3_IMG" if spec["mode"] == "ezip" else "ROM2_IMG"
@@ -413,6 +415,8 @@ def _asset_plan(
                     "placement": spec["placement"],
                     "transform": spec["transform"],
                     "hot": hot,
+                    "width": width,
+                    "height": height,
                     "size": _parse_data_size(text),
                 }
             )
@@ -593,6 +597,29 @@ def _parse_data_size(text: str) -> int:
     return int(match.group(1)) if match else 0
 
 
+def _png_size(path: Path) -> tuple[int, int]:
+    with path.open("rb") as handle:
+        header = handle.read(24)
+    if (
+        len(header) < 24
+        or header[:8] != b"\x89PNG\r\n\x1a\n"
+        or header[12:16] != b"IHDR"
+    ):
+        raise ExportError(
+            "asset_invalid",
+            f"{path.name} is not a PNG with an IHDR chunk",
+            detail={"file": str(path)},
+        )
+    width, height = struct.unpack(">II", header[16:24])
+    if width == 0 or height == 0:
+        raise ExportError(
+            "asset_invalid",
+            f"{path.name} has an empty PNG size",
+            detail={"file": str(path)},
+        )
+    return width, height
+
+
 def _compute_cache(
     records: list[dict[str, Any]], overrides: dict[str, Any]
 ) -> dict[str, Any]:
@@ -677,6 +704,12 @@ def _generate_assets(
         '#include "assets.h"',
         "",
     ]
+    for record in records:
+        macro = record["name"].upper()
+        header.append(f"#define {macro}_W {record['width']}")
+        header.append(f"#define {macro}_H {record['height']}")
+    if records:
+        header.append("")
     hot = [record for record in records if record["hot"]]
     for record in records:
         name = record["name"]

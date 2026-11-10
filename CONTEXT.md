@@ -17,7 +17,7 @@ _Avoid_: 主文件、源工程
 _Avoid_: 渲染器、模拟器内核、模拟器（歧义：既可能指运行时，也可能指预览界面）
 
 **应用变体（App variant）**：
-同一个入口 `app_create` 下由 `LVGL_AI_DEMO` 选择的用户界面实现；每个变体暴露统一的 `void <name>_create(lv_obj_t * screen)`，工具只转发名字，不维护应用清单。
+同一个入口 `app_create` 下由 `LVGL_AI_DEMO` 选择的用户界面实现；每个变体暴露统一的 `void <name>_create(void)`，入口内部用 `lv_screen_active()` 取屏幕，工具只转发名字，不维护应用清单。
 _Avoid_: 页面（太泛）、场景（与 Scene 冲突）
 
 **应用管理台（App manager）**：

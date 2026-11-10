@@ -2,6 +2,7 @@
   "schema": "lvgl-ai-scenario-v1",
   "name": "hspi_watch",
   "app": "hspi_watch",
+  "display": {"width": 390, "height": 450},
   "steps": [
     {"type": "mark", "id": "start"},
     {"type": "snapshot", "label": "start"},

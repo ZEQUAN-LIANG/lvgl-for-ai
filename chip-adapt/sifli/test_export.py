@@ -1,16 +1,42 @@
 import importlib.util
 import json
 import shutil
+import struct
+import sys
 import tempfile
+import types
 import unittest
+import zlib
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
+SDK_EZIP = REPO / "chip-adapt/sdk/sifli-sdk/tools/png2ezip/ezip.exe"
 
 _spec = importlib.util.spec_from_file_location("sifli_export", HERE / "export.py")
 sifli_export = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(sifli_export)
+
+
+def png_size(path):
+    data = Path(path).read_bytes()
+    return struct.unpack(">II", data[16:24])
+
+
+def write_png(path, width, height):
+    def chunk(tag, data):
+        crc = zlib.crc32(tag + data) & 0xFFFFFFFF
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", crc)
+
+    row = b"\x00" + b"\x00\x00\x00" * width
+    png = b"\x89PNG\r\n\x1a\n"
+    png += chunk(
+        b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    )
+    png += chunk(b"IDAT", zlib.compress(row * height, 9))
+    png += chunk(b"IEND", b"")
+    Path(path).write_bytes(png)
 
 
 class SifliExportTest(unittest.TestCase):
@@ -97,6 +123,111 @@ class SifliExportTest(unittest.TestCase):
         self.assertIn("CONFIG_ROTATE_MEM_IN_PSRAM=y", proj)
         self.assertIn("CONFIG_LV_CACHE_DEF_SIZE=0", proj)
         self.assertTrue((self.output / "export.json").is_file())
+
+    @unittest.skipUnless(SDK_EZIP.is_file(), "SiFli SDK is not downloaded")
+    def test_generated_assets_header_exposes_size_macros_and_symbols(self):
+        self._export("hspi_watch", output_dir=self.output)
+        header = (
+            self.output / "src" / "app" / "hspi_watch" / "assets.h"
+        ).read_text(encoding="utf-8")
+        sdk_branch, local_branch = header.split("#else", 1)
+        local_header = (
+            REPO / "user" / "app" / "hspi_watch" / "watch_assets.h"
+        ).read_text(encoding="utf-8")
+        manifest = json.loads(
+            (REPO / "user" / "app" / "hspi_watch" / "assets.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        for name, spec in manifest["assets"].items():
+            width, height = png_size(
+                REPO / "user" / "app" / "hspi_watch" / "assets" / spec["file"]
+            )
+            macro = name.upper()
+            self.assertRegex(sdk_branch, rf"(?m)^#define {macro}_W {width}$")
+            self.assertRegex(sdk_branch, rf"(?m)^#define {macro}_H {height}$")
+            self.assertIn(f"#define {macro}_W {width}", local_header)
+            self.assertIn(f"#define {macro}_H {height}", local_header)
+            if spec["mode"] == "raw" and spec["placement"] != "flash":
+                self.assertIn(
+                    f"extern const lv_image_dsc_t {name}_raw;", sdk_branch
+                )
+                self.assertIn(
+                    f"#define {name} (*app_asset_{name}())", sdk_branch
+                )
+            else:
+                self.assertIn(
+                    f"extern const lv_image_dsc_t {name};", sdk_branch
+                )
+        self.assertIn("void app_assets_init(void);", sdk_branch)
+        self.assertNotIn("watch_assets.h", sdk_branch)
+        self.assertIn('#include "watch_assets.h"', local_branch)
+
+    @unittest.skipUnless(SDK_EZIP.is_file(), "SiFli SDK is not downloaded")
+    def test_size_macros_follow_png_dimensions(self):
+        write_png(
+            self.user_app / "hspi_watch" / "assets" / "watch_probe.png", 37, 19
+        )
+        manifest = self.user_app / "hspi_watch" / "assets.json"
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        payload["assets"]["watch_probe"] = {
+            "file": "watch_probe.png",
+            "mode": "raw",
+            "placement": "flash",
+            "transform": "none",
+        }
+        manifest.write_text(
+            json.dumps(payload, ensure_ascii=False), encoding="utf-8"
+        )
+        self._export("hspi_watch", output_dir=self.output)
+        header = (
+            self.output / "src" / "app" / "hspi_watch" / "assets.h"
+        ).read_text(encoding="utf-8")
+        self.assertIn("#define WATCH_PROBE_W 37", header)
+        self.assertIn("#define WATCH_PROBE_H 19", header)
+
+    @unittest.skipUnless(SDK_EZIP.is_file(), "SiFli SDK is not downloaded")
+    def test_sconscript_compiles_raw_sources_and_exposes_their_include_dir(
+        self,
+    ):
+        self._export("hspi_watch", output_dir=self.output)
+        src_dir = (self.output / "src").resolve()
+        captured = self._run_sconscript(self.output / "src" / "SConscript")
+        sources = {
+            Path(path).resolve().relative_to(src_dir).as_posix()
+            for path in captured["src"]
+        }
+        self.assertIn("raw/watch_ring.c", sources)
+        self.assertIn("raw/watch_hour.c", sources)
+        self.assertIn("ezip/watch_bg.c", sources)
+        self.assertNotIn("app/sim_sifli.c", sources)
+        include_dirs = {
+            Path(path).resolve().relative_to(src_dir).as_posix()
+            for path in captured["CPPPATH"]
+        }
+        self.assertIn("raw", include_dirs)
+
+    @staticmethod
+    def _run_sconscript(path):
+        path = Path(path)
+        captured = {}
+        building = types.ModuleType("building")
+
+        def define_group(name, src, **kwargs):
+            captured.update({"name": name, "src": list(src), **kwargs})
+
+        building.DefineGroup = define_group
+        scope = {
+            "__builtins__": __builtins__,
+            "GetCurrentDir": lambda: str(path.parent),
+            "Return": lambda value: captured.__setitem__("group", value),
+        }
+        with mock.patch.dict(sys.modules, {"building": building}):
+            exec(
+                compile(path.read_text(encoding="utf-8"), str(path), "exec"),
+                scope,
+            )
+        return captured
 
     def test_ezip_transform_is_rejected(self):
         manifest = self.user_app / "hspi_watch" / "assets.json"
