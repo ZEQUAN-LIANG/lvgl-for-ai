@@ -17,7 +17,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CORE_ROOT = REPO_ROOT / "core"
@@ -67,6 +67,7 @@ def export_app(
     output_dir: str | Path | None = None,
     dry_run: bool = False,
     force: bool = False,
+    ezip_tool: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     adapter_dir = Path(__file__).resolve().parent
     root = common.resolve_repo_root(repo_root)
@@ -106,8 +107,11 @@ def export_app(
         app_symbol=app_symbol,
         source_dir=source_dir,
         templates_dir=templates_dir,
+        lvgl_version=str(adapter["lvgl_version"]),
     )
-    asset_info = _asset_plan(adapter_dir, adapter, source_dir, app, plan)
+    asset_info = _asset_plan(
+        adapter_dir, adapter, source_dir, app, plan, ezip_tool=ezip_tool
+    )
     plan["src/app/app.c"] = _entry_source(
         app_symbol, app=app, has_assets=asset_info["has_assets"]
     ).encode("utf-8")
@@ -129,7 +133,8 @@ def export_app(
         f"cd {destination / 'project'} && scons --board={adapter['board']} -j8",
         (
             f'LVGL_AI_USER_APP_DIR="{destination / "src" / "app"}" '
-            f"python -I core/cli.py --lvgl 9.4 --scenario user/scenarios/{app}.json"
+            f"python -I core/cli.py --lvgl {adapter['lvgl_version']} "
+            f"--scenario user/scenarios/{app}.json"
         ),
     ]
     return {
@@ -202,6 +207,7 @@ def _build_plan(
     app_symbol: str,
     source_dir: Path,
     templates_dir: Path,
+    lvgl_version: str,
 ) -> dict[str, bytes]:
     plan: dict[str, bytes] = {}
 
@@ -249,7 +255,9 @@ def _build_plan(
                     path.read_bytes()
                 )
 
-    plan["README.md"] = _export_readme(app, app_symbol).encode("utf-8")
+    plan["README.md"] = _export_readme(app, app_symbol, lvgl_version).encode(
+        "utf-8"
+    )
     return plan
 
 
@@ -291,13 +299,13 @@ def _entry_source(app_symbol: str, *, app: str, has_assets: bool) -> str:
     )
 
 
-def _export_readme(app: str, app_symbol: str) -> str:
+def _export_readme(app: str, app_symbol: str, lvgl_version: str) -> str:
     return (
         f"# {app} · 黄山派导出\n"
         "\n"
         f"入口 `{app_symbol}`，由 `src/app/app.c` 的 `app_create()` 调用；生成入口先调 `app_assets_init()`。\n"
-        "应用源码按 LVGL 9.4 基线原样复制；应用入口是 `void <app>_create(void)`，内部用 `lv_screen_active()`。\n"
-        "资源角色与缓存配置记录在 `export.json`，资源声明在 `src/app/<app>/assets.json`。\n"
+        f"应用源码按 LVGL {lvgl_version} 基线原样复制；应用入口是 `void <app>_create(void)`，内部用 `lv_screen_active()`。\n"
+        "资源角色、PNG 宽高与缓存配置记录在 `export.json`，资源声明在 `src/app/<app>/assets.json`。\n"
         "\n"
         "## 构建\n"
         "\n"
@@ -310,7 +318,8 @@ def _export_readme(app: str, app_symbol: str) -> str:
         "\n"
         "```bash\n"
         f'LVGL_AI_USER_APP_DIR="chip-adapt/sifli/{app}/src/app" '
-        f"python -I core/cli.py --lvgl 9.4 --scenario user/scenarios/{app}.json\n"
+        f"python -I core/cli.py --lvgl {lvgl_version} "
+        f"--scenario user/scenarios/{app}.json\n"
         "```\n"
     )
 
@@ -321,6 +330,8 @@ def _asset_plan(
     source_dir: Path,
     app: str,
     plan: dict[str, bytes],
+    *,
+    ezip_tool: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     assets_dir = source_dir / "assets"
     pngs = (
@@ -339,12 +350,16 @@ def _asset_plan(
             "local_header": manifest["local_header"],
         }
 
-    tool_setting = adapter.get("ezip")
-    if not tool_setting:
-        raise ExportError("ezip_missing", "adapter has no ezip tool")
-    tool = (adapter_dir / str(tool_setting)).resolve()
-    if not tool.is_file():
-        raise ExportError("ezip_missing", f"ezip tool not found: {tool}")
+    if ezip_tool is None:
+        tool_setting = adapter.get("ezip")
+        if not tool_setting:
+            raise ExportError("ezip_missing", "adapter has no ezip tool")
+        tool = (adapter_dir / str(tool_setting)).resolve()
+        if not tool.is_file():
+            raise ExportError("ezip_missing", f"ezip tool not found: {tool}")
+        ezip_command = [str(tool)]
+    else:
+        ezip_command = [str(part) for part in ezip_tool]
     chip = str(adapter.get("ezip_chip", "sf52x"))
 
     records: list[dict[str, Any]] = []
@@ -357,7 +372,7 @@ def _asset_plan(
             cfile = "2" if spec["mode"] == "ezip" else "1"
             section = "ROM3_IMG" if spec["mode"] == "ezip" else "ROM2_IMG"
             command = [
-                str(tool),
+                *ezip_command,
                 "-convert",
                 png.name,
                 f"-{spec['format']}",
@@ -473,6 +488,18 @@ def _load_asset_manifest(
             f"{manifest_path} has no assets",
             detail={"file": str(manifest_path)},
         )
+
+    macros: dict[str, str] = {}
+    for name in raw_assets:
+        macro = str(name).upper()
+        if macro in macros:
+            raise ExportError(
+                "asset_macro_conflict",
+                f"assets {macros[macro]} and {name} both generate "
+                f"{macro}_W/{macro}_H",
+                detail={"macro": macro, "names": [macros[macro], str(name)]},
+            )
+        macros[macro] = str(name)
 
     assets: dict[str, dict[str, str]] = {}
     declared: set[str] = set()

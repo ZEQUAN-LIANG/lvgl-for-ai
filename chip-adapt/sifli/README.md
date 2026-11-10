@@ -53,7 +53,7 @@ headless 的 `app_create`、SDK 的 `app_create` / `main.c` 和 `user/app/app.c`
         ...                 # 应用源码原样副本（应用需兼容 LVGL 9.4，入口为 void）
     ezip/<name>.c           # 冷 EZIP C 数组
     raw/<name>.c            # 热/旋转 raw 像素 C 数组
-  export.json               # 资源角色、缓存配置与生成结果
+  export.json               # 资源角色、PNG 宽高、缓存配置与生成结果
 ```
 
 ## 图片资源与 assets.json
@@ -78,9 +78,15 @@ headless 的 `app_create`、SDK 的 `app_create` / `main.c` 和 `user/app/app.c`
   `app_assets_init()`，用 `app_cache_copy_alloc()` 把热图复制到 PSRAM/SRAM。
 - `mode=ezip` 且 `transform != none` 会直接报 `asset_transform_conflict`，不会生成错误工程。
 - 未在 `assets.json` 里声明的 PNG 会报 `asset_unlisted`；文件名必须与资源名一致。
+- PNG 不是有效 IHDR 或宽高为 0 会报 `asset_invalid`，不会把坏图交给 `ezip.exe`。
+- 资源名大写后重复（例如 `foo` 与 `FOO` 都会生成 `FOO_W` / `FOO_H`）会报
+  `asset_macro_conflict`，导出直接失败而不是生成重复宏。
 - `cache` 可覆盖脚本按资源大小算出的默认值；`image_cache_psram_size`、
   `image_cache_sram_size`、`rotate_mem`、`lv_cache_def_size`、
   `lv_image_header_cache_cnt` 都会写进 `project/proj.conf`。
+- `export.json` 的 `assets` 记录每张资源的 `mode`、`placement`、`transform`、`hot`、
+  `width`、`height` 和 `size`；`width` / `height` 来自 PNG IHDR，是生成 `_W` / `_H`
+  尺寸宏的同一份资源元数据。
 
 导出目录生成 `src/app/<app>/assets.h` 和 `assets.c`：
 
@@ -142,7 +148,9 @@ python -I chip-adapt/sifli/export.py hspi_watch --dry-run
 python -I chip-adapt/sifli/export.py hspi_watch
 ```
 
-导出、源码复制和 EZIP 转换全部在适配脚本里，`core/` 不包含芯片导出逻辑。
+导出、源码复制和 EZIP 转换全部在适配脚本里，`core/` 不包含芯片导出逻辑。导出的
+README 和返回的验证命令使用 `adapter.json` 的 `lvgl_version`（当前 9.4）：导出工程跟随
+SiFli SDK 的 LVGL 9.4 基线，而源目录本地预览仍用 9.6。
 
 ## 运行时验证（不烧录）
 
@@ -166,8 +174,12 @@ LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/sifli/hspi_watch/src/app" \
 
 ## 验证边界
 
-- 可自动验证：导出契约测试（源码复制一致性、生成资源头尺寸宏与图片符号、raw 源收集）
-  和两次 headless 场景运行（源目录 9.6、导出副本 9.4）。
+- 导出契约测试可重复执行且不依赖 SiFli SDK：
+  `python -I chip-adapt/sifli/test_export.py`。覆盖源码复制一致性、生成资源头尺寸宏与
+  图片符号、raw 源收集、导出副本自包含和错误路径。
+- 两次 headless 场景运行是手动验证步骤，不是测试套件的一部分：分别执行上文的源目录
+  9.6 和导出副本 9.4 命令，以会话 `manifest.json` 的 `status=ok`、`app=hspi_watch`、
+  `display=390x450` 以及保留的 timeline/snapshot 为证据。
 - 需要 SDK 工具链：EZIP 解码、`scons` 固件构建/链接和真机显示。headless 通过只证明
   共享源码和本地静态资源回退可用，不等于设备验收。
 
