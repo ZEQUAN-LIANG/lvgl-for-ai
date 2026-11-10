@@ -678,7 +678,7 @@ while (1) {
   <h3>7.3 验证顺序</h3>
   <ol>
     <li><code>python -I chip-adapt/sifli/export.py &lt;app&gt; --dry-run</code>，确认导出计划。</li>
-    <li>正式导出后，用 headless 运行时验证：<code>LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/sifli/&lt;app&gt;/src/app" python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/&lt;app&gt;.json</code>。</li>
+    <li>正式导出后，用 headless 运行时验证：<code>LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/sifli/&lt;app&gt;/src/app" python -I core/cli.py --lvgl 9.4 --scenario user/scenarios/&lt;app&gt;.json</code>。导出副本按 <code>adapter.json</code> 的 <code>lvgl_version</code>（当前 9.4）验证；源目录预览仍用 9.6。</li>
     <li>在装有 SiFli-ENV / ARM 工具链的机器上执行 <code>scons --board=sf32lb52-lchspi-ulp -j8</code>，用 <code>uart_download.bat</code> 烧录。</li>
     <li>本仓库当前没有 SiFli-ENV/ARM 工具链，<code>scons</code> 固件构建未在导出流程中执行；不要把 headless 运行结果当作真机 EPIC / 触摸 / 刷新行为的证据。</li>
   </ol>

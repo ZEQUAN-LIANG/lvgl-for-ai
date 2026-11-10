@@ -14,6 +14,23 @@
 | 屏幕 | CO5300，390x450，触摸 FT6146 |
 | 固件构建 | `cd project && scons --board=sf32lb52-lchspi-ulp -j8`（需先运行 SDK 的 `set_env.bat` / `source export.sh`） |
 
+## 共享源码与目标专属生成层
+
+`user/app/hspi_watch` 是唯一源码真源：本地 headless（LVGL 9.6）直接编译它，导出时按
+LVGL 9.4 基线原样复制到 `<app>/src/app/hspi_watch/`，只在每个 `.c` 顶部插入
+`#include "lvgl_ai_sdk.h"`。共享应用只暴露 `void hspi_watch_create(void)`；
+headless 的 `app_create`、SDK 的 `app_create` / `main.c` 和 `user/app/app.c` 的注册表
+都属于目标侧，不进入共享源码。
+
+导出目录完全自包含，只依赖 SiFli SDK；`chip-adapt/sifli/<app>/` 是生成物，已被
+`.gitignore` 忽略，不进入版本库。
+
+资源层是目标专属生成层：本地 `assets.h` 转发到静态 C 数组头（例如
+`watch_assets.h`），导出的 `src/app/<app>/assets.h` 在 SDK 分支声明 EZIP/raw 符号、
+`app_assets_init()` 和从 PNG IHDR 生成的 `<NAME>_W` / `<NAME>_H` 尺寸宏；只有本地
+运行时分支才 include 静态资源头。两端暴露相同图片符号和 `WATCH_*` 尺寸宏，应用代码
+只写 `#include "assets.h"`，不写平台分支。
+
 ## 导出产物结构
 
 ```
@@ -36,7 +53,7 @@
         ...                 # 应用源码原样副本（应用需兼容 LVGL 9.4，入口为 void）
     ezip/<name>.c           # 冷 EZIP C 数组
     raw/<name>.c            # 热/旋转 raw 像素 C 数组
-  export.json               # 资源角色、缓存配置与生成结果
+  export.json               # 资源角色、PNG 宽高、缓存配置与生成结果
 ```
 
 ## 图片资源与 assets.json
@@ -61,9 +78,15 @@
   `app_assets_init()`，用 `app_cache_copy_alloc()` 把热图复制到 PSRAM/SRAM。
 - `mode=ezip` 且 `transform != none` 会直接报 `asset_transform_conflict`，不会生成错误工程。
 - 未在 `assets.json` 里声明的 PNG 会报 `asset_unlisted`；文件名必须与资源名一致。
+- PNG 不是有效 IHDR 或宽高为 0 会报 `asset_invalid`，不会把坏图交给 `ezip.exe`。
+- 资源名大写后重复（例如 `foo` 与 `FOO` 都会生成 `FOO_W` / `FOO_H`）会报
+  `asset_macro_conflict`，导出直接失败而不是生成重复宏。
 - `cache` 可覆盖脚本按资源大小算出的默认值；`image_cache_psram_size`、
   `image_cache_sram_size`、`rotate_mem`、`lv_cache_def_size`、
   `lv_image_header_cache_cnt` 都会写进 `project/proj.conf`。
+- `export.json` 的 `assets` 记录每张资源的 `mode`、`placement`、`transform`、`hot`、
+  `width`、`height` 和 `size`；`width` / `height` 来自 PNG IHDR，是生成 `_W` / `_H`
+  尺寸宏的同一份资源元数据。
 
 导出目录生成 `src/app/<app>/assets.h` 和 `assets.c`：
 
@@ -73,6 +96,11 @@
   `watch_assets.h`），并提供空的 `app_assets_init()`。
 
 应用代码只写 `#include "assets.h"`，不再自己判断 `LVGL_AI_EZIP_ASSETS`。
+
+生成资源头的尺寸宏来自 PNG IHDR：资源名大写后加 `_W` / `_H`，例如
+`watch_ring.png` 生成 `WATCH_RING_W` / `WATCH_RING_H`。导出模板把 `src/raw/*.c`
+纳入编译，并把 `src/raw/` 加入 include 路径，旋转表针和圆环不会因缺 raw 源文件或
+符号而链接失败。
 
 导出脚本调用 `ezip.exe` 时会在临时目录里用相对文件名运行，并读取自动生成的
 `output/<name>.c`；不再依赖 `-outdir`。常用参数是
@@ -120,19 +148,40 @@ python -I chip-adapt/sifli/export.py hspi_watch --dry-run
 python -I chip-adapt/sifli/export.py hspi_watch
 ```
 
-导出、源码复制和 EZIP 转换全部在适配脚本里，`core/` 不包含芯片导出逻辑。
+导出、源码复制和 EZIP 转换全部在适配脚本里，`core/` 不包含芯片导出逻辑。导出的
+README 和返回的验证命令使用 `adapter.json` 的 `lvgl_version`（当前 9.4）：导出工程跟随
+SiFli SDK 的 LVGL 9.4 基线，而源目录本地预览仍用 9.6。
 
 ## 运行时验证（不烧录）
 
-导出产物可以在本仓库的 headless 运行时上跑通，SDK 专有函数由 `sim_sifli` 桩处理：
+源目录用 LVGL 9.6 跑本地 headless：
+
+```bash
+python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/hspi_watch.json
+```
+
+导出副本用 LVGL 9.4 跑同一场景；SDK 专有函数由 `sim_sifli` 桩处理：
 
 ```bash
 LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/sifli/hspi_watch/src/app" \
-  python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/hspi_watch.json
+  python -I core/cli.py --lvgl 9.4 --scenario user/scenarios/hspi_watch.json
 ```
 
 `lvgl_ai_sdk.h` 用 `__has_include("littlevgl2rtt.h")` 判断环境：SDK 构建拿真实头，
 运行时验证拿 `sim_sifli.h`。桩只用于验证，不代表 EPIC、触摸或真实刷新行为。
+`hspi_watch` 场景声明 390x450；两次运行都应得到 `status=ok`、`app=hspi_watch`、
+`display=390x450`，并保留 timeline/snapshot 证据。
+
+## 验证边界
+
+- 导出契约测试可重复执行且不依赖 SiFli SDK：
+  `python -I chip-adapt/sifli/test_export.py`。覆盖源码复制一致性、生成资源头尺寸宏与
+  图片符号、raw 源收集、导出副本自包含和错误路径。
+- 两次 headless 场景运行是手动验证步骤，不是测试套件的一部分：分别执行上文的源目录
+  9.6 和导出副本 9.4 命令，以会话 `manifest.json` 的 `status=ok`、`app=hspi_watch`、
+  `display=390x450` 以及保留的 timeline/snapshot 为证据。
+- 需要 SDK 工具链：EZIP 解码、`scons` 固件构建/链接和真机显示。headless 通过只证明
+  共享源码和本地静态资源回退可用，不等于设备验收。
 
 ## SF32LB52x 加速能力与资源规则
 

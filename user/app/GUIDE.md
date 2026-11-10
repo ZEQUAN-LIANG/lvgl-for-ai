@@ -388,6 +388,18 @@ lv_timer_create(tick_cb, 16, NULL);
 - 所有 `.c` 对所有支持版本都会编译；只在 9.6+ 使用的代码必须放进版本门，否则 9.1 /
   8.x 构建会失败。
 
+### 4.8 双端共享（SiFli 导出）
+
+`hspi_watch` 是双端共享示例：`user/app/hspi_watch/` 是唯一源码真源，本地 headless
+直接编译，SiFli 导出时复制成自包含工程。共享代码只暴露
+`void hspi_watch_create(void)`，以 LVGL 9.4 可用 API 为硬基线；`app_create`、
+`main.c` 和注册表留在目标侧，不进入共享源码。
+
+资源统一通过 `assets.h` 契约使用：两端暴露相同图片符号和 `WATCH_*` 尺寸宏，导出端
+从 PNG 宽高生成宏。`user/scenarios/hspi_watch.json` 声明 390x450。完整导出说明、
+raw 源收集和 EZIP/真机验证边界见
+[`chip-adapt/sifli/README.md`](../../chip-adapt/sifli/README.md)。
+
 ---
 
 ## 5. 硬约束与常见坑
