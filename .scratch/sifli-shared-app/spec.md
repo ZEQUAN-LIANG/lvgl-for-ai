@@ -79,7 +79,7 @@ Status: ready-for-agent
   - 源目录用 LVGL 9.6 跑一次；
   - 导出副本用 LVGL 9.4 跑一次；
   - 断言会话状态为 `ok`、`app=hspi_watch`、`display=390x450`，并保留 timeline/snapshot 作为证据。
-- **复用优先**：不新增导出器测试入口，也不新增运行时 harness；复用现有导出测试和 CLI/场景测试。
+- **复用优先**：不新增运行时 harness；导出契约测试仍走公开导出操作。`AssetPlan` 的 module 级测试由 `.scratch/architecture-deepening/spec.md` 定义，是新的导出器内部测试缝，不替代导出契约测试。
 - **先例**：现有 SiFli 导出测试已经覆盖源码复制、资源清单和缓存配置；现有应用 seam 测试覆盖入口注册；现有 CLI/场景测试覆盖会话 manifest 和 timeline。
 - **不在本机自动化的部分**：SDK 分支的 EZIP 解码、SCons 固件构建、链接和真机显示仍需要装有 SiFli 工具链的环境验收；headless 通过只证明共享源码和本地资源回退可用。
 
