@@ -372,6 +372,51 @@ class LiveSessionTest(unittest.TestCase):
             self.assertEqual(captured["height"], 480)
             session.stop()
 
+    def test_default_runtime_receives_exactly_the_live_options(self) -> None:
+        captured: dict[str, object] = {}
+
+        class CapturingRuntime(FakeRuntime):
+            def __init__(self, **kwargs: object) -> None:
+                captured.update(kwargs)
+                super().__init__(**kwargs)
+
+        with mock.patch(
+            "lvgl_ai.web.live_session.Runtime", CapturingRuntime
+        ):
+            session = LiveSession(self.root / "sessions")
+            self.addCleanup(_quiet_stop_session, session)
+            session.start("test", "coffee", display=(640, 480))
+
+        self.assertEqual(
+            set(captured),
+            {
+                "lvgl",
+                "app",
+                "build",
+                "record",
+                "live_frame",
+                "record_changed_only",
+                "headless",
+                "sessions_root",
+                "width",
+                "height",
+            },
+        )
+        self.assertIs(captured["record"], False)
+        self.assertEqual((captured["width"], captured["height"]), (640, 480))
+
+    def test_start_requires_a_runtime_tick(self) -> None:
+        class NoTickRuntime(FakeRuntime):
+            @property
+            def tick(self):
+                raise AttributeError("tick")
+
+        session = self._session(lambda: NoTickRuntime())
+        with self.assertRaises(LiveError) as raised:
+            session.start("record", None)
+        self.assertEqual(raised.exception.code, "live_start_error")
+        self.assertEqual(session.state, "idle")
+
     def test_start_failure_discards_the_test_root_and_closes_the_stream(
         self,
     ) -> None:

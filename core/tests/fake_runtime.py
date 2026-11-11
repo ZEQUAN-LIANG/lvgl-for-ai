@@ -53,6 +53,9 @@ class FakeRuntime:
         self.session_dir: Path | None = None
         self.manifest_path: Path | None = None
         self.engine_log_path: Path | None = None
+        self.ready: dict[str, Any] | None = None
+        self.frame_count = 0
+        self.t_ms = 0
         self._snapshots = 0
 
     # ---- lifecycle -----------------------------------------------------
@@ -113,6 +116,16 @@ class FakeRuntime:
         self._raise_if("encoder")
         self.commands.append(("encoder", action, diff))
         return {"seq": len(self.commands), "delivered": True, "diff": diff}
+
+    def tick(self, ms: int, *, track_check: bool = True) -> dict[str, Any]:
+        self._raise_if("tick")
+        self.commands.append(("tick", ms))
+        self.t_ms += ms
+        return {
+            "seq": len(self.commands),
+            "frames": self.frame_count,
+            "t_ms": self.t_ms,
+        }
 
     def wait(self, ms: int | None = None, *, frames: int | None = None) -> dict[str, Any]:
         self._raise_if("wait")
