@@ -33,10 +33,16 @@ Step types (the schema is intentionally this small):
     ``pointer down`` / ``wait(hold_ms)`` / ``pointer up`` so the press has a
     visible frame.
 ``drag``
-    ``from`` and ``to`` (``[x, y]``); optional ``steps`` (default 8, 1..1000).
-    Expands to ``pointer down(from)`` / ``pointer move`` x ``steps``
-    (linearly interpolated, the last move lands on ``to``) / ``pointer up(to)``
-    / ``snapshot("drag_end")``.
+    ``from`` and ``to`` (``[x, y]``); optional ``steps`` (default 8, 1..1000)
+    and ``interval_ms`` (default 0, non-negative). Expands to
+    ``pointer down(from)`` / ``pointer move`` x ``steps`` (linearly
+    interpolated, the last move lands on ``to``) / ``pointer up(to)`` /
+    ``snapshot("drag_end")``. A positive ``interval_ms`` advances virtual time
+    after every move; 0 keeps the old zero-duration sequence.
+``pointer``
+    ``action`` (``down`` / ``move`` / ``up``), ``x`` and ``y``. Sends one
+    ``pointer`` command; ``move`` probes coordinates without changing the
+    pressed state.
 ``key``
     ``action`` (``press`` / ``release``) and an LVGL ``LV_KEY_*`` name in
     ``key`` (case-insensitive, optional ``LV_KEY_`` prefix).
@@ -75,19 +81,30 @@ from .control.input import (
 )
 
 SCENARIO_SCHEMA = "lvgl-ai-scenario-v1"
-STEP_TYPES = ("click_at", "drag", "encoder", "key", "mark", "snapshot", "wait")
+STEP_TYPES = (
+    "click_at",
+    "drag",
+    "encoder",
+    "key",
+    "mark",
+    "pointer",
+    "snapshot",
+    "wait",
+)
 DEFAULT_CLICK_HOLD_MS = 64
 DEFAULT_DRAG_STEPS = 8
+DEFAULT_DRAG_INTERVAL_MS = 0
 MAX_DRAG_STEPS = 1000
 DRAG_SNAPSHOT_LABEL = "drag_end"
 
 _FILE_FIELDS = {"schema", "name", "app", "display", "steps"}
 _STEP_FIELDS = {
     "click_at": {"type", "x", "y", "hold_ms"},
-    "drag": {"type", "from", "to", "steps"},
+    "drag": {"type", "from", "to", "steps", "interval_ms"},
     "encoder": {"type", "action", "diff"},
     "key": {"type", "action", "key"},
     "mark": {"type", "id"},
+    "pointer": {"type", "action", "x", "y"},
     "snapshot": {"type", "label"},
     "wait": {"type", "ms", "frames"},
 }
@@ -96,8 +113,8 @@ _STEP_FIELDS = {
 def load_scenario(path: str | Path) -> dict[str, Any]:
     """Read and validate a scenario file, returning the normalized document.
 
-    Defaults are applied (``hold_ms``, ``steps``) so callers can see the exact
-    commands a ``play_scenario`` call will send. Raises
+    Defaults are applied (``hold_ms``, ``steps``, ``interval_ms``) so callers
+    can see the exact commands a ``play_scenario`` call will send. Raises
     :class:`ScenarioError` when the file is missing, is not JSON, or does not
     match the schema.
     """
@@ -212,9 +229,13 @@ def _play_step(rt: Any, step: dict[str, Any]) -> list[dict]:
         replies = [rt.pointer("down", start[0], start[1])]
         for x, y in _interpolate(start, end, step["steps"]):
             replies.append(rt.pointer("move", x, y))
+            if step["interval_ms"] > 0:
+                replies.append(rt.wait(ms=step["interval_ms"]))
         replies.append(rt.pointer("up", end[0], end[1]))
         replies.append(rt.snapshot(DRAG_SNAPSHOT_LABEL))
         return replies
+    if kind == "pointer":
+        return [rt.pointer(step["action"], step["x"], step["y"])]
     if kind == "wait":
         if "ms" in step:
             return [rt.wait(ms=step["ms"])]
@@ -280,6 +301,21 @@ def _normalize_step(index: int, step: Any) -> dict[str, Any]:
                 minimum=1,
                 maximum=MAX_DRAG_STEPS,
             ),
+            "interval_ms": _integer(
+                index,
+                step,
+                "interval_ms",
+                default=DEFAULT_DRAG_INTERVAL_MS,
+            ),
+        }
+    elif kind == "pointer":
+        action = step.get("action")
+        _action(index, "pointer", action)
+        normalized = {
+            "type": kind,
+            "action": action,
+            "x": _integer(index, step, "x"),
+            "y": _integer(index, step, "y"),
         }
     elif kind == "wait":
         has_ms = "ms" in step
