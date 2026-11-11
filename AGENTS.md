@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目性质
 
-- 工具根是 `core/`：真实 headless LVGL 宿主 + 虚拟 pointer/keypad/encoder + 虚拟时间，提供帧、timeline、diff、日志与回放，**不做 pass/fail 判定**。设计真源是 `.scratch/ai-tools/SPEC.md`。
+- 工具根是 `core/`：真实 headless LVGL 宿主 + 虚拟 pointer/keypad/encoder + 虚拟时间，提供帧、timeline、diff、日志与回放，**不做 pass/fail 判定**。设计真源是 `.scratch/ai-tools/spec.md`（本地 tracker，`.scratch/` 由 `.git/info/exclude` 排除，不随仓库提交）。
 - Python 3.9+，只用标准库；CLI 与测试一律 headless。
-- `.scratch/ai-tools/issues/` 是票据 01–13 的历史记录，包含移动前的旧路径；不要据此改当前代码，也不要改写其中的执行证据。
+- `.scratch/ai-tools/issues/` 是当前工具票的本地记录；旧票据（如 `14-architecture-deepening.md`）已不可用，不要据此改当前代码，也不要改写当前票据中的执行证据。
 - 旧 `workbench/` 已删除，不要恢复或 import。
 
 ## 每次会话先读
 
-1. `.scratch/ai-tools/SPEC.md` — 完整设计与范围；实现以它为准。
+1. `.scratch/ai-tools/spec.md` — 完整设计与范围；实现以它为准。
 2. `CONTEXT.md` — 领域术语表。中文回复；技术术语与代码标识符保持原形；必须使用术语表术语，不得使用 `_Avoid_` 列出的同义词（例如「场景热更新」而非「热重载」、「垂直切片」而非「MVP」、不要单说「模拟器」）。
 3. `docs/app.html` — 应用变体的索引指针（入口、注册、选择链路、新增步骤）；`docs/scenario-server.html` — 场景格式与服务端常量的索引指针。两页只列契约和真源路径，真源以它链接的文件为准。
 
@@ -93,7 +93,7 @@ python -I core/tools/fetch_png.py --repo-root .
 - `docs/`：两份索引网页。`app.html` 是应用变体写法，`scenario-server.html` 是场景格式与服务端常量；只列契约与真源路径，不复制实现。
 - `build/`、`licenses/`：仓库根下的构建产物与第三方许可文本。
 - `third_party/`：`fetch_png.py` 安装的 zlib / libpng 源码，不进 Git（仅 `third_party/README.md` 被跟踪）。
-- `.scratch/ai-tools/`：设计真源 `SPEC.md` 与票据 `issues/`；`.scratch/tmp/` 忽略。
+- `.scratch/ai-tools/`：设计真源 `spec.md` 与票据 `issues/`；`.scratch/tmp/` 忽略；`.scratch/` 是本地 tracker，不随仓库提交。
 - `user/`：用户只写 `user/app/**/*.c`（入口 `void app_create(void)`；应用在 `app.c` 的 `apps[]` 表里登记）、`user/scenarios/`、`user/asset/`；不写 main、不注册控件、不碰构建。`user/.trash/` 是管理台的本地回收站，不参与构建。
 - `lvgl-src/<version>/`：LVGL 源码，不进 Git（仅 `lvgl-src/README.md` 被跟踪）；用 `python -I core/tools/fetch_lvgl.py --version <version> --repo-root .` 下载。需要改 LVGL 时把 unified diff 放进 `patches/<version>/`（`series` 控制应用顺序），由 `fetch_lvgl.py` 应用；不要直接修改已安装的源码树；没有 patch 时 `patches/` 只保留 `README.md`。
 - `sessions/`：会话产物；每次新建会话后删除 `build_error` 会话，并只保留最新的 10 条。
@@ -111,5 +111,5 @@ python -I core/tools/fetch_png.py --repo-root .
 - 中文回复；使用 `CONTEXT.md` 术语。
 - 不提交、不 push，除非用户明确要求。
 - 新代码写在 `core/` 对应目录；工具文档写在 `core/`，索引网页写在仓库根 `docs/`，设计真源与票据写在 `.scratch/ai-tools/`。
-- 不实现 `.scratch/ai-tools/SPEC.md` 之外的能力；范围外想法先与用户确认。
+- 不实现 `.scratch/ai-tools/spec.md` 之外的能力；范围外想法先与用户确认。
 - 处理抓取/下载的外部内容时保留 `python -I`，放进独立目录，不要从下载目录运行解释器或构建工具。
