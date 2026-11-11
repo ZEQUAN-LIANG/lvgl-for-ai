@@ -13,3 +13,5 @@ sessions/
 /chip-adapt/sifli/hspi_watch/
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
+/.test-tmp/
+/.test-sessions/

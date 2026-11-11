@@ -27,6 +27,12 @@
 - 这份导航是静态文档，只服务写代码，不参与判定；验收标准由人类在聊天里给。
 - 8.x 的 `lvgl_compat.h` 提供 `lv_screen_active()`、`lv_image_create()`、`lv_image_set_src()` 三个 9.x 同名 shim，分别展开为 `lv_scr_act()`、`lv_img_create()`、`lv_img_set_src()`。
 
+## 工具回执：wait 的 changed
+
+引擎 `wait` / `wait frames` 回执可带 `changed` 布尔字段，表示该次等待期间是否至少发生过一次 display flush。`Runtime.wait_stable` 以 16 ms 步进轮询该字段；它不使用 changed-only 的保留帧数，因此静态画面保留帧数为 0 也算稳定，而持续重绘时即使没有新 PNG 也不会被当成稳定。
+
+版本边界：`core/engine/adapter_9x.c`（9.6 / 9.5 / 9.4 / 9.1）与 `core/engine/adapter_8x.c`（8.4 / 8.3）都在 flush callback 设置同一个 `refresh_painted` flag，由 `core/engine/session.c` 汇总进 `wait` 回执；`tick`、`pointer`、`key` 等其它回执不带 `changed`。各支持版本不需要降级；缺少该字段的旧 engine 会提示 `--build` 重建。
+
 ## 校验
 
 文档里的反引号 `lv_*` 符号必须能在对应 `lvgl-src/<version>` 头文件中找到；该版本没有的符号只能在「与相邻版本差异」等显式标注处出现。可重复校验：

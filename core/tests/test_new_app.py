@@ -56,6 +56,7 @@ class NewAppTest(unittest.TestCase):
 
     def test_creates_files_and_registers_app(self) -> None:
         original = self.app_c.read_bytes()
+        names_before = [name for name, _ in self._entries()]
         code, out, err = self._main("hello")
         self.assertEqual(code, 0, err)
         self.assertEqual(err, "")
@@ -89,7 +90,7 @@ class NewAppTest(unittest.TestCase):
         )
         self.assertEqual(
             [name for name, _ in self._entries()],
-            ["coffee", "xiaohongshu", "spectrum", "hspi_watch", "hello"],
+            names_before + ["hello"],
         )
 
         scenario = load_scenario(

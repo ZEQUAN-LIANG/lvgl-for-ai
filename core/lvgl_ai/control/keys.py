@@ -11,7 +11,9 @@ is ``CHAR_<code>`` (for example ``CHAR_65`` for ``A``); :func:`char_key` builds
 it and :func:`resolve_key` accepts it case-insensitively. Unicode and IME input
 are out of scope.
 
-Version-specific tables for 8.x / 9.5 / 9.4 / 9.1 belong to tickets 08/09.
+This table is version-independent: 8.x and every supported 9.x release use the
+same ``lv_key_t`` names and values. Version-specific API differences are
+documented in ``core/api-nav/``.
 """
 
 from __future__ import annotations

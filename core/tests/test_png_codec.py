@@ -199,7 +199,7 @@ class ContactSheetTest(unittest.TestCase):
         ]
 
         sheet = build_contact_sheet(
-            items, columns=2, tile_width=64, tile_height=48, gap=4
+            items, columns=2, tile_width=64, tile_height=48
         )
 
         self.assertEqual([tile.label for tile in sheet.tiles], [
@@ -207,10 +207,10 @@ class ContactSheetTest(unittest.TestCase):
         ])
         self.assertEqual((sheet.columns, sheet.rows), (2, 2))
         self.assertEqual(len(sheet.tiles), 3)
-        self.assertEqual((sheet.image.width, sheet.image.height), (140, 108))
+        self.assertEqual((sheet.image.width, sheet.image.height), (152, 120))
         self.assertEqual(
             [(tile.x, tile.y, tile.width, tile.height) for tile in sheet.tiles],
-            [(4, 4, 64, 48), (72, 4, 64, 48), (4, 56, 64, 48)],
+            [(8, 8, 64, 48), (80, 8, 64, 48), (8, 64, 64, 48)],
         )
         png = sheet.to_png()
         for tile, color in zip(sheet.tiles, colors):
@@ -268,7 +268,6 @@ class ContactSheetTest(unittest.TestCase):
                 columns=8,
                 tile_width=480,
                 tile_height=360,
-                gap=8,
             )
 
         message = str(caught.exception)

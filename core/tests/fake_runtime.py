@@ -16,6 +16,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+# Test modules import this double before creating temp dirs; the side effect
+# installs the Windows-safe TemporaryDirectory for the whole test process.
+import support  # noqa: F401
+
 FAKE_SESSION_ID = "20260102-030405-abcd"
 FAKE_PID = 4242
 

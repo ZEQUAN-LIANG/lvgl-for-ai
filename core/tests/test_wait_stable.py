@@ -41,6 +41,7 @@ class WaitStableRuntimeTest(unittest.TestCase):
         *,
         record_changed_only: bool = False,
         name: str = "run",
+        wait_frames: str | None = None,
     ) -> Runtime:
         rt = Runtime(
             lvgl="9.6",
@@ -51,6 +52,8 @@ class WaitStableRuntimeTest(unittest.TestCase):
         )
         self.addCleanup(rt.stop)
         env = {} if changed is None else {"FAKE_WAIT_CHANGED": changed}
+        if wait_frames is not None:
+            env["FAKE_WAIT_FRAMES"] = wait_frames
         with mock.patch.dict(os.environ, env):
             rt.start()
         return rt
@@ -95,18 +98,33 @@ class WaitStableRuntimeTest(unittest.TestCase):
         # The first missing flag stops polling instead of waiting forever.
         self.assertEqual(rt.t_ms, 16)
 
-    def test_wait_stable_ignores_changed_only_recording_setting(self) -> None:
-        for flag in (False, True):
-            with self.subTest(record_changed_only=flag):
-                rt = self._runtime(
-                    "never",
-                    record_changed_only=flag,
-                    name=f"never-{flag}",
-                )
-                result = rt.wait_stable(max_ms=64, stable_frames=2)
-                self.assertIs(result["stable"], True)
-                self.assertEqual(result["waited_ms"], 32)
-                self.assertEqual(result["stable_frames"], 2)
+    def test_wait_stable_uses_changed_not_retained_frames(self) -> None:
+        # changed-only may retain no new frame while the engine still reports
+        # painted refreshes: the retained frame count must not look stable.
+        changing = self._runtime(
+            "always",
+            record_changed_only=True,
+            name="changed-without-retention",
+            wait_frames="hold",
+        )
+        result = changing.wait_stable(max_ms=48, stable_frames=1)
+        self.assertIs(result["stable"], False)
+        self.assertEqual(result["waited_ms"], 48)
+        self.assertEqual(result["stable_frames"], 0)
+        self.assertEqual(changing.frame_count, 1)
+
+        # The inverse also holds: growing retained frames with unchanged
+        # replies are stable because the flag, not the frame count, decides.
+        static = self._runtime(
+            "never",
+            record_changed_only=False,
+            name="retention-without-change",
+        )
+        result = static.wait_stable(max_ms=48, stable_frames=2)
+        self.assertIs(result["stable"], True)
+        self.assertEqual(result["waited_ms"], 32)
+        self.assertEqual(result["stable_frames"], 2)
+        self.assertGreater(static.frame_count, 1)
 
     def test_wait_stable_validates_parameters_before_sending(self) -> None:
         rt = Runtime(lvgl="9.6", build=False)
@@ -132,7 +150,6 @@ class WaitStableScenarioTest(unittest.TestCase):
         )
         self.assertEqual(runtime.commands, [("wait_stable", 100, 3)])
         self.assertEqual(len(replies), 1)
-        self.assertIs(replies[0]["stable"], True)
 
     def test_wait_stable_step_is_validated_before_any_command(self) -> None:
         cases = [

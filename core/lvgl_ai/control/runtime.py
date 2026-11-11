@@ -385,9 +385,13 @@ class Runtime:
             return
 
         link = self._link
-        exit_code = link.shutdown(send_quit=True)
-        self._store.close_log()
-        self._store.discard_preview()
+        try:
+            exit_code = link.shutdown(send_quit=True)
+        finally:
+            # Release the evidence handles even when shutdown itself fails;
+            # otherwise Windows keeps the session directory undeletable.
+            self._store.close_log()
+            self._store.discard_preview()
 
         if self.session_dir is not None:
             outcome = SessionOutcome.resolve(

@@ -266,13 +266,27 @@ class DocsSingleSourceTest(unittest.TestCase):
                 name,
             )
 
+    def test_every_link_page_is_an_existing_docs_file(self) -> None:
+        for name in LINK_PAGES:
+            with self.subTest(name=name):
+                self.assertTrue((DOCS_DIR / name).is_file(), name)
+        # The sifli page is link-checked against real repository links only.
+        self.assertTrue(_parse_page("sifli.html").hrefs)
+
     def test_sifli_page_is_link_checked_but_not_an_index_page(self) -> None:
         self.assertIn("sifli.html", LINK_PAGES)
         self.assertNotIn("sifli.html", PAGE_NAMES)
 
     def test_one_off_audit_report_is_not_an_index_page(self) -> None:
-        self.assertNotIn("audit-2026-11-11.html", PAGE_NAMES)
-        self.assertNotIn("audit-2026-11-11.html", LINK_PAGES)
+        # The untracked audit report may exist in the main checkout; it never
+        # joins the index or link-check lists.
+        audit_pages = sorted(
+            path.name for path in DOCS_DIR.glob("audit-*.html")
+        )
+        for name in audit_pages:
+            with self.subTest(name=name):
+                self.assertNotIn(name, PAGE_NAMES)
+                self.assertNotIn(name, LINK_PAGES)
 
     def test_every_symbol_pointer_names_something_in_the_linked_file(self) -> None:
         for name, page in self.pages.items():

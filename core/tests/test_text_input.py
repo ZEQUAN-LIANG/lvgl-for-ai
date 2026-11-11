@@ -1,8 +1,11 @@
 """``text`` scenario step and per-character keypad input.
 
 The scenario seam expands each printable ASCII character into a keypad press
-and release carrying the stable ``CHAR_<code>`` token. The runtime seam checks
-that the token reaches the engine; no real LVGL build is required.
+and release carrying the stable ``CHAR_<code>`` token. The runtime unit tests
+check that the token reaches the engine through the fake engine. The
+``TextInputEngineIntegrationTest`` at the end builds the real 9.6 engine and
+proves the characters enter the evidence app's textarea, like the other
+``*IntegrationTest`` classes in the full suite.
 """
 
 from __future__ import annotations
@@ -13,9 +16,12 @@ import unittest
 from pathlib import Path
 
 from fake_runtime import FakeRuntime
-from lvgl_ai import Runtime, ScenarioError, play_scenario
+from lvgl_ai import Recording, Runtime, ScenarioError, paths, play_scenario
 
 FAKE_ENGINE = Path(__file__).with_name("fake_engine.py")
+TEXTAREA_SCENARIO = (
+    paths.REPO_ROOT / "user" / "scenarios" / "textarea_evidence.json"
+)
 
 
 class TextScenarioTest(unittest.TestCase):
@@ -77,6 +83,50 @@ class TextScenarioTest(unittest.TestCase):
                 ("key", "release", "CHAR_126"),
             ],
         )
+
+
+class TextInputEngineIntegrationTest(unittest.TestCase):
+    """Real textarea evidence; builds the 9.6 engine like other *IntegrationTest."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.sessions_root = Path(self._tmp.name) / "sessions"
+
+    def test_text_step_enters_the_real_textarea_and_records_char_tokens(
+        self,
+    ) -> None:
+        rt = Runtime(
+            lvgl="9.6",
+            app="textarea_evidence",
+            build=True,
+            sessions_root=self.sessions_root,
+        )
+        self.addCleanup(rt.stop)
+        rt.start()
+        play_scenario(rt, TEXTAREA_SCENARIO)
+        rt.stop()
+
+        recording = Recording.open(rt.session_dir)
+        timeline = recording.timeline()
+        keys = [
+            (row["action"], row["key"])
+            for row in timeline
+            if row["type"] == "input" and row.get("device") == "key"
+        ]
+        expected = []
+        for char in "Hello 1":
+            token = f"CHAR_{ord(char)}"
+            expected.extend([("press", token), ("release", token)])
+        self.assertEqual(keys, expected)
+        self.assertIn(
+            "[textarea_evidence] text=Hello 1", recording.log()
+        )
+        snapshots = [
+            row for row in timeline if row["type"] == "snapshot"
+        ]
+        self.assertEqual([row["label"] for row in snapshots], ["typed"])
+        self.assertTrue((recording.path / snapshots[0]["file"]).is_file())
 
 
 class TextRuntimeTest(unittest.TestCase):

@@ -17,177 +17,15 @@ from unittest import mock
 
 import session_report
 from lvgl_ai import summarize_session
-from support import read_png_rgb, write_png_rgb
-
-SESSION_NAME = "20260102-030405-abcd"
-FRAME_1 = "frames/000001.png"
-FRAME_2 = "frames/000002.png"
-SNAPSHOT = "snapshots/001_after_click.png"
-
-
-def make_session(
-    root: Path,
-    *,
-    name: str = SESSION_NAME,
-    status: str = "ok",
-    app: str = "coffee",
-    display: dict | None = None,
-    record_changed_only: bool = True,
-    with_timeline: bool = True,
-    with_frame_diffs: bool = True,
-    with_frames: bool = True,
-    with_snapshot: bool = True,
-    frame_count: int = 2,
-    engine_log: str | None = None,
-    error: dict | None = None,
-) -> Path:
-    session = root / name
-    (session / "frames").mkdir(parents=True)
-    if with_frames:
-        write_png_rgb(session / FRAME_1, 2, 2, [(255, 0, 0)] * 4)
-        write_png_rgb(session / FRAME_2, 2, 2, [(0, 255, 0)] * 4)
-    if with_snapshot:
-        (session / "snapshots").mkdir()
-        write_png_rgb(session / SNAPSHOT, 1, 1, [(0, 0, 255)])
-
-    if with_timeline:
-        rows = [
-            {
-                "schema": "lvgl-ai-timeline-v1",
-                "type": "frame",
-                "frame_no": 1,
-                "t_ms": 0,
-                "file": FRAME_1,
-            },
-            {
-                "schema": "lvgl-ai-timeline-v1",
-                "type": "input",
-                "seq": 1,
-                "source": "scenario",
-                "frame_no": 1,
-                "t_ms": 0,
-                "device": "pointer",
-                "action": "down",
-                "x": 112,
-                "y": 324,
-                "hit": "btn",
-                "hit_class": "lv_button",
-            },
-            {
-                "schema": "lvgl-ai-timeline-v1",
-                "type": "mark",
-                "frame_no": 1,
-                "t_ms": 16,
-                "id": "start",
-            },
-        ]
-        if with_snapshot:
-            rows.append(
-                {
-                    "schema": "lvgl-ai-timeline-v1",
-                    "type": "snapshot",
-                    "frame_no": 1,
-                    "t_ms": 16,
-                    "label": "after_click",
-                    "file": SNAPSHOT,
-                }
-            )
-        rows.extend(
-            [
-                {
-                    "schema": "lvgl-ai-timeline-v1",
-                    "type": "frame",
-                    "frame_no": 2,
-                    "t_ms": 32,
-                    "file": FRAME_2,
-                },
-                {
-                    "schema": "lvgl-ai-timeline-v1",
-                    "type": "input",
-                    "seq": 2,
-                    "source": "scenario",
-                    "frame_no": 2,
-                    "t_ms": 32,
-                    "device": "key",
-                    "action": "press",
-                    "key": "ENTER",
-                    "delivered": True,
-                },
-                {
-                    "schema": "lvgl-ai-timeline-v1",
-                    "type": "end",
-                    "frame_count": frame_count,
-                    "t_ms": 32,
-                    "truncated": False,
-                },
-            ]
-        )
-        (session / "timeline.ndjson").write_text(
-            "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
-        )
-
-    if with_frame_diffs:
-        diff = {
-            "schema": "lvgl-ai-frame-diffs-v1",
-            "frame_no": 2,
-            "prev_frame_no": 1,
-            "t_ms": 32,
-            "width": 2,
-            "height": 2,
-            "threshold": 10,
-            "bbox": {"x": 0, "y": 0, "w": 2, "h": 2},
-            "changed_px": 9,
-            "changed_ratio": 0.25,
-            "max_delta": 0.2,
-        }
-        (session / "frame_diffs.ndjson").write_text(
-            json.dumps(diff) + "\n", encoding="utf-8"
-        )
-
-    if engine_log is None:
-        engine_log = (
-            "[app] apps=coffee,settings\n"
-            "[app] app_create\n"
-            "[app] app=settings\n"
-            "[app] app=coffee\n"
-        )
-    (session / "engine.log").write_text(engine_log, encoding="utf-8")
-
-    artifacts = {"manifest": "manifest.json", "engine_log": "engine.log"}
-    if with_timeline:
-        artifacts["timeline"] = "timeline.ndjson"
-    if with_frame_diffs:
-        artifacts["frame_diffs"] = "frame_diffs.ndjson"
-    if with_frames:
-        artifacts["frames"] = [FRAME_1, FRAME_2]
-    if with_snapshot:
-        artifacts["snapshots"] = [SNAPSHOT]
-
-    manifest = {
-        "schema": "lvgl-ai-session-v1",
-        "id": name,
-        "status": status,
-        "app": app,
-        "record_changed_only": record_changed_only,
-        "mode": "headless",
-        "input": ["real", "virtual"],
-        "build": {"status": "ok", "log": "build.log"},
-        "lvgl": "9.6.0",
-        "lvgl_src": "I:/lvgl-src/9.6",
-        "adapter": "9x",
-        "display": display,
-        "tool_version": "0.1.0",
-        "frame_count": frame_count,
-        "truncated": False,
-        "log_truncated": False,
-        "checks": [],
-        "error": error,
-        "artifacts": artifacts,
-    }
-    (session / "manifest.json").write_text(
-        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
-    )
-    return session
+from lvgl_ai.control.evidence import CLI_EVIDENCE_FIELDS, SUMMARY_FIELDS
+from session_fixtures import (
+    FRAME_1,
+    FRAME_2,
+    SESSION_NAME,
+    SNAPSHOT,
+    make_summary_session as make_session,
+)
+from support import distinct_rgb, read_png_rgb, write_png_rgb
 
 
 class SummarizeSessionTest(unittest.TestCase):
@@ -238,6 +76,28 @@ class SummarizeSessionTest(unittest.TestCase):
 
         from_manifest = summarize_session(session / "manifest.json")
         self.assertEqual(from_manifest, summary)
+
+    def test_summary_and_cli_field_lists_are_one_contract(self) -> None:
+        session = make_session(self.root)
+
+        summary = summarize_session(session)
+
+        self.assertEqual(tuple(summary), SUMMARY_FIELDS)
+        self.assertTrue(set(CLI_EVIDENCE_FIELDS) <= set(SUMMARY_FIELDS))
+        self.assertIn("frames", SUMMARY_FIELDS)
+        self.assertNotIn("frames", CLI_EVIDENCE_FIELDS)
+
+    def test_recorded_session_missing_evidence_files_raises(self) -> None:
+        for missing, name in (
+            ("timeline.ndjson", "20260120-000000-aaaa"),
+            ("frame_diffs.ndjson", "20260121-000000-bbbb"),
+        ):
+            with self.subTest(missing=missing):
+                session = make_session(self.root, name=name)
+                (session / missing).unlink()
+                with self.assertRaises(FileNotFoundError) as caught:
+                    summarize_session(session)
+                self.assertIn(missing, str(caught.exception))
 
     def test_record_false_session_has_empty_evidence_and_recorded_false(self) -> None:
         session = make_session(
@@ -562,11 +422,49 @@ class VisualEvidenceCommandTest(unittest.TestCase):
         self.assertIn("first", out)
         self.assertIn("second", out)
         width, height, _pixels = read_png_rgb(output)
-        self.assertGreater(width, 1)
-        self.assertGreater(height, 1)
+        self.assertEqual((width, height), (152, 64))
+        colors = distinct_rgb(output)
+        self.assertIn((0, 255, 0), colors)
+        self.assertIn((0, 0, 255), colors)
         self.assertEqual(
             (self.frame.read_bytes(), snapshot.read_bytes()), before
         )
+
+    def test_visual_outputs_refuse_to_write_inside_session_evidence(self) -> None:
+        snapshot = (self.session / SNAPSHOT).resolve()
+        crop_out = self.session / "frames" / "crop.png"
+        sheet_out = self.session / "sheet.png"
+
+        crop_code, crop_out_text, crop_err = run_report(
+            [
+                "crop",
+                str(self.frame),
+                "--region",
+                "0,0,1,1",
+                "--out",
+                str(crop_out),
+            ]
+        )
+        sheet_code, sheet_out_text, sheet_err = run_report(
+            [
+                "contact-sheet",
+                "--out",
+                str(sheet_out),
+                "--input",
+                str(self.frame),
+                "--input",
+                str(snapshot),
+            ]
+        )
+
+        self.assertEqual(crop_code, 2)
+        self.assertEqual(crop_out_text, "")
+        self.assertIn("session evidence", crop_err)
+        self.assertFalse(crop_out.exists())
+        self.assertEqual(sheet_code, 2)
+        self.assertEqual(sheet_out_text, "")
+        self.assertIn("session evidence", sheet_err)
+        self.assertFalse(sheet_out.exists())
 
 
 class CompareCommandTest(unittest.TestCase):
@@ -693,6 +591,35 @@ class CompareCommandTest(unittest.TestCase):
         self.assertEqual(
             payload["right"], str((right_session / SNAPSHOT).resolve())
         )
+        self.assertEqual(payload["changed_px"], 1)
+
+    def test_compare_sessions_use_the_last_snapshot_in_summary_order(self) -> None:
+        left_session = make_session(
+            self.root, name="20260114-000000-aaaa"
+        )
+        right_session = make_session(
+            self.root, name="20260115-000000-bbbb"
+        )
+        left_last = left_session / "snapshots" / "002_second.png"
+        right_last = right_session / "snapshots" / "002_second.png"
+        write_png_rgb(left_last, 2, 2, [(10, 20, 30)] * 4)
+        write_png_rgb(
+            right_last, 2, 2, [(10, 20, 30)] * 3 + [(10, 20, 40)]
+        )
+
+        code, out, err = run_report(
+            [
+                "compare",
+                str(left_session),
+                str(right_session),
+                "--json",
+            ]
+        )
+
+        self.assertEqual(code, 0, err)
+        payload = one_json(out)
+        self.assertEqual(payload["left"], str(left_last.resolve()))
+        self.assertEqual(payload["right"], str(right_last.resolve()))
         self.assertEqual(payload["changed_px"], 1)
 
     def test_compare_sessions_fall_back_to_the_last_frame(self) -> None:
