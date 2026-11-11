@@ -7,11 +7,14 @@ site-packages (Pillow) is not on ``sys.path``.
 from __future__ import annotations
 
 import json
+import os
 import struct
+import unittest
 import tempfile
 import time
 import zlib
 from pathlib import Path
+from unittest import mock
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 _CHANNELS = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
@@ -167,6 +170,33 @@ def write_png_rgb(
     _write_chunk(data, b"IDAT", zlib.compress(bytes(raw), 9))
     _write_chunk(data, b"IEND", b"")
     Path(path).write_bytes(bytes(data))
+
+
+def symlinked_file(
+    testcase: unittest.TestCase, link: str | Path, target: str | Path
+) -> Path:
+    """Make ``link`` behave as a symlink to ``target`` for one test.
+
+    Creating a real symlink needs extra privilege on Windows. When it is
+    unavailable the helper writes the target bytes to ``link`` and patches
+    ``Path.is_symlink`` for that path, so callers still exercise the symlink
+    branch instead of skipping the test or changing its expectations.
+    """
+    link_path = Path(link)
+    target_path = Path(target)
+    try:
+        os.symlink(target_path, link_path)
+    except (OSError, NotImplementedError):
+        link_path.write_bytes(target_path.read_bytes())
+        original = Path.is_symlink
+
+        def is_symlink(self: Path) -> bool:
+            return self == link_path or original(self)
+
+        patcher = mock.patch.object(Path, "is_symlink", is_symlink)
+        patcher.start()
+        testcase.addCleanup(patcher.stop)
+    return link_path
 
 
 def _write_chunk(out: bytearray, chunk_type: bytes, payload: bytes) -> None:

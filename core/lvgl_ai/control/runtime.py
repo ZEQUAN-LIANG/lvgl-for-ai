@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from .. import paths
 from .build_plan import BuildPlan
@@ -50,6 +50,25 @@ def _stale_engine_argument(log_tail: list[str]) -> str | None:
         return argument or line.strip()
     return None
 
+# Session options owned by SessionStore; Runtime reads them through
+# ``__getattr__`` so no second copy exists and the contract snapshot stays
+# unchanged (properties would be recorded as new public members).
+_SESSION_OPTIONS = frozenset(
+    (
+        "app",
+        "build",
+        "record",
+        "live_frame",
+        "record_changed_only",
+        "mode",
+        "lvgl_src",
+        "sessions_root",
+        "max_log_bytes",
+        "session_retention",
+        "ready",
+    )
+)
+
 
 def _positive_int(value: object, name: str, *, default: int) -> int:
     if value is None:
@@ -68,6 +87,107 @@ def _env_positive_int(name: str, default: int) -> int:
     except ValueError as exc:
         raise ValueError(f"{name} must be an integer; got {raw!r}") from exc
     return _positive_int(value, name, default=default)
+
+
+_UNSET = object()
+
+
+class RuntimeOptions:
+    """Production-side options for constructing a ``Runtime``.
+
+    Only options that were provided are forwarded, so callers keep the
+    ``Runtime`` defaults they do not set. The private engine/configure/build
+    seams are deliberately absent.
+    """
+
+    def __init__(
+        self,
+        lvgl: str | None = _UNSET,
+        *,
+        app: str | None = _UNSET,
+        width: int | None = _UNSET,
+        height: int | None = _UNSET,
+        build: bool = _UNSET,
+        record: bool = _UNSET,
+        live_frame: bool = _UNSET,
+        record_changed_only: bool = _UNSET,
+        headless: bool = _UNSET,
+        window: bool = _UNSET,
+        sessions_root: str | Path | None = _UNSET,
+        timeout: float = _UNSET,
+        diff_threshold: int = _UNSET,
+        reference: str | Path | None = _UNSET,
+        max_frames: int | None = _UNSET,
+        max_log_bytes: int | None = _UNSET,
+        session_retention: int | None = _UNSET,
+    ) -> None:
+        values = {
+            "lvgl": lvgl,
+            "app": app,
+            "width": width,
+            "height": height,
+            "build": build,
+            "record": record,
+            "live_frame": live_frame,
+            "record_changed_only": record_changed_only,
+            "headless": headless,
+            "window": window,
+            "sessions_root": sessions_root,
+            "timeout": timeout,
+            "diff_threshold": diff_threshold,
+            "reference": reference,
+            "max_frames": max_frames,
+            "max_log_bytes": max_log_bytes,
+            "session_retention": session_retention,
+        }
+        self._kwargs = {
+            name: value for name, value in values.items() if value is not _UNSET
+        }
+
+    def as_kwargs(self) -> dict[str, Any]:
+        """Keyword arguments accepted by ``Runtime(**kwargs)``."""
+        return dict(self._kwargs)
+
+
+class RuntimeLike(Protocol):
+    """The Runtime surface shared by LiveSession and scenario execution."""
+
+    session_id: str | None
+    session_dir: Path | None
+    engine_log_path: Path | None
+    manifest_path: Path | None
+    ready: dict[str, Any] | None
+    app: str | None
+    mode: str
+    frame_count: int
+    t_ms: int
+    pid: int | None
+    exit_code: int | None
+    is_running: bool
+
+    def start(self) -> Any: ...
+
+    def stop(self) -> None: ...
+
+    def log_tail(self, n: int = 40) -> list[str]: ...
+
+    def record_error(self, error: BaseException) -> None: ...
+
+    def tick(self, ms: int, *, track_check: bool = True) -> dict[str, Any]: ...
+
+    def wait(
+        self, ms: int | None = None, *, frames: int | None = None
+    ) -> dict[str, Any]: ...
+
+    def pointer(self, action: str, x: int, y: int) -> dict[str, Any]: ...
+
+    def key(self, action: str, key: str) -> dict[str, Any]: ...
+
+    def encoder(self, action: str, diff: int) -> dict[str, Any]: ...
+
+    def mark(self, mark_id: str) -> dict[str, Any]: ...
+
+    def snapshot(self, label: str) -> dict[str, Any]: ...
 
 
 class Runtime:
@@ -136,7 +256,7 @@ class Runtime:
         # ``app`` selects the user app variant through the documented LVGL_AI_DEMO
         # contract. An explicit value wins; otherwise the inherited environment
         # is used and recorded so evidence is self-describing.
-        self.app = (
+        resolved_app = (
             app
             if app is not None
             else (os.environ.get("LVGL_AI_DEMO") or None)
@@ -144,19 +264,19 @@ class Runtime:
         # ``None`` means the engine default; otherwise both dimensions exist.
         self.width = None if display is None else display[0]
         self.height = None if display is None else display[1]
-        self.build = bool(build)
-        self.record = bool(record)
+        resolved_build = bool(build)
+        resolved_record = bool(record)
         # Keep one overwritten live.rgba raw preview for the web stream. It
         # works with record=True as well and is never part of the evidence.
-        self.live_frame = bool(live_frame)
+        resolved_live_frame = bool(live_frame)
         # Skip PNGs that are pixel-identical to the previous retained frame.
         # frame_no counts retained frames, not ticks.
-        self.record_changed_only = bool(record_changed_only)
+        resolved_record_changed_only = bool(record_changed_only)
         # ``window=True`` or ``headless=False`` asks for the real window;
         # ``window=True`` wins so callers do not need to pass both.
         self.window = bool(window) or not bool(headless)
         self.headless = not self.window
-        self.mode = "window" if self.window else "headless"
+        resolved_mode = "window" if self.window else "headless"
         self.timeout = float(timeout)
         self.diff_threshold = diff_threshold
         # Full frames are capped so a long animation cannot exhaust disk or
@@ -171,7 +291,7 @@ class Runtime:
             max_log_bytes = _env_positive_int(
                 "LVGL_AI_MAX_LOG_BYTES", DEFAULT_MAX_LOG_BYTES
             )
-        self.max_log_bytes = _positive_int(
+        resolved_max_log_bytes = _positive_int(
             max_log_bytes, "max_log_bytes", default=DEFAULT_MAX_LOG_BYTES
         )
         # Older sessions are pruned right after the new session directory is
@@ -185,7 +305,6 @@ class Runtime:
                 "session_retention must be a non-negative integer or None; "
                 f"got {session_retention!r}"
             )
-        self.session_retention = session_retention
         # The engine runs with cwd=REPO_ROOT, so a relative reference must be
         # anchored to the caller's cwd here, not there.
         self.reference = (
@@ -203,35 +322,33 @@ class Runtime:
             build=_build_command,
             engine_path=_engine_path,
         )
-        self.lvgl_src = self._plan.lvgl_src
         self.build_dir = self._plan.build_dir
         self.engine_path = self._plan.engine_path
         self._engine_command = list(_engine_command) if _engine_command else None
-        self.sessions_root = (
+        resolved_sessions_root = (
             Path(sessions_root).expanduser().resolve()
             if sessions_root is not None
             else paths.sessions_root_from_env()
         )
-        # SessionStore is the only writer of this session's evidence: the
+        # SessionStore owns this session's options and evidence: the
         # directory, manifest, build log, engine log, preview and retention.
         self._store = SessionStore(
-            self.sessions_root,
-            record=self.record,
-            live_frame=self.live_frame,
-            build=self.build,
-            retention=self.session_retention,
-            max_log_bytes=self.max_log_bytes,
-            app=self.app,
-            record_changed_only=self.record_changed_only,
-            lvgl_src=self.lvgl_src,
-            mode=self.mode,
+            resolved_sessions_root,
+            record=resolved_record,
+            live_frame=resolved_live_frame,
+            build=resolved_build,
+            retention=session_retention,
+            max_log_bytes=resolved_max_log_bytes,
+            app=resolved_app,
+            record_changed_only=resolved_record_changed_only,
+            lvgl_src=self._plan.lvgl_src,
+            mode=resolved_mode,
         )
 
         self.session_id: str | None = None
         self.session_dir: Path | None = None
         self.engine_log_path: Path | None = None
         self.manifest_path: Path | None = None
-        self.ready: dict[str, Any] | None = None
 
         # Process and line-protocol ownership lives in EngineLink; Runtime
         # keeps the public actions and build orchestration, SessionStore owns
@@ -248,6 +365,23 @@ class Runtime:
         # The typed failure that made the session stop early; stop() maps it
         # to the manifest status instead of reporting "ok".
         self._failure: BaseException | None = None
+
+    def __getattr__(self, name: str) -> Any:
+        if name in _SESSION_OPTIONS:
+            store = self.__dict__.get("_store")
+            if store is not None:
+                return getattr(store, name)
+        raise AttributeError(
+            f"{type(self).__name__!r} object has no attribute {name!r}"
+        )
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name in _SESSION_OPTIONS:
+            raise AttributeError(
+                f"{type(self).__name__!r} attribute {name!r} is read-only; "
+                "it is owned by the session store"
+            )
+        super().__setattr__(name, value)
 
     # ---- lifecycle -----------------------------------------------------
 
@@ -281,7 +415,6 @@ class Runtime:
                 "create a new Runtime for another session"
             )
 
-        self.ready = None
         self._session_used = True
         # The session exists before the build so a build/link failure or a
         # missing engine still leaves build.log + manifest.json behind.
@@ -331,13 +464,15 @@ class Runtime:
                 quit_timeout=(
                     RECORD_QUIT_TIMEOUT_S if self.record else QUIT_TIMEOUT_S
                 ),
+                session_id=self.session_id,
+                app=self.app,
             )
             self._link.start()
-            self.ready = self._link.await_ready(
+            ready = self._link.await_ready(
                 self.timeout, on_frames=self._set_ready_frames
             )
-            self._store.note_ready(self.ready)
-            self.mode = self.ready.get("mode", self.mode)
+            self._store.note_ready(ready)
+            self._store.note_mode(ready.get("mode", self.mode))
             if self.mode != "window":
                 if self.window:
                     self._store.append_log(

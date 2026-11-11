@@ -1467,6 +1467,25 @@ class _LiveStub:
             "key": key,
         }
 
+    def encoder(self, action: str, diff: int) -> dict[str, Any]:
+        return {
+            "protocol": "lvgl-ai-engine-v1",
+            "seq": 1,
+            "ok": True,
+            "delivered": True,
+        }
+
+    def mark(self, mark_id: str) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def snapshot(self, label: str) -> dict[str, Any]:
+        return {
+            "protocol": "lvgl-ai-engine-v1",
+            "seq": 1,
+            "ok": True,
+            "file": f"snapshots/001_{label}.png",
+        }
+
     def wait(self, ms: int | None = None, *, frames: int | None = None):
         return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
 
@@ -2008,25 +2027,69 @@ def _json_contract(result: subprocess.CompletedProcess[str]) -> dict[str, Any]:
     }
 
 
+class _FakeRuntime:
+    """Scripted Runtime surface used by the CLI contract probes."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        self.session_id: str | None = "stub-session"
+        self.session_dir: Path | None = None
+        self.engine_log_path: Path | None = None
+        self.manifest_path: Path | None = None
+        self.ready: dict[str, Any] | None = {"ready": True, "mode": "headless"}
+        self.app: str | None = kwargs.get("app")
+        self.mode = "headless"
+        self.frame_count = 0
+        self.t_ms = 0
+        self.pid: int | None = None
+        self.exit_code: int | None = None
+        self.is_running = False
+
+    def start(self) -> _FakeRuntime:
+        self.is_running = True
+        self.pid = 4242
+        return self
+
+    def stop(self) -> None:
+        self.is_running = False
+        self.pid = None
+
+    def log_tail(self, n: int = 40) -> list[str]:
+        return []
+
+    def record_error(self, error: BaseException) -> None:
+        pass
+
+    def tick(self, ms: int, *, track_check: bool = True) -> dict[str, Any]:
+        self.t_ms += int(ms)
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def wait(
+        self, ms: int | None = None, *, frames: int | None = None
+    ) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def pointer(self, action: str, x: int, y: int) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def key(self, action: str, key: str) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def encoder(self, action: str, diff: int) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def mark(self, mark_id: str) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def snapshot(self, label: str) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+
 def _cli_section(workspace: Path) -> dict[str, Any]:
     cli_module = _load_module("contract_snapshot_cli", TOOL_ROOT / "cli.py")
     web_module = _load_module("contract_snapshot_web", TOOL_ROOT / "web.py")
     new_app_module = _load_module(
         "contract_snapshot_new_app", TOOL_ROOT / "tools" / "new_app.py"
     )
-
-    class _FakeRuntime:
-        def __init__(self, **kwargs: Any) -> None:
-            self.session_id = "stub-session"
-            self.session_dir = None
-            self.manifest_path = None
-            self.app = kwargs.get("app")
-
-        def start(self) -> _FakeRuntime:
-            return self
-
-        def stop(self) -> None:
-            pass
 
     output = io.StringIO()
     original_runtime = cli_module.Runtime

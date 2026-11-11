@@ -4209,7 +4209,13 @@
               "frame_diffs": {
                 "signature": []
               },
+              "frame_views": {
+                "signature": []
+              },
               "frames": "property",
+              "latest_frame": {
+                "signature": []
+              },
               "log": {
                 "signature": []
               },
@@ -4232,6 +4238,9 @@
                 ]
               },
               "reference_diffs": {
+                "signature": []
+              },
+              "snapshot_views": {
                 "signature": []
               },
               "snapshots": "property",

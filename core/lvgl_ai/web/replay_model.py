@@ -19,7 +19,6 @@ used to raise it.
 from __future__ import annotations
 
 from functools import cached_property
-from pathlib import Path
 from typing import Any
 
 from ..control.recording import ANNOTATIONS_SCHEMA, Recording
@@ -43,67 +42,8 @@ def _display(value: Any) -> str:
     return "" if value is None else str(value)
 
 
-def _frame_no_from_name(path: Path, fallback: int) -> int:
-    stem = path.stem
-    return int(stem) if stem.isdigit() else fallback
-
-
-def _timeline_by_file(
-    rows: list[dict[str, Any]], row_type: str
-) -> dict[str, dict[str, Any]]:
-    return {
-        row["file"]: row
-        for row in rows
-        if row.get("type") == row_type and isinstance(row.get("file"), str)
-    }
-
-
-def _frame_entries(
-    recording: Recording, timeline: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
-    """Frame rows with ``frame_no``/``t_ms`` from the timeline when available."""
-    by_file = _timeline_by_file(timeline, "frame")
-    entries: list[dict[str, Any]] = []
-    for index, path in enumerate(recording.frames, start=1):
-        relative = path.relative_to(recording.path).as_posix()
-        row = by_file.get(relative, {})
-        frame_no = row.get("frame_no")
-        if not _is_int(frame_no):
-            frame_no = _frame_no_from_name(path, index)
-        t_ms = row.get("t_ms")
-        if not _is_int(t_ms):
-            t_ms = 0
-        entries.append(
-            {
-                "frame_no": frame_no,
-                "t_ms": t_ms,
-                "file": relative,
-                "url": urls.frame_url(recording.path.name, path.name),
-            }
-        )
-    return entries
-
-
-def _snapshot_entries(
-    recording: Recording, timeline: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
-    """Snapshot rows with their timeline label when available."""
-    by_file = _timeline_by_file(timeline, "snapshot")
-    entries: list[dict[str, Any]] = []
-    for path in recording.snapshots:
-        relative = path.relative_to(recording.path).as_posix()
-        row = by_file.get(relative, {})
-        label = row.get("label")
-        entries.append(
-            {
-                "label": label if isinstance(label, str) and label else path.stem,
-                "file": relative,
-                "url": urls.snapshot_url(recording.path.name, path.name),
-                "frame_no": row.get("frame_no"),
-                "t_ms": row.get("t_ms"),
-            }
-        )
-    return entries
+def _file_name(relative: str) -> str:
+    return relative.rsplit("/", 1)[-1]
 
 
 def _note_view(note: dict[str, Any], session_id: str | None) -> dict[str, Any]:
@@ -192,13 +132,37 @@ class ReplayModel:
     def frames(self) -> list[dict[str, Any]]:
         if self._recording is None:
             return []
-        return _frame_entries(self._recording, self.timeline)
+        # Read the timeline first: Recording fills its shared view cache from
+        # this read, so frame_views() does not read the file a second time.
+        self.timeline
+        session_id = self._recording.path.name
+        return [
+            {
+                "frame_no": view["frame_no"],
+                "t_ms": view["t_ms"],
+                "file": view["file"],
+                "url": urls.frame_url(session_id, _file_name(view["file"])),
+            }
+            for view in self._recording.frame_views()
+        ]
 
     @cached_property
     def snapshots(self) -> list[dict[str, Any]]:
         if self._recording is None:
             return []
-        return _snapshot_entries(self._recording, self.timeline)
+        # Same order as frames: one timeline read feeds both view lists.
+        self.timeline
+        session_id = self._recording.path.name
+        return [
+            {
+                "label": view["label"],
+                "file": view["file"],
+                "url": urls.snapshot_url(session_id, _file_name(view["file"])),
+                "frame_no": view["frame_no"],
+                "t_ms": view["t_ms"],
+            }
+            for view in self._recording.snapshot_views()
+        ]
 
     @cached_property
     def _frame_diffs_read(

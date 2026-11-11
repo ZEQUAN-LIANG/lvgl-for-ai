@@ -209,6 +209,8 @@ recording = Recording.open("sessions/<id>")
 print(recording.manifest["app"], recording.manifest["frame_count"])
 ```
 
+旧 import 路径 `lvgl_ai.core`、`lvgl_ai.region`、`lvgl_ai.web.server`、`lvgl_ai.web.stream`、`lvgl_ai.web.page`、`lvgl_ai.web.region_images` 已移除；控制层请改用 `lvgl_ai` 顶层导出或 `lvgl_ai.control`，web 请改用 `lvgl_ai.web` 包内模块。
+
 嵌入方可以用 `Runtime(lvgl="9.6", width=640, height=480)` 指定显示尺寸；宽高必须成对且
 为 `1..4096`，省略时使用 engine 默认 800×600。实际尺寸以 engine 的 `ready.display` 为准。
 

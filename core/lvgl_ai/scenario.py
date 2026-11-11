@@ -192,6 +192,68 @@ def load_scenario(path: str | Path) -> dict[str, Any]:
     return document
 
 
+def scenario_index(
+    root: str | Path,
+    *,
+    scenarios_dir: str | Path | None = None,
+    include_symlinks: bool = False,
+) -> list[dict[str, Any]]:
+    """Return one entry per ``*.json`` scenario file, sorted by filename.
+
+    ``root`` is the base for the relative ``path`` field; the scanned directory
+    defaults to ``root/user/scenarios`` and can be overridden with
+    ``scenarios_dir`` (the web app manager keeps its scenarios outside the
+    repository root). Invalid scenarios keep their error text and do not block
+    the other entries.
+
+    Symlinked scenario files are skipped by default (the app views and trash
+    must not follow links). The web app picker and its display lookup pass
+    ``include_symlinks=True`` to keep following them.
+    """
+    root_path = Path(root).expanduser().resolve()
+    directory = (
+        Path(scenarios_dir).expanduser().resolve()
+        if scenarios_dir is not None
+        else root_path / "user" / "scenarios"
+    )
+    result: list[dict[str, Any]] = []
+    if not directory.is_dir():
+        return result
+    for path in sorted(directory.glob("*.json")):
+        if not include_symlinks and path.is_symlink():
+            continue
+        if not path.is_file():
+            continue
+        entry: dict[str, Any] = {
+            "path": _relative(path, root_path),
+            "basename": path.name,
+            "app": None,
+            "name": None,
+            "display": None,
+            "valid": False,
+            "error": None,
+        }
+        try:
+            document = load_scenario(path)
+        except (OSError, ValueError, ScenarioError) as exc:
+            entry["error"] = str(exc)
+        else:
+            app = document.get("app")
+            entry["app"] = app if isinstance(app, str) else None
+            entry["name"] = document.get("name")
+            entry["display"] = document.get("display")
+            entry["valid"] = True
+        result.append(entry)
+    return result
+
+
+def _relative(path: Path, root: Path) -> str:
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
 def normalize_steps(steps: Any) -> list[dict[str, Any]]:
     """Validate a list of steps and apply per-type defaults."""
     if not isinstance(steps, list):

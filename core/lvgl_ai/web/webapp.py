@@ -28,17 +28,15 @@ from urllib.parse import parse_qs, unquote, urlencode, urlparse
 from .. import apps as app_store
 from .. import paths
 from ..apps.trash import InvalidTrashId
-from ..control.errors import ScenarioError
 from ..control.input import TOKEN_PATTERN, is_token
 from ..control.recording import Recording
 from ..control.runtime import Runtime
-from ..scenario import load_scenario
+from ..scenario import scenario_index
 from . import page_render, replay_model
 from .annotations import AnnotationError, write_note
 from .live_session import (
     LiveError,
     LiveSession,
-    LiveStream,
     validate_live_kind,
 )
 from .urls import page_url
@@ -154,6 +152,13 @@ class HttpError(Exception):
         }
 
 
+def _live_http_error(exc: LiveError) -> HttpError:
+    status = LIVE_ERROR_STATUS.get(
+        exc.code, HTTPStatus.INTERNAL_SERVER_ERROR
+    )
+    return HttpError(status, exc.code, exc.message, detail=exc.detail)
+
+
 class WebApp:
     """State and behavior behind the HTTP routes."""
 
@@ -248,38 +253,36 @@ class WebApp:
             return self._scenario_apps_locked()
 
     def _scenario_apps_locked(self) -> list[dict[str, Any]]:
-        root = self.scenarios_dir
-        if not root.is_dir():
-            return []
         apps: dict[str, dict[str, Any]] = {}
-        for path in sorted(root.glob("*.json")):
-            try:
-                document = load_scenario(path)
-            except ScenarioError:
+        for item in scenario_index(
+            self.repo_root,
+            scenarios_dir=self.scenarios_dir,
+            include_symlinks=True,
+        ):
+            if not item["valid"]:
                 continue
-            app = document.get("app")
+            app = item["app"]
             if not isinstance(app, str) or not app or app in apps:
                 continue
             apps[app] = {
                 "app": app,
-                "name": document.get("name") or app,
-                "scenario": path.name,
-                "display": document.get("display"),
+                "name": item["name"] or app,
+                "scenario": item["basename"],
+                "display": item["display"],
             }
         return sorted(apps.values(), key=lambda entry: (entry["name"], entry["app"]))
 
-    def _scenario_display_locked(
-        self, app: str | None
-    ) -> tuple[int, int] | None:
+    def _scenario_display(self, app: str | None) -> tuple[int, int] | None:
         """The display declared by the first sorted scenario for ``app``."""
         if app is None:
             return None
-        for entry in self._scenario_apps_locked():
-            if entry["app"] == app:
-                display = entry.get("display")
-                if display is None:
-                    return None
-                return display["width"], display["height"]
+        with self._apps_lock:
+            for entry in self._scenario_apps_locked():
+                if entry["app"] == app:
+                    display = entry.get("display")
+                    if display is None:
+                        return None
+                    return display["width"], display["height"]
         return None
 
     # ---- app management -------------------------------------------------
@@ -520,49 +523,6 @@ class WebApp:
             raise HttpError(status, exc.code, str(exc)) from exc
         return HTTPStatus.CREATED, {"annotations": document, "note": note}
 
-    # ---- live ----------------------------------------------------------
-
-    @staticmethod
-    def _live_http_error(exc: LiveError) -> HttpError:
-        status = LIVE_ERROR_STATUS.get(
-            exc.code, HTTPStatus.INTERNAL_SERVER_ERROR
-        )
-        return HttpError(status, exc.code, exc.message, detail=exc.detail)
-
-    def _live_call(self, operation: Callable[[], Any]) -> Any:
-        try:
-            return operation()
-        except LiveError as exc:
-            raise self._live_http_error(exc) from exc
-
-    def live_status(self) -> dict[str, Any]:
-        return self.live.status()
-
-    def open_live_stream(self) -> LiveStream:
-        """Bind one HTTP stream response to the running live session."""
-        return self._live_call(self.live.open_stream)
-
-    def start_live(
-        self, kind: str = "record", app: str | None = None
-    ) -> dict[str, Any]:
-        # Keep the old validation order: an unknown mode wins over a bad app.
-        self._live_call(lambda: validate_live_kind(kind))
-        app = _input_app(app)
-        with self._apps_lock:
-            display = self._scenario_display_locked(app)
-            return self._live_call(
-                lambda: self.live.start(kind, app, display=display)
-            )
-
-    def stop_live(self) -> dict[str, Any]:
-        return self._live_call(self.live.stop)
-
-    def live_pointer(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return self._live_call(lambda: self.live.pointer(payload))
-
-    def live_key(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return self._live_call(lambda: self.live.key(payload))
-
     # ---- browser page tracking ----------------------------------------
 
     def page_open(self, page_id: str) -> dict[str, Any]:
@@ -609,8 +569,8 @@ class WebApp:
         if self.live.is_starting():
             return
         try:
-            self.stop_live()
-        except HttpError:
+            self.live.stop()
+        except LiveError:
             pass
 
 
@@ -649,6 +609,9 @@ class _WebHandler(BaseHTTPRequestHandler):
             self._route(method, path, query)
         except HttpError as exc:
             self._send_json(exc.status, exc.payload())
+        except LiveError as exc:
+            error = _live_http_error(exc)
+            self._send_json(error.status, error.payload())
         except (BrokenPipeError, ConnectionResetError):
             pass
         except Exception as exc:  # noqa: BLE001 - keep the server alive
@@ -679,7 +642,7 @@ class _WebHandler(BaseHTTPRequestHandler):
 
         if path == "/api/live":
             self._require(method, ("GET",))
-            return self._send_json(HTTPStatus.OK, self.app.live_status())
+            return self._send_json(HTTPStatus.OK, self.app.live.status())
 
         if path == "/api/live/stream":
             self._require(method, ("GET",))
@@ -687,28 +650,24 @@ class _WebHandler(BaseHTTPRequestHandler):
 
         if path == "/api/live/start":
             self._require(method, ("POST",))
-            mode = (query.get("mode") or ["record"])[0]
-            app = (query.get("app") or [None])[0]
-            return self._send_json(
-                HTTPStatus.OK, self.app.start_live(mode, app)
-            )
+            return self._start_live(query)
 
         if path == "/api/live/stop":
             self._require(method, ("POST",))
-            return self._send_json(HTTPStatus.OK, self.app.stop_live())
+            return self._send_json(HTTPStatus.OK, self.app.live.stop())
 
         if path == "/api/live/pointer":
             self._require(method, ("POST",))
             return self._send_json(
                 HTTPStatus.OK,
-                self.app.live_pointer(self._read_json_body()),
+                self.app.live.pointer(self._read_json_body()),
             )
 
         if path == "/api/live/key":
             self._require(method, ("POST",))
             return self._send_json(
                 HTTPStatus.OK,
-                self.app.live_key(self._read_json_body()),
+                self.app.live.key(self._read_json_body()),
             )
 
         if path == "/api/apps":
@@ -837,6 +796,17 @@ class _WebHandler(BaseHTTPRequestHandler):
             HTTPStatus.NOT_FOUND, "not_found", f"unknown path: {path}"
         )
 
+    def _start_live(self, query: dict[str, list[str]]) -> None:
+        mode = (query.get("mode") or ["record"])[0]
+        app = (query.get("app") or [None])[0]
+        # Keep the old validation order: an unknown mode wins over a bad app.
+        validate_live_kind(mode)
+        app = _input_app(app)
+        display = self.app._scenario_display(app)
+        return self._send_json(
+            HTTPStatus.OK, self.app.live.start(mode, app, display=display)
+        )
+
     @staticmethod
     def _require(method: str, allowed: tuple[str, ...]) -> None:
         if method not in allowed:
@@ -949,7 +919,7 @@ class _WebHandler(BaseHTTPRequestHandler):
         thread and never holds the live lock; the stream handle keeps this
         response bound to the session that was running when it connected.
         """
-        stream = self.app.open_live_stream()
+        stream = self.app.live.open_stream()
         self.close_connection = True
         try:
             self.connection.settimeout(10.0)

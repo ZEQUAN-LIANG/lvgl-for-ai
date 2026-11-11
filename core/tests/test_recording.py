@@ -7,6 +7,7 @@ frame_diffs + annotations + engine.log (plus build.log).
 
 from __future__ import annotations
 
+import inspect
 import json
 import tempfile
 import unittest
@@ -191,6 +192,244 @@ class RecordingReadTest(unittest.TestCase):
         with self.assertRaises(ValueError) as caught:
             recording.frame_diffs()
         self.assertIn("frame_diffs.ndjson:1", str(caught.exception))
+
+
+def _append_timeline(session: Path, rows: list[dict]) -> None:
+    path = session / "timeline.ndjson"
+    path.write_text(
+        path.read_text(encoding="utf-8")
+        + "".join(json.dumps(row) + "\n" for row in rows),
+        encoding="utf-8",
+    )
+
+
+class RecordingViewsTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+
+    def test_frame_views_expose_file_frame_no_and_t_ms_without_urls(self) -> None:
+        session = make_session(self.root)
+        recording = Recording.open(session)
+
+        self.assertEqual(
+            recording.frame_views(),
+            [{"file": FRAME, "frame_no": 1, "t_ms": 0}],
+        )
+
+    def test_frame_views_read_the_full_timeline(self) -> None:
+        session = make_session(self.root)
+        write_png_rgb(session / "frames/000002.png", 1, 1, [(1, 1, 1)])
+        # The first frame row must come from the head of a large timeline.
+        head = {
+            "schema": "lvgl-ai-timeline-v1",
+            "type": "frame",
+            "frame_no": 1,
+            "t_ms": 7,
+            "file": FRAME,
+        }
+        filler = [
+            {
+                "schema": "lvgl-ai-timeline-v1",
+                "type": "input",
+                "seq": number,
+                "frame_no": 1,
+                "t_ms": 0,
+                "device": "pointer",
+                "action": "down",
+                "x": 1,
+                "y": 1,
+                "hit": "button-" + "x" * 180,
+                "hit_class": "lv_button",
+            }
+            for number in range(1, 2001)
+        ]
+        tail = {
+            "schema": "lvgl-ai-timeline-v1",
+            "type": "frame",
+            "frame_no": 2,
+            "t_ms": 43210,
+            "file": "frames/000002.png",
+        }
+        text = "".join(json.dumps(row) + "\n" for row in [head, *filler, tail])
+        (session / "timeline.ndjson").write_text(text, encoding="utf-8")
+        self.assertGreater(len(text.encode("utf-8")), 256 * 1024)
+
+        recording = Recording.open(session)
+        self.assertEqual(
+            [(view["frame_no"], view["t_ms"]) for view in recording.frame_views()],
+            [(1, 7), (2, 43210)],
+        )
+
+    def test_frame_views_fall_back_to_file_numbers_without_a_timeline(self) -> None:
+        session = make_session(self.root)
+        write_png_rgb(session / "frames/000002.png", 1, 1, [(1, 1, 1)])
+        (session / "timeline.ndjson").unlink()
+
+        views = Recording(session).frame_views()
+
+        self.assertEqual(
+            [(view["frame_no"], view["t_ms"]) for view in views],
+            [(1, 0), (2, 0)],
+        )
+
+    def test_snapshot_views_carry_labels_and_file_stem_fallback(self) -> None:
+        session = make_session(self.root)
+        (session / "snapshots").mkdir()
+        write_png_rgb(
+            session / "snapshots/001_after_click.png", 1, 1, [(0, 0, 0)]
+        )
+        write_png_rgb(
+            session / "snapshots/002_untracked.png", 1, 1, [(0, 0, 0)]
+        )
+        _append_timeline(
+            session,
+            [
+                {
+                    "schema": "lvgl-ai-timeline-v1",
+                    "type": "snapshot",
+                    "frame_no": 2,
+                    "t_ms": 16,
+                    "label": "after_click",
+                    "file": "snapshots/001_after_click.png",
+                }
+            ],
+        )
+        recording = Recording.open(session)
+
+        self.assertEqual(
+            recording.snapshot_views(),
+            [
+                {
+                    "file": "snapshots/001_after_click.png",
+                    "frame_no": 2,
+                    "t_ms": 16,
+                    "label": "after_click",
+                },
+                {
+                    "file": "snapshots/002_untracked.png",
+                    "frame_no": None,
+                    "t_ms": None,
+                    "label": "002_untracked",
+                },
+            ],
+        )
+
+    def test_views_take_no_timeline_argument(self) -> None:
+        for method in (Recording.frame_views, Recording.snapshot_views):
+            with self.subTest(method=method.__name__):
+                self.assertEqual(
+                    list(inspect.signature(method).parameters), ["self"]
+                )
+
+    def test_views_read_the_timeline_at_most_once_per_recording(self) -> None:
+        session = make_session(self.root)
+        (session / "snapshots").mkdir()
+        write_png_rgb(session / "snapshots/001_after.png", 1, 1, [(0, 0, 0)])
+        _append_timeline(
+            session,
+            [
+                {
+                    "schema": "lvgl-ai-timeline-v1",
+                    "type": "snapshot",
+                    "frame_no": 1,
+                    "t_ms": 16,
+                    "label": "after",
+                    "file": "snapshots/001_after.png",
+                }
+            ],
+        )
+
+        class CountingRecording(Recording):
+            def __init__(self, path: Path) -> None:
+                super().__init__(path)
+                self.timeline_reads = 0
+
+            def timeline(self):
+                self.timeline_reads += 1
+                return super().timeline()
+
+        recording = CountingRecording(session)
+        recording.frame_views()
+        recording.snapshot_views()
+
+        self.assertEqual(recording.timeline_reads, 1)
+
+    def test_latest_frame_returns_the_last_retained_frame(self) -> None:
+        session = make_session(self.root)
+        write_png_rgb(session / "frames/000002.png", 1, 1, [(1, 1, 1)])
+        _append_timeline(
+            session,
+            [
+                {
+                    "schema": "lvgl-ai-timeline-v1",
+                    "type": "frame",
+                    "frame_no": 2,
+                    "t_ms": 16,
+                    "file": "frames/000002.png",
+                }
+            ],
+        )
+        recording = Recording.open(session)
+
+        self.assertEqual(
+            recording.latest_frame(),
+            {"file": "frames/000002.png", "frame_no": 2, "t_ms": 16},
+        )
+
+    def test_latest_frame_reads_the_tail_of_a_large_timeline(self) -> None:
+        session = make_session(self.root)
+        write_png_rgb(session / "frames/000002.png", 1, 1, [(1, 1, 1)])
+        filler = [
+            {
+                "schema": "lvgl-ai-timeline-v1",
+                "type": "input",
+                "seq": number,
+                "frame_no": 1,
+                "t_ms": 0,
+                "device": "pointer",
+                "action": "move",
+                "x": 1,
+                "y": 1,
+                "hit": "button-" + "x" * 180,
+                "hit_class": "lv_button",
+            }
+            for number in range(1, 2001)
+        ]
+        tail = {
+            "schema": "lvgl-ai-timeline-v1",
+            "type": "frame",
+            "frame_no": 2,
+            "t_ms": 43210,
+            "file": "frames/000002.png",
+        }
+        text = "".join(json.dumps(row) + "\n" for row in [*filler, tail])
+        (session / "timeline.ndjson").write_text(text, encoding="utf-8")
+        self.assertGreater(len(text.encode("utf-8")), 256 * 1024)
+
+        self.assertEqual(
+            Recording.open(session).latest_frame()["t_ms"], 43210
+        )
+
+    def test_views_are_empty_and_latest_frame_is_none_without_frames(self) -> None:
+        session = make_session(
+            self.root,
+            artifacts={
+                "manifest": "manifest.json",
+                "build_log": "build.log",
+                "engine_log": "engine.log",
+            },
+            with_timeline=False,
+            with_frame_diffs=False,
+            with_annotations=False,
+            with_frames=False,
+        )
+        recording = Recording.open(session)
+
+        self.assertEqual(recording.frame_views(), [])
+        self.assertEqual(recording.snapshot_views(), [])
+        self.assertIsNone(recording.latest_frame())
 
 
 class RecordingAnnotationsTest(unittest.TestCase):
