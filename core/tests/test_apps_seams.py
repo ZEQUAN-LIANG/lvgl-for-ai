@@ -16,6 +16,7 @@ from unittest import mock
 
 from lvgl_ai import apps as app_domain
 from lvgl_ai.apps import common, policy, registry, scaffold, trash, views
+from lvgl_ai.scenario import scenario_index
 
 TOOL_ROOT = Path(__file__).resolve().parent.parent
 REPO_ROOT = TOOL_ROOT.parent
@@ -417,7 +418,7 @@ class ViewsSeamTest(_TempRepo):
         (self.root / "user/scenarios/bad.json").write_text(
             "{", encoding="utf-8"
         )
-        index = views.scenario_index(self.root)
+        index = scenario_index(self.root)
         by_name = {item["basename"]: item for item in index}
         self.assertTrue(by_name["good.json"]["valid"])
         self.assertEqual(by_name["good.json"]["app"], "coffee")

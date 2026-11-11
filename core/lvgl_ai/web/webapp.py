@@ -28,11 +28,10 @@ from urllib.parse import parse_qs, unquote, urlencode, urlparse
 from .. import apps as app_store
 from .. import paths
 from ..apps.trash import InvalidTrashId
-from ..control.errors import ScenarioError
 from ..control.input import TOKEN_PATTERN, is_token
 from ..control.recording import Recording
 from ..control.runtime import Runtime
-from ..scenario import load_scenario
+from ..scenario import scenario_index
 from . import page_render, replay_model
 from .annotations import AnnotationError, write_note
 from .live_session import (
@@ -248,23 +247,20 @@ class WebApp:
             return self._scenario_apps_locked()
 
     def _scenario_apps_locked(self) -> list[dict[str, Any]]:
-        root = self.scenarios_dir
-        if not root.is_dir():
-            return []
         apps: dict[str, dict[str, Any]] = {}
-        for path in sorted(root.glob("*.json")):
-            try:
-                document = load_scenario(path)
-            except ScenarioError:
+        for item in scenario_index(
+            self.repo_root, scenarios_dir=self.scenarios_dir
+        ):
+            if not item["valid"]:
                 continue
-            app = document.get("app")
+            app = item["app"]
             if not isinstance(app, str) or not app or app in apps:
                 continue
             apps[app] = {
                 "app": app,
-                "name": document.get("name") or app,
-                "scenario": path.name,
-                "display": document.get("display"),
+                "name": item["name"] or app,
+                "scenario": item["basename"],
+                "display": item["display"],
             }
         return sorted(apps.values(), key=lambda entry: (entry["name"], entry["app"]))
 
