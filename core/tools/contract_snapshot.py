@@ -1015,10 +1015,8 @@ def _session_section(
 
     required_files: list[str] = []
     optional_files: list[str] = []
-    for relative in file_set:
-        probe = workspace / "file-probe"
-        if probe.exists():
-            shutil.rmtree(probe)
+    for index, relative in enumerate(file_set):
+        probe = workspace / f"file-probe-{index}"
         shutil.copytree(session_dir, probe)
         (probe / relative).unlink()
         try:
@@ -1030,10 +1028,8 @@ def _session_section(
 
     required_fields: list[str] = []
     optional_fields: list[str] = []
-    manifest_probe = workspace / "manifest-probe"
     for field in sorted(manifest):
-        if manifest_probe.exists():
-            shutil.rmtree(manifest_probe)
+        manifest_probe = workspace / f"manifest-probe-{field}"
         shutil.copytree(session_dir, manifest_probe)
         path = manifest_probe / "manifest.json"
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -1046,7 +1042,6 @@ def _session_section(
         else:
             optional_fields.append(field)
 
-    status_probe = workspace / "status-probe"
     accepted_statuses: list[str] = []
     rejected_statuses: list[str] = []
     for status in (
@@ -1059,8 +1054,7 @@ def _session_section(
         "fail",
         "unverified",
     ):
-        if status_probe.exists():
-            shutil.rmtree(status_probe)
+        status_probe = workspace / f"status-probe-{status}"
         shutil.copytree(session_dir, status_probe)
         path = status_probe / "manifest.json"
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -1073,11 +1067,9 @@ def _session_section(
         else:
             accepted_statuses.append(status)
 
-    type_probe = workspace / "type-probe"
     timeline_types: dict[str, bool] = {}
     for row_type in ("frame", "input", "wait", "mark", "snapshot", "end", "other"):
-        if type_probe.exists():
-            shutil.rmtree(type_probe)
+        type_probe = workspace / f"type-probe-{row_type}"
         shutil.copytree(session_dir, type_probe)
         (type_probe / "timeline.ndjson").write_text(
             json.dumps(
