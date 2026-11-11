@@ -11,6 +11,7 @@
 - `lvgl_ai/`：Python 控制层。`Runtime`（一个实例 = 一个 LVGL 进程 = 一次会话）、`Recording`（只读证据视图，annotations 可写）、`play_scenario`、`apps/`（应用管理 package：common / policy / registry / scaffold / trash / views）、错误类型、`web/`（HTTP/UI 适配）。
 - `engine/`：C engine，负责协议、虚拟 indev、录帧、时间轴、窗口。
 - `cli.py`：命令行入口。
+- `session_report.py`：会话证据摘要入口，不启动 engine 或网页。
 - `web.py`：网页端入口。
 - `tests/`：`python -I` 测试套件。
 - `api-nav/`：每个 LVGL 版本一份 API 导航。
@@ -164,7 +165,36 @@ engine，不写时使用默认 800×600。显式 `--app` 只覆盖应用，不�
 `build/lvgl_<version>/lvgl_engine`，不重新编译 `user/app`。产物不存在时抛
 `EngineNotFound`；改过 C 代码后仍要用源码构建。
 
-退出码：`0` 会话正常结束；`1` build / link / crash；`2` harness、scenario、协议或环境错误。`--json` 在 stdout 输出一行 `session_id` / `manifest_path` / `app` / `error`。
+退出码：`0` 会话正常结束；`1` build / link / crash；`2` harness、scenario、协议或环境错误。`--json` 在 stdout 输出一行 JSON，始终包含 `session_id` / `manifest_path` / `app` / `error`；会话证据可读时再带上 `session_dir`、`status`、`display`、`frame_count`、`requested_app`、`effective_app`、`snapshots`、`marks`、`log_tail`，字段语义与 `summarize_session` 一致。摘要读取失败（崩溃会话、文件不齐）时只保留可得字段，不改变退出码；诊断只走 stderr。
+
+## 会话报告
+
+不启动 engine、不启动网页，读取已有会话的证据：
+
+```bash
+# 最新会话的人类可读摘要
+python -I core/session_report.py
+
+# 指定会话，stdout 只有一行 JSON
+python -I core/session_report.py sessions/<id> --json
+
+# 显式指定最新会话，并且只看最后 5 行 engine.log
+python -I core/session_report.py --latest --log-tail 5
+```
+
+会话根默认 `sessions/`，可用 `LVGL_AI_SESSIONS_ROOT` 覆盖；无参数或 `--latest` 取最新会话。摘要包含 status、mode、display、帧数与帧绝对路径、requested / effective app、快照、marks、inputs、帧差异和日志尾部。
+
+摘要字段以 `core/lvgl_ai/control/evidence.py` 的 `SUMMARY_FIELDS` 为准；`frames` 是帧 PNG 的绝对路径，供视觉证据命令使用，CLI `--json` 只增加 `CLI_EVIDENCE_FIELDS` 中的较短字段集。`recorded` 与 `Recording.open()` 使用同一规则：manifest 描述录制（`frame_count > 0` 或 artifacts 含 `timeline` / `frame_diffs`）时必须同时存在 `timeline.ndjson` 与 `frame_diffs.ndjson`，缺失按损坏证据报错；`record=False` 或 crash 会话没有这些文件时返回空列表并标记 `recorded: false`，只有 `manifest.json` 或 `engine.log` 缺失才算错误。未知会话或损坏文件退出码 `2`，错误只走 stderr。
+
+`crop`、`contact-sheet` 与 `compare --out` 的输出路径必须显式给出，且不能落在任一源会话的证据目录内：写入 `sessions/<id>/` 的新 PNG 会被 `Recording.frames` / `Recording.snapshots` 当成证据。`pixel` 只读不写。`compare` 的会话输入按摘要顺序取最后一张快照；没有快照时取文件名排序的最后一帧，规则同时写在 `--help` 与票 09。
+
+Python 侧的稳定入口是 `lvgl_ai.summarize_session(session, log_tail_lines=20)`，接受会话目录或 `manifest.json`。
+
+## 等待画面稳定
+
+`Runtime.wait_stable(max_ms, stable_frames)` 以 16 ms 步进调用引擎 `wait`，累计连续 `changed=false` 的次数，达到 `stable_frames` 或 `max_ms` 上限后返回 `waited_ms` / `stable_frames` / `stable`；返回值是证据，不是 pass/fail。它只依据 `wait` 回执的 `changed` 布尔字段，与 `--record-changed-only` 的保留帧数无关，因此保留帧数为 0 不会被当成稳定。
+
+`changed` 表示该次 `wait` 期间至少有一次 display flush。9.x 与 8.x 的实现边界相同：`core/engine/adapter_9x.c` 和 `core/engine/adapter_8x.c` 都在 flush callback 里设置同一个 `refresh_painted` flag，`core/engine/session.c` 把 flag 汇总进 `wait` / `wait frames` 回执；`tick`、`pointer` 等其它回执不带该字段。支持的 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3 都具备该信号，不需要版本降级。缺 `changed` 字段的旧 engine 会在第一次轮询时报错并提示 `--build` 重建，不会无限等待。
 
 ## Python
 
@@ -210,3 +240,5 @@ python -I core/tests/run_tests.py
 # 外部契约对比（重构前后都应零差异）
 python -I core/tools/contract_snapshot.py compare
 ```
+
+测试套件同时包含单元测试和真实 engine 的集成测试：`*IntegrationTest` 类会按仓库既有方式构建 LVGL（当前主要是 9.6，多版本测试覆盖全部支持版本），由同一次 `run_tests.py` 执行；它们不是 skip 或未执行断言。单元测试使用 fake engine / 纯函数，不构建 LVGL。

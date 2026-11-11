@@ -18,6 +18,10 @@ for path in (TOOL_ROOT, TESTS_DIR):
     if text not in sys.path:
         sys.path.insert(0, text)
 
+# Importing support installs the retrying TemporaryDirectory used by the whole
+# suite; Windows delete-pending handles otherwise make temp cleanup flaky.
+import support  # noqa: E402,F401
+
 
 def main() -> int:
     suite = unittest.defaultTestLoader.discover(

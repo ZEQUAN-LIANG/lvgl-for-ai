@@ -23,6 +23,8 @@ if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
 import contract_snapshot as cs
+# Side effect: install the Windows-safe TemporaryDirectory before setUp runs.
+import support  # noqa: F401,E402
 
 
 class ContractSnapshotTest(unittest.TestCase):
@@ -200,6 +202,9 @@ class ContractSnapshotTest(unittest.TestCase):
         )
         self.assertEqual(
             protocol["required_reply_fields"]["snapshot"], ["file"]
+        )
+        self.assertEqual(
+            protocol["reply_shapes"]["wait"]["object"]["changed"], "boolean"
         )
         self.assertEqual(protocol["error_reply_outcome"], "ProtocolError")
         self.assertIn(

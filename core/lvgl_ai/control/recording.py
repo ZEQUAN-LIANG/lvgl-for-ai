@@ -13,8 +13,38 @@ without touching the evidence the engine produced.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
+
+_SNAPSHOT_NUMBER_PREFIX = re.compile(r"^\d+_")
+
+
+def manifest_is_recorded(manifest: Mapping[str, Any]) -> bool:
+    """True when the manifest describes a session with timeline evidence.
+
+    This is the single rule shared by :class:`Recording` validation and
+    :func:`~lvgl_ai.control.evidence.summarize_session`, so both entry points
+    agree on what ``recorded`` means.
+    """
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, Mapping):
+        return False
+    return manifest.get("frame_count", 0) > 0 or any(
+        key in artifacts for key in ("timeline", "frame_diffs")
+    )
+
+
+def snapshot_label(path: Path) -> str:
+    """Drop the ``NNN_`` ordering prefix from a snapshot file name."""
+    return _SNAPSHOT_NUMBER_PREFIX.sub("", path.stem)
+
+
+def tail_lines(text: str, n: int) -> list[str]:
+    """Last ``n`` lines of ``text``; ``n <= 0`` returns ``[]``."""
+    if n <= 0:
+        return []
+    return text.splitlines()[-n:]
 
 # The schema, file names and validation are shared with SessionStore, the
 # write side. Re-exported here so existing imports keep working.
@@ -82,11 +112,7 @@ class Recording:
         manifest = self.manifest
         self._require_file(self.path / ENGINE_LOG_FILE)
 
-        artifacts = manifest["artifacts"]
-        recorded = manifest["frame_count"] > 0 or any(
-            key in artifacts for key in ("timeline", "frame_diffs")
-        )
-        if recorded:
+        if manifest_is_recorded(manifest):
             self._require_file(self.path / TIMELINE_FILE)
             self._require_file(self.path / FRAME_DIFFS_FILE)
 
@@ -136,9 +162,7 @@ class Recording:
 
     def log_tail(self, n: int = 40) -> list[str]:
         """Last ``n`` lines of ``engine.log``; ``n <= 0`` returns ``[]``."""
-        if n <= 0:
-            return []
-        return self.log().splitlines()[-n:]
+        return tail_lines(self.log(), n)
 
     def build_log(self) -> str:
         """Full ``build.log`` text."""

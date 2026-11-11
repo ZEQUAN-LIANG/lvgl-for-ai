@@ -7,12 +7,18 @@ those callers use: lifecycle methods and attributes, ``pointer``, ``wait``,
 
 ``start_error`` / ``stop_error`` / ``errors`` inject typed failures so tests
 can verify error mapping (RuntimeCrash -> exit 1, ScenarioError -> exit 2).
+``session_dir`` points the double at a prepared session fixture so callers can
+read evidence after ``stop()``.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+
+# Test modules import this double before creating temp dirs; the side effect
+# installs the Windows-safe TemporaryDirectory for the whole test process.
+import support  # noqa: F401
 
 FAKE_SESSION_ID = "20260102-030405-abcd"
 FAKE_PID = 4242
@@ -29,6 +35,7 @@ class FakeRuntime:
         start_error: BaseException | None = None,
         stop_error: BaseException | None = None,
         errors: dict[str, BaseException] | None = None,
+        session_dir: str | Path | None = None,
         **kwargs: Any,
     ) -> None:
         self.lvgl = lvgl or "9.6"
@@ -40,6 +47,7 @@ class FakeRuntime:
         self.start_error = start_error
         self.stop_error = stop_error
         self.errors = dict(errors or {})
+        self._session_dir = None if session_dir is None else Path(session_dir)
 
         self.commands: list[tuple[Any, ...]] = []
         self.recorded_errors: list[BaseException] = []
@@ -64,8 +72,12 @@ class FakeRuntime:
         if not self.is_running:
             self.is_running = True
             self.pid = FAKE_PID
-            self.session_id = FAKE_SESSION_ID
-            self.session_dir = Path("/fake/sessions") / FAKE_SESSION_ID
+            self.session_dir = (
+                Path("/fake/sessions") / FAKE_SESSION_ID
+                if self._session_dir is None
+                else self._session_dir
+            )
+            self.session_id = self.session_dir.name
             self.manifest_path = self.session_dir / "manifest.json"
             self.engine_log_path = self.session_dir / "engine.log"
         return self
@@ -123,6 +135,18 @@ class FakeRuntime:
         else:
             self.commands.append(("wait", ms))
         return {"seq": len(self.commands)}
+
+    def wait_stable(
+        self, max_ms: int, stable_frames: int
+    ) -> dict[str, Any]:
+        self._raise_if("wait_stable")
+        self.commands.append(("wait_stable", max_ms, stable_frames))
+        return {
+            "seq": len(self.commands),
+            "waited_ms": max_ms,
+            "stable_frames": stable_frames,
+            "stable": True,
+        }
 
     def mark(self, mark_id: str) -> dict[str, Any]:
         self._raise_if("mark")

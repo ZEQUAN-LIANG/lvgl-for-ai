@@ -96,14 +96,14 @@ void session_refresh_frame(session_t * session);
 /** tick <ms>: lv_tick_inc -> lv_timer_handler -> refresh -> record. */
 void session_tick(session_t * session, uint32_t ms);
 
-/** wait <ms>: tick in 16 ms steps, then write the timeline wait row. */
-void session_wait_ms(session_t * session,
+/** wait <ms>: tick in 16 ms steps and write the wait row; true when painted. */
+bool session_wait_ms(session_t * session,
                      unsigned long ms,
                      session_service_fn service,
                      void * service_user);
 
-/** wait frames <n>: n ticks of 16 ms, then the timeline wait row. */
-void session_wait_frames(session_t * session,
+/** wait frames <n>: n 16 ms ticks and the wait row; true when painted. */
+bool session_wait_frames(session_t * session,
                          unsigned long frames,
                          session_service_fn service,
                          void * service_user);

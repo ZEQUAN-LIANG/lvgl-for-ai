@@ -13,9 +13,18 @@
           "exit": 1,
           "keys": [
             "app",
+            "display",
+            "effective_app",
             "error",
+            "frame_count",
+            "log_tail",
             "manifest_path",
-            "session_id"
+            "marks",
+            "requested_app",
+            "session_dir",
+            "session_id",
+            "snapshots",
+            "status"
           ],
           "manifest_path_present": true,
           "session_id_present": true,
@@ -3811,6 +3820,7 @@
         },
         "wait": {
           "object": {
+            "changed": "boolean",
             "frames": "integer",
             "ok": "boolean",
             "protocol": "string",
@@ -4090,7 +4100,8 @@
           "RuntimeCrash",
           "ScenarioError",
           "__version__",
-          "play_scenario"
+          "play_scenario",
+          "summarize_session"
         ],
         "members": {
           "BuildError": {
@@ -4374,6 +4385,18 @@
                     "name": "frames"
                   }
                 ]
+              },
+              "wait_stable": {
+                "signature": [
+                  {
+                    "kind": "POSITIONAL_OR_KEYWORD",
+                    "name": "max_ms"
+                  },
+                  {
+                    "kind": "POSITIONAL_OR_KEYWORD",
+                    "name": "stable_frames"
+                  }
+                ]
               }
             },
             "signature": [
@@ -4537,6 +4560,20 @@
               {
                 "kind": "POSITIONAL_OR_KEYWORD",
                 "name": "path_or_steps"
+              }
+            ]
+          },
+          "summarize_session": {
+            "kind": "function",
+            "signature": [
+              {
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "session"
+              },
+              {
+                "default": 20,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "log_tail_lines"
               }
             ]
           }

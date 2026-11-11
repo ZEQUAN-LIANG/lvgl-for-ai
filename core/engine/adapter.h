@@ -65,6 +65,9 @@ const adapter_info_t * adapter_info(const adapter_t * adapter);
 /** Run one full refresh and wait for the flush callback. */
 void adapter_refresh(adapter_t * adapter);
 
+/** True when the latest adapter_refresh() ran the display flush callback. */
+bool adapter_last_refresh_painted(const adapter_t * adapter);
+
 /**
  * Inject one pointer action into the standard virtual pointer indev and let
  * LVGL process it. The hit test runs before delivery, so the reply names the

@@ -148,6 +148,11 @@ static void reply_state(FILE * out, long seq, const engine_t * engine,
     protocol_reply_ok(out, seq, fields);
 }
 
+static const char * wait_changed_field(bool changed)
+{
+    return changed ? ",\"changed\":true" : ",\"changed\":false";
+}
+
 static bool handle_pointer(engine_t * engine, FILE * out,
                            const command_t * command)
 {
@@ -242,9 +247,11 @@ static bool handle_wait(engine_t * engine, FILE * out,
                                      "usage: wait frames <n>");
             return true;
         }
-        session_wait_frames(&engine->session, frames, engine_service_window,
-                            engine);
-        reply_state(out, command->seq, engine, NULL);
+        bool changed =
+            session_wait_frames(&engine->session, frames,
+                                engine_service_window, engine);
+        reply_state(out, command->seq, engine,
+                    wait_changed_field(changed));
         return true;
     }
 
@@ -254,8 +261,9 @@ static bool handle_wait(engine_t * engine, FILE * out,
                                  "usage: wait <ms> | wait frames <n>");
         return true;
     }
-    session_wait_ms(&engine->session, ms, engine_service_window, engine);
-    reply_state(out, command->seq, engine, NULL);
+    bool changed =
+        session_wait_ms(&engine->session, ms, engine_service_window, engine);
+    reply_state(out, command->seq, engine, wait_changed_field(changed));
     return true;
 }
 
