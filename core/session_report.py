@@ -2,8 +2,9 @@
 """Read one finished session's evidence without starting an engine or the web.
 
 Prints a human-readable summary by default and one line of JSON with
-``--json``. Exit code 0 means the evidence was read; 2 means the session or a
-required file could not be read.
+``--json``. The ``crop``, ``contact-sheet``, and ``pixel`` subcommands read a
+snapshot or frame path and write only an explicit output file. Exit code 0
+means the evidence was read; 2 means the input or output could not be handled.
 """
 
 from __future__ import annotations
@@ -19,10 +20,20 @@ if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
 from lvgl_ai import paths, summarize_session  # noqa: E402
+from lvgl_ai.png_codec import (  # noqa: E402
+    DEFAULT_CONTACT_COLUMNS,
+    DEFAULT_CONTACT_TILE_HEIGHT,
+    DEFAULT_CONTACT_TILE_WIDTH,
+    Region,
+    build_contact_sheet,
+    crop_png,
+    read_pixel,
+)
 
 EXIT_OK = 0
 EXIT_ERROR = 2
 DEFAULT_LOG_TAIL = 20
+VISUAL_COMMANDS = ("crop", "contact-sheet", "pixel")
 
 
 def _log_tail_lines(value: str) -> int:
@@ -37,6 +48,210 @@ def _log_tail_lines(value: str) -> int:
             "log tail must be a non-negative integer"
         )
     return number
+
+
+def _region(value: str) -> Region:
+    parts = value.split(",")
+    if len(parts) != 4:
+        raise argparse.ArgumentTypeError("expected X,Y,W,H")
+    try:
+        x, y, width, height = (int(part) for part in parts)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "expected X,Y,W,H as integers"
+        ) from exc
+    if width <= 0 or height <= 0:
+        raise argparse.ArgumentTypeError("region width and height must be > 0")
+    return Region(x, y, width, height)
+
+
+def _coordinate(value: str) -> tuple[int, int]:
+    parts = value.split(",")
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError("expected X,Y")
+    try:
+        return int(parts[0]), int(parts[1])
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("expected X,Y as integers") from exc
+
+
+def _tile_size(value: str) -> tuple[int, int]:
+    parts = value.lower().split("x")
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError("expected WxH")
+    try:
+        width, height = (int(part) for part in parts)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("expected WxH as integers") from exc
+    if width <= 0 or height <= 0:
+        raise argparse.ArgumentTypeError("tile width and height must be > 0")
+    return width, height
+
+
+def _build_contact_sheet_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="session_report.py contact-sheet",
+        description=(
+            "Combine snapshots or frames into one labeled thumbnail sheet."
+        ),
+    )
+    parser.add_argument(
+        "--input",
+        action="append",
+        required=True,
+        metavar="[LABEL=]PATH",
+        help="snapshot or frame PNG; repeat in the wanted tile order",
+    )
+    parser.add_argument(
+        "--out", required=True, metavar="OUT", help="explicit output PNG path"
+    )
+    parser.add_argument(
+        "--columns",
+        type=int,
+        default=DEFAULT_CONTACT_COLUMNS,
+        metavar="N",
+        help=f"tiles per row (default: {DEFAULT_CONTACT_COLUMNS})",
+    )
+    parser.add_argument(
+        "--tile",
+        type=_tile_size,
+        default=(
+            DEFAULT_CONTACT_TILE_WIDTH,
+            DEFAULT_CONTACT_TILE_HEIGHT,
+        ),
+        metavar="WxH",
+        help=(
+            "tile size in pixels "
+            f"(default: {DEFAULT_CONTACT_TILE_WIDTH}x"
+            f"{DEFAULT_CONTACT_TILE_HEIGHT})"
+        ),
+    )
+    return parser
+
+
+def _split_input_spec(value: str) -> tuple[str, Path]:
+    label, separator, raw_path = value.partition("=")
+    if not separator:
+        path = Path(value)
+        return _derived_label(path), path
+    if not label:
+        raise ValueError(f"input label is empty: {value}")
+    if not raw_path:
+        raise ValueError(f"input path is empty: {value}")
+    return label, Path(raw_path)
+
+
+def _derived_label(path: Path) -> str:
+    stem = path.stem
+    head, separator, tail = stem.partition("_")
+    if separator and head.isdigit() and tail:
+        return tail
+    return stem
+
+
+def _run_contact_sheet(argv: list[str]) -> int:
+    args = _build_contact_sheet_parser().parse_args(argv)
+    try:
+        specs = [_split_input_spec(value) for value in args.input]
+        items = [(label, path.read_bytes()) for label, path in specs]
+        sheet = build_contact_sheet(
+            items, columns=args.columns, tile_width=args.tile[0],
+            tile_height=args.tile[1],
+        )
+        output = _write_output(
+            args.out, sheet.to_png(), [path for _label, path in specs]
+        )
+    except (OSError, ValueError) as exc:
+        print(f"[session-report] {exc}", file=sys.stderr)
+        return EXIT_ERROR
+    print(f"contact-sheet: {output}")
+    print(f"tiles: {len(sheet.tiles)}")
+    print(f"columns: {sheet.columns}")
+    print(f"rows: {sheet.rows}")
+    print("labels:")
+    for tile in sheet.tiles:
+        print(f"  {tile.label}")
+    return EXIT_OK
+
+
+def _build_crop_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="session_report.py crop",
+        description="Crop one snapshot or frame into an explicit output PNG.",
+    )
+    parser.add_argument("input", metavar="INPUT", help="snapshot or frame PNG")
+    parser.add_argument(
+        "--region",
+        required=True,
+        type=_region,
+        metavar="X,Y,W,H",
+        help="crop rectangle in display pixels",
+    )
+    parser.add_argument(
+        "--out", required=True, metavar="OUT", help="explicit output PNG path"
+    )
+    return parser
+
+
+def _write_output(path: str, data: bytes, inputs: list[Path]) -> Path:
+    output = Path(path)
+    resolved = output.resolve()
+    for source in inputs:
+        if resolved == source.resolve():
+            raise ValueError(
+                f"refusing to overwrite input file with output: {output}"
+            )
+    if not output.parent.is_dir():
+        raise FileNotFoundError(
+            f"output directory does not exist: {output.parent}"
+        )
+    output.write_bytes(data)
+    return resolved
+
+
+def _run_crop(argv: list[str]) -> int:
+    args = _build_crop_parser().parse_args(argv)
+    try:
+        source = Path(args.input)
+        cropped, box, _image = crop_png(source.read_bytes(), args.region)
+        output = _write_output(args.out, cropped, [source])
+    except (OSError, ValueError) as exc:
+        print(f"[session-report] {exc}", file=sys.stderr)
+        return EXIT_ERROR
+    print(f"crop: {output} {box.x},{box.y},{box.w},{box.h}")
+    return EXIT_OK
+
+
+def _build_pixel_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="session_report.py pixel",
+        description="Read one pixel's RGB value from a snapshot or frame.",
+    )
+    parser.add_argument("input", metavar="INPUT", help="snapshot or frame PNG")
+    parser.add_argument(
+        "--at",
+        required=True,
+        type=_coordinate,
+        metavar="X,Y",
+        help="pixel coordinate in display pixels",
+    )
+    return parser
+
+
+def _run_pixel(argv: list[str]) -> int:
+    args = _build_pixel_parser().parse_args(argv)
+    x, y = args.at
+    try:
+        data = Path(args.input).read_bytes()
+        red, green, blue = read_pixel(data, x, y)
+    except (OSError, ValueError) as exc:
+        print(f"[session-report] {exc}", file=sys.stderr)
+        return EXIT_ERROR
+    print(
+        f"pixel: {Path(args.input).resolve()} {x},{y} "
+        f"rgb={red},{green},{blue}"
+    )
+    return EXIT_OK
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -73,6 +288,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] in VISUAL_COMMANDS:
+        if argv[0] == "contact-sheet":
+            return _run_contact_sheet(argv[1:])
+        if argv[0] == "crop":
+            return _run_crop(argv[1:])
+        if argv[0] == "pixel":
+            return _run_pixel(argv[1:])
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.latest and args.session is not None:
