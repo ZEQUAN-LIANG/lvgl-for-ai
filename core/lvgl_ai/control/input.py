@@ -8,7 +8,8 @@ This module is the single vocabulary source shared by ``play_scenario``
   :func:`is_token` enforces it with the 64-character cap;
 - :data:`INT16_MIN` / :data:`INT16_MAX` define the encoder range;
 - :func:`resolve_key` (re-exported from :mod:`~lvgl_ai.control.keys`) defines the
-  ``LV_KEY_*`` aliases.
+  ``LV_KEY_*`` aliases and ``CHAR_<code>`` text tokens;
+- :func:`text_problem` enforces the printable ASCII range of a ``text`` step.
 
 The ``*_problem`` functions return the shared diagnostic text (or ``None``);
 callers prepend their own context (``step N:``) and raise their own error type.
@@ -22,9 +23,9 @@ The ``require_*`` helpers raise ``ValueError`` with the Runtime wording.
 
 ``at_ms`` is the offset from the start of the ``rt.input(...)`` call. Events
 are stably sorted by ``at_ms`` before dispatch, so equal timestamps keep the
-caller's order. Key names are resolved against LVGL 9.6's ``LV_KEY_*`` set;
-unknown names raise :class:`ScenarioError` with the event index before any
-command is sent.
+caller's order. Key names are resolved against LVGL 9.6's ``LV_KEY_*`` set or
+the printable ASCII ``CHAR_<code>`` text tokens; unknown names raise
+:class:`ScenarioError` with the event index before any command is sent.
 """
 
 from __future__ import annotations
@@ -34,7 +35,12 @@ from typing import Any, Iterable
 
 from .errors import ScenarioError
 # Re-exported: callers import the whole input vocabulary from this module.
-from .keys import resolve_key
+from .keys import (
+    ASCII_PRINTABLE_MAX,
+    ASCII_PRINTABLE_MIN,
+    char_key,
+    resolve_key,
+)
 
 POINTER_ACTIONS = ("down", "move", "up")
 KEY_ACTIONS = ("press", "release")
@@ -111,6 +117,21 @@ def display_problem(value: Any) -> str | None:
         problem = dimension_problem(value[name], f"display.{name}")
         if problem is not None:
             return problem
+    return None
+
+
+def text_problem(value: Any) -> str | None:
+    """Return the ``text`` step diagnostic, or ``None`` when valid."""
+    if not isinstance(value, str):
+        return "value must be a string"
+    if not value:
+        return "value must not be empty"
+    for char in value:
+        if not ASCII_PRINTABLE_MIN <= ord(char) <= ASCII_PRINTABLE_MAX:
+            return (
+                "value must contain only printable ASCII characters "
+                f"({ASCII_PRINTABLE_MIN}..{ASCII_PRINTABLE_MAX}); got {char!r}"
+            )
     return None
 
 

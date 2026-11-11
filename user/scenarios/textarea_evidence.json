@@ -1,0 +1,12 @@
+{
+  "schema": "lvgl-ai-scenario-v1",
+  "name": "textarea_evidence",
+  "app": "textarea_evidence",
+  "steps": [
+    {"type": "mark", "id": "ready"},
+    {"type": "text", "value": "Hello 1"},
+    {"type": "wait", "ms": 16},
+    {"type": "snapshot", "label": "typed"},
+    {"type": "mark", "id": "done"}
+  ]
+}

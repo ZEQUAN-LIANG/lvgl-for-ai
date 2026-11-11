@@ -217,7 +217,20 @@ class EngineLink:
                     clear_engine_pid(self._engine_path, proc.pid)
                 except OSError:
                     pass
+            self._close_pipes(proc)
             self._proc = None
+
+    @staticmethod
+    def _close_pipes(proc: subprocess.Popen[str]) -> None:
+        """Close stdin/stdout/stderr so Windows releases every pipe handle."""
+        for stream in (proc.stdin, proc.stdout, proc.stderr):
+            close = getattr(stream, "close", None)
+            if close is None:
+                continue
+            try:
+                close()
+            except (OSError, ValueError):
+                pass
 
     # ---- protocol ------------------------------------------------------
 

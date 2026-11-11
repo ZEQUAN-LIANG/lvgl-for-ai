@@ -128,6 +128,9 @@ static void flush_cb(lv_display_t * display, const lv_area_t * area,
                          uint8_t * px_map)
 {
     adapter_t * adapter = (adapter_t *)lv_display_get_user_data(display);
+    if(adapter != NULL) {
+        adapter->common.refresh_painted = true;
+    }
     if(adapter != NULL && px_map != adapter->common.framebuffer) {
         uint32_t width = (uint32_t)lv_area_get_width(area);
         uint32_t height = (uint32_t)lv_area_get_height(area);

@@ -399,6 +399,14 @@ class RuntimeProcessSeamTest(unittest.TestCase):
         self.assertIn(
             "[fake_engine] crashing before ready", "\n".join(caught.exception.log_tail)
         )
+        self.assertIn(
+            "engine closed stdout before announcing ready",
+            str(caught.exception),
+        )
+        self.assertNotIn(
+            "engine 产物早于当前 Runtime，请用 --build 重建",
+            str(caught.exception),
+        )
         manifest = json.loads(
             (rt.session_dir / "manifest.json").read_text(encoding="utf-8")
         )
@@ -468,6 +476,39 @@ class RuntimeProcessSeamTest(unittest.TestCase):
         self.assertEqual(recording.manifest["frame_count"], 0)
         self.assertIs(recording.manifest["record_changed_only"], True)
         self.assertEqual(recording.manifest["app"], "coffee")
+
+    def test_stale_engine_unknown_argument_crash_is_actionable(self) -> None:
+        rt = self._runtime()
+        with mock.patch.dict(os.environ, {"FAKE_UNKNOWN_ARG": "1"}):
+            with self.assertRaises(RuntimeCrash) as caught:
+                rt.start()
+
+        error = caught.exception
+        message = str(error)
+        self.assertIn("engine 产物早于当前 Runtime，请用 --build 重建", message)
+        self.assertIn("--record-changed-only", message)
+        self.assertEqual(error.exit_code, 2)
+        self.assertTrue(any("unknown argument" in line for line in error.log_tail))
+        self.assertIsNotNone(error.log_path)
+        self.assertTrue(Path(error.log_path).is_file())
+
+        manifest = json.loads(
+            (rt.session_dir / "manifest.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["status"], "crash")
+        self.assertEqual(manifest["error"]["code"], "crash")
+        self.assertIn(
+            "engine 产物早于当前 Runtime，请用 --build 重建",
+            manifest["error"]["message"],
+        )
+        self.assertEqual(manifest["error"]["detail"]["exit_code"], 2)
+        self.assertTrue(
+            any(
+                "unknown argument" in line
+                for line in manifest["error"]["detail"]["log_tail"]
+            )
+        )
+        rt.stop()
 
 
 if __name__ == "__main__":

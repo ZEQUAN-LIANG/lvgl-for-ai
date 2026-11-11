@@ -57,12 +57,14 @@ class ScriptedPipe:
 
     def __init__(self) -> None:
         self._lines: queue.Queue[object] = queue.Queue()
+        self.closed = False
 
     def feed(self, *lines: str) -> None:
         for line in lines:
             self._lines.put(line if line.endswith("\n") else line + "\n")
 
     def close(self) -> None:
+        self.closed = True
         self._lines.put(_STOP)
 
     def __iter__(self) -> ScriptedPipe:
@@ -79,6 +81,7 @@ class ScriptedStdin:
     def __init__(self, process: ScriptedProcess) -> None:
         self.process = process
         self.lines: list[str] = []
+        self.closed = False
 
     def write(self, text: str) -> int:
         self.lines.append(text)
@@ -87,6 +90,9 @@ class ScriptedStdin:
 
     def flush(self) -> None:
         pass
+
+    def close(self) -> None:
+        self.closed = True
 
 
 class BrokenStdin:
@@ -436,6 +442,14 @@ class EngineLinkTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertTrue(self.process.terminated)
         self.assertNotIn("quit", [check[0] for check in self.checks])
+
+    def test_shutdown_closes_every_process_pipe(self) -> None:
+        link = self._started_link()
+        link.shutdown(send_quit=False)
+
+        self.assertTrue(self.process.stdin.closed)
+        self.assertTrue(self.process.stdout.closed)
+        self.assertTrue(self.process.stderr.closed)
 
     # ---- crash completion ---------------------------------------------
 

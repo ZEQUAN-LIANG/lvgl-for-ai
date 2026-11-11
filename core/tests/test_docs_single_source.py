@@ -1,16 +1,19 @@
-"""The two docs pages stay link indexes, not copies of drifting facts.
+"""The docs index pages stay indexes, not copies of drifting facts.
 
 ``docs/app.html`` and ``docs/scenario-server.html`` must point at code,
 README or SPEC instead of restating the app list, HTTP routes, server
 constants or scenario step vocabulary.  These tests pin that static
 invariant: every link resolves, every symbol pointer names something in the
 linked file, and facts owned by code do not reappear in the pages.
+``docs/sifli.html`` is link-checked only, so its SDK download links may be
+absent; the one-off audit report is outside both contracts.
 """
 
 from __future__ import annotations
 
 import re
 import sys
+import tempfile
 import unittest
 from html.parser import HTMLParser
 from pathlib import Path
@@ -26,6 +29,10 @@ from lvgl_ai.web import live_session, webapp, wire  # noqa: E402
 
 DOCS_DIR = paths.REPO_ROOT / "docs"
 PAGE_NAMES = ("app.html", "scenario-server.html")
+# sifli.html is link-checked but is not an index page: it may mention app
+# names, routes and constants as capability facts.  audit-2026-11-11.html is a
+# one-off report and stays outside both lists.
+LINK_PAGES = PAGE_NAMES + ("sifli.html",)
 
 # Server constants whose values may not be copied into the docs.  Names may
 # appear as symbol pointers; values may not.
@@ -71,6 +78,7 @@ class _PageParser(HTMLParser):
         values = dict(attrs)
         if tag == "a" and values.get("href"):
             self.last_href = str(values["href"])
+            self.hrefs.append(self.last_href)
         classes = (values.get("class") or "").split()
         if tag == "span" and "ptr" in classes:
             self.ptr_target = self.last_href
@@ -102,6 +110,43 @@ def _parse_page(name: str) -> _PageParser:
     parser.feed((DOCS_DIR / name).read_text(encoding="utf-8"))
     parser.close()
     return parser
+
+
+EXTERNAL_HREF_PREFIXES = ("#", "http://", "https://", "mailto:")
+SDK_DOWNLOAD_DIR = Path("chip-adapt") / "sdk"
+LOCAL_TRACKER_DIR = Path(".scratch") / "ai-tools"
+
+
+def _within(path: Path, root: Path) -> bool:
+    return path == root or root in path.parents
+
+
+def _optional_target(target: Path, repo_root: Path) -> bool:
+    if _within(target, (repo_root / SDK_DOWNLOAD_DIR).resolve()):
+        return True
+    tracker = (repo_root / LOCAL_TRACKER_DIR).resolve()
+    return _within(target, tracker) and not tracker.exists()
+
+
+def broken_links(
+    page: Path, *, docs_dir: Path, repo_root: Path
+) -> list[str]:
+    parser = _PageParser()
+    parser.feed(page.read_text(encoding="utf-8"))
+    parser.close()
+    problems: list[str] = []
+    for href in parser.hrefs:
+        if href.startswith(EXTERNAL_HREF_PREFIXES):
+            continue
+        target = href.split("#", 1)[0]
+        if not target:
+            continue
+        resolved = (docs_dir / target).resolve()
+        if _optional_target(resolved, repo_root):
+            continue
+        if not resolved.exists():
+            problems.append(f"{page.name}: broken link {href!r} -> {resolved}")
+    return problems
 
 
 def _token_pattern(value: str) -> re.Pattern[str]:
@@ -136,6 +181,67 @@ def _humanized_byte_facts(value: object) -> list[str]:
     return []
 
 
+class DocsLinkParserTest(unittest.TestCase):
+    def test_anchor_hrefs_are_collected(self) -> None:
+        parser = _PageParser()
+        parser.feed('<a href="one.md">one</a><a href="two.md#part">two</a>')
+        parser.close()
+        self.assertEqual(parser.hrefs, ["one.md", "two.md#part"])
+
+
+class DocsLinkPolicyTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.repo_root = Path(self._tmp.name)
+        self.docs_dir = self.repo_root / "docs"
+        self.docs_dir.mkdir()
+        self.page = self.docs_dir / "page.html"
+
+    def _check(self, href: str) -> list[str]:
+        self.page.write_text(
+            f'<a href="{href}">link</a>', encoding="utf-8"
+        )
+        return broken_links(
+            self.page, docs_dir=self.docs_dir, repo_root=self.repo_root
+        )
+
+    def test_existing_repo_link_passes(self) -> None:
+        (self.docs_dir / "target.md").write_text("target", encoding="utf-8")
+        self.assertEqual(self._check("target.md"), [])
+
+    def test_missing_repo_link_is_reported(self) -> None:
+        errors = self._check("missing.md")
+        self.assertEqual(len(errors), 1)
+        self.assertIn("missing.md", errors[0])
+
+    def test_sdk_download_link_may_be_absent(self) -> None:
+        (self.repo_root / "chip-adapt" / "sdk").mkdir(parents=True)
+        self.assertEqual(
+            self._check("../chip-adapt/sdk/sifli-sdk/version.txt"), []
+        )
+
+    def test_scratch_truth_link_may_be_absent_without_local_tracker(self) -> None:
+        (self.repo_root / ".scratch" / "tmp").mkdir(parents=True)
+        self.assertEqual(
+            self._check("../.scratch/ai-tools/spec.md"), []
+        )
+
+    def test_scratch_truth_link_must_resolve_when_local_tracker_exists(self) -> None:
+        (self.repo_root / ".scratch" / "ai-tools").mkdir(parents=True)
+        errors = self._check("../.scratch/ai-tools/spec.md")
+        self.assertEqual(len(errors), 1)
+        self.assertIn("spec.md", errors[0])
+
+    def test_scratch_truth_link_passes_when_target_exists(self) -> None:
+        target = self.repo_root / ".scratch" / "ai-tools" / "spec.md"
+        target.parent.mkdir(parents=True)
+        target.write_text("spec", encoding="utf-8")
+        self.assertEqual(
+            self._check("../.scratch/ai-tools/spec.md"), []
+        )
+
+
 class DocsSingleSourceTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -149,18 +255,38 @@ class DocsSingleSourceTest(unittest.TestCase):
         )
 
     def test_every_link_resolves(self) -> None:
-        for name, page in self.pages.items():
-            for href in page.hrefs:
-                if href.startswith(("#", "http://", "https://", "mailto:")):
-                    continue
-                target = href.split("#", 1)[0]
-                if not target:
-                    continue
-                resolved = (DOCS_DIR / target).resolve()
-                self.assertTrue(
-                    resolved.exists(),
-                    f"{name}: broken link {href!r} -> {resolved}",
-                )
+        for name in LINK_PAGES:
+            self.assertEqual(
+                broken_links(
+                    DOCS_DIR / name,
+                    docs_dir=DOCS_DIR,
+                    repo_root=paths.REPO_ROOT,
+                ),
+                [],
+                name,
+            )
+
+    def test_every_link_page_is_an_existing_docs_file(self) -> None:
+        for name in LINK_PAGES:
+            with self.subTest(name=name):
+                self.assertTrue((DOCS_DIR / name).is_file(), name)
+        # The sifli page is link-checked against real repository links only.
+        self.assertTrue(_parse_page("sifli.html").hrefs)
+
+    def test_sifli_page_is_link_checked_but_not_an_index_page(self) -> None:
+        self.assertIn("sifli.html", LINK_PAGES)
+        self.assertNotIn("sifli.html", PAGE_NAMES)
+
+    def test_one_off_audit_report_is_not_an_index_page(self) -> None:
+        # The untracked audit report may exist in the main checkout; it never
+        # joins the index or link-check lists.
+        audit_pages = sorted(
+            path.name for path in DOCS_DIR.glob("audit-*.html")
+        )
+        for name in audit_pages:
+            with self.subTest(name=name):
+                self.assertNotIn(name, PAGE_NAMES)
+                self.assertNotIn(name, LINK_PAGES)
 
     def test_every_symbol_pointer_names_something_in_the_linked_file(self) -> None:
         for name, page in self.pages.items():

@@ -1,8 +1,10 @@
-"""Crop regions from session PNGs without Pillow or ffmpeg.
+"""Read and crop session PNGs without Pillow or ffmpeg.
 
 Frames and snapshots written by the engine are ordinary non-interlaced 8-bit
 PNGs (RGB for the current XRGB8888 display). This module decodes the subset
-needed by the evidence tools, crops an annotation box, and re-encodes a PNG.
+needed by the evidence tools, reads pixels, crops boxes, arranges labeled
+contact sheets, compares image pairs with an optional heatmap, and re-encodes
+PNGs.
 
 Supported color types: grayscale (0), RGB (2), grayscale+alpha (4), RGBA (6);
 bit depth 8, interlace 0. Anything else raises :class:`PngError` with the
@@ -14,10 +16,34 @@ from __future__ import annotations
 import struct
 import zlib
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Sequence
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 CHANNELS = {0: 1, 2: 3, 4: 2, 6: 4}
+
+DEFAULT_CONTACT_COLUMNS = 4
+DEFAULT_CONTACT_TILE_WIDTH = 240
+DEFAULT_CONTACT_TILE_HEIGHT = 180
+MIN_CONTACT_TILE_SIDE = 32
+MAX_CONTACT_COLUMNS = 8
+MAX_CONTACT_TILES = 32
+MAX_CONTACT_TILE_SIDE = 480
+MAX_CONTACT_SHEET_SIDE = 4096
+MAX_CONTACT_SHEET_PIXELS = 4_000_000
+MAX_SOURCE_SIDE = 8192
+MAX_SOURCE_PIXELS = 16_000_000
+MAX_COMPARE_SIDE = 4096
+MAX_COMPARE_PIXELS = 4_000_000
+
+_CONTACT_GAP = 8
+_TILE_PADDING = 4
+_LABEL_SCALE = 2
+_LABEL_BAND = _LABEL_SCALE * 7 + _TILE_PADDING
+_BACKGROUND = (24, 24, 24)
+_HEATMAP_BACKGROUND_BYTES = bytes(_BACKGROUND)
+_TILE_BACKGROUND = (48, 48, 48)
+_TILE_BORDER = (96, 96, 96)
+_LABEL_COLOR = (255, 255, 255)
 
 
 class PngError(ValueError):
@@ -64,6 +90,31 @@ class PngImage:
     rows: tuple[bytes, ...]
 
 
+@dataclass(frozen=True)
+class PngHeader:
+    width: int
+    height: int
+    color_type: int
+
+
+@dataclass(frozen=True)
+class ImageComparison:
+    """Pixel statistics for one same-size image pair."""
+
+    width: int
+    height: int
+    bbox: Region | None
+    changed_px: int
+    changed_ratio: float
+    max_delta: float
+    heatmap: PngImage | None
+
+    def to_png(self) -> bytes:
+        if self.heatmap is None:
+            raise PngError("comparison was built without a heatmap")
+        return encode_png(self.heatmap)
+
+
 def _read_chunks(data: bytes) -> Iterable[tuple[bytes, bytes]]:
     if not data.startswith(PNG_SIGNATURE):
         raise PngError("not a PNG (bad signature)")
@@ -84,38 +135,52 @@ def _read_chunks(data: bytes) -> Iterable[tuple[bytes, bytes]]:
         pos = end + 4
 
 
+def _parse_ihdr(payload: bytes) -> PngHeader:
+    if len(payload) != 13:
+        raise PngError("malformed IHDR")
+    (width, height, bit_depth, color_type,
+     compression, filter_method, interlace) = struct.unpack(
+        ">IIBBBBB", payload)
+    if compression != 0 or filter_method != 0:
+        raise PngError("unsupported PNG compression/filter method")
+    if bit_depth != 8:
+        raise PngError(f"unsupported PNG bit depth {bit_depth}")
+    if interlace != 0:
+        raise PngError("interlaced PNGs are not supported")
+    if color_type not in CHANNELS:
+        raise PngError(
+            f"unsupported PNG color type {color_type} "
+            "(supported: 0, 2, 4, 6)"
+        )
+    if width <= 0 or height <= 0:
+        raise PngError(f"invalid PNG size {width}x{height}")
+    return PngHeader(width, height, color_type)
+
+
+def read_png_header(data: bytes) -> PngHeader:
+    """Read and validate the IHDR chunk without inflating pixel data."""
+    for chunk_type, payload in _read_chunks(data):
+        if chunk_type == b"IHDR":
+            return _parse_ihdr(payload)
+    raise PngError("PNG has no IHDR")
+
+
 def decode_png(data: bytes) -> PngImage:
-    width = height = bit_depth = color_type = interlace = None
+    header: PngHeader | None = None
     idat = bytearray()
     for chunk_type, payload in _read_chunks(data):
         if chunk_type == b"IHDR":
-            if len(payload) != 13:
-                raise PngError("malformed IHDR")
-            (width, height, bit_depth, color_type,
-             compression, filter_method, interlace) = struct.unpack(
-                ">IIBBBBB", payload)
-            if compression != 0 or filter_method != 0:
-                raise PngError("unsupported PNG compression/filter method")
-            if bit_depth != 8:
-                raise PngError(f"unsupported PNG bit depth {bit_depth}")
-            if interlace != 0:
-                raise PngError("interlaced PNGs are not supported")
-            if color_type not in CHANNELS:
-                raise PngError(
-                    f"unsupported PNG color type {color_type} "
-                    "(supported: 0, 2, 4, 6)"
-                )
+            header = _parse_ihdr(payload)
         elif chunk_type == b"IDAT":
             idat += payload
         elif chunk_type == b"IEND":
             break
-    if width is None or height is None:
+    if header is None:
         raise PngError("PNG has no IHDR")
-    if width <= 0 or height <= 0:
-        raise PngError(f"invalid PNG size {width}x{height}")
     if not idat:
         raise PngError("PNG has no IDAT data")
 
+    width, height, color_type = header.width, header.height, header.color_type
     channels = CHANNELS[color_type]
     stride = width * channels
     try:
@@ -245,3 +310,475 @@ def crop_png(data: bytes, region: Region) -> tuple[bytes, Region, PngImage]:
     rows = tuple(row[start:end] for row in image.rows[box.y:box.y1])
     cropped = PngImage(box.w, box.h, image.color_type, rows)
     return encode_png(cropped), box, cropped
+
+
+def read_pixel(data: bytes, x: int, y: int) -> tuple[int, int, int]:
+    """Return the RGB value at ``(x, y)`` without writing anything."""
+    return pixel_at(decode_png(data), x, y)
+
+
+def compare_png(
+    left: bytes, right: bytes, *, heatmap: bool = False
+) -> ImageComparison:
+    """Compare two same-size PNGs and report changed-pixel statistics.
+
+    A pixel changes when any RGB channel differs; alpha is ignored.
+    ``max_delta`` is the largest channel difference divided by 255, matching
+    the frame-diff evidence. With ``heatmap=True`` the result carries an RGB
+    image where changed pixels are yellow-to-red by delta and unchanged pixels
+    stay dark.
+    """
+    left_header = read_png_header(left)
+    right_header = read_png_header(right)
+    for header, side in ((left_header, "left"), (right_header, "right")):
+        _check_source(
+            header,
+            side=side,
+            max_side=MAX_COMPARE_SIDE,
+            max_pixels=MAX_COMPARE_PIXELS,
+            limit_name="compare",
+        )
+    if (left_header.width, left_header.height) != (
+        right_header.width,
+        right_header.height,
+    ):
+        raise PngError(
+            f"image sizes differ: left is "
+            f"{left_header.width}x{left_header.height}, right is "
+            f"{right_header.width}x{right_header.height}; compare needs "
+            "identical dimensions"
+        )
+    left_image = decode_png(left)
+    right_image = decode_png(right)
+    width, height = left_image.width, left_image.height
+    left_channels = CHANNELS[left_image.color_type]
+    right_channels = CHANNELS[right_image.color_type]
+    left_gray = left_image.color_type in (0, 4)
+    right_gray = right_image.color_type in (0, 4)
+
+    changed_px = 0
+    max_delta = 0
+    min_x = min_y = None
+    max_x = max_y = 0
+    heatmap_rows: list[bytes] = []
+    for y in range(height):
+        left_row = left_image.rows[y]
+        right_row = right_image.rows[y]
+        target = bytearray(width * 3) if heatmap else None
+        for x in range(width):
+            left_offset = x * left_channels
+            right_offset = x * right_channels
+            if left_gray:
+                left_pixel = (left_row[left_offset],) * 3
+            else:
+                left_pixel = left_row[left_offset:left_offset + 3]
+            if right_gray:
+                right_pixel = (right_row[right_offset],) * 3
+            else:
+                right_pixel = right_row[right_offset:right_offset + 3]
+            delta = max(
+                abs(left_pixel[0] - right_pixel[0]),
+                abs(left_pixel[1] - right_pixel[1]),
+                abs(left_pixel[2] - right_pixel[2]),
+            )
+            if delta == 0:
+                if target is not None:
+                    target[x * 3:x * 3 + 3] = _HEATMAP_BACKGROUND_BYTES
+                continue
+            changed_px += 1
+            max_delta = max(max_delta, delta)
+            min_x = x if min_x is None else min(min_x, x)
+            min_y = y if min_y is None else min(min_y, y)
+            max_x = max(max_x, x)
+            max_y = max(max_y, y)
+            if target is not None:
+                target[x * 3:x * 3 + 3] = bytes(
+                    (255, 255 - delta, 0)
+                )
+        if target is not None:
+            heatmap_rows.append(bytes(target))
+
+    bbox = None
+    if changed_px:
+        bbox = Region(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1)
+    heatmap_image = None
+    if heatmap:
+        heatmap_image = PngImage(
+            width, height, 2, tuple(heatmap_rows)
+        )
+    return ImageComparison(
+        width=width,
+        height=height,
+        bbox=bbox,
+        changed_px=changed_px,
+        changed_ratio=changed_px / (width * height),
+        max_delta=max_delta / 255.0,
+        heatmap=heatmap_image,
+    )
+
+
+def pixel_at(image: PngImage, x: int, y: int) -> tuple[int, int, int]:
+    """RGB value at ``(x, y)``; alpha is ignored."""
+    if not (0 <= x < image.width and 0 <= y < image.height):
+        raise PngError(
+            f"pixel {x},{y} outside image {image.width}x{image.height}"
+        )
+    channels = CHANNELS[image.color_type]
+    offset = x * channels
+    row = image.rows[y]
+    if image.color_type in (0, 4):
+        gray = row[offset]
+        return (gray, gray, gray)
+    return (row[offset], row[offset + 1], row[offset + 2])
+
+
+@dataclass(frozen=True)
+class ContactTile:
+    """One labeled thumbnail placed on a contact sheet."""
+
+    label: str
+    x: int
+    y: int
+    width: int
+    height: int
+    image_x: int
+    image_y: int
+    image_width: int
+    image_height: int
+
+
+@dataclass(frozen=True)
+class ContactSheet:
+    """A rendered RGB contact sheet plus its stable tile order."""
+
+    image: PngImage
+    tiles: tuple[ContactTile, ...]
+    columns: int
+    rows: int
+
+    def to_png(self) -> bytes:
+        return encode_png(self.image)
+
+
+def build_contact_sheet(
+    items: Sequence[tuple[str, bytes]],
+    *,
+    columns: int = DEFAULT_CONTACT_COLUMNS,
+    tile_width: int = DEFAULT_CONTACT_TILE_WIDTH,
+    tile_height: int = DEFAULT_CONTACT_TILE_HEIGHT,
+) -> ContactSheet:
+    """Arrange labeled thumbnails in input order without touching the files.
+
+    ``items`` is ``(label, png_bytes)`` in the order the caller wants; the
+    label is drawn in the tile and kept in :class:`ContactTile`. Sources that
+    exceed the decode or output budget raise :class:`PngError` before being
+    inflated.
+    """
+    entries = list(items)
+    _validate_contact_layout(entries, columns, tile_width, tile_height)
+    gap = _CONTACT_GAP
+    rows = (len(entries) + columns - 1) // columns
+    width = columns * tile_width + (columns + 1) * gap
+    height = rows * tile_height + (rows + 1) * gap
+    if (
+        width > MAX_CONTACT_SHEET_SIDE
+        or height > MAX_CONTACT_SHEET_SIDE
+        or width * height > MAX_CONTACT_SHEET_PIXELS
+    ):
+        raise PngError(
+            f"contact sheet would be {width}x{height} "
+            f"({width * height} px), above the limit of "
+            f"{MAX_CONTACT_SHEET_PIXELS} px or {MAX_CONTACT_SHEET_SIDE} per "
+            "side; reduce --columns or --tile"
+        )
+
+    background = bytes(_BACKGROUND)
+    sheet_rows = [
+        bytearray(background * width) for _ in range(height)
+    ]
+    tiles: list[ContactTile] = []
+    for index, (label, data) in enumerate(entries):
+        header = read_png_header(data)
+        _check_source(
+            header,
+            side="source",
+            max_side=MAX_SOURCE_SIDE,
+            max_pixels=MAX_SOURCE_PIXELS,
+            limit_name="contact-sheet",
+        )
+        image = decode_png(data)
+        column = index % columns
+        row = index // columns
+        tile_x = gap + column * (tile_width + gap)
+        tile_y = gap + row * (tile_height + gap)
+        _fill_rect(
+            sheet_rows, width, height, tile_x, tile_y, tile_width,
+            tile_height, _TILE_BACKGROUND,
+        )
+        _stroke_rect(
+            sheet_rows, width, height, tile_x, tile_y, tile_width,
+            tile_height, _TILE_BORDER,
+        )
+        _draw_label(
+            sheet_rows,
+            width,
+            height,
+            tile_x + _TILE_PADDING,
+            tile_y + _TILE_PADDING,
+            tile_width - 2 * _TILE_PADDING,
+            label,
+        )
+        area_x = tile_x + _TILE_PADDING
+        area_y = tile_y + _LABEL_BAND
+        area_width = tile_width - 2 * _TILE_PADDING
+        area_height = tile_height - _LABEL_BAND - _TILE_PADDING
+        scale = min(
+            area_width / image.width, area_height / image.height, 1.0
+        )
+        image_width = max(1, int(image.width * scale))
+        image_height = max(1, int(image.height * scale))
+        image_x = area_x + (area_width - image_width) // 2
+        image_y = area_y + (area_height - image_height) // 2
+        _blit_rgb(
+            sheet_rows,
+            width,
+            image,
+            image_x,
+            image_y,
+            image_width,
+            image_height,
+        )
+        tiles.append(
+            ContactTile(
+                label=label,
+                x=tile_x,
+                y=tile_y,
+                width=tile_width,
+                height=tile_height,
+                image_x=image_x,
+                image_y=image_y,
+                image_width=image_width,
+                image_height=image_height,
+            )
+        )
+    return ContactSheet(
+        image=PngImage(width, height, 2, tuple(bytes(row) for row in sheet_rows)),
+        tiles=tuple(tiles),
+        columns=columns,
+        rows=rows,
+    )
+
+
+def _validate_contact_layout(
+    entries: list[tuple[str, bytes]],
+    columns: int,
+    tile_width: int,
+    tile_height: int,
+) -> None:
+    if not entries:
+        raise PngError("contact sheet needs at least one image")
+    if len(entries) > MAX_CONTACT_TILES:
+        raise PngError(
+            f"contact sheet accepts at most {MAX_CONTACT_TILES} tiles, "
+            f"got {len(entries)}"
+        )
+    if not 1 <= columns <= MAX_CONTACT_COLUMNS:
+        raise PngError(
+            f"contact sheet columns must be 1..{MAX_CONTACT_COLUMNS}, "
+            f"got {columns}"
+        )
+    for side in (tile_width, tile_height):
+        if not MIN_CONTACT_TILE_SIDE <= side <= MAX_CONTACT_TILE_SIDE:
+            raise PngError(
+                f"contact sheet tile side must be "
+                f"{MIN_CONTACT_TILE_SIDE}..{MAX_CONTACT_TILE_SIDE}, got {side}"
+            )
+    for label, _data in entries:
+        if not isinstance(label, str):
+            raise PngError("contact sheet labels must be strings")
+
+
+def _check_source(
+    header: PngHeader,
+    *,
+    side: str,
+    max_side: int,
+    max_pixels: int,
+    limit_name: str,
+) -> None:
+    pixels = header.width * header.height
+    if (
+        header.width > max_side
+        or header.height > max_side
+        or pixels > max_pixels
+    ):
+        raise PngError(
+            f"{side} image is {header.width}x{header.height} ({pixels} px), "
+            f"above the {limit_name} limit of {max_pixels} px or "
+            f"{max_side} per side; crop it first"
+        )
+
+
+def _fill_rect(
+    rows: list[bytearray],
+    sheet_width: int,
+    sheet_height: int,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    color: tuple[int, int, int],
+) -> None:
+    x0 = max(0, x)
+    y0 = max(0, y)
+    x1 = min(sheet_width, x + width)
+    y1 = min(sheet_height, y + height)
+    if x1 <= x0 or y1 <= y0:
+        return
+    pixel = bytes(color) * (x1 - x0)
+    for row in range(y0, y1):
+        rows[row][x0 * 3:x1 * 3] = pixel
+
+
+def _stroke_rect(
+    rows: list[bytearray],
+    sheet_width: int,
+    sheet_height: int,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    color: tuple[int, int, int],
+) -> None:
+    _fill_rect(rows, sheet_width, sheet_height, x, y, width, 1, color)
+    _fill_rect(rows, sheet_width, sheet_height, x, y + height - 1, width, 1, color)
+    _fill_rect(rows, sheet_width, sheet_height, x, y, 1, height, color)
+    _fill_rect(rows, sheet_width, sheet_height, x + width - 1, y, 1, height, color)
+
+
+def _draw_label(
+    rows: list[bytearray],
+    sheet_width: int,
+    sheet_height: int,
+    x: int,
+    y: int,
+    max_width: int,
+    label: str,
+) -> None:
+    advance = (_LABEL_SCALE * 6) or 1
+    max_chars = max(1, max_width // advance)
+    text = label.upper()[:max_chars]
+    for index, character in enumerate(text):
+        glyph = _FONT_5X7.get(character, _FONT_5X7["?"])
+        char_x = x + index * advance
+        for row_index, bits in enumerate(glyph):
+            for column in range(5):
+                if bits & (1 << (4 - column)):
+                    _fill_rect(
+                        rows,
+                        sheet_width,
+                        sheet_height,
+                        char_x + column * _LABEL_SCALE,
+                        y + row_index * _LABEL_SCALE,
+                        _LABEL_SCALE,
+                        _LABEL_SCALE,
+                        _LABEL_COLOR,
+                    )
+
+
+def _blit_rgb(
+    rows: list[bytearray],
+    sheet_width: int,
+    source: PngImage,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+) -> None:
+    source_rows = _scale_rgb_rows(source, width, height)
+    for offset, source_row in enumerate(source_rows):
+        target_y = y + offset
+        if 0 <= target_y < len(rows):
+            start = x * 3
+            rows[target_y][start:start + width * 3] = source_row
+
+
+def _scale_rgb_rows(
+    image: PngImage, width: int, height: int
+) -> tuple[bytes, ...]:
+    channels = CHANNELS[image.color_type]
+    grayscale = image.color_type in (0, 4)
+    scaled: list[bytes] = []
+    for y in range(height):
+        source_y = min(image.height - 1, y * image.height // height)
+        source_row = image.rows[source_y]
+        output = bytearray(width * 3)
+        for x in range(width):
+            source_x = min(image.width - 1, x * image.width // width)
+            offset = source_x * channels
+            if grayscale:
+                gray = source_row[offset]
+                output[x * 3:x * 3 + 3] = bytes((gray, gray, gray))
+            else:
+                output[x * 3:x * 3 + 3] = source_row[offset:offset + 3]
+        scaled.append(bytes(output))
+    return tuple(scaled)
+
+
+_FONT_5X7: dict[str, tuple[int, ...]] = {
+    " ": (0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000),
+    "0": (0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110),
+    "1": (0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110),
+    "2": (0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111),
+    "3": (0b11110, 0b00001, 0b00001, 0b01110, 0b00001, 0b00001, 0b11110),
+    "4": (0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010),
+    "5": (0b11111, 0b10000, 0b11110, 0b00001, 0b00001, 0b10001, 0b01110),
+    "6": (0b00110, 0b01000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110),
+    "7": (0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000),
+    "8": (0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110),
+    "9": (0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b01100),
+    "A": (0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001),
+    "B": (0b11110, 0b10001, 0b10001, 0b11110, 0b10001, 0b10001, 0b11110),
+    "C": (0b01110, 0b10001, 0b10000, 0b10000, 0b10000, 0b10001, 0b01110),
+    "D": (0b11110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b11110),
+    "E": (0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b11111),
+    "F": (0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b10000),
+    "G": (0b01110, 0b10001, 0b10000, 0b10111, 0b10001, 0b10001, 0b01110),
+    "H": (0b10001, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001),
+    "I": (0b01110, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110),
+    "J": (0b00111, 0b00010, 0b00010, 0b00010, 0b00010, 0b10010, 0b01100),
+    "K": (0b10001, 0b10010, 0b10100, 0b11000, 0b10100, 0b10010, 0b10001),
+    "L": (0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b11111),
+    "M": (0b10001, 0b11011, 0b10101, 0b10101, 0b10001, 0b10001, 0b10001),
+    "N": (0b10001, 0b10001, 0b11001, 0b10101, 0b10011, 0b10001, 0b10001),
+    "O": (0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110),
+    "P": (0b11110, 0b10001, 0b10001, 0b11110, 0b10000, 0b10000, 0b10000),
+    "Q": (0b01110, 0b10001, 0b10001, 0b10001, 0b10101, 0b10010, 0b01101),
+    "R": (0b11110, 0b10001, 0b10001, 0b11110, 0b10100, 0b10010, 0b10001),
+    "S": (0b01110, 0b10001, 0b10000, 0b01110, 0b00001, 0b10001, 0b01110),
+    "T": (0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100),
+    "U": (0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110),
+    "V": (0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01010, 0b00100),
+    "W": (0b10001, 0b10001, 0b10001, 0b10101, 0b10101, 0b10101, 0b01010),
+    "X": (0b10001, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001, 0b10001),
+    "Y": (0b10001, 0b10001, 0b01010, 0b00100, 0b00100, 0b00100, 0b00100),
+    "Z": (0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b10000, 0b11111),
+    "-": (0b00000, 0b00000, 0b00000, 0b11111, 0b00000, 0b00000, 0b00000),
+    "_": (0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b11111),
+    ".": (0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00110, 0b00110),
+    ",": (0b00000, 0b00000, 0b00000, 0b00000, 0b00110, 0b00110, 0b00100),
+    ":": (0b00000, 0b00110, 0b00110, 0b00000, 0b00110, 0b00110, 0b00000),
+    ";": (0b00000, 0b00110, 0b00110, 0b00000, 0b00110, 0b00110, 0b00100),
+    "/": (0b00001, 0b00010, 0b00010, 0b00100, 0b01000, 0b01000, 0b10000),
+    "\\": (0b10000, 0b01000, 0b01000, 0b00100, 0b00010, 0b00010, 0b00001),
+    "?": (0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b00000, 0b00100),
+    "#": (0b01010, 0b11111, 0b01010, 0b01010, 0b11111, 0b01010, 0b00000),
+    "+": (0b00000, 0b00100, 0b00100, 0b11111, 0b00100, 0b00100, 0b00000),
+    "=": (0b00000, 0b00000, 0b11111, 0b00000, 0b11111, 0b00000, 0b00000),
+    "(": (0b00010, 0b00100, 0b01000, 0b01000, 0b01000, 0b00100, 0b00010),
+    ")": (0b01000, 0b00100, 0b00010, 0b00010, 0b00010, 0b00100, 0b01000),
+    "[": (0b01110, 0b01000, 0b01000, 0b01000, 0b01000, 0b01000, 0b01110),
+    "]": (0b01110, 0b00010, 0b00010, 0b00010, 0b00010, 0b00010, 0b01110),
+    "%": (0b11001, 0b11010, 0b00010, 0b00100, 0b01000, 0b01011, 0b10011),
+    "*": (0b00000, 0b10101, 0b01110, 0b11111, 0b01110, 0b10101, 0b00000),
+}

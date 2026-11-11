@@ -25,6 +25,7 @@ from .input import (
     require_action,
     require_display_pair,
     require_int16,
+    require_integer,
     require_non_negative_int,
     require_token,
     resolve_key,
@@ -34,6 +35,20 @@ from .engine_link import RECORD_QUIT_TIMEOUT_S, QUIT_TIMEOUT_S, EngineLink
 from .session import DEFAULT_MAX_LOG_BYTES, SessionOutcome, SessionStore
 
 DEFAULT_MAX_FRAMES = 600
+WAIT_STABLE_STEP_MS = 16
+
+STALE_ENGINE_HINT = "engine 产物早于当前 Runtime，请用 --build 重建"
+
+
+def _stale_engine_argument(log_tail: list[str]) -> str | None:
+    """Return the CLI flag an old engine rejected before announcing ready."""
+    for line in log_tail:
+        if "unknown argument" not in line:
+            continue
+        _, _, argument = line.partition("unknown argument")
+        argument = argument.strip().lstrip(":").strip()
+        return argument or line.strip()
+    return None
 
 # Session options owned by SessionStore; Runtime reads them through
 # ``__getattr__`` so no second copy exists and the contract snapshot stays
@@ -478,12 +493,24 @@ class Runtime:
                 else self._link.shutdown(send_quit=False)
             )
             self._store.discard_preview()
+            error = exc
             if isinstance(exc, RuntimeCrash) and self._link is not None:
                 self._link.complete_crash(exc, exit_code=exit_code)
+                stale_argument = _stale_engine_argument(exc.log_tail)
+                if stale_argument is not None:
+                    error = RuntimeCrash(
+                        f"{STALE_ENGINE_HINT}: {stale_argument}",
+                        exit_code=exc.exit_code,
+                        log_tail=exc.log_tail,
+                        log_path=exc.log_path,
+                    )
+                    self._failure = error
             try:
-                self._store.write_manifest(SessionOutcome.from_failure(exc))
+                self._store.write_manifest(SessionOutcome.from_failure(error))
             finally:
                 self._store.close_log()
+            if error is not exc:
+                raise error
             raise
         return self
 
@@ -493,9 +520,13 @@ class Runtime:
             return
 
         link = self._link
-        exit_code = link.shutdown(send_quit=True)
-        self._store.close_log()
-        self._store.discard_preview()
+        try:
+            exit_code = link.shutdown(send_quit=True)
+        finally:
+            # Release the evidence handles even when shutdown itself fails;
+            # otherwise Windows keeps the session directory undeletable.
+            self._store.close_log()
+            self._store.discard_preview()
 
         if self.session_dir is not None:
             outcome = SessionOutcome.resolve(
@@ -546,9 +577,11 @@ class Runtime:
         """Deliver a key press or release to the standard virtual keypad indev.
 
         ``key`` is an LVGL ``LV_KEY_*`` name such as ``"ENTER"`` or
-        ``"LV_KEY_ENTER"`` (case-insensitive). Unknown names raise
-        :class:`ScenarioError` before any command is sent. The reply carries
-        ``delivered``: true when LVGL read the keypad indev.
+        ``"LV_KEY_ENTER"`` (case-insensitive), or a printable ASCII
+        ``CHAR_<code>`` token such as ``"CHAR_65"`` for ``A``. Unknown names and
+        out-of-range codes raise :class:`ScenarioError` before any command is
+        sent. The reply carries ``delivered``: true when LVGL read the keypad
+        indev.
         """
         require_action("key", action)
         try:
@@ -594,6 +627,40 @@ class Runtime:
             return self._command("wait", "frames", str(count))
         interval = require_non_negative_int(ms, "ms")
         return self._command("wait", str(interval))
+
+    def wait_stable(
+        self, max_ms: int, stable_frames: int
+    ) -> dict[str, Any]:
+        """Wait until the picture stops changing, up to ``max_ms``.
+
+        Polls ``wait`` in 16 ms steps (the engine's own wait step) and counts
+        consecutive replies whose ``changed`` flag is false. It returns as soon
+        as ``stable_frames`` unchanged steps accumulate, or when ``max_ms`` is
+        spent. ``changed`` comes from the adapter flush flag and is independent
+        of recording and changed-only frame retention, so a skipped frame is
+        never mistaken for a stable picture.
+
+        Returns ``waited_ms``, ``stable_frames`` (the achieved streak) and
+        ``stable``. An engine without the ``changed`` field is rejected on the
+        first poll instead of waiting forever.
+        """
+        limit = require_non_negative_int(max_ms, "max_ms")
+        target = require_integer(stable_frames, "stable_frames", minimum=1)
+        waited_ms = 0
+        stable_count = 0
+        while waited_ms < limit and stable_count < target:
+            step = min(WAIT_STABLE_STEP_MS, limit - waited_ms)
+            reply = self.wait(ms=step)
+            waited_ms += step
+            if self._wait_changed(reply):
+                stable_count = 0
+            else:
+                stable_count += 1
+        return {
+            "waited_ms": waited_ms,
+            "stable_frames": stable_count,
+            "stable": stable_count >= target,
+        }
 
     def snapshot(self, label: str) -> dict[str, Any]:
         """Write ``snapshots/NNN_<label>.png`` and a timeline snapshot row."""
@@ -742,6 +809,22 @@ class Runtime:
             self.t_ms = t_ms
         if append:
             self._store.append_check(command, ok, frame_no)
+
+    def _wait_changed(self, reply: dict[str, Any]) -> bool:
+        changed = reply.get("changed")
+        if isinstance(changed, bool):
+            return changed
+        if "changed" in reply:
+            message = f"wait reply.changed must be a boolean; got {changed!r}"
+        else:
+            message = f"wait reply is missing changed; {STALE_ENGINE_HINT}"
+        seq = reply.get("seq")
+        error = ProtocolError(
+            message,
+            seq=seq if isinstance(seq, int) and not isinstance(seq, bool) else None,
+        )
+        self._failure = error
+        raise error
 
     def _require_reply(
         self, reply: dict[str, Any], fields: tuple[str, ...], verb: str

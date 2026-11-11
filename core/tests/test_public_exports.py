@@ -34,6 +34,7 @@ EXPECTED_EXPORTS = [
     "ScenarioError",
     "__version__",
     "play_scenario",
+    "summarize_session",
 ]
 
 EXPECTED_APPS_SIGNATURES = {

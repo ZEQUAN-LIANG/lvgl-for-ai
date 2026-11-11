@@ -33,18 +33,36 @@ Step types (the schema is intentionally this small):
     ``pointer down`` / ``wait(hold_ms)`` / ``pointer up`` so the press has a
     visible frame.
 ``drag``
-    ``from`` and ``to`` (``[x, y]``); optional ``steps`` (default 8, 1..1000).
-    Expands to ``pointer down(from)`` / ``pointer move`` x ``steps``
-    (linearly interpolated, the last move lands on ``to``) / ``pointer up(to)``
-    / ``snapshot("drag_end")``.
+    ``from`` and ``to`` (``[x, y]``); optional ``steps`` (default 8, 1..1000)
+    and ``interval_ms`` (default 0, non-negative). Expands to
+    ``pointer down(from)`` / ``pointer move`` x ``steps`` (linearly
+    interpolated, the last move lands on ``to``) / ``pointer up(to)`` /
+    ``snapshot("drag_end")``. A positive ``interval_ms`` advances virtual time
+    after every move; 0 keeps the old zero-duration sequence.
+``pointer``
+    ``action`` (``down`` / ``move`` / ``up``), ``x`` and ``y``. Sends one
+    ``pointer`` command; ``move`` probes coordinates without changing the
+    pressed state.
 ``key``
-    ``action`` (``press`` / ``release``) and an LVGL ``LV_KEY_*`` name in
-    ``key`` (case-insensitive, optional ``LV_KEY_`` prefix).
+    ``action`` (``press`` / ``release``) and an LVGL ``LV_KEY_*`` name, or a
+    ``CHAR_<code>`` token, in ``key`` (case-insensitive, optional ``LV_KEY_``
+    prefix).
+``text``
+    ``value``: a non-empty string of printable ASCII characters (32..126).
+    Expands to ``key press`` / ``key release`` per character, using the stable
+    ``CHAR_<code>`` token (for example ``CHAR_65`` for ``A``). Unicode, IME and
+    web live text mapping are out of scope.
 ``encoder``
     ``action`` (``turn``) and a signed ``diff`` within -32768..32767; positive
     turns move focus forward.
 ``wait``
     exactly one of ``ms`` or ``frames``.
+``wait_stable``
+    ``max_ms`` (non-negative) and ``stable_frames`` (positive). Polls the
+    engine in 16 ms steps until that many consecutive waits report no painted
+    refresh, and returns by ``max_ms`` even when the picture never settles. The
+    reply carries ``waited_ms``, ``stable_frames`` and ``stable``; it is
+    evidence, not a pass/fail judgment.
 ``mark``
     ``id`` matching ``[A-Za-z0-9_-]+``.
 ``snapshot``
@@ -65,39 +83,56 @@ from .control.input import (
     INT16_MAX,
     INT16_MIN,
     TOKEN_PATTERN,
+    char_key,
     display_problem,
     integer_problem,
     is_token,
     point_problem,
     resolve_key,
     step_action_problem,
+    text_problem,
     token_problem,
 )
 
 SCENARIO_SCHEMA = "lvgl-ai-scenario-v1"
-STEP_TYPES = ("click_at", "drag", "encoder", "key", "mark", "snapshot", "wait")
+STEP_TYPES = (
+    "click_at",
+    "drag",
+    "encoder",
+    "key",
+    "mark",
+    "pointer",
+    "snapshot",
+    "text",
+    "wait",
+    "wait_stable",
+)
 DEFAULT_CLICK_HOLD_MS = 64
 DEFAULT_DRAG_STEPS = 8
+DEFAULT_DRAG_INTERVAL_MS = 0
 MAX_DRAG_STEPS = 1000
 DRAG_SNAPSHOT_LABEL = "drag_end"
 
 _FILE_FIELDS = {"schema", "name", "app", "display", "steps"}
 _STEP_FIELDS = {
     "click_at": {"type", "x", "y", "hold_ms"},
-    "drag": {"type", "from", "to", "steps"},
+    "drag": {"type", "from", "to", "steps", "interval_ms"},
     "encoder": {"type", "action", "diff"},
     "key": {"type", "action", "key"},
     "mark": {"type", "id"},
+    "pointer": {"type", "action", "x", "y"},
     "snapshot": {"type", "label"},
+    "text": {"type", "value"},
     "wait": {"type", "ms", "frames"},
+    "wait_stable": {"type", "max_ms", "stable_frames"},
 }
 
 
 def load_scenario(path: str | Path) -> dict[str, Any]:
     """Read and validate a scenario file, returning the normalized document.
 
-    Defaults are applied (``hold_ms``, ``steps``) so callers can see the exact
-    commands a ``play_scenario`` call will send. Raises
+    Defaults are applied (``hold_ms``, ``steps``, ``interval_ms``) so callers
+    can see the exact commands a ``play_scenario`` call will send. Raises
     :class:`ScenarioError` when the file is missing, is not JSON, or does not
     match the schema.
     """
@@ -274,13 +309,19 @@ def _play_step(rt: Any, step: dict[str, Any]) -> list[dict]:
         replies = [rt.pointer("down", start[0], start[1])]
         for x, y in _interpolate(start, end, step["steps"]):
             replies.append(rt.pointer("move", x, y))
+            if step["interval_ms"] > 0:
+                replies.append(rt.wait(ms=step["interval_ms"]))
         replies.append(rt.pointer("up", end[0], end[1]))
         replies.append(rt.snapshot(DRAG_SNAPSHOT_LABEL))
         return replies
+    if kind == "pointer":
+        return [rt.pointer(step["action"], step["x"], step["y"])]
     if kind == "wait":
         if "ms" in step:
             return [rt.wait(ms=step["ms"])]
         return [rt.wait(frames=step["frames"])]
+    if kind == "wait_stable":
+        return [rt.wait_stable(step["max_ms"], step["stable_frames"])]
     if kind == "key":
         return [rt.key(step["action"], step["key"])]
     if kind == "encoder":
@@ -289,6 +330,13 @@ def _play_step(rt: Any, step: dict[str, Any]) -> list[dict]:
         return [rt.mark(step["id"])]
     if kind == "snapshot":
         return [rt.snapshot(step["label"])]
+    if kind == "text":
+        replies: list[dict] = []
+        for char in step["value"]:
+            token = char_key(char)
+            replies.append(rt.key("press", token))
+            replies.append(rt.key("release", token))
+        return replies
     raise ScenarioError(f"unsupported step type {kind!r}")
 
 
@@ -342,6 +390,21 @@ def _normalize_step(index: int, step: Any) -> dict[str, Any]:
                 minimum=1,
                 maximum=MAX_DRAG_STEPS,
             ),
+            "interval_ms": _integer(
+                index,
+                step,
+                "interval_ms",
+                default=DEFAULT_DRAG_INTERVAL_MS,
+            ),
+        }
+    elif kind == "pointer":
+        action = step.get("action")
+        _action(index, "pointer", action)
+        normalized = {
+            "type": kind,
+            "action": action,
+            "x": _integer(index, step, "x"),
+            "y": _integer(index, step, "y"),
         }
     elif kind == "wait":
         has_ms = "ms" in step
@@ -355,6 +418,14 @@ def _normalize_step(index: int, step: Any) -> dict[str, Any]:
             normalized = {"type": kind, "ms": _integer(index, step, "ms")}
         else:
             normalized = {"type": kind, "frames": _integer(index, step, "frames")}
+    elif kind == "wait_stable":
+        normalized = {
+            "type": kind,
+            "max_ms": _integer(index, step, "max_ms"),
+            "stable_frames": _integer(
+                index, step, "stable_frames", minimum=1
+            ),
+        }
     elif kind == "key":
         action = step.get("action")
         _action(index, "key", action)
@@ -378,6 +449,10 @@ def _normalize_step(index: int, step: Any) -> dict[str, Any]:
         }
     elif kind == "mark":
         normalized = {"type": kind, "id": _token(index, step, "id")}
+    elif kind == "text":
+        value = step.get("value")
+        _problem(index, text_problem(value))
+        normalized = {"type": kind, "value": value}
     else:
         normalized = {"type": kind, "label": _token(index, step, "label")}
     return normalized

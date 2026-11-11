@@ -10,12 +10,46 @@ import json
 import os
 import struct
 import unittest
+import tempfile
+import time
 import zlib
 from pathlib import Path
 from unittest import mock
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 _CHANNELS = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
+
+
+class RetryingTemporaryDirectory(tempfile.TemporaryDirectory):
+    """TemporaryDirectory that waits out Windows delete-pending handles.
+
+    Windows can keep a just-deleted file in the delete-pending state while a
+    scanner or another process still holds a handle. ``rmtree`` then sees the
+    file during its scan, unlinks it, and the final ``rmdir`` fails with
+    ``ERROR_DIR_NOT_EMPTY`` even though the directory is already empty. A few
+    bounded retries let the pending delete finish; the last failure is raised,
+    so a real cleanup problem still fails the test.
+    """
+
+    def cleanup(self) -> None:
+        delay = 0.02
+        for attempt in range(6):
+            try:
+                super().cleanup()
+                return
+            except OSError:
+                if attempt == 5:
+                    raise
+                time.sleep(delay)
+                delay *= 2
+
+
+def install_retrying_tempdir() -> None:
+    """Route ``tempfile.TemporaryDirectory`` through the retrying subclass."""
+    tempfile.TemporaryDirectory = RetryingTemporaryDirectory
+
+
+install_retrying_tempdir()
 
 
 def read_ndjson(path: str | Path) -> list[dict]:

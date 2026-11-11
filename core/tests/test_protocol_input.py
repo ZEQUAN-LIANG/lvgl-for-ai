@@ -13,6 +13,8 @@ from pathlib import Path
 from unittest import mock
 
 from lvgl_ai import Recording, Runtime, ScenarioError
+# Side effect: install the Windows-safe TemporaryDirectory before setUp runs.
+import support  # noqa: F401,E402
 
 FAKE_ENGINE = Path(__file__).with_name("fake_engine.py")
 

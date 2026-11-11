@@ -121,13 +121,8 @@ class RegistrySeamTest(_TempRepo):
 
     def test_empty_apps_table_allows_the_first_registration(self) -> None:
         text = self._app_c_text()
-        for row in (
-            '    {"coffee", coffee_create},\n',
-            '    {"xiaohongshu", xhs_page_create},\n',
-            '    {"spectrum", spectrum_create},\n',
-            '    {"hspi_watch", hspi_watch_create},\n',
-        ):
-            text = text.replace(row, "")
+        for name, symbol in registry.parse_app_entries(text):
+            text = text.replace(f'    {{"{name}", {symbol}}},\n', "")
         registered, changed = registry.register_app(text, "hello")
         self.assertTrue(changed)
         self.assertEqual(
