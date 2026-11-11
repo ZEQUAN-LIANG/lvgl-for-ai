@@ -444,7 +444,7 @@ raw 源收集和 EZIP/真机验证边界见
 - `user/app/xiaohongshu/`：另一个完整页面实现。
 - `docs/app.html`：入口、注册、选择链路的真源索引。
 - `docs/scenario-server.html`：场景格式与服务端常量的真源索引。
-- `.scratch/ai-tools/SPEC.md`：工具的设计真源与范围。
+- `.scratch/ai-tools/spec.md`：工具的设计真源与范围（本地 tracker，不随仓库提交）。
 
 ## 8. 提交前检查清单
 

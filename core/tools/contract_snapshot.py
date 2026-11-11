@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Record and compare the external behavior contract of the LVGL AI tools.
 
-The refactor work in ``.scratch/ai-tools/issues/14-architecture-deepening.md``
-must not change any user-visible behavior.  This tool captures the six
-contracts that refactors may not drift:
+The snapshot is behavior-equivalence evidence for refactors.  The historical
+ticket ``14-architecture-deepening.md`` is no longer in the local
+``.scratch/ai-tools/issues/`` tracker, so it is not current guidance.  This
+tool captures the six contracts that refactors may not drift:
 
 - ``http``: routes, methods, status codes and JSON key shapes
 - ``cli``: ``cli.py`` / ``web.py`` / ``tools/new_app.py`` parsers, help text,
