@@ -260,7 +260,8 @@ def _build_compare_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="session_report.py compare",
         description=(
-            "Compare two snapshots or sessions and optionally write a heatmap."
+            "Compare two snapshots or sessions and optionally write a heatmap; "
+            "a session resolves to its latest snapshot, else its last frame."
         ),
     )
     parser.add_argument(
@@ -272,7 +273,10 @@ def _build_compare_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--out",
         metavar="OUT",
-        help="explicit output path for the optional heatmap PNG",
+        help=(
+            "explicit output path for the optional heatmap PNG; "
+            "must be outside session evidence"
+        ),
     )
     parser.add_argument(
         "--json", action="store_true", help="print one JSON result on stdout"
