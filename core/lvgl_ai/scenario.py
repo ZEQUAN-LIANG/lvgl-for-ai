@@ -44,8 +44,14 @@ Step types (the schema is intentionally this small):
     ``pointer`` command; ``move`` probes coordinates without changing the
     pressed state.
 ``key``
-    ``action`` (``press`` / ``release``) and an LVGL ``LV_KEY_*`` name in
-    ``key`` (case-insensitive, optional ``LV_KEY_`` prefix).
+    ``action`` (``press`` / ``release``) and an LVGL ``LV_KEY_*`` name, or a
+    ``CHAR_<code>`` token, in ``key`` (case-insensitive, optional ``LV_KEY_``
+    prefix).
+``text``
+    ``value``: a non-empty string of printable ASCII characters (32..126).
+    Expands to ``key press`` / ``key release`` per character, using the stable
+    ``CHAR_<code>`` token (for example ``CHAR_65`` for ``A``). Unicode, IME and
+    web live text mapping are out of scope.
 ``encoder``
     ``action`` (``turn``) and a signed ``diff`` within -32768..32767; positive
     turns move focus forward.
@@ -71,12 +77,14 @@ from .control.input import (
     INT16_MAX,
     INT16_MIN,
     TOKEN_PATTERN,
+    char_key,
     display_problem,
     integer_problem,
     is_token,
     point_problem,
     resolve_key,
     step_action_problem,
+    text_problem,
     token_problem,
 )
 
@@ -89,6 +97,7 @@ STEP_TYPES = (
     "mark",
     "pointer",
     "snapshot",
+    "text",
     "wait",
 )
 DEFAULT_CLICK_HOLD_MS = 64
@@ -106,6 +115,7 @@ _STEP_FIELDS = {
     "mark": {"type", "id"},
     "pointer": {"type", "action", "x", "y"},
     "snapshot": {"type", "label"},
+    "text": {"type", "value"},
     "wait": {"type", "ms", "frames"},
 }
 
@@ -248,6 +258,13 @@ def _play_step(rt: Any, step: dict[str, Any]) -> list[dict]:
         return [rt.mark(step["id"])]
     if kind == "snapshot":
         return [rt.snapshot(step["label"])]
+    if kind == "text":
+        replies: list[dict] = []
+        for char in step["value"]:
+            token = char_key(char)
+            replies.append(rt.key("press", token))
+            replies.append(rt.key("release", token))
+        return replies
     raise ScenarioError(f"unsupported step type {kind!r}")
 
 
@@ -352,6 +369,10 @@ def _normalize_step(index: int, step: Any) -> dict[str, Any]:
         }
     elif kind == "mark":
         normalized = {"type": kind, "id": _token(index, step, "id")}
+    elif kind == "text":
+        value = step.get("value")
+        _problem(index, text_problem(value))
+        normalized = {"type": kind, "value": value}
     else:
         normalized = {"type": kind, "label": _token(index, step, "label")}
     return normalized
