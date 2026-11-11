@@ -201,6 +201,9 @@ class ContractSnapshotTest(unittest.TestCase):
         self.assertEqual(
             protocol["required_reply_fields"]["snapshot"], ["file"]
         )
+        self.assertEqual(
+            protocol["reply_shapes"]["wait"]["object"]["changed"], "boolean"
+        )
         self.assertEqual(protocol["error_reply_outcome"], "ProtocolError")
         self.assertIn(
             "error", protocol["error_reply_shape"]["object"]

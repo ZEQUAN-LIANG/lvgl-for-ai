@@ -25,6 +25,7 @@ from .input import (
     require_action,
     require_display_pair,
     require_int16,
+    require_integer,
     require_non_negative_int,
     require_token,
     resolve_key,
@@ -34,6 +35,7 @@ from .engine_link import RECORD_QUIT_TIMEOUT_S, QUIT_TIMEOUT_S, EngineLink
 from .session import DEFAULT_MAX_LOG_BYTES, SessionOutcome, SessionStore
 
 DEFAULT_MAX_FRAMES = 600
+WAIT_STABLE_STEP_MS = 16
 
 STALE_ENGINE_HINT = "engine 产物早于当前 Runtime，请用 --build 重建"
 
@@ -487,6 +489,40 @@ class Runtime:
         interval = require_non_negative_int(ms, "ms")
         return self._command("wait", str(interval))
 
+    def wait_stable(
+        self, max_ms: int, stable_frames: int
+    ) -> dict[str, Any]:
+        """Wait until the picture stops changing, up to ``max_ms``.
+
+        Polls ``wait`` in 16 ms steps (the engine's own wait step) and counts
+        consecutive replies whose ``changed`` flag is false. It returns as soon
+        as ``stable_frames`` unchanged steps accumulate, or when ``max_ms`` is
+        spent. ``changed`` comes from the adapter flush flag and is independent
+        of recording and changed-only frame retention, so a skipped frame is
+        never mistaken for a stable picture.
+
+        Returns ``waited_ms``, ``stable_frames`` (the achieved streak) and
+        ``stable``. An engine without the ``changed`` field is rejected on the
+        first poll instead of waiting forever.
+        """
+        limit = require_non_negative_int(max_ms, "max_ms")
+        target = require_integer(stable_frames, "stable_frames", minimum=1)
+        waited_ms = 0
+        stable_count = 0
+        while waited_ms < limit and stable_count < target:
+            step = min(WAIT_STABLE_STEP_MS, limit - waited_ms)
+            reply = self.wait(ms=step)
+            waited_ms += step
+            if self._wait_changed(reply):
+                stable_count = 0
+            else:
+                stable_count += 1
+        return {
+            "waited_ms": waited_ms,
+            "stable_frames": stable_count,
+            "stable": stable_count >= target,
+        }
+
     def snapshot(self, label: str) -> dict[str, Any]:
         """Write ``snapshots/NNN_<label>.png`` and a timeline snapshot row."""
         token = require_token(label, "snapshot label")
@@ -634,6 +670,22 @@ class Runtime:
             self.t_ms = t_ms
         if append:
             self._store.append_check(command, ok, frame_no)
+
+    def _wait_changed(self, reply: dict[str, Any]) -> bool:
+        changed = reply.get("changed")
+        if isinstance(changed, bool):
+            return changed
+        if "changed" in reply:
+            message = f"wait reply.changed must be a boolean; got {changed!r}"
+        else:
+            message = f"wait reply is missing changed; {STALE_ENGINE_HINT}"
+        seq = reply.get("seq")
+        error = ProtocolError(
+            message,
+            seq=seq if isinstance(seq, int) and not isinstance(seq, bool) else None,
+        )
+        self._failure = error
+        raise error
 
     def _require_reply(
         self, reply: dict[str, Any], fields: tuple[str, ...], verb: str

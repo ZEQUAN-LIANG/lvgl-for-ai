@@ -31,6 +31,8 @@ typedef struct {
     uint8_t * framebuffer;
     uint32_t width;
     uint32_t height;
+    /** The display flush callback ran during the latest adapter_refresh(). */
+    bool refresh_painted;
 
     /** Which standard indevs the version primitive created. */
     bool has_pointer;

@@ -374,8 +374,10 @@ def main():
         elif verb == "wait" and len(parts) >= 4 and parts[2] == "frames":
             frames += int(parts[3])
             t_ms += 16 * int(parts[3])
+            extra = {"changed": False}
         elif verb == "wait" and len(parts) >= 3:
             t_ms += int(parts[2])
+            extra = {"changed": False}
         payload = reply(seq, frames, t_ms, extra)
         if REPLY_OMIT:
             omit_verb, _, omit_field = REPLY_OMIT.partition(":")
