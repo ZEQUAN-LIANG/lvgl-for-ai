@@ -158,7 +158,10 @@ def load_scenario(path: str | Path) -> dict[str, Any]:
 
 
 def scenario_index(
-    root: str | Path, *, scenarios_dir: str | Path | None = None
+    root: str | Path,
+    *,
+    scenarios_dir: str | Path | None = None,
+    include_symlinks: bool = False,
 ) -> list[dict[str, Any]]:
     """Return one entry per ``*.json`` scenario file, sorted by filename.
 
@@ -167,6 +170,10 @@ def scenario_index(
     ``scenarios_dir`` (the web app manager keeps its scenarios outside the
     repository root). Invalid scenarios keep their error text and do not block
     the other entries.
+
+    Symlinked scenario files are skipped by default (the app views and trash
+    must not follow links). The web app picker and its display lookup pass
+    ``include_symlinks=True`` to keep following them.
     """
     root_path = Path(root).expanduser().resolve()
     directory = (
@@ -178,7 +185,9 @@ def scenario_index(
     if not directory.is_dir():
         return result
     for path in sorted(directory.glob("*.json")):
-        if path.is_symlink() or not path.is_file():
+        if not include_symlinks and path.is_symlink():
+            continue
+        if not path.is_file():
             continue
         entry: dict[str, Any] = {
             "path": _relative(path, root_path),

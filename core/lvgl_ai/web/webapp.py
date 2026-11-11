@@ -249,7 +249,9 @@ class WebApp:
     def _scenario_apps_locked(self) -> list[dict[str, Any]]:
         apps: dict[str, dict[str, Any]] = {}
         for item in scenario_index(
-            self.repo_root, scenarios_dir=self.scenarios_dir
+            self.repo_root,
+            scenarios_dir=self.scenarios_dir,
+            include_symlinks=True,
         ):
             if not item["valid"]:
                 continue
