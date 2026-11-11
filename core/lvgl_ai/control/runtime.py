@@ -35,6 +35,19 @@ from .session import DEFAULT_MAX_LOG_BYTES, SessionOutcome, SessionStore
 
 DEFAULT_MAX_FRAMES = 600
 
+STALE_ENGINE_HINT = "engine 产物早于当前 Runtime，请用 --build 重建"
+
+
+def _stale_engine_argument(log_tail: list[str]) -> str | None:
+    """Return the CLI flag an old engine rejected before announcing ready."""
+    for line in log_tail:
+        if "unknown argument" not in line:
+            continue
+        _, _, argument = line.partition("unknown argument")
+        argument = argument.strip().lstrip(":").strip()
+        return argument or line.strip()
+    return None
+
 
 def _positive_int(value: object, name: str, *, default: int) -> int:
     if value is None:
@@ -343,12 +356,24 @@ class Runtime:
                 else self._link.shutdown(send_quit=False)
             )
             self._store.discard_preview()
+            error = exc
             if isinstance(exc, RuntimeCrash) and self._link is not None:
                 self._link.complete_crash(exc, exit_code=exit_code)
+                stale_argument = _stale_engine_argument(exc.log_tail)
+                if stale_argument is not None:
+                    error = RuntimeCrash(
+                        f"{STALE_ENGINE_HINT}: {stale_argument}",
+                        exit_code=exc.exit_code,
+                        log_tail=exc.log_tail,
+                        log_path=exc.log_path,
+                    )
+                    self._failure = error
             try:
-                self._store.write_manifest(SessionOutcome.from_failure(exc))
+                self._store.write_manifest(SessionOutcome.from_failure(error))
             finally:
                 self._store.close_log()
+            if error is not exc:
+                raise error
             raise
         return self
 
