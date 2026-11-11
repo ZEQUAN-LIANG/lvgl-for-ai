@@ -261,6 +261,21 @@ class SessionStore:
         """True once ``engine.log`` was capped during this session."""
         return self._log is not None and self._log.truncated
 
+    @property
+    def ready(self) -> dict[str, Any] | None:
+        """The validated ``ready`` announcement, or ``None`` before startup."""
+        return self._ready or None
+
+    @property
+    def lvgl_src(self) -> Path | None:
+        """The LVGL source tree as recorded, or ``None`` for the default."""
+        return None if self._lvgl_src is None else Path(self._lvgl_src)
+
+    @property
+    def session_retention(self) -> int | None:
+        """Public name for the retention limit owned by the store."""
+        return self.retention
+
     def create(self) -> Path:
         """Reserve a unique session directory and open its engine log."""
         self.sessions_root.mkdir(parents=True, exist_ok=True)
@@ -337,6 +352,10 @@ class SessionStore:
         """Record the validated ``ready`` announcement for later manifests."""
         self._ready = dict(ready)
         self._truncated = bool(ready.get("truncated"))
+
+    def note_mode(self, mode: str) -> None:
+        """Record the mode the engine actually reported."""
+        self.mode = mode
 
     def note_truncated(self) -> None:
         """Remember that the engine dropped frames or rows at the cap."""
