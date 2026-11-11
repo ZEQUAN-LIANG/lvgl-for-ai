@@ -15,6 +15,7 @@ from pathlib import Path
 from fake_runtime import FakeRuntime
 from lvgl_ai import Recording, Runtime, ScenarioError, play_scenario
 from lvgl_ai import paths
+from lvgl_ai import scenario as scenario_module
 from lvgl_ai.scenario import load_scenario
 
 SETTINGS_SCENARIO = paths.REPO_ROOT / "user" / "scenarios" / "settings.json"
@@ -362,6 +363,118 @@ class ScenarioFileTest(unittest.TestCase):
                 with self.assertRaises(ScenarioError) as caught:
                     load_scenario(path)
                 self.assertIn(fragment, str(caught.exception))
+
+
+class ScenarioIndexTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name) / "repo"
+        self.scenarios = self.root / "user" / "scenarios"
+        self.scenarios.mkdir(parents=True)
+
+    def _write(self, directory: Path, filename: str, **fields) -> Path:
+        path = directory / filename
+        path.write_text(
+            json.dumps({
+                "schema": "lvgl-ai-scenario-v1",
+                "steps": [{"type": "wait", "ms": 16}],
+                **fields,
+            }),
+            encoding="utf-8",
+        )
+        return path
+
+    def test_entries_carry_seven_fields_and_invalid_errors(self) -> None:
+        self._write(
+            self.scenarios,
+            "coffee.json",
+            name="coffee",
+            app="coffee",
+            display={"width": 640, "height": 480},
+        )
+        self._write(self.scenarios, "plain.json", app="plain")
+        bad = self.scenarios / "bad.json"
+        bad.write_text("{", encoding="utf-8")
+
+        entries = scenario_module.scenario_index(self.root)
+        self.assertEqual(
+            [entry["basename"] for entry in entries],
+            ["bad.json", "coffee.json", "plain.json"],
+        )
+        for entry in entries:
+            self.assertEqual(
+                set(entry),
+                {"path", "basename", "app", "name", "display", "valid", "error"},
+            )
+
+        by_name = {entry["basename"]: entry for entry in entries}
+        self.assertEqual(
+            by_name["coffee.json"],
+            {
+                "path": "user/scenarios/coffee.json",
+                "basename": "coffee.json",
+                "app": "coffee",
+                "name": "coffee",
+                "display": {"width": 640, "height": 480},
+                "valid": True,
+                "error": None,
+            },
+        )
+        self.assertTrue(by_name["plain.json"]["valid"])
+        self.assertIsNone(by_name["plain.json"]["name"])
+        self.assertIsNone(by_name["plain.json"]["display"])
+
+        self.assertFalse(by_name["bad.json"]["valid"])
+        self.assertIsNone(by_name["bad.json"]["app"])
+        self.assertIsNone(by_name["bad.json"]["name"])
+        self.assertIsNone(by_name["bad.json"]["display"])
+        self.assertIn("invalid JSON", by_name["bad.json"]["error"])
+        self.assertIn("bad.json", by_name["bad.json"]["error"])
+
+    def test_one_invalid_scenario_does_not_block_the_others(self) -> None:
+        self._write(self.scenarios, "good.json", name="good", app="coffee")
+        self._write(
+            self.scenarios,
+            "wrong_schema.json",
+            schema="lvgl-ai-scenario-v0",
+            app="coffee",
+        )
+        entries = scenario_module.scenario_index(self.root)
+        by_name = {entry["basename"]: entry for entry in entries}
+        self.assertTrue(by_name["good.json"]["valid"])
+        self.assertFalse(by_name["wrong_schema.json"]["valid"])
+        self.assertIn(
+            "lvgl-ai-scenario-v1", by_name["wrong_schema.json"]["error"]
+        )
+
+    def test_index_accepts_an_independent_scenarios_dir(self) -> None:
+        other = Path(self._tmp.name) / "display-scenarios"
+        other.mkdir()
+        self._write(
+            other,
+            "coffee.json",
+            name="coffee",
+            app="coffee",
+            display={"width": 320, "height": 240},
+        )
+        entries = scenario_module.scenario_index(
+            self.root, scenarios_dir=other
+        )
+        self.assertEqual(
+            [entry["basename"] for entry in entries], ["coffee.json"]
+        )
+        self.assertEqual(entries[0]["app"], "coffee")
+        self.assertEqual(
+            entries[0]["display"], {"width": 320, "height": 240}
+        )
+        self.assertEqual(Path(entries[0]["path"]).name, "coffee.json")
+        self.assertEqual(
+            scenario_module.scenario_index(
+                self.root, scenarios_dir=other / "missing"
+            ),
+            [],
+        )
 
 
 class ScenarioErrorMappingTest(unittest.TestCase):

@@ -23,6 +23,7 @@ from fake_runtime import FAKE_PID, FakeRuntime
 from lvgl_ai import BuildError, Recording, Runtime, RuntimeCrash, ScenarioError
 from lvgl_ai.web.live_session import LiveError, LiveSession
 from lvgl_ai.web.wire import page_config
+from support import symlinked_file
 from web_support import SESSION_ID, WebHarness, make_web_session
 
 SIGINT_DRIVER = Path(__file__).with_name("web_sigint_driver.py")
@@ -783,6 +784,59 @@ class LiveHttpTest(unittest.TestCase):
             by_app["coffee"]["display"], {"width": 640, "height": 480}
         )
         self.assertIsNone(by_app["plain"]["display"])
+
+    def test_symlinked_scenarios_stay_in_the_picker_and_live_display(
+        self,
+    ) -> None:
+        scenarios = Path(
+            tempfile.mkdtemp(prefix="linked-scenarios-", dir=self.root)
+        )
+        target = Path(
+            tempfile.mkdtemp(prefix="linked-target-", dir=self.root)
+        ) / "coffee.json"
+        target.write_text(
+            json.dumps({
+                "schema": "lvgl-ai-scenario-v1",
+                "name": "coffee",
+                "app": "coffee",
+                "display": {"width": 640, "height": 480},
+                "steps": [{"type": "wait", "ms": 16}],
+            }),
+            encoding="utf-8",
+        )
+        symlinked_file(self, scenarios / "coffee.json", target)
+
+        captured: dict[str, object] = {}
+
+        class CapturingRuntime(FakeRuntime):
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+                super().__init__(**kwargs)
+
+        with mock.patch("lvgl_ai.web.live_session.Runtime", CapturingRuntime):
+            harness = WebHarness(
+                self.root, scenarios_dir=scenarios, repo_root=self.root
+            )
+            self.addCleanup(harness.close)
+            self.addCleanup(lambda: _quiet_stop(harness))
+
+            by_app = {
+                entry["app"]: entry
+                for entry in harness.server.app.scenario_apps()
+            }
+            self.assertIn("coffee", by_app)
+            self.assertEqual(by_app["coffee"]["scenario"], "coffee.json")
+            self.assertEqual(
+                by_app["coffee"]["display"], {"width": 640, "height": 480}
+            )
+
+            status, _, live = harness.json(
+                "POST", "/api/live/start?app=coffee"
+            )
+            self.assertEqual(status, 200, live)
+            self.assertEqual(captured["width"], 640)
+            self.assertEqual(captured["height"], 480)
+            harness.json("POST", "/api/live/stop")
 
     def test_live_start_forwards_the_scenario_display(self) -> None:
         captured: dict[str, object] = {}
