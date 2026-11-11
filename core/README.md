@@ -165,7 +165,7 @@ engine，不写时使用默认 800×600。显式 `--app` 只覆盖应用，不�
 `build/lvgl_<version>/lvgl_engine`，不重新编译 `user/app`。产物不存在时抛
 `EngineNotFound`；改过 C 代码后仍要用源码构建。
 
-退出码：`0` 会话正常结束；`1` build / link / crash；`2` harness、scenario、协议或环境错误。`--json` 在 stdout 输出一行 `session_id` / `manifest_path` / `app` / `error`。
+退出码：`0` 会话正常结束；`1` build / link / crash；`2` harness、scenario、协议或环境错误。`--json` 在 stdout 输出一行 JSON，始终包含 `session_id` / `manifest_path` / `app` / `error`；会话证据可读时再带上 `session_dir`、`status`、`display`、`frame_count`、`requested_app`、`effective_app`、`snapshots`、`marks`、`log_tail`，字段语义与 `summarize_session` 一致。摘要读取失败（崩溃会话、文件不齐）时只保留可得字段，不改变退出码；诊断只走 stderr。
 
 ## 会话报告
 

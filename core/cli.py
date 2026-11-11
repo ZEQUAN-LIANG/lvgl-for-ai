@@ -19,9 +19,13 @@ the scenario declares ``app``, omitting the flag uses the scenario value.
 A scenario's optional ``display`` object sets the engine width/height; an
 explicit ``--app`` overrides only the app, not that scene's display.
 
-``--json`` prints exactly one JSON object on stdout: ``session_id``,
-``manifest_path``, ``app`` and ``error`` (``null`` on success). Diagnostics
-stay on stderr.
+``--json`` prints exactly one JSON object on stdout. The original fields
+``session_id``, ``manifest_path``, ``app`` and ``error`` (``null`` on success)
+are always present; ``session_dir``, ``status``, ``display``, ``frame_count``,
+``requested_app``, ``effective_app``, ``snapshots``, ``marks`` and ``log_tail``
+come from :func:`lvgl_ai.summarize_session` when the session evidence can be
+read. A failed read leaves the original fields in place. Diagnostics stay on
+stderr.
 """
 
 from __future__ import annotations
@@ -43,6 +47,7 @@ from lvgl_ai import (  # noqa: E402
     RuntimeCrash,
     ScenarioError,
     play_scenario,
+    summarize_session,
 )
 from lvgl_ai.control.errors import dump_error, exit_code_for  # noqa: E402
 from lvgl_ai.control.input import TOKEN_PATTERN, is_token  # noqa: E402
@@ -51,6 +56,20 @@ from lvgl_ai.scenario import load_scenario  # noqa: E402
 EXIT_OK = 0
 
 IDLE_POLL_S = 0.1
+
+# Evidence fields shared with ``summarize_session``; the CLI keeps its four
+# original fields and adds these only when the session can be read.
+EVIDENCE_FIELDS = (
+    "session_dir",
+    "status",
+    "display",
+    "frame_count",
+    "requested_app",
+    "effective_app",
+    "snapshots",
+    "marks",
+    "log_tail",
+)
 
 
 def _app_token(value: str) -> str:
@@ -242,10 +261,24 @@ def _report(error: Exception | None, *, as_json: bool, runtime: Runtime) -> None
             "app": getattr(runtime, "app", None),
             "error": dump_error(error),
         }
+        _add_evidence(payload, runtime)
         print(json.dumps(payload, ensure_ascii=False), flush=True)
         return
     if error is None and runtime.session_dir is not None:
         print(runtime.session_dir)
+
+
+def _add_evidence(payload: dict, runtime: Runtime) -> None:
+    """Add ``summarize_session`` fields; a failed read keeps what is known."""
+    if runtime.session_dir is None:
+        return
+    payload["session_dir"] = str(Path(runtime.session_dir).resolve())
+    try:
+        summary = summarize_session(runtime.session_dir)
+    except Exception:  # noqa: BLE001 - evidence is optional for the CLI
+        return
+    for field in EVIDENCE_FIELDS:
+        payload[field] = summary[field]
 
 
 if __name__ == "__main__":

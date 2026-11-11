@@ -31,6 +31,7 @@ from lvgl_ai import (
     play_scenario,
 )
 from lvgl_ai import paths
+from test_session_report import SESSION_NAME, make_session
 
 TOOL_ROOT = Path(__file__).resolve().parent.parent
 CLI_PATH = TOOL_ROOT / "cli.py"
@@ -161,6 +162,70 @@ class CliUnitTest(unittest.TestCase):
                 ("snapshot", "after_click"),
             ],
         )
+
+    def test_json_keeps_old_fields_and_adds_the_session_evidence(self) -> None:
+        session = make_session(
+            self.root / "sessions",
+            display={"width": 390, "height": 450},
+        )
+        fake = FakeRuntime(session_dir=session, app="coffee")
+        with mock.patch.object(cli, "Runtime", return_value=fake):
+            code, out, err = run_cli(["--json"])
+
+        self.assertEqual(code, 0)
+        self.assertEqual(err, "")
+        payload = one_json(out)
+
+        self.assertEqual(payload["session_id"], SESSION_NAME)
+        self.assertEqual(payload["manifest_path"], str(fake.manifest_path))
+        self.assertEqual(payload["app"], "coffee")
+        self.assertIsNone(payload["error"])
+
+        self.assertEqual(payload["session_dir"], str(session.resolve()))
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["display"], {"width": 390, "height": 450})
+        self.assertEqual(payload["frame_count"], 2)
+        self.assertEqual(payload["requested_app"], "coffee")
+        self.assertEqual(payload["effective_app"], "coffee")
+        self.assertEqual(
+            [snapshot["label"] for snapshot in payload["snapshots"]],
+            ["after_click"],
+        )
+        self.assertTrue(
+            Path(payload["snapshots"][0]["path"]).is_absolute()
+        )
+        self.assertEqual(
+            [mark["id"] for mark in payload["marks"]], ["start"]
+        )
+        self.assertIn("[app] app=coffee", payload["log_tail"])
+
+    def test_json_degrades_when_the_session_summary_cannot_be_read(self) -> None:
+        session = make_session(self.root / "sessions")
+        (session / "engine.log").unlink()
+        fake = FakeRuntime(session_dir=session)
+        with mock.patch.object(cli, "Runtime", return_value=fake):
+            code, out, err = run_cli(["--json"])
+
+        self.assertEqual(code, 0)
+        self.assertEqual(err, "")
+        payload = one_json(out)
+
+        self.assertEqual(payload["session_id"], SESSION_NAME)
+        self.assertEqual(payload["manifest_path"], str(fake.manifest_path))
+        self.assertIsNone(payload["error"])
+        self.assertEqual(payload["session_dir"], str(session.resolve()))
+        for field in (
+            "status",
+            "display",
+            "frame_count",
+            "requested_app",
+            "effective_app",
+            "snapshots",
+            "marks",
+            "log_tail",
+        ):
+            with self.subTest(field=field):
+                self.assertNotIn(field, payload)
 
     def test_app_flag_is_forwarded_and_reported(self) -> None:
         fake, factory = self._patch_runtime(app="coffee")
