@@ -11,6 +11,7 @@
 - `lvgl_ai/`：Python 控制层。`Runtime`（一个实例 = 一个 LVGL 进程 = 一次会话）、`Recording`（只读证据视图，annotations 可写）、`play_scenario`、`apps/`（应用管理 package：common / policy / registry / scaffold / trash / views）、错误类型、`web/`（HTTP/UI 适配）。
 - `engine/`：C engine，负责协议、虚拟 indev、录帧、时间轴、窗口。
 - `cli.py`：命令行入口。
+- `session_report.py`：会话证据摘要入口，不启动 engine 或网页。
 - `web.py`：网页端入口。
 - `tests/`：`python -I` 测试套件。
 - `api-nav/`：每个 LVGL 版本一份 API 导航。
@@ -165,6 +166,25 @@ engine，不写时使用默认 800×600。显式 `--app` 只覆盖应用，不�
 `EngineNotFound`；改过 C 代码后仍要用源码构建。
 
 退出码：`0` 会话正常结束；`1` build / link / crash；`2` harness、scenario、协议或环境错误。`--json` 在 stdout 输出一行 `session_id` / `manifest_path` / `app` / `error`。
+
+## 会话报告
+
+不启动 engine、不启动网页，读取已有会话的证据：
+
+```bash
+# 最新会话的人类可读摘要
+python -I core/session_report.py
+
+# 指定会话，stdout 只有一行 JSON
+python -I core/session_report.py sessions/<id> --json
+
+# 显式指定最新会话，并且只看最后 5 行 engine.log
+python -I core/session_report.py --latest --log-tail 5
+```
+
+会话根默认 `sessions/`，可用 `LVGL_AI_SESSIONS_ROOT` 覆盖；无参数或 `--latest` 取最新会话。摘要包含 status、mode、display、帧数与帧绝对路径、requested / effective app、快照、marks、inputs、帧差异和日志尾部。`record=False` 或 crash 会话缺少 `timeline.ndjson` / `frame_diffs.ndjson` 时返回空列表并标记 `recorded: false`；只有 `manifest.json` 或 `engine.log` 缺失才算错误。未知会话或损坏文件退出码 `2`，错误只走 stderr。
+
+Python 侧的稳定入口是 `lvgl_ai.summarize_session(session, log_tail_lines=20)`，接受会话目录或 `manifest.json`。
 
 ## Python
 
