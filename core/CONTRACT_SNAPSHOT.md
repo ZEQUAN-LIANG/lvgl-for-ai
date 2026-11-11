@@ -49,6 +49,10 @@ engine 和 `127.0.0.1:0` 的 HTTP 服务；快照不包含绝对路径、时间�
 
 - 协议与会话两节用内置脚本化 engine 驱动 `Runtime`，记录的是 Python 控制层可见的
   命令/回执与证据契约；真实 C engine 的语义仍由全量测试（尤其 9.6 / 多版本集成测试）覆盖。
+- `wait` / `wait frames` 回执的 `changed` 由真实 engine 的 adapter flush flag 产生：
+  `core/engine/adapter_9x.c` 与 `core/engine/adapter_8x.c` 在 flush callback 设置同一
+  `refresh_painted`，`core/engine/session.c` 汇总后写入回执；9.x / 8.x 边界相同，其它
+  回执不带该字段。协议快照只冻结回执形状，真实语义由 `*IntegrationTest` 覆盖。
 - `session` 同时记录普通录制与完整录制：前者是引擎和 `Runtime` 默认写出的文件集合；
   后者额外覆盖 `reference_diffs.ndjson`、`annotations.json` 与 `snapshots/` 的 manifest
   artifacts 映射。

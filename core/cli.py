@@ -50,26 +50,13 @@ from lvgl_ai import (  # noqa: E402
     summarize_session,
 )
 from lvgl_ai.control.errors import dump_error, exit_code_for  # noqa: E402
+from lvgl_ai.control.evidence import CLI_EVIDENCE_FIELDS  # noqa: E402
 from lvgl_ai.control.input import TOKEN_PATTERN, is_token  # noqa: E402
 from lvgl_ai.scenario import load_scenario  # noqa: E402
 
 EXIT_OK = 0
 
 IDLE_POLL_S = 0.1
-
-# Evidence fields shared with ``summarize_session``; the CLI keeps its four
-# original fields and adds these only when the session can be read.
-EVIDENCE_FIELDS = (
-    "session_dir",
-    "status",
-    "display",
-    "frame_count",
-    "requested_app",
-    "effective_app",
-    "snapshots",
-    "marks",
-    "log_tail",
-)
 
 
 def _app_token(value: str) -> str:
@@ -277,7 +264,7 @@ def _add_evidence(payload: dict, runtime: Runtime) -> None:
         summary = summarize_session(runtime.session_dir)
     except Exception:  # noqa: BLE001 - evidence is optional for the CLI
         return
-    for field in EVIDENCE_FIELDS:
+    for field in CLI_EVIDENCE_FIELDS:
         payload[field] = summary[field]
 
 

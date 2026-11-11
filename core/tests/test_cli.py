@@ -31,7 +31,8 @@ from lvgl_ai import (
     play_scenario,
 )
 from lvgl_ai import paths
-from test_session_report import SESSION_NAME, make_session
+from lvgl_ai.control.evidence import CLI_EVIDENCE_FIELDS
+from session_fixtures import SESSION_NAME, make_summary_session as make_session
 
 TOOL_ROOT = Path(__file__).resolve().parent.parent
 CLI_PATH = TOOL_ROOT / "cli.py"
@@ -180,6 +181,11 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(payload["manifest_path"], str(fake.manifest_path))
         self.assertEqual(payload["app"], "coffee")
         self.assertIsNone(payload["error"])
+        self.assertEqual(
+            set(payload),
+            {"session_id", "manifest_path", "app", "error"}
+            | set(CLI_EVIDENCE_FIELDS),
+        )
 
         self.assertEqual(payload["session_dir"], str(session.resolve()))
         self.assertEqual(payload["status"], "ok")
@@ -214,16 +220,9 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(payload["manifest_path"], str(fake.manifest_path))
         self.assertIsNone(payload["error"])
         self.assertEqual(payload["session_dir"], str(session.resolve()))
-        for field in (
-            "status",
-            "display",
-            "frame_count",
-            "requested_app",
-            "effective_app",
-            "snapshots",
-            "marks",
-            "log_tail",
-        ):
+        for field in CLI_EVIDENCE_FIELDS:
+            if field == "session_dir":
+                continue
             with self.subTest(field=field):
                 self.assertNotIn(field, payload)
 

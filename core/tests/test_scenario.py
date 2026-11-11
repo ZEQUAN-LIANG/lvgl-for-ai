@@ -8,7 +8,6 @@ button covers x=32..192, y=300..348, so its center is (112, 324).
 from __future__ import annotations
 
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,7 +19,6 @@ from lvgl_ai.scenario import load_scenario
 
 SETTINGS_SCENARIO = paths.REPO_ROOT / "user" / "scenarios" / "settings.json"
 BUTTON_CENTER = (112, 324)
-FAKE_ENGINE = Path(__file__).with_name("fake_engine.py")
 
 
 def scenario_file(root: Path, steps: list[dict], **extra) -> Path:
@@ -506,43 +504,39 @@ class ScenarioFileTest(unittest.TestCase):
                 self.assertIn(fragment, str(caught.exception))
 
 
-class ScenarioTimeEvidenceTest(unittest.TestCase):
-    def test_drag_interval_ms_advances_move_t_ms_through_a_scenario_file(self) -> None:
+class ScenarioFileDragTimeTest(unittest.TestCase):
+    def test_drag_interval_ms_scenario_file_emits_waits_between_moves(
+        self,
+    ) -> None:
+        runtime = FakeRuntime()
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            runtime = Runtime(
-                lvgl="9.6",
-                build=False,
-                record=False,
-                sessions_root=root / "sessions",
-                _engine_command=[sys.executable, "-I", str(FAKE_ENGINE)],
+            path = scenario_file(
+                Path(tmp),
+                [
+                    {
+                        "type": "drag",
+                        "from": [0, 0],
+                        "to": [30, 0],
+                        "steps": 3,
+                        "interval_ms": 16,
+                    }
+                ],
             )
-            try:
-                runtime.start()
-                path = scenario_file(
-                    root,
-                    [
-                        {
-                            "type": "drag",
-                            "from": [0, 0],
-                            "to": [30, 0],
-                            "steps": 3,
-                            "interval_ms": 16,
-                        }
-                    ],
-                )
-                replies = play_scenario(runtime, path)
-            finally:
-                runtime.stop()
+            play_scenario(runtime, path)
 
-        # down, move, wait, move, wait, move, wait, up, snapshot
         self.assertEqual(
-            [replies[index]["t_ms"] for index in (1, 3, 5)],
-            [0, 16, 32],
-        )
-        self.assertEqual(
-            [replies[index]["t_ms"] for index in (2, 4, 6)],
-            [16, 32, 48],
+            runtime.commands,
+            [
+                ("pointer", "down", 0, 0),
+                ("pointer", "move", 10, 0),
+                ("wait", 16),
+                ("pointer", "move", 20, 0),
+                ("wait", 16),
+                ("pointer", "move", 30, 0),
+                ("wait", 16),
+                ("pointer", "up", 30, 0),
+                ("snapshot", "drag_end"),
+            ],
         )
 
 

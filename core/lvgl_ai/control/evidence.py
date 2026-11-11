@@ -1,13 +1,15 @@
 """Session evidence summary built on top of :class:`Recording`.
 
 ``summarize_session`` is the single read-only summary entry point shared by
-the session report tool and, later, the CLI JSON output. It never starts an
-engine or the web server.
+the session report tool and the CLI JSON output. It never starts an engine or
+the web server. ``SUMMARY_FIELDS`` and ``CLI_EVIDENCE_FIELDS`` are the one
+source for both entry points' field lists.
 
 ``manifest.json`` and ``engine.log`` are required evidence: a missing one is an
-error. ``timeline.ndjson`` and ``frame_diffs.ndjson`` are optional because
-``record=False`` sessions and crashed sessions may not have them; they report
-as empty lists and set ``recorded`` to ``False`` instead of raising.
+error. A session whose manifest describes recording must also have both
+``timeline.ndjson`` and ``frame_diffs.ndjson``, matching
+:meth:`Recording.open`. ``record=False`` and crashed sessions without those
+files report as empty lists and ``recorded=False`` instead of raising.
 """
 
 from __future__ import annotations
@@ -16,11 +18,53 @@ import re
 from pathlib import Path
 from typing import Any
 
-from .recording import Recording
+from .recording import (
+    Recording,
+    manifest_is_recorded,
+    snapshot_label,
+    tail_lines,
+)
 from .session_schema import FRAME_DIFFS_FILE, TIMELINE_FILE
 
 _APP_LINE = re.compile(r"^\[app\]\s+app=(\S+)")
-_SNAPSHOT_NUMBER_PREFIX = re.compile(r"^\d+_")
+
+# Every key returned by ``summarize_session`` in order. ``frames`` carries the
+# absolute frame PNG paths needed by the visual evidence commands; it is part
+# of the summary contract even though the CLI JSON keeps the shorter ticket 02
+# field list.
+SUMMARY_FIELDS = (
+    "session_id",
+    "session_dir",
+    "status",
+    "mode",
+    "display",
+    "frame_count",
+    "record_changed_only",
+    "requested_app",
+    "effective_app",
+    "snapshots",
+    "frames",
+    "marks",
+    "inputs",
+    "frame_diffs",
+    "log_tail",
+    "recorded",
+    "error",
+)
+
+# Fields the CLI adds to its four original JSON fields. Kept next to
+# ``SUMMARY_FIELDS`` so the two entry points cannot drift.
+CLI_EVIDENCE_FIELDS = (
+    "session_dir",
+    "status",
+    "display",
+    "frame_count",
+    "requested_app",
+    "effective_app",
+    "snapshots",
+    "marks",
+    "log_tail",
+)
 
 
 def summarize_session(
@@ -31,20 +75,17 @@ def summarize_session(
     ``session`` is a session directory or its ``manifest.json``. The result
     contains only evidence; it never judges the picture.
     """
-    recording = Recording(session)
+    recording = Recording.open(session)
     session_dir = recording.path.resolve()
     manifest = recording.manifest
     log_text = recording.log()
 
-    timeline_path = session_dir / TIMELINE_FILE
-    timeline_available = timeline_path.is_file()
+    timeline_available = (session_dir / TIMELINE_FILE).is_file()
     timeline = recording.timeline() if timeline_available else []
-
-    diffs_path = session_dir / FRAME_DIFFS_FILE
-    diffs_available = diffs_path.is_file()
+    diffs_available = (session_dir / FRAME_DIFFS_FILE).is_file()
     frame_diffs = recording.frame_diffs() if diffs_available else []
 
-    return {
+    values = {
         "session_id": manifest["id"],
         "session_dir": str(session_dir),
         "status": manifest["status"],
@@ -59,10 +100,11 @@ def summarize_session(
         "marks": [dict(row) for row in timeline if row["type"] == "mark"],
         "inputs": [dict(row) for row in timeline if row["type"] == "input"],
         "frame_diffs": [dict(row) for row in frame_diffs],
-        "log_tail": _log_tail(log_text, log_tail_lines),
-        "recorded": timeline_available or diffs_available,
+        "log_tail": tail_lines(log_text, log_tail_lines),
+        "recorded": manifest_is_recorded(manifest),
         "error": manifest.get("error"),
     }
+    return {field: values[field] for field in SUMMARY_FIELDS}
 
 
 def _effective_app(log_text: str) -> str | None:
@@ -96,18 +138,8 @@ def _snapshots(
         path = file.resolve()
         if path in referenced:
             continue
-        snapshots.append({"label": _snapshot_label(file), "path": str(path)})
+        snapshots.append({"label": snapshot_label(file), "path": str(path)})
     return snapshots
 
 
-def _snapshot_label(path: Path) -> str:
-    return _SNAPSHOT_NUMBER_PREFIX.sub("", path.stem)
-
-
-def _log_tail(log_text: str, log_tail_lines: int) -> list[str]:
-    if log_tail_lines <= 0:
-        return []
-    return log_text.splitlines()[-log_tail_lines:]
-
-
-__all__ = ["summarize_session"]
+__all__ = ["CLI_EVIDENCE_FIELDS", "SUMMARY_FIELDS", "summarize_session"]

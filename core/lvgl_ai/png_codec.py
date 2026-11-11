@@ -135,65 +135,52 @@ def _read_chunks(data: bytes) -> Iterable[tuple[bytes, bytes]]:
         pos = end + 4
 
 
+def _parse_ihdr(payload: bytes) -> PngHeader:
+    if len(payload) != 13:
+        raise PngError("malformed IHDR")
+    (width, height, bit_depth, color_type,
+     compression, filter_method, interlace) = struct.unpack(
+        ">IIBBBBB", payload)
+    if compression != 0 or filter_method != 0:
+        raise PngError("unsupported PNG compression/filter method")
+    if bit_depth != 8:
+        raise PngError(f"unsupported PNG bit depth {bit_depth}")
+    if interlace != 0:
+        raise PngError("interlaced PNGs are not supported")
+    if color_type not in CHANNELS:
+        raise PngError(
+            f"unsupported PNG color type {color_type} "
+            "(supported: 0, 2, 4, 6)"
+        )
+    if width <= 0 or height <= 0:
+        raise PngError(f"invalid PNG size {width}x{height}")
+    return PngHeader(width, height, color_type)
+
+
 def read_png_header(data: bytes) -> PngHeader:
     """Read and validate the IHDR chunk without inflating pixel data."""
     for chunk_type, payload in _read_chunks(data):
-        if chunk_type != b"IHDR":
-            continue
-        if len(payload) != 13:
-            raise PngError("malformed IHDR")
-        (width, height, bit_depth, color_type,
-         compression, filter_method, interlace) = struct.unpack(
-            ">IIBBBBB", payload)
-        if compression != 0 or filter_method != 0:
-            raise PngError("unsupported PNG compression/filter method")
-        if bit_depth != 8:
-            raise PngError(f"unsupported PNG bit depth {bit_depth}")
-        if interlace != 0:
-            raise PngError("interlaced PNGs are not supported")
-        if color_type not in CHANNELS:
-            raise PngError(
-                f"unsupported PNG color type {color_type} "
-                "(supported: 0, 2, 4, 6)"
-            )
-        if width <= 0 or height <= 0:
-            raise PngError(f"invalid PNG size {width}x{height}")
-        return PngHeader(width, height, color_type)
+        if chunk_type == b"IHDR":
+            return _parse_ihdr(payload)
     raise PngError("PNG has no IHDR")
 
 
 def decode_png(data: bytes) -> PngImage:
-    width = height = bit_depth = color_type = interlace = None
+    header: PngHeader | None = None
     idat = bytearray()
     for chunk_type, payload in _read_chunks(data):
         if chunk_type == b"IHDR":
-            if len(payload) != 13:
-                raise PngError("malformed IHDR")
-            (width, height, bit_depth, color_type,
-             compression, filter_method, interlace) = struct.unpack(
-                ">IIBBBBB", payload)
-            if compression != 0 or filter_method != 0:
-                raise PngError("unsupported PNG compression/filter method")
-            if bit_depth != 8:
-                raise PngError(f"unsupported PNG bit depth {bit_depth}")
-            if interlace != 0:
-                raise PngError("interlaced PNGs are not supported")
-            if color_type not in CHANNELS:
-                raise PngError(
-                    f"unsupported PNG color type {color_type} "
-                    "(supported: 0, 2, 4, 6)"
-                )
+            header = _parse_ihdr(payload)
         elif chunk_type == b"IDAT":
             idat += payload
         elif chunk_type == b"IEND":
             break
-    if width is None or height is None:
+    if header is None:
         raise PngError("PNG has no IHDR")
-    if width <= 0 or height <= 0:
-        raise PngError(f"invalid PNG size {width}x{height}")
     if not idat:
         raise PngError("PNG has no IDAT data")
 
+    width, height, color_type = header.width, header.height, header.color_type
     channels = CHANNELS[color_type]
     stride = width * channels
     try:
@@ -343,8 +330,14 @@ def compare_png(
     """
     left_header = read_png_header(left)
     right_header = read_png_header(right)
-    _check_compare_source(left_header, "left")
-    _check_compare_source(right_header, "right")
+    for header, side in ((left_header, "left"), (right_header, "right")):
+        _check_source(
+            header,
+            side=side,
+            max_side=MAX_COMPARE_SIDE,
+            max_pixels=MAX_COMPARE_PIXELS,
+            limit_name="compare",
+        )
     if (left_header.width, left_header.height) != (
         right_header.width,
         right_header.height,
@@ -473,7 +466,6 @@ def build_contact_sheet(
     columns: int = DEFAULT_CONTACT_COLUMNS,
     tile_width: int = DEFAULT_CONTACT_TILE_WIDTH,
     tile_height: int = DEFAULT_CONTACT_TILE_HEIGHT,
-    gap: int = _CONTACT_GAP,
 ) -> ContactSheet:
     """Arrange labeled thumbnails in input order without touching the files.
 
@@ -483,7 +475,8 @@ def build_contact_sheet(
     inflated.
     """
     entries = list(items)
-    _validate_contact_layout(entries, columns, tile_width, tile_height, gap)
+    _validate_contact_layout(entries, columns, tile_width, tile_height)
+    gap = _CONTACT_GAP
     rows = (len(entries) + columns - 1) // columns
     width = columns * tile_width + (columns + 1) * gap
     height = rows * tile_height + (rows + 1) * gap
@@ -506,7 +499,13 @@ def build_contact_sheet(
     tiles: list[ContactTile] = []
     for index, (label, data) in enumerate(entries):
         header = read_png_header(data)
-        _check_contact_source(header)
+        _check_source(
+            header,
+            side="source",
+            max_side=MAX_SOURCE_SIDE,
+            max_pixels=MAX_SOURCE_PIXELS,
+            limit_name="contact-sheet",
+        )
         image = decode_png(data)
         column = index % columns
         row = index // columns
@@ -575,7 +574,6 @@ def _validate_contact_layout(
     columns: int,
     tile_width: int,
     tile_height: int,
-    gap: int,
 ) -> None:
     if not entries:
         raise PngError("contact sheet needs at least one image")
@@ -595,38 +593,29 @@ def _validate_contact_layout(
                 f"contact sheet tile side must be "
                 f"{MIN_CONTACT_TILE_SIDE}..{MAX_CONTACT_TILE_SIDE}, got {side}"
             )
-    if not 0 <= gap <= 64:
-        raise PngError(f"contact sheet gap must be 0..64, got {gap}")
     for label, _data in entries:
         if not isinstance(label, str):
             raise PngError("contact sheet labels must be strings")
 
 
-def _check_compare_source(header: PngHeader, side: str) -> None:
+def _check_source(
+    header: PngHeader,
+    *,
+    side: str,
+    max_side: int,
+    max_pixels: int,
+    limit_name: str,
+) -> None:
     pixels = header.width * header.height
     if (
-        header.width > MAX_COMPARE_SIDE
-        or header.height > MAX_COMPARE_SIDE
-        or pixels > MAX_COMPARE_PIXELS
+        header.width > max_side
+        or header.height > max_side
+        or pixels > max_pixels
     ):
         raise PngError(
             f"{side} image is {header.width}x{header.height} ({pixels} px), "
-            f"above the compare limit of {MAX_COMPARE_PIXELS} px or "
-            f"{MAX_COMPARE_SIDE} per side; crop it first"
-        )
-
-
-def _check_contact_source(header: PngHeader) -> None:
-    pixels = header.width * header.height
-    if (
-        header.width > MAX_SOURCE_SIDE
-        or header.height > MAX_SOURCE_SIDE
-        or pixels > MAX_SOURCE_PIXELS
-    ):
-        raise PngError(
-            f"source image is {header.width}x{header.height} ({pixels} px), "
-            f"above the contact-sheet limit of {MAX_SOURCE_PIXELS} px or "
-            f"{MAX_SOURCE_SIDE} per side; crop it first"
+            f"above the {limit_name} limit of {max_pixels} px or "
+            f"{max_side} per side; crop it first"
         )
 
 

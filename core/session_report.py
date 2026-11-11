@@ -21,6 +21,7 @@ if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
 from lvgl_ai import paths, summarize_session  # noqa: E402
+from lvgl_ai.control.recording import snapshot_label  # noqa: E402
 from lvgl_ai.png_codec import (  # noqa: E402
     DEFAULT_CONTACT_COLUMNS,
     DEFAULT_CONTACT_TILE_HEIGHT,
@@ -144,11 +145,7 @@ def _split_input_spec(value: str) -> tuple[str, Path]:
 
 
 def _derived_label(path: Path) -> str:
-    stem = path.stem
-    head, separator, tail = stem.partition("_")
-    if separator and head.isdigit() and tail:
-        return tail
-    return stem
+    return snapshot_label(path)
 
 
 def _run_contact_sheet(argv: list[str]) -> int:
@@ -160,8 +157,12 @@ def _run_contact_sheet(argv: list[str]) -> int:
             items, columns=args.columns, tile_width=args.tile[0],
             tile_height=args.tile[1],
         )
+        sources = [path for _label, path in specs]
         output = _write_output(
-            args.out, sheet.to_png(), [path for _label, path in specs]
+            args.out,
+            sheet.to_png(),
+            sources,
+            tuple(_session_for_png(path.resolve()) for path in sources),
         )
     except (OSError, ValueError) as exc:
         print(f"[session-report] {exc}", file=sys.stderr)
@@ -195,13 +196,24 @@ def _build_crop_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _write_output(path: str, data: bytes, inputs: list[Path]) -> Path:
+def _write_output(
+    path: str,
+    data: bytes,
+    inputs: list[Path],
+    sessions: tuple[Path | None, ...] = (),
+) -> Path:
     output = Path(path)
     resolved = output.resolve()
     for source in inputs:
         if resolved == source.resolve():
             raise ValueError(
                 f"refusing to overwrite input file with output: {output}"
+            )
+    for session in sessions:
+        if session is not None and _is_within(resolved, session):
+            raise ValueError(
+                "refusing to write output inside session evidence: "
+                f"{path}"
             )
     if not output.parent.is_dir():
         raise FileNotFoundError(
@@ -216,7 +228,12 @@ def _run_crop(argv: list[str]) -> int:
     try:
         source = Path(args.input)
         cropped, box, _image = crop_png(source.read_bytes(), args.region)
-        output = _write_output(args.out, cropped, [source])
+        output = _write_output(
+            args.out,
+            cropped,
+            [source],
+            (_session_for_png(source.resolve()),),
+        )
     except (OSError, ValueError) as exc:
         print(f"[session-report] {exc}", file=sys.stderr)
         return EXIT_ERROR
@@ -260,8 +277,9 @@ def _build_compare_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="session_report.py compare",
         description=(
-            "Compare two snapshots or sessions and optionally write a heatmap; "
-            "a session resolves to its latest snapshot, else its last frame."
+            "Compare two snapshots or sessions and optionally write a heatmap. "
+            "A session resolves to its last snapshot in summary order, or its "
+            "last frame when there is no snapshot."
         ),
     )
     parser.add_argument(
@@ -333,15 +351,11 @@ def _run_compare(argv: list[str]) -> int:
         )
         heatmap = None
         if args.out is not None:
-            output = Path(args.out).resolve()
-            for session in (left_session, right_session):
-                if session is not None and _is_within(output, session):
-                    raise ValueError(
-                        "refusing to write heatmap inside session evidence: "
-                        f"{args.out}"
-                    )
             heatmap = _write_output(
-                args.out, comparison.to_png(), [left, right]
+                args.out,
+                comparison.to_png(),
+                [left, right],
+                (left_session, right_session),
             )
     except (OSError, ValueError) as exc:
         print(f"[session-report] {exc}", file=sys.stderr)
@@ -478,8 +492,8 @@ def format_summary(summary: dict) -> str:
         ),
         f"frames: {summary['frame_count']}",
         f"recorded: {'yes' if summary['recorded'] else 'no'}",
-        f"requested app: {_app(summary['requested_app'])}",
-        f"effective app: {_app(summary['effective_app'])}",
+        f"requested app: {_app_or_unknown(summary['requested_app'])}",
+        f"effective app: {_app_or_unknown(summary['effective_app'])}",
     ]
     _append_entries(
         lines,
@@ -505,7 +519,7 @@ def format_summary(summary: dict) -> str:
     return "\n".join(lines)
 
 
-def _app(value: str | None) -> str:
+def _app_or_unknown(value: str | None) -> str:
     return "未知" if value is None else value
 
 
