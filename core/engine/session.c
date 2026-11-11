@@ -149,40 +149,46 @@ void session_tick(session_t * session, uint32_t ms)
     session_refresh_frame(session);
 }
 
-void session_wait_ms(session_t * session,
+bool session_wait_ms(session_t * session,
                      unsigned long ms,
                      session_service_fn service,
                      void * service_user)
 {
-    if(session == NULL) return;
+    if(session == NULL) return false;
     uint32_t start_t = session->t_ms;
     long start_frames = capture_frame_count(&session->capture);
     unsigned long remaining = ms;
+    bool changed = false;
     while(remaining > 0) {
         unsigned long step =
             remaining > WAIT_STEP_MS ? WAIT_STEP_MS : remaining;
         session_tick(session, (uint32_t)step);
+        changed = changed || adapter_last_refresh_painted(session->adapter);
         remaining -= step;
         if(service != NULL && !service(service_user)) break;
     }
     timeline_wait(&session->timeline, start_t, session->t_ms, start_frames,
                   capture_frame_count(&session->capture));
+    return changed;
 }
 
-void session_wait_frames(session_t * session,
+bool session_wait_frames(session_t * session,
                          unsigned long frames,
                          session_service_fn service,
                          void * service_user)
 {
-    if(session == NULL) return;
+    if(session == NULL) return false;
     uint32_t start_t = session->t_ms;
     long start_frames = capture_frame_count(&session->capture);
+    bool changed = false;
     for(unsigned long i = 0; i < frames; i++) {
         session_tick(session, WAIT_STEP_MS);
+        changed = changed || adapter_last_refresh_painted(session->adapter);
         if(service != NULL && !service(service_user)) break;
     }
     timeline_wait(&session->timeline, start_t, session->t_ms, start_frames,
                   capture_frame_count(&session->capture));
+    return changed;
 }
 
 void session_mark(session_t * session, const char * id)

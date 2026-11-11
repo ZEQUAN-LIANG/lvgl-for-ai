@@ -57,6 +57,12 @@ Step types (the schema is intentionally this small):
     turns move focus forward.
 ``wait``
     exactly one of ``ms`` or ``frames``.
+``wait_stable``
+    ``max_ms`` (non-negative) and ``stable_frames`` (positive). Polls the
+    engine in 16 ms steps until that many consecutive waits report no painted
+    refresh, and returns by ``max_ms`` even when the picture never settles. The
+    reply carries ``waited_ms``, ``stable_frames`` and ``stable``; it is
+    evidence, not a pass/fail judgment.
 ``mark``
     ``id`` matching ``[A-Za-z0-9_-]+``.
 ``snapshot``
@@ -99,6 +105,7 @@ STEP_TYPES = (
     "snapshot",
     "text",
     "wait",
+    "wait_stable",
 )
 DEFAULT_CLICK_HOLD_MS = 64
 DEFAULT_DRAG_STEPS = 8
@@ -117,6 +124,7 @@ _STEP_FIELDS = {
     "snapshot": {"type", "label"},
     "text": {"type", "value"},
     "wait": {"type", "ms", "frames"},
+    "wait_stable": {"type", "max_ms", "stable_frames"},
 }
 
 
@@ -250,6 +258,8 @@ def _play_step(rt: Any, step: dict[str, Any]) -> list[dict]:
         if "ms" in step:
             return [rt.wait(ms=step["ms"])]
         return [rt.wait(frames=step["frames"])]
+    if kind == "wait_stable":
+        return [rt.wait_stable(step["max_ms"], step["stable_frames"])]
     if kind == "key":
         return [rt.key(step["action"], step["key"])]
     if kind == "encoder":
@@ -346,6 +356,14 @@ def _normalize_step(index: int, step: Any) -> dict[str, Any]:
             normalized = {"type": kind, "ms": _integer(index, step, "ms")}
         else:
             normalized = {"type": kind, "frames": _integer(index, step, "frames")}
+    elif kind == "wait_stable":
+        normalized = {
+            "type": kind,
+            "max_ms": _integer(index, step, "max_ms"),
+            "stable_frames": _integer(
+                index, step, "stable_frames", minimum=1
+            ),
+        }
     elif kind == "key":
         action = step.get("action")
         _action(index, "key", action)

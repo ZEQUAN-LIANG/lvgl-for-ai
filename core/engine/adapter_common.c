@@ -106,7 +106,13 @@ const adapter_info_t * adapter_info(const adapter_t * adapter)
 void adapter_refresh(adapter_t * adapter)
 {
     if(adapter == NULL) return;
+    common_of(adapter)->refresh_painted = false;
     adapter_prim_refresh(adapter);
+}
+
+bool adapter_last_refresh_painted(const adapter_t * adapter)
+{
+    return adapter != NULL && common_of_const(adapter)->refresh_painted;
 }
 
 const uint8_t * adapter_framebuffer(const adapter_t * adapter)

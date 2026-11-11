@@ -3811,6 +3811,7 @@
         },
         "wait": {
           "object": {
+            "changed": "boolean",
             "frames": "integer",
             "ok": "boolean",
             "protocol": "string",
@@ -4373,6 +4374,18 @@
                     "default": null,
                     "kind": "KEYWORD_ONLY",
                     "name": "frames"
+                  }
+                ]
+              },
+              "wait_stable": {
+                "signature": [
+                  {
+                    "kind": "POSITIONAL_OR_KEYWORD",
+                    "name": "max_ms"
+                  },
+                  {
+                    "kind": "POSITIONAL_OR_KEYWORD",
+                    "name": "stable_frames"
                   }
                 ]
               }

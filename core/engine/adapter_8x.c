@@ -162,6 +162,9 @@ static void flush_cb(lv_disp_drv_t * disp_drv, const lv_area_t * area,
                          lv_color_t * color_p)
 {
     adapter_t * adapter = (adapter_t *)disp_drv->user_data;
+    if(adapter != NULL) {
+        adapter->common.refresh_painted = true;
+    }
     if(adapter != NULL && color_p != NULL) {
         uint32_t width = (uint32_t)lv_area_get_width(area);
         uint32_t height = (uint32_t)lv_area_get_height(area);
