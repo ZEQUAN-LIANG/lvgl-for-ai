@@ -4090,7 +4090,8 @@
           "RuntimeCrash",
           "ScenarioError",
           "__version__",
-          "play_scenario"
+          "play_scenario",
+          "summarize_session"
         ],
         "members": {
           "BuildError": {
@@ -4537,6 +4538,20 @@
               {
                 "kind": "POSITIONAL_OR_KEYWORD",
                 "name": "path_or_steps"
+              }
+            ]
+          },
+          "summarize_session": {
+            "kind": "function",
+            "signature": [
+              {
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "session"
+              },
+              {
+                "default": 20,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "log_tail_lines"
               }
             ]
           }
