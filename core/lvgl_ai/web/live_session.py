@@ -11,7 +11,6 @@ semantics; ``WebApp`` maps the code to a status and stays a composition root.
 
 from __future__ import annotations
 
-import json
 import shutil
 import tempfile
 import threading
@@ -22,7 +21,7 @@ from typing import Any, Callable
 from ..control.errors import ScenarioError, dump_error
 from ..control.recording import Recording
 from ..control.runtime import Runtime
-from ..control.session_schema import PREVIEW_FILE, TIMELINE_FILE
+from ..control.session_schema import PREVIEW_FILE
 from .transport import LiveFrame, LiveFrameHub
 from .urls import frame_url
 
@@ -374,10 +373,12 @@ class LiveSession:
             return payload
 
         path = Path(session_dir)
-        frames: list[Path] = []
+        frame_total = 0
+        latest: dict[str, Any] | None = None
         try:
             recording = Recording.open(path)
-            frames = recording.frames
+            latest = recording.latest_frame()
+            frame_total = len(recording.frames)
             manifest = recording.manifest
             payload["status"] = manifest["status"]
             payload["error"] = manifest["error"]
@@ -388,17 +389,14 @@ class LiveSession:
             pass
 
         # Changed-only recording counts retained frames, not wall-clock ticks.
-        payload["frame_count"] = len(frames)
-        if frames:
-            latest = frames[-1]
-            relative = latest.relative_to(path).as_posix()
-            stem = latest.stem
-            frame_no = int(stem) if stem.isdigit() else None
+        payload["frame_count"] = frame_total
+        if latest is not None:
+            filename = latest["file"].rsplit("/", 1)[-1]
             payload["latest_frame"] = {
-                "file": relative,
-                "url": frame_url(session_id or path.name, latest.name),
-                "frame_no": frame_no,
-                "t_ms": _latest_frame_t_ms(path, relative),
+                "file": latest["file"],
+                "url": frame_url(session_id or path.name, filename),
+                "frame_no": latest["frame_no"],
+                "t_ms": latest["t_ms"],
             }
         else:
             # No frame history (test mode, or a recording before its first
@@ -654,33 +652,3 @@ def _input_int(value: Any, name: str) -> int:
     return value
 
 
-def _latest_frame_t_ms(session_dir: Path, frame_file: str) -> int | None:
-    """Read the newest matching frame row from the tail of timeline.ndjson.
-
-    Live sessions are polled every few seconds; reading the whole timeline on
-    each poll would grow with the recording. Async recording writes frame rows
-    as soon as a raw frame is queued, so the newest published PNG can trail
-    the file end by the encoder backlog; 256 KiB covers max_frames and input
-    rows for the supported display sizes.
-    """
-    path = session_dir / TIMELINE_FILE
-    try:
-        with path.open("rb") as handle:
-            handle.seek(0, 2)
-            size = handle.tell()
-            chunk = min(size, 262144)
-            handle.seek(size - chunk)
-            data = handle.read()
-    except OSError:
-        return None
-    for line in reversed(data.splitlines()):
-        try:
-            row = json.loads(line)
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            continue
-        if row.get("type") == "frame" and row.get("file") == frame_file:
-            t_ms = row.get("t_ms")
-            if isinstance(t_ms, int) and not isinstance(t_ms, bool):
-                return t_ms
-            return None
-    return None
