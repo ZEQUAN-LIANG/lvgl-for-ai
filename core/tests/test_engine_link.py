@@ -495,6 +495,30 @@ class EnginePidFileTest(unittest.TestCase):
             link.shutdown(send_quit=False)
             self.assertFalse(pid_path.exists())
 
+    def test_start_writes_the_session_identity_to_the_pid_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            engine = root / "lvgl_engine.exe"
+            engine.write_bytes(b"")
+            process = ScriptedProcess()
+            process.exit(0)
+            link = EngineLink(
+                [str(engine)],
+                session_id="20260101-000000-abcd",
+                app="coffee",
+                process_factory=lambda command, env, cwd: process,
+            )
+            link.quit_timeout = 0.05
+            link.start()
+            payload = json.loads(
+                (root / ".engine.pid").read_text(encoding="utf-8")
+            )
+            self.assertEqual(payload["session_id"], "20260101-000000-abcd")
+            self.assertEqual(payload["app"], "coffee")
+            self.assertTrue(payload["session_id"])
+            self.assertTrue(payload["app"])
+            link.shutdown(send_quit=False)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -93,9 +93,13 @@ class EngineLink:
         log_tail: LogTail | None = None,
         log_path: str | os.PathLike[str] | None = None,
         on_check: CheckHook | None = None,
+        session_id: str | None = None,
+        app: str | None = None,
         process_factory: ProcessFactory | None = None,
     ) -> None:
         self._command = list(command)
+        self._session_id = session_id
+        self._app = app
         self._env = None if env is None else dict(env)
         self._cwd = cwd
         self.timeout = float(timeout)
@@ -157,7 +161,12 @@ class EngineLink:
             and self._engine_path.name in ENGINE_NAMES
         ):
             try:
-                write_engine_pid(self._engine_path, self._proc.pid)
+                write_engine_pid(
+                    self._engine_path,
+                    self._proc.pid,
+                    session_id=self._session_id,
+                    app=self._app,
+                )
             except OSError:
                 pass
         self._seq = 0
