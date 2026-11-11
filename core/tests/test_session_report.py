@@ -17,7 +17,7 @@ from unittest import mock
 
 import session_report
 from lvgl_ai import summarize_session
-from support import write_png_rgb
+from support import read_png_rgb, write_png_rgb
 
 SESSION_NAME = "20260102-030405-abcd"
 FRAME_1 = "frames/000001.png"
@@ -447,6 +447,126 @@ class SessionReportTest(unittest.TestCase):
         self.assertIsNone(one_json(json_out)["effective_app"])
         self.assertEqual(human_code, 0)
         self.assertIn("effective app: 未知", human_out)
+
+
+class VisualEvidenceCommandTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        self.session = make_session(self.root)
+        self.frame = (self.session / FRAME_2).resolve()
+
+    def test_pixel_prints_the_rgb_value(self) -> None:
+        code, out, err = run_report(["pixel", str(self.frame), "--at", "1,1"])
+
+        self.assertEqual(code, 0, err)
+        self.assertEqual(err, "")
+        self.assertIn("0,255,0", out)
+        self.assertIn("1,1", out)
+
+    def test_pixel_rejects_coordinates_outside_the_image(self) -> None:
+        code, out, err = run_report(["pixel", str(self.frame), "--at", "5,0"])
+
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("5,0", err)
+        self.assertIn("2x2", err)
+
+    def test_crop_writes_the_explicit_output_and_leaves_the_input_untouched(
+        self,
+    ) -> None:
+        before = self.frame.read_bytes()
+        output = self.root / "crop.png"
+
+        code, out, err = run_report(
+            [
+                "crop",
+                str(self.frame),
+                "--region",
+                "0,0,1,1",
+                "--out",
+                str(output),
+            ]
+        )
+
+        self.assertEqual(code, 0, err)
+        self.assertEqual(err, "")
+        self.assertIn(str(output.resolve()), out)
+        self.assertEqual(read_png_rgb(output), (1, 1, [(0, 255, 0)]))
+        self.assertEqual(self.frame.read_bytes(), before)
+
+    def test_crop_rejects_an_empty_region_and_writing_over_the_input(
+        self,
+    ) -> None:
+        before = self.frame.read_bytes()
+        output = self.root / "crop.png"
+
+        empty_code, empty_out, empty_err = run_report(
+            [
+                "crop",
+                str(self.frame),
+                "--region",
+                "5,5,1,1",
+                "--out",
+                str(output),
+            ]
+        )
+        overwrite_code, overwrite_out, overwrite_err = run_report(
+            [
+                "crop",
+                str(self.frame),
+                "--region",
+                "0,0,1,1",
+                "--out",
+                str(self.frame),
+            ]
+        )
+
+        self.assertEqual(empty_code, 2)
+        self.assertEqual(empty_out, "")
+        self.assertIn("2x2", empty_err)
+        self.assertFalse(output.exists())
+        self.assertEqual(overwrite_code, 2)
+        self.assertEqual(overwrite_out, "")
+        self.assertIn("input", overwrite_err)
+        self.assertEqual(self.frame.read_bytes(), before)
+
+    def test_contact_sheet_writes_explicit_output_and_reports_labels(
+        self,
+    ) -> None:
+        snapshot = (self.session / SNAPSHOT).resolve()
+        before = (self.frame.read_bytes(), snapshot.read_bytes())
+        output = self.root / "sheet.png"
+
+        code, out, err = run_report(
+            [
+                "contact-sheet",
+                "--out",
+                str(output),
+                "--input",
+                f"first={self.frame}",
+                "--input",
+                f"second={snapshot}",
+                "--columns",
+                "2",
+                "--tile",
+                "64x48",
+            ]
+        )
+
+        self.assertEqual(code, 0, err)
+        self.assertEqual(err, "")
+        self.assertIn(str(output.resolve()), out)
+        self.assertIn("tiles: 2", out)
+        self.assertIn("first", out)
+        self.assertIn("second", out)
+        width, height, _pixels = read_png_rgb(output)
+        self.assertGreater(width, 1)
+        self.assertGreater(height, 1)
+        self.assertEqual(
+            (self.frame.read_bytes(), snapshot.read_bytes()), before
+        )
 
 
 if __name__ == "__main__":
