@@ -13,9 +13,18 @@
           "exit": 1,
           "keys": [
             "app",
+            "display",
+            "effective_app",
             "error",
+            "frame_count",
+            "log_tail",
             "manifest_path",
-            "session_id"
+            "marks",
+            "requested_app",
+            "session_dir",
+            "session_id",
+            "snapshots",
+            "status"
           ],
           "manifest_path_present": true,
           "session_id_present": true,
