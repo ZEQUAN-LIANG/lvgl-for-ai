@@ -5,6 +5,8 @@ process boundary can be tested without compiling LVGL: ready, pointer,
 tick, wait, mark, snapshot, key, encoder and quit.
 
 Set FAKE_READY=malformed or FAKE_READY=crash to exercise error paths.
+Set FAKE_UNKNOWN_ARG=1 to mimic an old engine artifact that rejects a newer
+command-line flag, prints the reason to stderr and exits 2 before ready.
 Set FAKE_DECOY=1 to print JSON-looking user log lines that must not be
 mistaken for protocol replies. Set FAKE_LOG_LINES=<n> to print that many
 log lines before ready (log-truncation tests). Set FAKE_REPLY_SEQ_OFFSET
@@ -60,6 +62,13 @@ def main() -> int:
     print(f"[fake_engine] started session={session_dir} record={record}", flush=True)
     for line_index in range(int(os.environ.get("FAKE_LOG_LINES", "0") or 0)):
         print(f"[fake_engine] log line {line_index:05d}", flush=True)
+    if os.environ.get("FAKE_UNKNOWN_ARG") == "1":
+        print(
+            "[engine] unknown argument: --record-changed-only",
+            file=sys.stderr,
+            flush=True,
+        )
+        return 2
     if mode == "crash":
         print("[fake_engine] crashing before ready", flush=True)
         return 3
