@@ -132,6 +132,9 @@ class ReplayModel:
     def frames(self) -> list[dict[str, Any]]:
         if self._recording is None:
             return []
+        # Read the timeline first: Recording fills its shared view cache from
+        # this read, so frame_views() does not read the file a second time.
+        self.timeline
         session_id = self._recording.path.name
         return [
             {
@@ -140,13 +143,15 @@ class ReplayModel:
                 "file": view["file"],
                 "url": urls.frame_url(session_id, _file_name(view["file"])),
             }
-            for view in self._recording.frame_views(self.timeline)
+            for view in self._recording.frame_views()
         ]
 
     @cached_property
     def snapshots(self) -> list[dict[str, Any]]:
         if self._recording is None:
             return []
+        # Same order as frames: one timeline read feeds both view lists.
+        self.timeline
         session_id = self._recording.path.name
         return [
             {
@@ -156,7 +161,7 @@ class ReplayModel:
                 "frame_no": view["frame_no"],
                 "t_ms": view["t_ms"],
             }
-            for view in self._recording.snapshot_views(self.timeline)
+            for view in self._recording.snapshot_views()
         ]
 
     @cached_property

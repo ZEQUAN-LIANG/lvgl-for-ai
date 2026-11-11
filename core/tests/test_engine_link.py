@@ -515,8 +515,6 @@ class EnginePidFileTest(unittest.TestCase):
             )
             self.assertEqual(payload["session_id"], "20260101-000000-abcd")
             self.assertEqual(payload["app"], "coffee")
-            self.assertTrue(payload["session_id"])
-            self.assertTrue(payload["app"])
             link.shutdown(send_quit=False)
 
 

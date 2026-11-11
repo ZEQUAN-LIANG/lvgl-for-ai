@@ -4199,13 +4199,7 @@
                 "signature": []
               },
               "frame_views": {
-                "signature": [
-                  {
-                    "default": null,
-                    "kind": "POSITIONAL_OR_KEYWORD",
-                    "name": "timeline"
-                  }
-                ]
+                "signature": []
               },
               "frames": "property",
               "latest_frame": {
@@ -4236,13 +4230,7 @@
                 "signature": []
               },
               "snapshot_views": {
-                "signature": [
-                  {
-                    "default": null,
-                    "kind": "POSITIONAL_OR_KEYWORD",
-                    "name": "timeline"
-                  }
-                ]
+                "signature": []
               },
               "snapshots": "property",
               "timeline": {

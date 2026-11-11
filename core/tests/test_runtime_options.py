@@ -10,7 +10,6 @@ from pathlib import Path
 
 from fake_runtime import FakeRuntime
 from lvgl_ai import Runtime
-from lvgl_ai.control import runtime as runtime_module
 from lvgl_ai.control.runtime import RuntimeLike, RuntimeOptions
 
 TOOLS_DIR = Path(__file__).resolve().parent.parent / "tools"
@@ -140,9 +139,10 @@ class RuntimeLikeTest(unittest.TestCase):
     def test_protocol_and_options_stay_out_of_public_exports(self) -> None:
         import lvgl_ai
 
-        self.assertNotIn("RuntimeLike", getattr(runtime_module, "__all__", []))
-        self.assertNotIn("RuntimeLike", lvgl_ai.__all__)
-        self.assertNotIn("RuntimeOptions", lvgl_ai.__all__)
+        for name in ("RuntimeLike", "RuntimeOptions"):
+            with self.subTest(name=name):
+                self.assertNotIn(name, lvgl_ai.__all__)
+                self.assertFalse(hasattr(lvgl_ai, name))
 
     def test_runtime_implements_every_protocol_member(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -172,15 +172,21 @@ class FakeRuntimeContractTest(unittest.TestCase):
 
 
 class ContractSnapshotStubTest(unittest.TestCase):
-    def test_live_stub_carries_the_runtime_like_surface(self) -> None:
+    def test_contract_stubs_carry_the_runtime_like_surface(self) -> None:
         import contract_snapshot
 
         with tempfile.TemporaryDirectory() as tmp:
-            stub = contract_snapshot._LiveStub(Path(tmp))
-        missing = sorted(
-            name for name in RUNTIME_LIKE_MEMBERS if not hasattr(stub, name)
-        )
-        self.assertEqual(missing, [])
+            stubs = {
+                "_LiveStub": contract_snapshot._LiveStub(Path(tmp)),
+                "_FakeRuntime": contract_snapshot._FakeRuntime(),
+            }
+        for label, stub in stubs.items():
+            with self.subTest(stub=label):
+                missing = sorted(
+                    name for name in RUNTIME_LIKE_MEMBERS
+                    if not hasattr(stub, name)
+                )
+                self.assertEqual(missing, [])
 
 
 if __name__ == "__main__":

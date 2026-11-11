@@ -66,6 +66,8 @@ class Recording:
         if raw.is_file() and raw.name == "manifest.json":
             raw = raw.parent
         self.path = raw
+        # Rows cached for frame_views()/snapshot_views(); None means unread.
+        self._timeline_rows: list[dict[str, Any]] | None = None
 
     @classmethod
     def open(cls, path: str | Path) -> Recording:
@@ -105,9 +107,13 @@ class Recording:
 
     def timeline(self) -> list[dict[str, Any]]:
         """Parsed ``timeline.ndjson`` rows."""
-        return _read_ndjson(
+        rows = _read_ndjson(
             self.path / TIMELINE_FILE, TIMELINE_SCHEMA, TIMELINE_ROW_TYPES
         )
+        # Seed the cache shared by frame_views()/snapshot_views(), so a caller
+        # that already parsed the timeline does not make them read it again.
+        self._timeline_rows = rows
+        return rows
 
     def frame_diffs(self) -> list[dict[str, Any]]:
         """Parsed ``frame_diffs.ndjson`` rows."""
@@ -130,16 +136,14 @@ class Recording:
         """Every named snapshot PNG, sorted by snapshot number."""
         return _list_pngs(self.path / SNAPSHOTS_DIR)
 
-    def frame_views(
-        self, timeline: list[dict[str, Any]] | None = None
-    ) -> list[dict[str, Any]]:
+    def frame_views(self) -> list[dict[str, Any]]:
         """Retained frames as ``file``, ``frame_no`` and ``t_ms`` entries.
 
-        ``timeline`` lets a caller reuse rows it already parsed; without it the
-        full timeline is read. A missing or corrupt timeline degrades to file
+        The timeline is read at most once per recording and shared with
+        ``snapshot_views()``. A missing or corrupt timeline degrades to file
         numbers and ``t_ms = 0``. Entries carry no URLs.
         """
-        by_file = _rows_by_file(self._timeline_rows(timeline), "frame")
+        by_file = _rows_by_file(self._shared_timeline_rows(), "frame")
         views: list[dict[str, Any]] = []
         for index, path in enumerate(self.frames, start=1):
             relative = path.relative_to(self.path).as_posix()
@@ -157,15 +161,13 @@ class Recording:
             )
         return views
 
-    def snapshot_views(
-        self, timeline: list[dict[str, Any]] | None = None
-    ) -> list[dict[str, Any]]:
+    def snapshot_views(self) -> list[dict[str, Any]]:
         """Snapshots as ``file``, ``frame_no``, ``t_ms`` and ``label`` entries.
 
         The label falls back to the file stem when the timeline has no row or
         no label. Entries carry no URLs.
         """
-        by_file = _rows_by_file(self._timeline_rows(timeline), "snapshot")
+        by_file = _rows_by_file(self._shared_timeline_rows(), "snapshot")
         views: list[dict[str, Any]] = []
         for path in self.snapshots:
             relative = path.relative_to(self.path).as_posix()
@@ -200,15 +202,13 @@ class Recording:
             "t_ms": _latest_frame_t_ms(self.path / TIMELINE_FILE, relative),
         }
 
-    def _timeline_rows(
-        self, timeline: list[dict[str, Any]] | None
-    ) -> list[dict[str, Any]]:
-        if timeline is not None:
-            return timeline
-        try:
-            return self.timeline()
-        except (FileNotFoundError, ValueError):
-            return []
+    def _shared_timeline_rows(self) -> list[dict[str, Any]]:
+        if self._timeline_rows is None:
+            try:
+                self._timeline_rows = self.timeline()
+            except (FileNotFoundError, ValueError):
+                self._timeline_rows = []
+        return self._timeline_rows
 
     def log(self) -> str:
         """Full ``engine.log`` text (stdout and stderr)."""

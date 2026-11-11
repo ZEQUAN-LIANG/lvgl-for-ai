@@ -256,6 +256,28 @@ class RuntimeSessionOptionTest(unittest.TestCase):
         self.assertIsNone(rt.ready)
         self.assertIsInstance(rt.lvgl_src, Path)
 
+    def test_session_options_reject_outside_assignment(self) -> None:
+        rt = Runtime(
+            lvgl="9.6",
+            app="coffee",
+            build=False,
+            record=False,
+            live_frame=True,
+            record_changed_only=True,
+            sessions_root=self.sessions_root,
+            max_log_bytes=12345,
+            session_retention=None,
+        )
+
+        for name in SESSION_OPTION_NAMES:
+            with self.subTest(option=name):
+                before = getattr(rt, name)
+                store_before = getattr(rt._store, name)
+                with self.assertRaises(AttributeError):
+                    setattr(rt, name, "overridden")
+                self.assertEqual(getattr(rt, name), before)
+                self.assertEqual(getattr(rt._store, name), store_before)
+
 
 class RuntimeProcessSeamTest(unittest.TestCase):
     """Unit tests with a fake engine process; no LVGL build is involved."""

@@ -7,6 +7,7 @@ frame_diffs + annotations + engine.log (plus build.log).
 
 from __future__ import annotations
 
+import inspect
 import json
 import tempfile
 import unittest
@@ -441,6 +442,46 @@ class RecordingViewsTest(unittest.TestCase):
                 },
             ],
         )
+
+    def test_views_take_no_timeline_argument(self) -> None:
+        for method in (Recording.frame_views, Recording.snapshot_views):
+            with self.subTest(method=method.__name__):
+                self.assertEqual(
+                    list(inspect.signature(method).parameters), ["self"]
+                )
+
+    def test_views_read_the_timeline_at_most_once_per_recording(self) -> None:
+        session = make_session(self.root)
+        (session / "snapshots").mkdir()
+        write_png_rgb(session / "snapshots/001_after.png", 1, 1, [(0, 0, 0)])
+        _append_timeline(
+            session,
+            [
+                {
+                    "schema": "lvgl-ai-timeline-v1",
+                    "type": "snapshot",
+                    "frame_no": 1,
+                    "t_ms": 16,
+                    "label": "after",
+                    "file": "snapshots/001_after.png",
+                }
+            ],
+        )
+
+        class CountingRecording(Recording):
+            def __init__(self, path: Path) -> None:
+                super().__init__(path)
+                self.timeline_reads = 0
+
+            def timeline(self):
+                self.timeline_reads += 1
+                return super().timeline()
+
+        recording = CountingRecording(session)
+        recording.frame_views()
+        recording.snapshot_views()
+
+        self.assertEqual(recording.timeline_reads, 1)
 
     def test_latest_frame_returns_the_last_retained_frame(self) -> None:
         session = make_session(self.root)

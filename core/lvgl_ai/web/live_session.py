@@ -638,5 +638,3 @@ def _input_int(value: Any, name: str) -> int:
             "invalid_input", f"{name} must be a non-negative integer"
         )
     return value
-
-

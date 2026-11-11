@@ -96,6 +96,18 @@ class ReplayModelLoadTest(unittest.TestCase):
         )
         self.assertEqual(recording.reads["timeline"], 1)
 
+    def test_frames_before_timeline_still_read_the_timeline_once(self) -> None:
+        recording = _CountingRecording(self.session)
+        model = replay_model.load(recording)
+
+        self.assertEqual(
+            [frame["frame_no"] for frame in model.frames], [1, 2, 3]
+        )
+        self.assertEqual([frame["t_ms"] for frame in model.frames], [0, 16, 32])
+        self.assertEqual(model.snapshots[0]["label"], "after_click")
+        self.assertTrue(model.timeline)
+        self.assertEqual(recording.reads["timeline"], 1)
+
     def test_missing_timeline_falls_back_to_file_numbers(self) -> None:
         (self.session / "timeline.ndjson").unlink()
         model = replay_model.load(Recording(self.session))

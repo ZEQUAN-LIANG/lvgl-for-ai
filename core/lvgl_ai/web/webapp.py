@@ -272,7 +272,7 @@ class WebApp:
             }
         return sorted(apps.values(), key=lambda entry: (entry["name"], entry["app"]))
 
-    def scenario_display(self, app: str | None) -> tuple[int, int] | None:
+    def _scenario_display(self, app: str | None) -> tuple[int, int] | None:
         """The display declared by the first sorted scenario for ``app``."""
         if app is None:
             return None
@@ -802,7 +802,7 @@ class _WebHandler(BaseHTTPRequestHandler):
         # Keep the old validation order: an unknown mode wins over a bad app.
         validate_live_kind(mode)
         app = _input_app(app)
-        display = self.app.scenario_display(app)
+        display = self.app._scenario_display(app)
         return self._send_json(
             HTTPStatus.OK, self.app.live.start(mode, app, display=display)
         )

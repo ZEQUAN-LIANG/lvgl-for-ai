@@ -360,6 +360,14 @@ class Runtime:
             f"{type(self).__name__!r} object has no attribute {name!r}"
         )
 
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name in _SESSION_OPTIONS:
+            raise AttributeError(
+                f"{type(self).__name__!r} attribute {name!r} is read-only; "
+                "it is owned by the session store"
+            )
+        super().__setattr__(name, value)
+
     # ---- lifecycle -----------------------------------------------------
 
     @property
