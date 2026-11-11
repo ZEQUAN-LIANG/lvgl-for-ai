@@ -1,7 +1,7 @@
 # 契约快照与行为冻结
 
-`tools/contract_snapshot.py` 记录并对比工具的外部契约，供
-`.scratch/ai-tools/issues/14-architecture-deepening.md` 的重构票做行为等价验收。
+`tools/contract_snapshot.py` 记录并对比工具的外部契约，作为重构行为等价的证据。
+历史票据 14（`14-architecture-deepening.md`）不在当前本地 tracker 中，视为历史不可用。
 它只提供证据，不判定 UI 是否正确；由执行重构的 AI 在票内 Self-acceptance log
 中自行确认，人类不参与验收。
 
@@ -61,8 +61,9 @@ engine 和 `127.0.0.1:0` 的 HTTP 服务；快照不包含绝对路径、时间�
 
 ## 每张后续票怎么用
 
-开工前和交付前都运行 `compare`，差异必须为空。下面按票号列出重点，但**所有票**都要
-跑同一条命令；某节没列到不代表允许漂移。
+开工前和交付前都运行 `compare`，差异必须为空。下表票号来自历史票据，当前本地
+tracker（`.scratch/ai-tools/issues/`）已不含这些票据，只作历史参考；**所有当前票**
+都要跑同一条命令，某节没列到不代表允许漂移。
 
 | 票 | 重点节 | 关注点 |
 | --- | --- | --- |
