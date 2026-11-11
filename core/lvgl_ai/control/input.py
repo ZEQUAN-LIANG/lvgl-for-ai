@@ -23,9 +23,9 @@ The ``require_*`` helpers raise ``ValueError`` with the Runtime wording.
 
 ``at_ms`` is the offset from the start of the ``rt.input(...)`` call. Events
 are stably sorted by ``at_ms`` before dispatch, so equal timestamps keep the
-caller's order. Key names are resolved against LVGL 9.6's ``LV_KEY_*`` set;
-unknown names raise :class:`ScenarioError` with the event index before any
-command is sent.
+caller's order. Key names are resolved against LVGL 9.6's ``LV_KEY_*`` set or
+the printable ASCII ``CHAR_<code>`` text tokens; unknown names raise
+:class:`ScenarioError` with the event index before any command is sent.
 """
 
 from __future__ import annotations
