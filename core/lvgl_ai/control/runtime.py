@@ -436,9 +436,11 @@ class Runtime:
         """Deliver a key press or release to the standard virtual keypad indev.
 
         ``key`` is an LVGL ``LV_KEY_*`` name such as ``"ENTER"`` or
-        ``"LV_KEY_ENTER"`` (case-insensitive). Unknown names raise
-        :class:`ScenarioError` before any command is sent. The reply carries
-        ``delivered``: true when LVGL read the keypad indev.
+        ``"LV_KEY_ENTER"`` (case-insensitive), or a printable ASCII
+        ``CHAR_<code>`` token such as ``"CHAR_65"`` for ``A``. Unknown names and
+        out-of-range codes raise :class:`ScenarioError` before any command is
+        sent. The reply carries ``delivered``: true when LVGL read the keypad
+        indev.
         """
         require_action("key", action)
         try:
