@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from .. import paths
 from .build_plan import BuildPlan
@@ -72,6 +72,107 @@ def _env_positive_int(name: str, default: int) -> int:
     except ValueError as exc:
         raise ValueError(f"{name} must be an integer; got {raw!r}") from exc
     return _positive_int(value, name, default=default)
+
+
+_UNSET = object()
+
+
+class RuntimeOptions:
+    """Production-side options for constructing a ``Runtime``.
+
+    Only options that were provided are forwarded, so callers keep the
+    ``Runtime`` defaults they do not set. The private engine/configure/build
+    seams are deliberately absent.
+    """
+
+    def __init__(
+        self,
+        lvgl: str | None = _UNSET,
+        *,
+        app: str | None = _UNSET,
+        width: int | None = _UNSET,
+        height: int | None = _UNSET,
+        build: bool = _UNSET,
+        record: bool = _UNSET,
+        live_frame: bool = _UNSET,
+        record_changed_only: bool = _UNSET,
+        headless: bool = _UNSET,
+        window: bool = _UNSET,
+        sessions_root: str | Path | None = _UNSET,
+        timeout: float = _UNSET,
+        diff_threshold: int = _UNSET,
+        reference: str | Path | None = _UNSET,
+        max_frames: int | None = _UNSET,
+        max_log_bytes: int | None = _UNSET,
+        session_retention: int | None = _UNSET,
+    ) -> None:
+        values = {
+            "lvgl": lvgl,
+            "app": app,
+            "width": width,
+            "height": height,
+            "build": build,
+            "record": record,
+            "live_frame": live_frame,
+            "record_changed_only": record_changed_only,
+            "headless": headless,
+            "window": window,
+            "sessions_root": sessions_root,
+            "timeout": timeout,
+            "diff_threshold": diff_threshold,
+            "reference": reference,
+            "max_frames": max_frames,
+            "max_log_bytes": max_log_bytes,
+            "session_retention": session_retention,
+        }
+        self._kwargs = {
+            name: value for name, value in values.items() if value is not _UNSET
+        }
+
+    def as_kwargs(self) -> dict[str, Any]:
+        """Keyword arguments accepted by ``Runtime(**kwargs)``."""
+        return dict(self._kwargs)
+
+
+class RuntimeLike(Protocol):
+    """The Runtime surface shared by LiveSession and scenario execution."""
+
+    session_id: str | None
+    session_dir: Path | None
+    engine_log_path: Path | None
+    manifest_path: Path | None
+    ready: dict[str, Any] | None
+    app: str | None
+    mode: str
+    frame_count: int
+    t_ms: int
+    pid: int | None
+    exit_code: int | None
+    is_running: bool
+
+    def start(self) -> Any: ...
+
+    def stop(self) -> None: ...
+
+    def log_tail(self, n: int = 40) -> list[str]: ...
+
+    def record_error(self, error: BaseException) -> None: ...
+
+    def tick(self, ms: int, *, track_check: bool = True) -> dict[str, Any]: ...
+
+    def wait(
+        self, ms: int | None = None, *, frames: int | None = None
+    ) -> dict[str, Any]: ...
+
+    def pointer(self, action: str, x: int, y: int) -> dict[str, Any]: ...
+
+    def key(self, action: str, key: str) -> dict[str, Any]: ...
+
+    def encoder(self, action: str, diff: int) -> dict[str, Any]: ...
+
+    def mark(self, mark_id: str) -> dict[str, Any]: ...
+
+    def snapshot(self, label: str) -> dict[str, Any]: ...
 
 
 class Runtime:

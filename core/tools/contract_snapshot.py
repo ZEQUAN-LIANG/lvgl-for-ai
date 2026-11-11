@@ -1472,6 +1472,25 @@ class _LiveStub:
             "key": key,
         }
 
+    def encoder(self, action: str, diff: int) -> dict[str, Any]:
+        return {
+            "protocol": "lvgl-ai-engine-v1",
+            "seq": 1,
+            "ok": True,
+            "delivered": True,
+        }
+
+    def mark(self, mark_id: str) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def snapshot(self, label: str) -> dict[str, Any]:
+        return {
+            "protocol": "lvgl-ai-engine-v1",
+            "seq": 1,
+            "ok": True,
+            "file": f"snapshots/001_{label}.png",
+        }
+
     def wait(self, ms: int | None = None, *, frames: int | None = None):
         return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
 
