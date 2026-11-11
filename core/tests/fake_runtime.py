@@ -132,6 +132,18 @@ class FakeRuntime:
             self.commands.append(("wait", ms))
         return {"seq": len(self.commands)}
 
+    def wait_stable(
+        self, max_ms: int, stable_frames: int
+    ) -> dict[str, Any]:
+        self._raise_if("wait_stable")
+        self.commands.append(("wait_stable", max_ms, stable_frames))
+        return {
+            "seq": len(self.commands),
+            "waited_ms": max_ms,
+            "stable_frames": stable_frames,
+            "stable": True,
+        }
+
     def mark(self, mark_id: str) -> dict[str, Any]:
         self._raise_if("mark")
         self.commands.append(("mark", mark_id))
