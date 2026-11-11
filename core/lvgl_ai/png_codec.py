@@ -3,7 +3,8 @@
 Frames and snapshots written by the engine are ordinary non-interlaced 8-bit
 PNGs (RGB for the current XRGB8888 display). This module decodes the subset
 needed by the evidence tools, reads pixels, crops boxes, arranges labeled
-contact sheets, and re-encodes PNGs.
+contact sheets, compares image pairs with an optional heatmap, and re-encodes
+PNGs.
 
 Supported color types: grayscale (0), RGB (2), grayscale+alpha (4), RGBA (6);
 bit depth 8, interlace 0. Anything else raises :class:`PngError` with the
@@ -31,12 +32,15 @@ MAX_CONTACT_SHEET_SIDE = 4096
 MAX_CONTACT_SHEET_PIXELS = 4_000_000
 MAX_SOURCE_SIDE = 8192
 MAX_SOURCE_PIXELS = 16_000_000
+MAX_COMPARE_SIDE = 4096
+MAX_COMPARE_PIXELS = 4_000_000
 
 _CONTACT_GAP = 8
 _TILE_PADDING = 4
 _LABEL_SCALE = 2
 _LABEL_BAND = _LABEL_SCALE * 7 + _TILE_PADDING
 _BACKGROUND = (24, 24, 24)
+_HEATMAP_BACKGROUND_BYTES = bytes(_BACKGROUND)
 _TILE_BACKGROUND = (48, 48, 48)
 _TILE_BORDER = (96, 96, 96)
 _LABEL_COLOR = (255, 255, 255)
@@ -91,6 +95,24 @@ class PngHeader:
     width: int
     height: int
     color_type: int
+
+
+@dataclass(frozen=True)
+class ImageComparison:
+    """Pixel statistics for one same-size image pair."""
+
+    width: int
+    height: int
+    bbox: Region | None
+    changed_px: int
+    changed_ratio: float
+    max_delta: float
+    heatmap: PngImage | None
+
+    def to_png(self) -> bytes:
+        if self.heatmap is None:
+            raise PngError("comparison was built without a heatmap")
+        return encode_png(self.heatmap)
 
 
 def _read_chunks(data: bytes) -> Iterable[tuple[bytes, bytes]]:
@@ -308,6 +330,100 @@ def read_pixel(data: bytes, x: int, y: int) -> tuple[int, int, int]:
     return pixel_at(decode_png(data), x, y)
 
 
+def compare_png(
+    left: bytes, right: bytes, *, heatmap: bool = False
+) -> ImageComparison:
+    """Compare two same-size PNGs and report changed-pixel statistics.
+
+    A pixel changes when any RGB channel differs; alpha is ignored.
+    ``max_delta`` is the largest channel difference divided by 255, matching
+    the frame-diff evidence. With ``heatmap=True`` the result carries an RGB
+    image where changed pixels are yellow-to-red by delta and unchanged pixels
+    stay dark.
+    """
+    left_header = read_png_header(left)
+    right_header = read_png_header(right)
+    _check_compare_source(left_header, "left")
+    _check_compare_source(right_header, "right")
+    if (left_header.width, left_header.height) != (
+        right_header.width,
+        right_header.height,
+    ):
+        raise PngError(
+            f"image sizes differ: left is "
+            f"{left_header.width}x{left_header.height}, right is "
+            f"{right_header.width}x{right_header.height}; compare needs "
+            "identical dimensions"
+        )
+    left_image = decode_png(left)
+    right_image = decode_png(right)
+    width, height = left_image.width, left_image.height
+    left_channels = CHANNELS[left_image.color_type]
+    right_channels = CHANNELS[right_image.color_type]
+    left_gray = left_image.color_type in (0, 4)
+    right_gray = right_image.color_type in (0, 4)
+
+    changed_px = 0
+    max_delta = 0
+    min_x = min_y = None
+    max_x = max_y = 0
+    heatmap_rows: list[bytes] = []
+    for y in range(height):
+        left_row = left_image.rows[y]
+        right_row = right_image.rows[y]
+        target = bytearray(width * 3) if heatmap else None
+        for x in range(width):
+            left_offset = x * left_channels
+            right_offset = x * right_channels
+            if left_gray:
+                left_pixel = (left_row[left_offset],) * 3
+            else:
+                left_pixel = left_row[left_offset:left_offset + 3]
+            if right_gray:
+                right_pixel = (right_row[right_offset],) * 3
+            else:
+                right_pixel = right_row[right_offset:right_offset + 3]
+            delta = max(
+                abs(left_pixel[0] - right_pixel[0]),
+                abs(left_pixel[1] - right_pixel[1]),
+                abs(left_pixel[2] - right_pixel[2]),
+            )
+            if delta == 0:
+                if target is not None:
+                    target[x * 3:x * 3 + 3] = _HEATMAP_BACKGROUND_BYTES
+                continue
+            changed_px += 1
+            max_delta = max(max_delta, delta)
+            min_x = x if min_x is None else min(min_x, x)
+            min_y = y if min_y is None else min(min_y, y)
+            max_x = max(max_x, x)
+            max_y = max(max_y, y)
+            if target is not None:
+                target[x * 3:x * 3 + 3] = bytes(
+                    (255, 255 - delta, 0)
+                )
+        if target is not None:
+            heatmap_rows.append(bytes(target))
+
+    bbox = None
+    if changed_px:
+        bbox = Region(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1)
+    heatmap_image = None
+    if heatmap:
+        heatmap_image = PngImage(
+            width, height, 2, tuple(heatmap_rows)
+        )
+    return ImageComparison(
+        width=width,
+        height=height,
+        bbox=bbox,
+        changed_px=changed_px,
+        changed_ratio=changed_px / (width * height),
+        max_delta=max_delta / 255.0,
+        heatmap=heatmap_image,
+    )
+
+
 def pixel_at(image: PngImage, x: int, y: int) -> tuple[int, int, int]:
     """RGB value at ``(x, y)``; alpha is ignored."""
     if not (0 <= x < image.width and 0 <= y < image.height):
@@ -484,6 +600,20 @@ def _validate_contact_layout(
     for label, _data in entries:
         if not isinstance(label, str):
             raise PngError("contact sheet labels must be strings")
+
+
+def _check_compare_source(header: PngHeader, side: str) -> None:
+    pixels = header.width * header.height
+    if (
+        header.width > MAX_COMPARE_SIDE
+        or header.height > MAX_COMPARE_SIDE
+        or pixels > MAX_COMPARE_PIXELS
+    ):
+        raise PngError(
+            f"{side} image is {header.width}x{header.height} ({pixels} px), "
+            f"above the compare limit of {MAX_COMPARE_PIXELS} px or "
+            f"{MAX_COMPARE_SIDE} per side; crop it first"
+        )
 
 
 def _check_contact_source(header: PngHeader) -> None:

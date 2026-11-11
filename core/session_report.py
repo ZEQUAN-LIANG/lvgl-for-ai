@@ -2,9 +2,10 @@
 """Read one finished session's evidence without starting an engine or the web.
 
 Prints a human-readable summary by default and one line of JSON with
-``--json``. The ``crop``, ``contact-sheet``, and ``pixel`` subcommands read a
-snapshot or frame path and write only an explicit output file. Exit code 0
-means the evidence was read; 2 means the input or output could not be handled.
+``--json``. The ``crop``, ``contact-sheet``, ``pixel``, and ``compare``
+subcommands read snapshot or frame paths and write only an explicit output
+file. Exit code 0 means the evidence was read; 2 means the input or output
+could not be handled.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from lvgl_ai.png_codec import (  # noqa: E402
     DEFAULT_CONTACT_TILE_WIDTH,
     Region,
     build_contact_sheet,
+    compare_png,
     crop_png,
     read_pixel,
 )
@@ -33,7 +35,7 @@ from lvgl_ai.png_codec import (  # noqa: E402
 EXIT_OK = 0
 EXIT_ERROR = 2
 DEFAULT_LOG_TAIL = 20
-VISUAL_COMMANDS = ("crop", "contact-sheet", "pixel")
+VISUAL_COMMANDS = ("crop", "contact-sheet", "pixel", "compare")
 
 
 def _log_tail_lines(value: str) -> int:
@@ -254,6 +256,129 @@ def _run_pixel(argv: list[str]) -> int:
     return EXIT_OK
 
 
+def _build_compare_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="session_report.py compare",
+        description=(
+            "Compare two snapshots or sessions and optionally write a heatmap."
+        ),
+    )
+    parser.add_argument(
+        "left", metavar="LEFT", help="session directory, manifest.json, or PNG"
+    )
+    parser.add_argument(
+        "right", metavar="RIGHT", help="session directory, manifest.json, or PNG"
+    )
+    parser.add_argument(
+        "--out",
+        metavar="OUT",
+        help="explicit output path for the optional heatmap PNG",
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="print one JSON result on stdout"
+    )
+    return parser
+
+
+def _resolve_compare_image(value: str) -> tuple[Path, Path | None]:
+    path = Path(value)
+    if path.is_dir():
+        session = path
+    elif path.is_file() and path.name == "manifest.json":
+        session = path.parent
+    elif path.is_file():
+        resolved = path.resolve()
+        return resolved, _session_for_png(resolved)
+    else:
+        raise FileNotFoundError(f"compare input not found: {path}")
+    summary = summarize_session(session)
+    if summary["snapshots"]:
+        return (
+            Path(summary["snapshots"][-1]["path"]).resolve(),
+            session.resolve(),
+        )
+    if summary["frames"]:
+        return Path(summary["frames"][-1]).resolve(), session.resolve()
+    raise ValueError(f"session has no snapshots or frames: {path}")
+
+
+def _session_for_png(path: Path) -> Path | None:
+    for candidate in (path.parent, path.parent.parent):
+        if (candidate / "manifest.json").is_file():
+            return candidate.resolve()
+    return None
+
+
+def _is_within(path: Path, directory: Path) -> bool:
+    try:
+        path.relative_to(directory)
+    except ValueError:
+        return False
+    return True
+
+
+def _run_compare(argv: list[str]) -> int:
+    args = _build_compare_parser().parse_args(argv)
+    try:
+        left, left_session = _resolve_compare_image(args.left)
+        right, right_session = _resolve_compare_image(args.right)
+        comparison = compare_png(
+            left.read_bytes(),
+            right.read_bytes(),
+            heatmap=args.out is not None,
+        )
+        heatmap = None
+        if args.out is not None:
+            output = Path(args.out).resolve()
+            for session in (left_session, right_session):
+                if session is not None and _is_within(output, session):
+                    raise ValueError(
+                        "refusing to write heatmap inside session evidence: "
+                        f"{args.out}"
+                    )
+            heatmap = _write_output(
+                args.out, comparison.to_png(), [left, right]
+            )
+    except (OSError, ValueError) as exc:
+        print(f"[session-report] {exc}", file=sys.stderr)
+        return EXIT_ERROR
+    payload = {
+        "left": str(left),
+        "right": str(right),
+        "width": comparison.width,
+        "height": comparison.height,
+        "bbox": (
+            None if comparison.bbox is None else comparison.bbox.as_dict()
+        ),
+        "changed_px": comparison.changed_px,
+        "changed_ratio": comparison.changed_ratio,
+        "max_delta": comparison.max_delta,
+        "heatmap": None if heatmap is None else str(heatmap),
+    }
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False), flush=True)
+        return EXIT_OK
+    if comparison.bbox is None:
+        bbox = "none"
+    else:
+        bbox = (
+            f"{comparison.bbox.x},{comparison.bbox.y},"
+            f"{comparison.bbox.w},{comparison.bbox.h}"
+        )
+    lines = [
+        f"compare: {comparison.width}x{comparison.height}",
+        f"left: {left}",
+        f"right: {right}",
+        f"bbox: {bbox}",
+        f"changed_px: {comparison.changed_px}",
+        f"changed_ratio: {comparison.changed_ratio:.9f}",
+        f"max_delta: {comparison.max_delta:.9f}",
+        f"heatmap: {payload['heatmap'] or 'none'}",
+    ]
+    print("\n".join(lines))
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="session_report.py",
@@ -296,6 +421,8 @@ def main(argv: list[str] | None = None) -> int:
             return _run_crop(argv[1:])
         if argv[0] == "pixel":
             return _run_pixel(argv[1:])
+        if argv[0] == "compare":
+            return _run_compare(argv[1:])
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.latest and args.session is not None:

@@ -569,5 +569,261 @@ class VisualEvidenceCommandTest(unittest.TestCase):
         )
 
 
+class CompareCommandTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        self.left = self.root / "left.png"
+        self.right = self.root / "right.png"
+        self.heatmap = self.root / "heatmap.png"
+        self.left_pixels = [(10, 20, 30)] * 4
+        self.right_pixels = [(10, 20, 30)] * 3 + [(10, 20, 40)]
+        write_png_rgb(self.left, 2, 2, self.left_pixels)
+        write_png_rgb(self.right, 2, 2, self.right_pixels)
+
+    def test_compare_two_pngs_writes_explicit_heatmap_and_metrics(self) -> None:
+        left_before = self.left.read_bytes()
+        right_before = self.right.read_bytes()
+
+        code, out, err = run_report(
+            [
+                "compare",
+                str(self.left),
+                str(self.right),
+                "--out",
+                str(self.heatmap),
+                "--json",
+            ]
+        )
+
+        self.assertEqual(code, 0, err)
+        self.assertEqual(err, "")
+        payload = one_json(out)
+        self.assertEqual(payload["left"], str(self.left.resolve()))
+        self.assertEqual(payload["right"], str(self.right.resolve()))
+        self.assertEqual((payload["width"], payload["height"]), (2, 2))
+        self.assertEqual(
+            payload["bbox"], {"x": 1, "y": 1, "w": 1, "h": 1}
+        )
+        self.assertEqual(payload["changed_px"], 1)
+        self.assertEqual(payload["changed_ratio"], 0.25)
+        self.assertAlmostEqual(payload["max_delta"], 10 / 255)
+        self.assertEqual(payload["heatmap"], str(self.heatmap.resolve()))
+        self.assertEqual(
+            read_png_rgb(self.heatmap),
+            (
+                2,
+                2,
+                [
+                    (24, 24, 24),
+                    (24, 24, 24),
+                    (24, 24, 24),
+                    (255, 245, 0),
+                ],
+            ),
+        )
+        self.assertEqual(self.left.read_bytes(), left_before)
+        self.assertEqual(self.right.read_bytes(), right_before)
+        lowered = out.lower()
+        for word in ("pass", "fail", "baseline", "approval", "acceptance"):
+            with self.subTest(word=word):
+                self.assertNotIn(word, lowered)
+
+    def test_compare_without_out_reports_no_heatmap(self) -> None:
+        code, out, err = run_report(
+            ["compare", str(self.left), str(self.right), "--json"]
+        )
+
+        self.assertEqual(code, 0, err)
+        self.assertIsNone(one_json(out)["heatmap"])
+        self.assertEqual(
+            sorted(path.name for path in self.root.iterdir()),
+            ["left.png", "right.png"],
+        )
+
+    def test_compare_human_output_lists_evidence(self) -> None:
+        code, out, err = run_report(
+            ["compare", str(self.left), str(self.right)]
+        )
+
+        self.assertEqual(code, 0, err)
+        self.assertIn("compare: 2x2", out)
+        self.assertIn("bbox: 1,1,1,1", out)
+        self.assertIn("changed_px: 1", out)
+        self.assertIn("changed_ratio: 0.250000000", out)
+        self.assertIn("max_delta: 0.039215686", out)
+        self.assertIn("heatmap: none", out)
+        lowered = out.lower()
+        for word in ("pass", "fail", "baseline", "approval", "acceptance"):
+            with self.subTest(word=word):
+                self.assertNotIn(word, lowered)
+
+    def test_compare_two_sessions_uses_their_latest_snapshots(self) -> None:
+        left_session = make_session(
+            self.root, name="20260107-000000-aaaa"
+        )
+        right_session = make_session(
+            self.root, name="20260108-000000-bbbb"
+        )
+        write_png_rgb(
+            left_session / SNAPSHOT, 2, 2, [(10, 20, 30)] * 4
+        )
+        write_png_rgb(
+            right_session / SNAPSHOT,
+            2,
+            2,
+            [(10, 20, 30)] * 3 + [(10, 20, 40)],
+        )
+
+        code, out, err = run_report(
+            [
+                "compare",
+                str(left_session),
+                str(right_session),
+                "--json",
+            ]
+        )
+
+        self.assertEqual(code, 0, err)
+        payload = one_json(out)
+        self.assertEqual(
+            payload["left"], str((left_session / SNAPSHOT).resolve())
+        )
+        self.assertEqual(
+            payload["right"], str((right_session / SNAPSHOT).resolve())
+        )
+        self.assertEqual(payload["changed_px"], 1)
+
+    def test_compare_sessions_fall_back_to_the_last_frame(self) -> None:
+        left_session = make_session(
+            self.root, name="20260109-000000-cccc", with_snapshot=False
+        )
+        right_session = make_session(
+            self.root, name="20260110-000000-dddd", with_snapshot=False
+        )
+        write_png_rgb(
+            right_session / FRAME_2, 2, 2, [(0, 0, 255)] * 4
+        )
+
+        code, out, err = run_report(
+            [
+                "compare",
+                str(left_session),
+                str(right_session),
+                "--json",
+            ]
+        )
+
+        self.assertEqual(code, 0, err)
+        payload = one_json(out)
+        self.assertEqual(
+            payload["left"], str((left_session / FRAME_2).resolve())
+        )
+        self.assertEqual(
+            payload["right"], str((right_session / FRAME_2).resolve())
+        )
+        self.assertEqual(payload["changed_px"], 4)
+        self.assertEqual(payload["max_delta"], 1.0)
+
+    def test_compare_rejects_a_session_without_images(self) -> None:
+        session = make_session(
+            self.root,
+            name="20260111-000000-eeee",
+            with_timeline=False,
+            with_frame_diffs=False,
+            with_frames=False,
+            with_snapshot=False,
+            frame_count=0,
+        )
+
+        code, out, err = run_report(
+            ["compare", str(session), str(session), "--json"]
+        )
+
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("no snapshots or frames", err)
+
+    def test_compare_size_mismatch_exits_2_without_writing(self) -> None:
+        write_png_rgb(self.right, 1, 1, [(0, 0, 0)])
+
+        code, out, err = run_report(
+            [
+                "compare",
+                str(self.left),
+                str(self.right),
+                "--out",
+                str(self.heatmap),
+            ]
+        )
+
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("2x2", err)
+        self.assertIn("1x1", err)
+        self.assertFalse(self.heatmap.exists())
+
+    def test_compare_refuses_to_overwrite_an_input(self) -> None:
+        before = self.left.read_bytes()
+
+        code, out, err = run_report(
+            [
+                "compare",
+                str(self.left),
+                str(self.right),
+                "--out",
+                str(self.left),
+            ]
+        )
+
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("input", err)
+        self.assertEqual(self.left.read_bytes(), before)
+
+    def test_compare_refuses_a_heatmap_inside_session_evidence(self) -> None:
+        session = make_session(
+            self.root, name="20260112-000000-ffff"
+        )
+        output = session / "compare.png"
+
+        code, out, err = run_report(
+            [
+                "compare",
+                str(session),
+                str(session),
+                "--out",
+                str(output),
+            ]
+        )
+
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("session evidence", err)
+        self.assertFalse(output.exists())
+
+    def test_compare_refuses_a_heatmap_beside_png_evidence(self) -> None:
+        session = make_session(
+            self.root, name="20260113-000000-9999"
+        )
+        output = session / "compare.png"
+
+        code, out, err = run_report(
+            [
+                "compare",
+                str(session / FRAME_1),
+                str(session / FRAME_2),
+                "--out",
+                str(output),
+            ]
+        )
+
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("session evidence", err)
+        self.assertFalse(output.exists())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
