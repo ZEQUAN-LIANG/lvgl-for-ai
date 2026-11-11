@@ -609,8 +609,7 @@ static void draw_orbit(lv_layer_t * layer, const spectrum_palette_t * pal)
                   115 + (int)(v * 127.0f));
     }
 
-    draw_dashed_circle(layer, VIZ_CX, VIZ_CY, 214, pal->a, 76, 2, 11,
-                       spectrum_sim.time * 0.12f);
+    draw_ring(layer, VIZ_CX, VIZ_CY, 214, 1, pal->a, 76);
 
     for(int k = 0; k < 3; k++) {
         float a = spectrum_sim.time * (0.35f + (float)k * 0.06f) +
