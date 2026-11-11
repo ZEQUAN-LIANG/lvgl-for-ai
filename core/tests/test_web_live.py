@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -27,6 +28,7 @@ from support import symlinked_file
 from web_support import SESSION_ID, WebHarness, make_web_session
 
 SIGINT_DRIVER = Path(__file__).with_name("web_sigint_driver.py")
+APP_C = Path(__file__).resolve().parent.parent.parent / "user" / "app" / "app.c"
 
 
 class SessionFakeRuntime(FakeRuntime):
@@ -1187,6 +1189,123 @@ class LiveHttpTest(unittest.TestCase):
 
         harness.json("POST", "/api/live/stop")
 
+    def test_apps_stay_available_while_live_start_is_building(self) -> None:
+        repo = self.root / "repo"
+        (repo / "user" / "app").mkdir(parents=True)
+        (repo / "user" / "scenarios").mkdir(parents=True)
+        shutil.copy2(APP_C, repo / "user" / "app" / "app.c")
+
+        runtime = BlockingRuntime(self.session)
+        harness = WebHarness(
+            self.root,
+            runtime_factory=Factory(lambda index: runtime),
+            repo_root=repo,
+            scenarios_dir=repo / "user" / "scenarios",
+        )
+        self.addCleanup(harness.close)
+        self.addCleanup(lambda: _quiet_stop(harness))
+
+        started: list[tuple[int, dict]] = []
+        errors: list[BaseException] = []
+
+        def start_live() -> None:
+            try:
+                status, _, payload = harness.json(
+                    "POST", "/api/live/start", timeout=30.0
+                )
+                started.append((status, payload))
+            except BaseException as exc:  # noqa: BLE001 - reported below
+                errors.append(exc)
+
+        starter = threading.Thread(
+            target=start_live, name="test-live-http-start"
+        )
+        starter.start()
+        try:
+            self.assertTrue(
+                runtime.start_entered.wait(2.0),
+                "the live start never reached Runtime.start()",
+            )
+            self.assertTrue(harness.server.app.live.is_starting())
+            status, _, payload = harness.json(
+                "GET", "/api/apps", timeout=1.0
+            )
+            self.assertEqual(status, 200, payload)
+            self.assertIn("coffee", {entry["name"] for entry in payload["apps"]})
+            self.assertIn("trash", payload)
+        finally:
+            runtime.start_release.set()
+            starter.join(10.0)
+            runtime.stop_release.set()
+            _quiet_stop(harness)
+
+        self.assertFalse(starter.is_alive())
+        self.assertEqual(errors, [])
+        self.assertEqual(len(started), 1)
+        self.assertEqual(started[0][0], 200, started[0][1])
+        self.assertTrue(started[0][1]["running"])
+
+    def test_live_errors_keep_http_status_and_json_shape(self) -> None:
+        harness = self._harness(Factory(lambda index: FakeRuntime()))
+        cases = [
+            ("GET", "/api/live", "status", (), 409, "live_not_running"),
+            ("POST", "/api/live/stop", "stop", (), 409, "live_starting"),
+            ("POST", "/api/live/stop", "stop", (), 500, "live_stop_error"),
+            (
+                "POST",
+                "/api/live/pointer",
+                "pointer",
+                ({"action": "down", "x": 1, "y": 2},),
+                400,
+                "invalid_input",
+            ),
+            (
+                "POST",
+                "/api/live/key",
+                "key",
+                ({"action": "press", "key": "ENTER"},),
+                500,
+                "live_input_error",
+            ),
+            (
+                "POST",
+                "/api/live/start?mode=record&app=coffee",
+                "start",
+                ("record", "coffee"),
+                409,
+                "live_running",
+            ),
+        ]
+        for method, path, name, args, expected_status, code in cases:
+            with self.subTest(code=code):
+                error = LiveError(code, f"{code} message", detail={"why": code})
+                with mock.patch.object(
+                    harness.server.app.live, name, side_effect=error
+                ):
+                    if method == "POST" and path.endswith(
+                        ("/pointer", "/key")
+                    ):
+                        status, _, payload = harness.json(
+                            method, path, payload=args[0]
+                        )
+                    else:
+                        status, _, payload = harness.json(method, path)
+                self.assertEqual(status, expected_status, payload)
+                self.assertEqual(
+                    set(payload),
+                    {"error"},
+                    payload,
+                )
+                self.assertEqual(
+                    set(payload["error"]),
+                    {"code", "message", "detail"},
+                    payload,
+                )
+                self.assertEqual(payload["error"]["code"], code)
+                self.assertEqual(
+                    payload["error"]["detail"], {"why": code}
+                )
+
     def test_shutdown_stops_the_running_live_runtime(self) -> None:
         factory = Factory(lambda index: SessionFakeRuntime(self.session))
         harness = self._harness(factory)
@@ -1301,7 +1420,7 @@ class LiveShutdownIntegrationTest(unittest.TestCase):
 
 def _quiet_stop(harness: WebHarness) -> None:
     try:
-        harness.server.app.stop_live()
+        harness.server.app.live.stop()
     except Exception:  # noqa: BLE001 - cleanup must never mask the test result
         pass
 
