@@ -125,7 +125,7 @@ class LiveStreamHttpTest(unittest.TestCase):
 
     def _quiet_stop(self) -> None:
         try:
-            self.harness.server.app.stop_live()
+            self.harness.server.app.live.stop()
         except Exception:  # noqa: BLE001 - cleanup must not mask the result
             pass
 
