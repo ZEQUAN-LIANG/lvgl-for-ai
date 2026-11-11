@@ -130,6 +130,86 @@ class Recording:
         """Every named snapshot PNG, sorted by snapshot number."""
         return _list_pngs(self.path / SNAPSHOTS_DIR)
 
+    def frame_views(
+        self, timeline: list[dict[str, Any]] | None = None
+    ) -> list[dict[str, Any]]:
+        """Retained frames as ``file``, ``frame_no`` and ``t_ms`` entries.
+
+        ``timeline`` lets a caller reuse rows it already parsed; without it the
+        full timeline is read. A missing or corrupt timeline degrades to file
+        numbers and ``t_ms = 0``. Entries carry no URLs.
+        """
+        by_file = _rows_by_file(self._timeline_rows(timeline), "frame")
+        views: list[dict[str, Any]] = []
+        for index, path in enumerate(self.frames, start=1):
+            relative = path.relative_to(self.path).as_posix()
+            row = by_file.get(relative, {})
+            frame_no = row.get("frame_no")
+            if not _is_int(frame_no):
+                frame_no = _frame_no_from_name(path, index)
+            t_ms = row.get("t_ms")
+            views.append(
+                {
+                    "file": relative,
+                    "frame_no": frame_no,
+                    "t_ms": t_ms if _is_int(t_ms) else 0,
+                }
+            )
+        return views
+
+    def snapshot_views(
+        self, timeline: list[dict[str, Any]] | None = None
+    ) -> list[dict[str, Any]]:
+        """Snapshots as ``file``, ``frame_no``, ``t_ms`` and ``label`` entries.
+
+        The label falls back to the file stem when the timeline has no row or
+        no label. Entries carry no URLs.
+        """
+        by_file = _rows_by_file(self._timeline_rows(timeline), "snapshot")
+        views: list[dict[str, Any]] = []
+        for path in self.snapshots:
+            relative = path.relative_to(self.path).as_posix()
+            row = by_file.get(relative, {})
+            label = row.get("label")
+            label_text = label if isinstance(label, str) and label else path.stem
+            views.append(
+                {
+                    "file": relative,
+                    "frame_no": row.get("frame_no"),
+                    "t_ms": row.get("t_ms"),
+                    "label": label_text,
+                }
+            )
+        return views
+
+    def latest_frame(self) -> dict[str, Any] | None:
+        """The newest retained frame, or ``None`` when the session has none.
+
+        ``t_ms`` comes from a bounded tail read of ``timeline.ndjson``; the
+        frame number comes from the file name, like the live status reports it.
+        """
+        frames = self.frames
+        if not frames:
+            return None
+        latest = frames[-1]
+        relative = latest.relative_to(self.path).as_posix()
+        stem = latest.stem
+        return {
+            "file": relative,
+            "frame_no": int(stem) if stem.isdigit() else None,
+            "t_ms": _latest_frame_t_ms(self.path / TIMELINE_FILE, relative),
+        }
+
+    def _timeline_rows(
+        self, timeline: list[dict[str, Any]] | None
+    ) -> list[dict[str, Any]]:
+        if timeline is not None:
+            return timeline
+        try:
+            return self.timeline()
+        except (FileNotFoundError, ValueError):
+            return []
+
     def log(self) -> str:
         """Full ``engine.log`` text (stdout and stderr)."""
         return _read_text(self.path / ENGINE_LOG_FILE)
@@ -186,6 +266,59 @@ def _validate_annotations(value: Any, path: Path) -> dict[str, Any]:
     data["schema"] = ANNOTATIONS_SCHEMA
     data["notes"] = notes
     return data
+
+
+_TIMELINE_TAIL_BYTES = 262144
+
+
+def _is_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _frame_no_from_name(path: Path, fallback: int) -> int:
+    stem = path.stem
+    return int(stem) if stem.isdigit() else fallback
+
+
+def _rows_by_file(
+    rows: list[dict[str, Any]], row_type: str
+) -> dict[str, dict[str, Any]]:
+    return {
+        row["file"]: row
+        for row in rows
+        if row.get("type") == row_type and isinstance(row.get("file"), str)
+    }
+
+
+def _latest_frame_t_ms(path: Path, frame_file: str) -> int | None:
+    """Read the newest matching frame row from the tail of timeline.ndjson.
+
+    Live sessions are polled every few seconds; reading the whole timeline on
+    each poll would grow with the recording. Async recording writes frame rows
+    as soon as a raw frame is queued, so the newest published PNG can trail the
+    file end by the encoder backlog; 256 KiB covers max_frames and input rows
+    for the supported display sizes.
+    """
+    try:
+        with path.open("rb") as handle:
+            handle.seek(0, 2)
+            size = handle.tell()
+            chunk = min(size, _TIMELINE_TAIL_BYTES)
+            handle.seek(size - chunk)
+            data = handle.read()
+    except OSError:
+        return None
+    for line in reversed(data.splitlines()):
+        try:
+            row = json.loads(line)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            continue
+        if row.get("type") == "frame" and row.get("file") == frame_file:
+            t_ms = row.get("t_ms")
+            if _is_int(t_ms):
+                return t_ms
+            return None
+    return None
 
 
 def _read_ndjson(

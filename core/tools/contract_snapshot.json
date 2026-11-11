@@ -4198,7 +4198,19 @@
               "frame_diffs": {
                 "signature": []
               },
+              "frame_views": {
+                "signature": [
+                  {
+                    "default": null,
+                    "kind": "POSITIONAL_OR_KEYWORD",
+                    "name": "timeline"
+                  }
+                ]
+              },
               "frames": "property",
+              "latest_frame": {
+                "signature": []
+              },
               "log": {
                 "signature": []
               },
@@ -4222,6 +4234,15 @@
               },
               "reference_diffs": {
                 "signature": []
+              },
+              "snapshot_views": {
+                "signature": [
+                  {
+                    "default": null,
+                    "kind": "POSITIONAL_OR_KEYWORD",
+                    "name": "timeline"
+                  }
+                ]
               },
               "snapshots": "property",
               "timeline": {
