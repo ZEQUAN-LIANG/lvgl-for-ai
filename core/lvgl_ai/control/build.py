@@ -53,7 +53,6 @@ def configure_command(
     lvgl_src: Path,
     lvgl_version: str,
     user_app_dir: Path,
-    user_asset_dir: Path,
     ccache: bool,
     zlib_src: Path | None = None,
     libpng_src: Path | None = None,
@@ -70,7 +69,6 @@ def configure_command(
         f"-DLVGL_AI_LVGL_SRC={lvgl_src}",
         f"-DLVGL_AI_LVGL_VERSION={lvgl_version}",
         f"-DLVGL_AI_USER_APP_DIR={user_app_dir}",
-        f"-DLVGL_AI_USER_ASSET_DIR={user_asset_dir}",
         f"-DLVGL_AI_ZLIB_SRC={zlib_path}",
         f"-DLVGL_AI_LIBPNG_SRC={libpng_path}",
     ]
@@ -203,7 +201,6 @@ def needs_configure(
     lvgl_src: Path,
     lvgl_version: str,
     user_app_dir: Path,
-    user_asset_dir: Path,
     engine_dir: Path | None = None,
     zlib_src: Path | None = None,
     libpng_src: Path | None = None,
@@ -217,7 +214,6 @@ def needs_configure(
         "LVGL_AI_LVGL_SRC": lvgl_src,
         "LVGL_AI_LVGL_VERSION": lvgl_version,
         "LVGL_AI_USER_APP_DIR": user_app_dir,
-        "LVGL_AI_USER_ASSET_DIR": user_asset_dir,
         "LVGL_AI_ZLIB_SRC": zlib_src if zlib_src is not None else paths.zlib_src(),
         "LVGL_AI_LIBPNG_SRC": (
             libpng_src if libpng_src is not None else paths.libpng_src()

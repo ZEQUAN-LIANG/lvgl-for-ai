@@ -71,7 +71,6 @@ class BuildPlan:
         build_dir: str | Path | None = None,
         engine_dir: str | Path | None = None,
         user_app_dir: str | Path | None = None,
-        user_asset_dir: str | Path | None = None,
         zlib_src: str | Path | None = None,
         libpng_src: str | Path | None = None,
         ccache: bool | None = None,
@@ -98,11 +97,6 @@ class BuildPlan:
         self.engine_dir = (
             Path(engine_dir) if engine_dir is not None else paths.ENGINE_DIR
         )
-        self.user_asset_dir = (
-            Path(user_asset_dir)
-            if user_asset_dir is not None
-            else paths.USER_ASSET_DIR
-        )
         self.zlib_src = (
             Path(zlib_src) if zlib_src is not None else paths.zlib_src()
         )
@@ -124,7 +118,6 @@ class BuildPlan:
                 lvgl_src=self.lvgl_src,
                 lvgl_version=version,
                 user_app_dir=self.user_app_dir,
-                user_asset_dir=self.user_asset_dir,
                 ccache=uses_ccache,
                 zlib_src=self.zlib_src,
                 libpng_src=self.libpng_src,
@@ -189,7 +182,6 @@ class BuildPlan:
             lvgl_src=self.lvgl_src,
             lvgl_version=self.version,
             user_app_dir=self.user_app_dir,
-            user_asset_dir=self.user_asset_dir,
             engine_dir=self.engine_dir,
             zlib_src=self.zlib_src,
             libpng_src=self.libpng_src,

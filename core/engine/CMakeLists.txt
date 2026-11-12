@@ -71,9 +71,8 @@ if(NOT LVGL_AI_USER_SOURCES)
 endif()
 
 get_filename_component(LVGL_AI_USER_DIR "${LVGL_AI_USER_APP_DIR}" DIRECTORY)
-set(LVGL_AI_USER_ASSET_DIR "${LVGL_AI_USER_DIR}/asset" CACHE PATH "Directory with user asset headers or C arrays")
 
-# The tool owns lv_conf.h; users only write user/app and user/asset.
+# The tool owns lv_conf.h; users only write user/app.
 # 9.4/9.5 read LV_BUILD_CONF_DIR via os_desktop.cmake; 9.6 uses main.cmake
 # with the same variables. 9.1 and 8.x read LV_CONF_PATH. The
 # LVGL_MAJOR_8 define selects the 8.x block inside lv_conf.h before any
@@ -175,7 +174,6 @@ target_link_libraries(user_app PRIVATE lvgl)
 target_include_directories(user_app PRIVATE
     ${LVGL_AI_USER_DIR}
     ${LVGL_AI_USER_APP_DIR}
-    ${LVGL_AI_USER_ASSET_DIR}
 )
 target_compile_options(user_app PRIVATE -Wall -Wextra)
 

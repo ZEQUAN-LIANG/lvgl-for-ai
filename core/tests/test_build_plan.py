@@ -67,14 +67,12 @@ class BuildPlanCase(unittest.TestCase):
         self.build_dir = self.root / "build" / "lvgl_9_6"
         self.engine_dir = self.root / "core" / "engine"
         self.user_app_dir = self.root / "user" / "app"
-        self.user_asset_dir = self.root / "user" / "asset"
         self.zlib_src = self.root / "third_party" / "zlib"
         self.libpng_src = self.root / "third_party" / "libpng"
         for path in (
             self.lvgl_src,
             self.engine_dir,
             self.user_app_dir,
-            self.user_asset_dir,
             self.zlib_src,
             self.libpng_src,
         ):
@@ -86,7 +84,6 @@ class BuildPlanCase(unittest.TestCase):
             "build_dir": self.build_dir,
             "engine_dir": self.engine_dir,
             "user_app_dir": self.user_app_dir,
-            "user_asset_dir": self.user_asset_dir,
             "zlib_src": self.zlib_src,
             "libpng_src": self.libpng_src,
             "ccache": False,
@@ -102,7 +99,6 @@ class BuildPlanCase(unittest.TestCase):
         version: str = "9.6",
         lvgl_src: Path | None = None,
         user_app_dir: Path | None = None,
-        user_asset_dir: Path | None = None,
         home: Path | None = None,
         ninja: bool = True,
     ) -> None:
@@ -112,9 +108,6 @@ class BuildPlanCase(unittest.TestCase):
             "LVGL_AI_LVGL_VERSION": version,
             "LVGL_AI_USER_APP_DIR": (
                 self.user_app_dir if user_app_dir is None else user_app_dir
-            ),
-            "LVGL_AI_USER_ASSET_DIR": (
-                self.user_asset_dir if user_asset_dir is None else user_asset_dir
             ),
             "LVGL_AI_ZLIB_SRC": self.zlib_src,
             "LVGL_AI_LIBPNG_SRC": self.libpng_src,
@@ -225,7 +218,6 @@ class ConfigureTriggerTest(BuildPlanCase):
             "version": {"version": "9.5"},
             "lvgl source": {"lvgl_src": self.root / "other-lvgl"},
             "user app": {"user_app_dir": self.root / "other-app"},
-            "user asset": {"user_asset_dir": self.root / "other-asset"},
             "moved checkout": {"home": self.root / "old-checkout" / "core" / "engine"},
         }
         for name, overrides in cases.items():

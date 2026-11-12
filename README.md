@@ -9,14 +9,15 @@
 **包含**
 
 - `core/`：Python 控制层、C engine、测试、工具与 API 导航。
-- `user/`：应用变体（`user/app/`）、场景（`user/scenarios/`）、资源目录契约（`user/asset/`）。
-- `docs/`：两份契约索引指针页。
-- `licenses/`：LVGL 与 lodepng 的完整许可文本。
-- `lvgl-src/README.md`、`patches/README.md`：源码与 patch 目录的使用说明。
+- `user/`：应用变体（`user/app/`）与场景（`user/scenarios/`）；每个应用自己持有资源头。
+- `docs/`：三份契约索引指针页（应用变体、场景/服务端常量、SiFli 导出边界）。
+- `licenses/`：LVGL、lodepng、zlib 与 libpng 的完整许可文本。
+- `lvgl-src/README.md`、`third_party/README.md`、`patches/README.md`：源码与 patch 目录的使用说明。
 
 **不包含**（需要在本机生成或下载）
 
 - `lvgl-src/<version>/`：LVGL 源码树，用 `core/tools/fetch_lvgl.py` 下载。
+- `third_party/zlib/`、`third_party/libpng/`：zlib / libpng 源码树，用 `core/tools/fetch_png.py` 下载。
 - `build/`：engine 构建产物。
 - `sessions/`：运行时生成的会话证据。
 - `.scratch/tmp/`：下载缓存与临时目录。
@@ -92,10 +93,13 @@ gcc --version
 # 2. 下载并安装 LVGL 9.6 源码
 python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root .
 
-# 3. 跑一个场景（首次会构建 engine）
+# 3. 下载 PNG 编码器源码（zlib / libpng，安装到 third_party/）
+python -I core/tools/fetch_png.py --repo-root .
+
+# 4. 跑一个场景（首次会构建 engine）
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json
 
-# 4. 或启动网页端
+# 5. 或启动网页端
 python -I core/web.py --open
 ```
 
@@ -108,6 +112,7 @@ python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --source gitee
 说明：
 
 - `fetch_lvgl.py` 成功后会输出 `installed LVGL 9.6.0 -> .../lvgl-src/9.6`，并写入 `.lvgl-ai-source.json`。
+- `fetch_png.py` 会把 zlib 1.3.1 与 libpng 1.6.44 安装到 `third_party/zlib/`、`third_party/libpng/`；构建前若缺失会直接报错并提示重跑该命令。
 - 首次构建会编译整个 LVGL，通常需要数分钟；工具对 configure / build 每个阶段设置 600 秒硬超时。
 - CLI 成功退出码为 `0`，stdout 最后一行是会话目录；会话 `manifest.json` 的 `status` 应为 `ok`。
 - 网页端默认地址 `http://127.0.0.1:8765/`；端口冲突时用 `--port 0` 或 `--port 8766`，Ctrl+C 停止。
@@ -141,6 +146,7 @@ python -I core/tools/new_app.py myapp --dry-run
 | 现象 | 原因 | 处理 |
 | --- | --- | --- |
 | `LVGL source not found: ...` | 没有下载对应版本的 LVGL 源码 | 运行 `python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root .`，或设置 `LVGL_AI_LVGL_SRC` |
+| `PNG encoder source not found: ...` | 没有下载 zlib / libpng 源码 | 运行 `python -I core/tools/fetch_png.py --repo-root .`，或设置 `LVGL_AI_ZLIB_SRC` / `LVGL_AI_LIBPNG_SRC` |
 | `build tools not found on PATH: cmake, ninja, gcc` | 工具缺失，或 PATH 未生效 | 按上面的 MSYS2 步骤安装，重开终端，用 `which -a` / `where.exe` 检查 |
 | `CMake 3.20 or higher is required` | CMake 版本过低 | 升级 CMake |
 | `engine binary not found: ...` | 使用了 `--no-build`，但 `build/` 中没有 engine | 去掉 `--no-build` 先构建 |
@@ -159,11 +165,11 @@ python -I core/tools/new_app.py myapp --dry-run
 | `core/` | 工具根：`lvgl_ai/` Python 控制层、`engine/` C engine、`cli.py`、`web.py`、`tests/`、`tools/`、`api-nav/` |
 | `user/app/` | 应用变体源码；`app.c` 的 `apps[]` 是注册表 |
 | `user/scenarios/` | 场景 JSON |
-| `user/asset/` | 共享编译期资源头目录契约 |
 | `lvgl-src/` | 只跟踪 README；各版本源码按需下载 |
+| `third_party/` | zlib / libpng 源码（按需下载，Git 忽略） |
 | `build/` | engine 构建产物（Git 忽略） |
 | `sessions/` | 会话证据（Git 忽略） |
-| `docs/` | 应用变体与场景/服务端常量的索引指针页 |
+| `docs/` | 应用变体、场景/服务端常量与 SiFli 导出边界的索引指针页 |
 | `licenses/` | 第三方许可全文 |
 | `patches/` | LVGL patch 组织说明与可选 patch |
 
@@ -200,6 +206,7 @@ python -I core/tools/fetch_lvgl.py --version 9.5 --repo-root .
 - `core/README.md`：工具用法（网页端、CLI、Python API、会话产物、测试）。
 - `docs/app.html`：应用变体写法索引。
 - `docs/scenario-server.html`：场景格式与服务端常量索引。
+- `docs/sifli.html`：SiFli SDK 图形能力与导出边界索引。
 - `CONTEXT.md`：领域术语表。
 - `CLAUDE.md` / `AGENTS.md`：AI 编码代理的仓库工作说明（两份内容一致）。
 
@@ -208,4 +215,4 @@ python -I core/tools/fetch_lvgl.py --version 9.5 --repo-root .
 ## 许可
 
 - 本项目自身源码：MIT，见根目录 `LICENSE`（`Copyright (c) 2026 zequan.liang`）。
-- LVGL：MIT；lodepng：zlib。完整文本见 `licenses/`，声明见 `core/THIRD_PARTY_NOTICES.md`。
+- LVGL：MIT；lodepng、zlib：zlib 许可；libpng：PNG Reference Library License v2。完整文本见 `licenses/`，声明见 `core/THIRD_PARTY_NOTICES.md`。
