@@ -1925,7 +1925,7 @@ static void imu_update(void)
     }
     int32_t dx = fx - s_imu_base_x;
     int32_t dy = fy - s_imu_base_y;
-    /* ~60 mg per degree: a 30 degree tilt reads close to 30 degrees. */
+    /* ~60 degrees per g: 1000 mg reads 60 degrees, so 30 degrees reads ~30. */
     s.sensor_roll = clamp_i32(dx * 60 / 1000, -45, 45);
     s.sensor_pitch = clamp_i32(dy * 60 / 1000, -32, 32);
     s.sensor_live = true;
@@ -2174,7 +2174,11 @@ void sift_watch_create(void)
 
     s_canvas = lv_canvas_create(screen);
     if(s_canvas == NULL) {
+#if defined(SIFT_HAS_APP_CANVAS_ALLOC)
+        app_canvas_mem_free(s_fb);
+#else
         lv_free(s_fb);
+#endif
         s_fb = NULL;
         printf("[sift_watch] canvas creation failed\n");
         return;

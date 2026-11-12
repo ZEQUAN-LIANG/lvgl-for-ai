@@ -67,7 +67,7 @@ CONFIG_ACC_USING_LSM6DSL=y
 
 `imu_update()` 对 ax/ay/az 做 alpha = 3/4 的一阶 EMA：按 40 ms 渲染节拍读取时只滞后
 一个采样（约 40 ms），既能压掉单点毛刺，又不会让倾斜明显变慢。`SENSOR ZERO` 校零会同时
-重置滤波状态和零点。角度按 60 mg/度映射：
+重置滤波状态和零点。角度按 60°/g（约 16.7 mg/度）映射：
 
 ```text
 roll  = (filtered_x - base_x) * 60 / 1000   clamp ±45
