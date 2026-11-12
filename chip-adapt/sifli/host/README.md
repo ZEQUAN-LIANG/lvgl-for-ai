@@ -45,7 +45,9 @@ python -I chip-adapt/sifli/host/cli.py close --json
 ```
 
 PowerShell 包装脚本：`scripts/suggest.ps1`、`scripts/build-current.ps1`、
-`scripts/flash-current.ps1 [-Build] [-Port COM12]`。
+`scripts/flash-current.ps1 [-Build] [-Port COM12]`。所有脚本支持 `Get-Help`；
+`build-current.ps1` / `flash-current.ps1` 的 `-DryRun` 只打印命令，不构建/烧录；
+退出码 0/1/2 透传。
 
 ## CLI / AI 接口
 
