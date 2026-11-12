@@ -20,6 +20,27 @@
 #define SIFT_HAS_IMU 0
 #endif
 
+/* Physical keys and the vibration motor only exist on the SiFli SDK build.
+ * The exporter prepends lvgl_ai_sdk.h, which defines LVGL_AI_EZIP_ASSETS and
+ * pulls in rtthread.h; headless builds get empty stubs. */
+#if defined(LVGL_AI_EZIP_ASSETS)
+#define SIFT_HAS_KEY 1
+#include "rtdevice.h"
+#  if defined(BSP_KEY1_PIN)
+#    define SIFT_KEY1_PIN BSP_KEY1_PIN
+#  else
+#    define SIFT_KEY1_PIN 34
+#  endif
+#  if defined(BSP_KEY2_PIN)
+#    define SIFT_KEY2_PIN BSP_KEY2_PIN
+#  else
+#    define SIFT_KEY2_PIN 43
+#  endif
+#  define SIFT_VIBE_PIN 20
+#else
+#define SIFT_HAS_KEY 0
+#endif
+
 #if defined(__has_include)
 #  if __has_include("app_mem.h")
 #    include "app_mem.h"
@@ -43,8 +64,10 @@
 #define SIFT_RENDER_MS 40U
 #define SIFT_SWIPE_MIN 42
 #define SIFT_SWIPE_LONG 90
-#define SIFT_IMU_FACE_DOWN_MG (-550)
-#define SIFT_IMU_FACE_UP_MG (250)
+/* This board's accelerometer z axis points into the screen: face-up is
+ * negative, face-down is positive. */
+#define SIFT_IMU_FACE_DOWN_MG (550)
+#define SIFT_IMU_FACE_UP_MG (-250)
 #define SIFT_IMU_FLIP_COOLDOWN_MS 1200U
 #define SIFT_TIMER_ALERT_MS 6000U
 #define SIFT_IDLE_DIM_MS 42000U
@@ -250,6 +273,7 @@ static void weather_values(int *temp_c, int *high_c, int *low_c, int *humidity,
                            int *wind, bool *night, int *condition);
 static int weather_temp(int celsius);
 static void sift_imu_zero(void);
+static void vibe_pulse(void);
 
 static int32_t clamp_i32(int32_t value, int32_t low, int32_t high)
 {
@@ -603,6 +627,7 @@ static void sift_flip(void)
     s.last_input = lv_tick_get();
     snprintf(s.notice, sizeof(s.notice), "FLIP %02d", s.flips);
     s.notice_until = lv_tick_get() + 1200U;
+    vibe_pulse();
     printf("[sift_watch] flip=%d source=sensor\n", s.flips);
 }
 
@@ -700,7 +725,7 @@ static void update_tilt(uint32_t now)
 
     if(s.sensor_live && manual) s.auto_now = false;
 
-    int32_t ease = s.sensor_live && !manual ? 3 : 5;
+    int32_t ease = s.sensor_live && !manual ? 2 : 5;
     s.smooth_roll += (s.target_roll - s.smooth_roll) / ease;
     s.smooth_pitch += (s.target_pitch - s.smooth_pitch) / ease;
 }
@@ -1495,6 +1520,7 @@ static void open_view(sift_view_t view)
     s.manual_until = 0;
     s.last_input = lv_tick_get();
     s.dimmed = false;
+    vibe_pulse();
     printf("[sift_watch] view=%d\n", (int)view);
 }
 
@@ -1805,6 +1831,11 @@ static bool s_imu_tried;
 static bool s_imu_have_base;
 static int32_t s_imu_base_x;
 static int32_t s_imu_base_y;
+static bool s_imu_filter_ready;
+static int32_t s_imu_fx;
+static int32_t s_imu_fy;
+static int32_t s_imu_fz;
+static uint32_t s_imu_log_at;
 static bool s_imu_flip_armed;
 static bool s_imu_face_down;
 static uint32_t s_imu_face_down_at;
@@ -1846,6 +1877,7 @@ static void imu_init(void)
 static void sift_imu_zero(void)
 {
     s_imu_have_base = false;
+    s_imu_filter_ready = false;
     s_imu_flip_armed = false;
     s_imu_face_down = false;
     s_imu_face_down_at = 0;
@@ -1866,26 +1898,53 @@ static void imu_update(void)
     int32_t ay = data.data.acce.y;
     int32_t az = data.data.acce.z;
 
+    /* Light first-order EMA (alpha = 3/4): one sample of lag at the 25 Hz
+     * render cadence keeps the tilt responsive while trimming spikes. */
+    if(!s_imu_filter_ready) {
+        s_imu_fx = ax;
+        s_imu_fy = ay;
+        s_imu_fz = az;
+        s_imu_filter_ready = true;
+    }
+    else {
+        s_imu_fx = (s_imu_fx + ax * 3) / 4;
+        s_imu_fy = (s_imu_fy + ay * 3) / 4;
+        s_imu_fz = (s_imu_fz + az * 3) / 4;
+    }
+    int32_t fx = s_imu_fx;
+    int32_t fy = s_imu_fy;
+    int32_t fz = s_imu_fz;
+
     if(!s_imu_have_base) {
-        s_imu_base_x = ax;
-        s_imu_base_y = ay;
+        s_imu_base_x = fx;
+        s_imu_base_y = fy;
         s_imu_have_base = true;
         s_imu_flip_armed = false;
         s_imu_face_down = false;
         return;
     }
-    int32_t dx = ax - s_imu_base_x;
-    int32_t dy = ay - s_imu_base_y;
-    s.sensor_roll = clamp_i32(dx * 45 / 1000, -45, 45);
-    s.sensor_pitch = clamp_i32(dy * 32 / 1000, -32, 32);
+    int32_t dx = fx - s_imu_base_x;
+    int32_t dy = fy - s_imu_base_y;
+    /* ~60 mg per degree: a 30 degree tilt reads close to 30 degrees. */
+    s.sensor_roll = clamp_i32(dx * 60 / 1000, -45, 45);
+    s.sensor_pitch = clamp_i32(dy * 60 / 1000, -32, 32);
     s.sensor_live = true;
 
     uint32_t now = lv_tick_get();
-    if(az <= SIFT_IMU_FACE_DOWN_MG) {
+    if(now - s_imu_log_at >= 500U) {
+        s_imu_log_at = now;
+        printf("[sift_watch] imu raw=%ld,%ld,%ld f=%ld,%ld,%ld roll=%ld pitch=%ld live=%d\n",
+               (long)ax, (long)ay, (long)az,
+               (long)fx, (long)fy, (long)fz,
+               (long)s.sensor_roll, (long)s.sensor_pitch,
+               s.sensor_live ? 1 : 0);
+    }
+
+    if(fz >= SIFT_IMU_FACE_DOWN_MG) {
         if(!s_imu_face_down) {
             s_imu_face_down = true;
             s_imu_face_down_at = now;
-            printf("[sift_watch] imu face down az=%ld\n", (long)az);
+            printf("[sift_watch] imu face down az=%ld\n", (long)fz);
         }
         if(s_imu_flip_armed && now - s_imu_face_down_at >= 160U &&
            now - s_imu_last_flip_at >= SIFT_IMU_FLIP_COOLDOWN_MS) {
@@ -1894,10 +1953,10 @@ static void imu_update(void)
             sift_flip();
         }
     }
-    else if(az >= SIFT_IMU_FACE_UP_MG) {
+    else if(fz <= SIFT_IMU_FACE_UP_MG) {
         if(s_imu_face_down) {
             s_imu_face_down = false;
-            printf("[sift_watch] imu face up az=%ld\n", (long)az);
+            printf("[sift_watch] imu face up az=%ld\n", (long)fz);
         }
         if(!s_imu_flip_armed && now - s_imu_last_flip_at >= SIFT_IMU_FLIP_COOLDOWN_MS) {
             s_imu_flip_armed = true;
@@ -1915,6 +1974,95 @@ static void sift_imu_zero(void)
 }
 #endif
 
+#if SIFT_HAS_KEY
+static bool s_key1_raw;
+static bool s_key1_down;
+static uint32_t s_key1_raw_at;
+static bool s_key2_raw;
+static bool s_key2_down;
+static uint32_t s_key2_raw_at;
+static bool s_vibe_ready;
+static bool s_vibe_on;
+static uint32_t s_vibe_off_at;
+
+static void key_init(void)
+{
+    rt_pin_mode(SIFT_KEY1_PIN, PIN_MODE_INPUT_PULLDOWN);
+    rt_pin_mode(SIFT_KEY2_PIN, PIN_MODE_INPUT_PULLDOWN);
+    s_key1_raw = rt_pin_read(SIFT_KEY1_PIN) != 0;
+    s_key1_down = s_key1_raw;
+    s_key2_raw = rt_pin_read(SIFT_KEY2_PIN) != 0;
+    s_key2_down = s_key2_raw;
+    s_key1_raw_at = 0;
+    s_key2_raw_at = 0;
+    printf("[sift_watch] keys ready key1=%d key2=%d levels=%d,%d\n",
+           (int)SIFT_KEY1_PIN, (int)SIFT_KEY2_PIN,
+           s_key1_down ? 1 : 0, s_key2_down ? 1 : 0);
+}
+
+static bool key_pressed_edge(int pin, bool *raw, bool *down, uint32_t *raw_at, uint32_t now)
+{
+    bool level = rt_pin_read(pin) != 0; /* KEY1/KEY2 are active high. */
+    if(level != *raw) {
+        *raw = level;
+        *raw_at = now;
+    }
+    if(level != *down && now - *raw_at >= 20U) {
+        *down = level;
+        return level;
+    }
+    return false;
+}
+
+static void key_poll(void)
+{
+    uint32_t now = lv_tick_get();
+    if(key_pressed_edge(SIFT_KEY1_PIN, &s_key1_raw, &s_key1_down, &s_key1_raw_at, now)) {
+        printf("[sift_watch] key1 press\n");
+        vibe_pulse();
+        sift_handle_key(LV_KEY_HOME);
+    }
+    if(key_pressed_edge(SIFT_KEY2_PIN, &s_key2_raw, &s_key2_down, &s_key2_raw_at, now)) {
+        printf("[sift_watch] key2 press\n");
+        vibe_pulse();
+        sift_handle_key(LV_KEY_ENTER);
+    }
+}
+
+static void vibe_init(void)
+{
+    rt_pin_mode(SIFT_VIBE_PIN, PIN_MODE_OUTPUT);
+    rt_pin_write(SIFT_VIBE_PIN, PIN_LOW);
+    s_vibe_ready = true;
+    s_vibe_on = false;
+    s_vibe_off_at = 0;
+    printf("[sift_watch] vibe ready pin=%d\n", (int)SIFT_VIBE_PIN);
+}
+
+static void vibe_pulse(void)
+{
+    if(!s_vibe_ready) return;
+    rt_pin_write(SIFT_VIBE_PIN, PIN_HIGH);
+    s_vibe_on = true;
+    s_vibe_off_at = lv_tick_get() + 25U;
+}
+
+static void vibe_update(uint32_t now)
+{
+    if(!s_vibe_on) return;
+    if((int32_t)(now - s_vibe_off_at) >= 0) {
+        rt_pin_write(SIFT_VIBE_PIN, PIN_LOW);
+        s_vibe_on = false;
+    }
+}
+#else
+static void key_init(void) {}
+static void key_poll(void) {}
+static void vibe_init(void) {}
+static void vibe_pulse(void) {}
+static void vibe_update(uint32_t now) { (void)now; }
+#endif
+
 static void sift_tick_cb(lv_timer_t *timer)
 {
     (void)timer;
@@ -1925,6 +2073,8 @@ static void sift_tick_cb(lv_timer_t *timer)
 
     timer_update(now);
     imu_update();
+    key_poll();
+    vibe_update(now);
     update_tilt(now);
 
     s.sim_accum += elapsed;
@@ -2039,6 +2189,8 @@ void sift_watch_create(void)
     sift_create_group();
 
     imu_init();
+    key_init();
+    vibe_init();
     sift_render();
 
     s_render_timer = lv_timer_create(sift_tick_cb, SIFT_RENDER_MS, NULL);
