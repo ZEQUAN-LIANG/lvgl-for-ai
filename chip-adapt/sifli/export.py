@@ -236,14 +236,6 @@ def _build_plan(
             detail={"files": incompatible},
         )
 
-    asset_dir = root / "user" / "asset"
-    if asset_dir.is_dir():
-        for path in sorted(asset_dir.rglob("*")):
-            if path.is_file():
-                plan[f"src/asset/{path.relative_to(asset_dir).as_posix()}"] = (
-                    path.read_bytes()
-                )
-
     plan["README.md"] = _export_readme(app, app_symbol, lvgl_version).encode(
         "utf-8"
     )

@@ -15,7 +15,7 @@ LVGL 9.6 真实构建并跑过场景；照抄可以复现。
 | 注册行 | 是 | `user/app/app.c` 的 `apps[]` | 让 `LVGL_AI_DEMO` 找到这个变体 |
 | 场景 | 强烈建议 | `user/scenarios/<name>.json` | 声明 `app`，提供可重复的输入与快照 |
 | 头文件 | 可选 | `user/app/<name>/<name>.h` | 多文件拆分，或给 `app.c` 提供声明 |
-| 资源头 | 可选 | `user/app/<name>/` 或 `user/asset/` | 字体、图片编译进二进制 |
+| 资源头 | 可选 | `user/app/<name>/` | 字体、图片编译进二进制，随应用独立 |
 
 **不需要**写 `main`、`CMakeLists.txt`、改 `core/`、改 `lvgl-src/`，也不需要维护第二份应用清单。
 
@@ -320,15 +320,14 @@ python -I core/cli.py --lvgl 9.6 --app hello --idle
 lv_obj_set_style_text_font(label, &my_font_24, 0);
 ```
 
-生成的头文件放在 `user/app/<name>/` 或 `user/asset/`；两者都在 include 路径里。
-`spectrum/gen_spectrum_assets.py` 和 `coffee/gen_coffee_assets.py` 是现有示例，不是通用
-工具；修改字体文案时才需要重跑。
+生成的头文件放在应用自己的 `user/app/<name>/`；资源头与源码同目录，直接
+`#include "my_font_24.h"` 即可。`spectrum/gen_spectrum_assets.py` 和
+`coffee/gen_coffee_assets.py` 是现有示例，不是通用工具；修改字体文案时才需要重跑。
 
 ### 4.3 图片与资源
 
 - 推荐把图片转成 C 数组（`lv_image_dsc_t`），用 `lv_image_set_src(obj, &my_image)`。
-- `user/asset/` 已加入编译 include 路径，适合放共享资源头；目录契约见
-  [`user/asset/README.md`](../asset/README.md)。
+- 图片资源头随应用放在 `user/app/<name>/`；每个应用自己持有，不设公共资源目录。
 - 工具没有提供运行时资源文件加载约定，不要依赖从磁盘读 PNG；把资源编译进二进制。
 - 大图会占用 16 MiB 的 LVGL heap，注意尺寸和数量。
 
@@ -406,7 +405,7 @@ raw 源收集和 EZIP/真机验证边界见
 
 | 约束 | 说明 |
 |---|---|
-| 只改用户目录 | `user/app/**/*.c`、`user/scenarios/`、`user/asset/`；不要改 `core/` 或 `lvgl-src/` |
+| 只改用户目录 | `user/app/**/*.c`（含各应用自己的资源头）与 `user/scenarios/`；不要改 `core/` 或 `lvgl-src/` |
 | 不写 `main` | engine 负责初始化、tick、刷新和退出 |
 | 应用变体仅 9.6+ | 9.1 / 8.x 忽略选择，固定显示 `demo/` 的 harness |
 | 未知应用名会退出 | engine 打印 `[app] apps=...` 后 `exit(1)`，检查 `apps[]` 与场景是否一致 |
