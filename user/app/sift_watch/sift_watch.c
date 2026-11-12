@@ -2021,11 +2021,15 @@ static void key_poll(void)
         printf("[sift_watch] key1 press\n");
         vibe_pulse();
         sift_handle_key(LV_KEY_HOME);
+        snprintf(s.notice, sizeof(s.notice), "KEY1");
+        s.notice_until = lv_tick_get() + 600U;
     }
     if(key_pressed_edge(SIFT_KEY2_PIN, &s_key2_raw, &s_key2_down, &s_key2_raw_at, now)) {
         printf("[sift_watch] key2 press\n");
         vibe_pulse();
         sift_handle_key(LV_KEY_ENTER);
+        snprintf(s.notice, sizeof(s.notice), "KEY2");
+        s.notice_until = lv_tick_get() + 600U;
     }
 }
 

@@ -96,7 +96,8 @@ SDK 构建（`LVGL_AI_EZIP_ASSETS`）里应用直接轮询 GPIO，不依赖 butt
 - KEY2：`BSP_KEY2_PIN`（默认 43 / PA43）→ `sift_handle_key(LV_KEY_ENTER)`，确认/开始/打开
 - 两键在 `board.conf` 中都是 active high；`rt_pin_mode(pin, PIN_MODE_INPUT_PULLDOWN)` 后
   按 20 ms 去抖、只在按下沿触发，轮询在 40 ms 的渲染定时器里
-- 按下时串口打印 `[sift_watch] key1 press` / `[sift_watch] key2 press`
+- 按下时串口打印 `[sift_watch] key1 press` / `[sift_watch] key2 press`，表盘底部短暂显示
+  `KEY1` / `KEY2`，即使当前页面没有可切换的目标也有视觉反馈
 
 振动马达按 PA20（`SIFT_VIBE_PIN`）配置为输出，按键、六轴翻转和切页时拉高约 25 ms，
 由 `sift_tick_cb` 里的 `vibe_update()` 关断；板子没装马达也不会影响其他功能。headless
