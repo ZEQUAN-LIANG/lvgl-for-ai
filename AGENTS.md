@@ -112,7 +112,7 @@ python -I core/tools/fetch_png.py --repo-root .
 - `build/`、`licenses/`：仓库根下的构建产物与第三方许可文本。
 - `third_party/`：`fetch_png.py` 安装的 zlib / libpng 源码，不进 Git（仅 `third_party/README.md` 被跟踪）。
 - `.scratch/ai-tools/`：设计真源 `spec.md` 与票据 `issues/`；`.scratch/tmp/` 忽略；`.scratch/` 是本地 tracker，不随仓库提交。
-- `chip-adapt/`：SiFli 导出适配层，与 `core/` 工具层分开。`chip-adapt/sifli/export.py` 把 `user/app` 按 LVGL 9.4 基线导出到 `chip-adapt/sifli/<app>/`（生成物被 `.gitignore` 忽略），`asset_plan.py` 生成资源计划，`test_export.py` / `test_asset_plan.py` 可独立运行；SDK 下载物在 `chip-adapt/sdk/`。导出副本用 `LVGL_AI_USER_APP_DIR` 跑本地 9.4 验证，共享源码仍以 `user/app` 为唯一真源，不做源码降级。
+- `chip-adapt/`：SiFli 导出适配层，与 `core/` 工具层分开。`chip-adapt/sifli/export.py` 把 `user/app` 按 LVGL 9.4 基线导出到 `chip-adapt/sifli/<app>/`（生成物被 `.gitignore` 忽略），`asset_plan.py` 生成资源计划，`test_export.py` / `test_asset_plan.py` 可独立运行；SDK、示例、工具链与板卡资料下载物在 `chip-adapt/sifli/vendor/`（已被 `.gitignore` 忽略）。导出副本用 `LVGL_AI_USER_APP_DIR` 跑本地 9.4 验证，共享源码仍以 `user/app` 为唯一真源，不做源码降级。`chip-adapt/sifli/host/` 是黄山派串口 + 烧录上位机（Python broker + CLI + HTML/xterm.js；人类和 AI/CLI 共用网页烧录 job，底层是官方 `sftool.exe`；官方 Web Flasher 作为备选，页面有“终端 / 烧录 / 活动”标签、实时进度和串口自动重连），用法见其 README；pyserial 与 xterm.js 已 vendor 到 `host/` 下。
 - `user/`：用户只写 `user/app/**/*.c`（入口 `void app_create(void)`；应用在 `app.c` 的 `apps[]` 表里登记）与 `user/scenarios/`；应用资源头放在各自的 `user/app/<name>/` 目录，没有公共资源目录。不写 main、不注册控件、不碰构建。写应用先看 `user/app/GUIDE.md`。`user/.trash/` 是管理台的本地回收站，不参与构建。
 - `lvgl-src/<version>/`：LVGL 源码，不进 Git（仅 `lvgl-src/README.md` 被跟踪）；用 `python -I core/tools/fetch_lvgl.py --version <version> --repo-root .` 下载。需要改 LVGL 时把 unified diff 放进 `patches/<version>/`（`series` 控制应用顺序），由 `fetch_lvgl.py` 应用；不要直接修改已安装的源码树；没有 patch 时 `patches/` 只保留 `README.md`。
 - `sessions/`：会话产物；每次新建会话后删除 `build_error` 会话，并只保留最新的 10 条。
