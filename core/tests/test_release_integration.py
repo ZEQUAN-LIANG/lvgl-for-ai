@@ -106,7 +106,7 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
     def test_zip_unpacks_and_runs_from_an_unrelated_directory(self) -> None:
         with tempfile.TemporaryDirectory(prefix="lvgl-ai-release-test-") as raw:
             root = Path(raw)
-            out_dir = root / "dist"
+            out_dir = root / "release"
             result = subprocess.run(
                 [
                     sys.executable,
@@ -130,6 +130,15 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
             )
             summary = json_line(result)
+            # The release directory itself is a usable skill directory.
+            published = out_dir / "lvgl-ai-new"
+            self.assertEqual(Path(summary["package"]), published)
+            self.assertTrue((published / "SKILL.md").is_file())
+            self.assertTrue((published / "CONTEXT.md").is_file())
+            self.assertTrue((published / "core" / "cli.py").is_file())
+            self.assertTrue(
+                (published / "build" / "lvgl_9_6" / "lvgl_engine.exe").is_file()
+            )
             zip_path = Path(summary["zip"])
             self.assertTrue(zip_path.is_file())
             self.assertEqual(

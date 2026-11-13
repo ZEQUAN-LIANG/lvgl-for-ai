@@ -2,10 +2,12 @@
 """Build the distributable skill zip from this workspace.
 
 One command produces the package directory, zip, ``.sha256`` and release
-manifest.  The default package is host-only: tool layer, ``user/``, the
-prebuilt host SDK, a prebuilt engine, ``bin/lvgl.cmd`` and ``SKILL.md``.  LVGL
-source, third-party source, sessions, tests and chip adapter trees never enter
-the package.
+manifest.  The unpacked skill directory stays under the output directory
+(``release/lvgl-ai-new/``) next to the zip, so it can be inspected or run
+without extracting.  The default package is host-only: tool layer, ``user/``,
+the prebuilt host SDK, a prebuilt engine, ``bin/lvgl.cmd``, ``SKILL.md`` and
+``CONTEXT.md``.  LVGL source, third-party source, sessions, tests and chip
+adapter trees never enter the package.
 
 Smoke runs inside the staging directory from an unrelated working directory
 before the zip is written: ``--no-build``, a prebuilt build, and the web
@@ -14,7 +16,7 @@ server.  ``--skip-smoke`` exists only for development.
 Usage::
 
     python -I core/tools/release.py
-    python -I core/tools/release.py --lvgl 9.6 --out dist --json
+    python -I core/tools/release.py --lvgl 9.6 --out release --json
 """
 
 from __future__ import annotations
@@ -58,7 +60,7 @@ VERSION_SCHEMA = "lvgl-ai-version-v1"
 DEFAULT_LVGL = paths.DEFAULT_LVGL_VERSION
 SMOKE_SCENARIO = Path("user") / "scenarios" / "settings.json"
 FORBIDDEN_TOP_LEVEL = {
-    ".git", "chip-adapt", "dist", "lvgl-src", "patches", "sessions",
+    ".git", "chip-adapt", "release", "lvgl-src", "patches", "sessions",
     "tests", "third_party", ".scratch",
 }
 FORBIDDEN_ANY_LEVEL = {"__pycache__"}
@@ -557,11 +559,10 @@ def release(
             force=True,
         )
     with tempfile.TemporaryDirectory(prefix="lvgl-ai-release-") as raw:
-        staging = Path(raw)
-        package = staging / PACKAGE_DIR_NAME
+        staging_package = Path(raw) / PACKAGE_DIR_NAME
         staged = stage_package(
             repo_root=repo_root,
-            package=package,
+            package=staging_package,
             sdk_dir=sdk_dir,
             lvgl_version=lvgl_version,
             tool_version=tool_version,
@@ -569,12 +570,21 @@ def release(
             compiler_version=compiler_version,
         )
         smoke_report = (
-            smoke_package(package, lvgl_version) if smoke else None
+            smoke_package(staging_package, lvgl_version) if smoke else None
         )
-        purge_caches(package)
-        clean_build_dir(package, lvgl_version)
-        check_hygiene(package, repo_root)
+        purge_caches(staging_package)
+        clean_build_dir(staging_package, lvgl_version)
+        check_hygiene(staging_package, repo_root)
+
+        # The release directory is itself browsable: keep the unpacked skill
+        # directory next to the zip so users and agents can inspect or run it
+        # without extracting first.
         out_dir.mkdir(parents=True, exist_ok=True)
+        package = out_dir / PACKAGE_DIR_NAME
+        if package.exists():
+            shutil.rmtree(package)
+        shutil.move(str(staging_package), str(package))
+
         zip_path = out_dir / f"lvgl-ai-{tool_version}-{lvgl_version}.zip"
         zip_hash = build_zip(package, zip_path)
         hashes = _file_hashes(package)
@@ -622,6 +632,7 @@ def release(
         encoding="utf-8",
     )
     return {
+        "package": str(package),
         "zip": str(zip_path),
         "sha256": zip_hash,
         "sha256_file": str(sha_path),
@@ -651,7 +662,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--out",
         type=Path,
         default=None,
-        help="output directory (default: <repo>/dist)",
+        help="output directory (default: <repo>/release)",
     )
     parser.add_argument(
         "--sdk",
@@ -687,7 +698,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     repo = (args.repo_root or REPO_ROOT).resolve()
     sdk_dir = args.sdk or (repo / "sdk" / args.lvgl)
-    out_dir = args.out or (repo / "dist")
+    out_dir = args.out or (repo / "release")
     try:
         summary = release(
             repo_root=repo,
@@ -704,6 +715,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps(summary, ensure_ascii=False), flush=True)
     else:
+        print(f"[release] package: {summary['package']}")
         print(f"[release] zip: {summary['zip']}")
         print(f"[release] sha256: {summary['sha256']}")
         print(f"[release] manifest: {summary['manifest']}")

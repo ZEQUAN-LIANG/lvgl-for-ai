@@ -9,7 +9,7 @@ sessions/
 !/third_party/README.md
 /build/
 /sdk/
-/dist/
+/release/
 /chip-adapt/vendor/*
 !/chip-adapt/vendor/README.md
 /chip-adapt/exports/

@@ -25,7 +25,7 @@
 - `chip-adapt/exports/`：导出生成的 SDK 工程副本。
 - `sessions/`：运行时生成的会话证据。
 - `sdk/<version>/`：预编译宿主 SDK，由 `core/tools/export_sdk.py` 生成。
-- `dist/`：发布 zip、sha256 与 release manifest，由 `core/tools/release.py` 生成。
+- `release/`：发布 zip、sha256 与 release manifest，由 `core/tools/release.py` 生成。
 - `.scratch/tmp/`：下载缓存与临时目录（由下载脚本按需创建）。
 - 预编译 engine、Python 第三方依赖（项目只使用标准库，**不需要 `pip install`**）；双击启动器 exe 是随仓库提供的例外。
 
@@ -146,8 +146,8 @@ python -I core/tools/lvgl.py run --scenario user/scenarios/settings.json --json
 python -I core/tools/lvgl.py report --latest --log-tail 5
 python -I core/tools/lvgl.py serve
 
-# 生成发布 zip、sha256 与 release manifest（默认 dist/）
-python -I core/tools/release.py --out dist --json
+# 生成发布 zip、sha256 与 release manifest（默认 release/）
+python -I core/tools/release.py --out release --json
 
 # 网页端（固定 127.0.0.1:8765）
 python -I core/web.py
@@ -160,7 +160,7 @@ python -I core/tools/new_app.py myapp --dry-run
 
 构建方式自动选择：`lvgl-src/<version>` 存在时走 CMake 源码构建；源码缺失且
 `sdk/<version>` 存在时走预编译构建；`--prebuilt` / `--source` 可显式覆盖。实际选择
-写在会话 `build.log`。`sdk/`、`dist/` 都是构建产物，不进入 Git。
+写在会话 `build.log`。`sdk/`、`release/` 都是构建产物，不进入 Git。
 
 其他已支持的 LVGL 版本：9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3。用 `--lvgl <version>` 选择，并用 `fetch_lvgl.py --version <version>` 下载对应源码。
 
@@ -192,7 +192,7 @@ python -I core/tools/new_app.py myapp --dry-run
 | `third_party/` | zlib / libpng 源码（按需下载，Git 忽略） |
 | `build/` | engine 构建产物（Git 忽略） |
 | `sdk/` | 预编译宿主 SDK（Git 忽略；由 `export_sdk.py` 生成） |
-| `dist/` | 发布 zip、sha256 与 release manifest（Git 忽略） |
+| `release/` | 解包后的 skill 目录 `lvgl-ai-new/`、发布 zip、sha256 与 release manifest（Git 忽略） |
 | `bin/` | `lvgl.cmd` 统一入口包装脚本 |
 | `sessions/` | 会话证据（Git 忽略） |
 | `docs/` | 应用变体与场景/服务端常量的索引指针页；SiFli 能力索引见 `chip-adapt/docs/sifli.html` |

@@ -115,10 +115,13 @@ python -I core/tools/lvgl.py serve
 `core/tools/release.py` 产出可分发 skill zip、`.sha256` 和 release manifest：
 
 ```bash
-# 默认 9.6；缺少 SDK 时自动导出
-python -I core/tools/release.py --out dist --json
+# 默认 9.6；缺少 SDK 时自动导出；产物在 release/
+python -I core/tools/release.py --out release --json
 ```
 
+`release/` 目录同时保留解包后的 skill 目录 `release/lvgl-ai-new/`（含 `SKILL.md`、
+`CONTEXT.md`、`core/`、`user/`、`sdk/`、`bin/`、`VERSION.json`），以及同名 zip、
+`.sha256` 和 release manifest；可以直接在 `release/lvgl-ai-new/` 里运行，不必先解压。
 包内包含 `core/`、`user/`、`sdk/<version>/`、预编译 engine、`bin/lvgl.cmd`、
 `SKILL.md`、`CONTEXT.md`、`VERSION.json` 与 `licenses/`。LVGL 源码、`third_party/`、
 `sessions/`、测试目录、`chip-adapt/vendor`、`chip-adapt/exports`、构建中间物和开发机
