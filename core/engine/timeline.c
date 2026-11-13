@@ -2,6 +2,7 @@
 
 #include "json.h"
 
+#include <errno.h>
 #include <string.h>
 
 static void begin_row(const timeline_t * timeline, const char * type)
@@ -40,7 +41,9 @@ bool timeline_init(timeline_t * timeline,
     snprintf(path, sizeof(path), "%s/timeline.ndjson", session_dir);
     timeline->out = fopen(path, "w");
     if(timeline->out == NULL) {
-        fprintf(stderr, "[engine] cannot write %s\n", path);
+        int saved = errno;
+        fprintf(stderr, "[engine] cannot write %s: %s\n", path,
+                strerror(saved));
         return false;
     }
     timeline->enabled = true;

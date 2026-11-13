@@ -1,5 +1,6 @@
 #include "frame_diff.h"
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,7 +19,9 @@ static bool open_writer(frame_diff_t * diff,
     snprintf(path, sizeof(path), "%s/%s", session_dir, filename);
     diff->out = fopen(path, "w");
     if(diff->out == NULL) {
-        fprintf(stderr, "[engine] cannot write %s\n", path);
+        int saved = errno;
+        fprintf(stderr, "[engine] cannot write %s: %s\n", path,
+                strerror(saved));
         return false;
     }
     diff->enabled = true;

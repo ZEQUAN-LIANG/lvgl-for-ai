@@ -86,7 +86,7 @@ http://127.0.0.1:8765/
 - 技术细节（manifest、checks、原始 diff、engine.log、build.log）默认折叠在 `<details>` 中。
 - 只读像素 diff 默认关闭；打开后按 `frame_diffs.ndjson`（以及可选的参考图 diff）覆盖显示 bbox，只作证据。
 - 网页端只通过 `Runtime` / `Recording` 工作，没有第二套协议客户端；live 使用独立 Runtime 和独立 engine 进程。
-- 测试与录制均每 33 ms 推进一次虚拟时间（约 30 fps）；PNG 编码由 engine 的 3 个后台 worker 完成，不阻塞 tick。无输入时 timer、toast 和动画继续运行。录制/测试默认 `record_changed_only=True`，只保留画面发生变化的帧，HUD 时间使用虚拟时间 `t_ms`。
+- 测试与录制均每 33 ms 推进一次虚拟时间（约 30 fps）；PNG 编码由 engine 的 3 个后台 worker 完成，不阻塞 tick。无输入时 timer、toast 和动画继续运行。录制固定只保留画面发生变化的帧（没有逐帧开关），HUD 时间使用虚拟时间 `t_ms`。
 - 测试/录制预览走 raw 帧流：engine 写 `live.rgba`，页面通过 `GET /api/live/stream` 接到 canvas，不再轮询 PNG。`live.rgba` 是临时预览文件，停止时删除，不是证据。
 - Windows 下 engine 与 cmake/ninja 子进程使用 `CREATE_NO_WINDOW`；从 `web.pyw` / `pythonw` 启动时不会弹出控制台黑框，切换应用也不会闪。
 - 非 Windows、无浏览器环境不影响服务启动；`web.py` 默认不自动打开浏览器，需要时加 `--open`；`web.pyw` 会自动打开。
@@ -158,7 +158,7 @@ python -I core/cli.py --scenario user/scenarios/settings.json --json
 scenario 顶层可选 `"display": {"width": W, "height": H}`（`1..4096`）；CLI 把宽高传给
 engine，不写时使用默认 800×600。显式 `--app` 只覆盖应用，不覆盖场景的 `display`。
 
-`--record-changed-only` 只保存相对上一张保留帧发生 RGB 变化的帧；默认关闭，网页 live 默认开启。开启后 `frame_count` 是保留帧数，静态画面不消耗 `max_frames` 预算；live 预览也遵循同一变化门控。
+录制固定只保存相对上一张保留帧发生 RGB 变化的帧（CLI 与网页 live 一致，没有逐帧开关）。`frame_count` 是保留帧数，静态画面不消耗 `max_frames` 预算，人类与 AI 都不必读重复帧；live 预览也遵循同一变化门控。
 
 录制默认使用 3 个后台 worker 编码 PNG：主线程把保留帧复制到有界内存队列，worker 用 libpng 快速模式编码后发布到 `frames/`；`.encode/` 只保存编码中的临时 PNG。`start()` 返回时首帧 PNG 已落盘；网页 live 的录制与测试都以 33 ms（约 30fps）推进，运行中 `frames/` 可能滞后于 `timeline.ndjson` 的 frame 行，`stop()` 会等待全部编码完成再写 `end` 行。内存队列默认最多 256 MiB，可用 `LVGL_AI_ENCODE_BUDGET_BYTES` 覆盖；超过预算时主线程等待编码，队列为空时允许单个超预算帧。
 
@@ -193,7 +193,7 @@ Python 侧的稳定入口是 `lvgl_ai.summarize_session(session, log_tail_lines=
 
 ## 等待画面稳定
 
-`Runtime.wait_stable(max_ms, stable_frames)` 以 16 ms 步进调用引擎 `wait`，累计连续 `changed=false` 的次数，达到 `stable_frames` 或 `max_ms` 上限后返回 `waited_ms` / `stable_frames` / `stable`；返回值是证据，不是 pass/fail。它只依据 `wait` 回执的 `changed` 布尔字段，与 `--record-changed-only` 的保留帧数无关，因此保留帧数为 0 不会被当成稳定。
+`Runtime.wait_stable(max_ms, stable_frames)` 以 16 ms 步进调用引擎 `wait`，累计连续 `changed=false` 的次数，达到 `stable_frames` 或 `max_ms` 上限后返回 `waited_ms` / `stable_frames` / `stable`；返回值是证据，不是 pass/fail。它只依据 `wait` 回执的 `changed` 布尔字段，与变化帧门控的保留帧数无关，因此保留帧数为 0 不会被当成稳定。
 
 `changed` 表示该次 `wait` 期间至少有一次 display flush。9.x 与 8.x 的实现边界相同：`core/engine/adapter_9x.c` 和 `core/engine/adapter_8x.c` 都在 flush callback 里设置同一个 `refresh_painted` flag，`core/engine/session.c` 把 flag 汇总进 `wait` / `wait frames` 回执；`tick`、`pointer` 等其它回执不带该字段。支持的 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3 都具备该信号，不需要版本降级。缺 `changed` 字段的旧 engine 会在第一次轮询时报错并提示 `--build` 重建，不会无限等待。
 

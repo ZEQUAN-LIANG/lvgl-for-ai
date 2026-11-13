@@ -8,6 +8,7 @@ rejected request cannot corrupt the previous file or leave a new crop behind.
 
 from __future__ import annotations
 
+import base64
 import json
 import tempfile
 import unittest
@@ -70,10 +71,9 @@ class AnnotationApiTest(unittest.TestCase):
         )
 
         region = note["regions"][0]
-        image = region["image"]
-        self.assertRegex(image, r"^regions/[A-Za-z0-9][A-Za-z0-9._-]*\.png$")
-        self.assertTrue((self.session / image).is_file())
-        filename = image.rsplit("/", 1)[-1]
+        self.assertRegex(region["image"], r"^regions/[A-Za-z0-9][A-Za-z0-9._-]*\.png$")
+        self.assertTrue((self.session / region["image"]).is_file())
+        filename = region["image"].rsplit("/", 1)[-1]
         status, headers, body = self.harness.request(
             "GET", f"/regions/{SESSION_ID}/{filename}"
         )
@@ -112,6 +112,55 @@ class AnnotationApiTest(unittest.TestCase):
             payload["annotations"],
             {"schema": "lvgl-ai-annotations-v1", "notes": []},
         )
+
+    def test_delete_note_removes_it_and_its_legacy_crop(self) -> None:
+        regions = self.session / "regions"
+        regions.mkdir()
+        (regions / "old-0.png").write_bytes(b"\x89PNG\r\n\x1a\nold")
+        self.annotations_path.write_text(
+            json.dumps(
+                {
+                    "schema": "lvgl-ai-annotations-v1",
+                    "notes": [
+                        {
+                            "id": "old",
+                            "frame_no": 1,
+                            "t_ms": 0,
+                            "regions": [
+                                {
+                                    "x": 0, "y": 0, "w": 1, "h": 1,
+                                    "image": "regions/old-0.png",
+                                }
+                            ],
+                            "tags": [],
+                            "text": "old",
+                        },
+                        valid_note(id="keep"),
+                    ],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        status, _, payload = self.harness.json(
+            "DELETE", f"/api/sessions/{SESSION_ID}/annotations/old"
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(payload["deleted"], "old")
+        self.assertEqual(
+            [note["id"] for note in payload["annotations"]["notes"]], ["keep"]
+        )
+        self.assertFalse((regions / "old-0.png").exists())
+        saved = json.loads(self.annotations_path.read_text(encoding="utf-8"))
+        self.assertEqual([note["id"] for note in saved["notes"]], ["keep"])
+
+    def test_delete_unknown_note_is_404(self) -> None:
+        status, _, payload = self.harness.json(
+            "DELETE", f"/api/sessions/{SESSION_ID}/annotations/missing"
+        )
+        self.assertEqual(status, 404, payload)
+        self.assertEqual(payload["error"]["code"], "unknown_annotation")
+        self.assertFalse(self.annotations_path.exists())
 
     def test_document_shaped_payload_is_not_an_append_path(self) -> None:
         # The web API only appends one dragged-box note; a whole document is
@@ -166,7 +215,6 @@ class AnnotationApiTest(unittest.TestCase):
                 "x": 0, "y": 0, "w": 1, "h": 1,
                 "image": "regions/user-supplied.png",
             }]),
-            valid_note(regions=[{"x": 10, "y": 20, "w": 30, "h": 40}]),
             valid_note(tags="layout"),
             valid_note(tags=[1]),
             valid_note(text=3),
@@ -251,7 +299,7 @@ class AnnotationApiTest(unittest.TestCase):
         status, _, payload = self.harness.json(
             "POST",
             f"/api/sessions/{SESSION_ID}/annotations",
-            raw=b"x" * (1024 * 1024 + 1),
+            raw=b"x" * (12 * 1024 * 1024 + 1),
             headers={"Content-Type": "application/json"},
         )
         self.assertEqual(status, 413, payload)
@@ -271,11 +319,6 @@ class AnnotationApiTest(unittest.TestCase):
     def test_error_codes_match_the_http_contract(self) -> None:
         cases = [
             (valid_note(frame_no=0), 400, "invalid_annotation"),
-            (
-                valid_note(regions=[{"x": 10, "y": 20, "w": 30, "h": 40}]),
-                400,
-                "region_image_error",
-            ),
         ]
         for note, expected_status, expected_code in cases:
             with self.subTest(code=expected_code):
@@ -318,7 +361,7 @@ class AnnotationApiTest(unittest.TestCase):
         self.assertEqual(status, 409, payload)
         self.assertEqual(payload["error"]["code"], "annotations_unreadable")
 
-    def test_write_failure_maps_to_500_and_removes_new_crops(self) -> None:
+    def test_write_failure_maps_to_500_and_leaves_no_file(self) -> None:
         with mock.patch.object(Path, "replace", side_effect=OSError("disk full")):
             status, _, payload = self.harness.json(
                 "POST",
@@ -328,27 +371,6 @@ class AnnotationApiTest(unittest.TestCase):
         self.assertEqual(status, 500, payload)
         self.assertEqual(payload["error"]["code"], "annotations_write_error")
         self.assertFalse(self.annotations_path.exists())
-        self.assertEqual(list((self.session / "regions").glob("*.png")), [])
-
-    def test_crop_write_failure_maps_to_internal_error(self) -> None:
-        real_write_bytes = Path.write_bytes
-
-        def flaky_write_bytes(path, data):
-            if path.parent.name == "regions" and path.suffix == ".png":
-                raise OSError("disk full")
-            return real_write_bytes(path, data)
-
-        with mock.patch.object(Path, "write_bytes", flaky_write_bytes):
-            status, _, payload = self.harness.json(
-                "POST",
-                f"/api/sessions/{SESSION_ID}/annotations",
-                payload=valid_note(id="n1"),
-            )
-        self.assertEqual(status, 500, payload)
-        self.assertEqual(payload["error"]["code"], "internal_error")
-        self.assertEqual(payload["error"]["message"], "disk full")
-        self.assertFalse(self.annotations_path.exists())
-        self.assertEqual(list((self.session / "regions").glob("*.png")), [])
 
 
 class WriteNoteTransactionTest(unittest.TestCase):
@@ -362,47 +384,9 @@ class WriteNoteTransactionTest(unittest.TestCase):
         self.recording = Recording.open(self.session)
         self.annotations_path = self.session / "annotations.json"
 
-    def _crop_names(self) -> list[str]:
-        regions = self.session / "regions"
-        if not regions.is_dir():
-            return []
-        return sorted(path.name for path in regions.iterdir())
-
-    def _seed_existing_note(self) -> None:
-        regions = self.session / "regions"
-        regions.mkdir(exist_ok=True)
-        (regions / "keep-0.png").write_bytes(b"\x89PNG\r\n\x1a\nseed")
-        self.annotations_path.write_text(
-            json.dumps(
-                {
-                    "schema": "lvgl-ai-annotations-v1",
-                    "notes": [
-                        {
-                            "id": "keep",
-                            "frame_no": 1,
-                            "t_ms": 0,
-                            "regions": [
-                                {
-                                    "x": 0,
-                                    "y": 0,
-                                    "w": 1,
-                                    "h": 1,
-                                    "image": "regions/keep-0.png",
-                                }
-                            ],
-                            "tags": [],
-                            "text": "keep",
-                        }
-                    ],
-                }
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-
     # ---- success --------------------------------------------------------
 
-    def test_success_returns_document_and_note_and_writes_crops(self) -> None:
+    def test_success_returns_document_and_note(self) -> None:
         document, saved = write_note(self.recording, valid_note(id="n1"))
 
         self.assertEqual(document["schema"], "lvgl-ai-annotations-v1")
@@ -426,10 +410,9 @@ class WriteNoteTransactionTest(unittest.TestCase):
 
     # ---- rejected writes ------------------------------------------------
 
-    def test_conflict_keeps_the_document_and_writes_no_crops(self) -> None:
+    def test_conflict_keeps_the_document(self) -> None:
         write_note(self.recording, valid_note(id="dup"))
         before = self.annotations_path.read_bytes()
-        crops_before = self._crop_names()
 
         with self.assertRaises(AnnotationConflict) as caught:
             write_note(self.recording, valid_note(id="dup", text="again"))
@@ -437,7 +420,6 @@ class WriteNoteTransactionTest(unittest.TestCase):
         self.assertEqual(caught.exception.code, "duplicate_annotation_id")
         self.assertEqual(str(caught.exception), "duplicate note id: dup")
         self.assertEqual(self.annotations_path.read_bytes(), before)
-        self.assertEqual(self._crop_names(), crops_before)
 
     def test_invalid_payloads_raise_invalid_annotation_and_write_nothing(
         self,
@@ -457,71 +439,10 @@ class WriteNoteTransactionTest(unittest.TestCase):
                     write_note(self.recording, payload)
                 self.assertEqual(caught.exception.code, "invalid_annotation")
                 self.assertFalse(self.annotations_path.exists())
-                self.assertEqual(self._crop_names(), [])
+                self.assertFalse((self.session / "regions").exists())
 
-    def test_bad_region_raises_region_image_error_before_any_crop(self) -> None:
-        with self.assertRaises(AnnotationError) as caught:
-            write_note(
-                self.recording,
-                valid_note(
-                    id="far",
-                    regions=[{"x": 10, "y": 20, "w": 30, "h": 40}],
-                ),
-            )
-        self.assertEqual(caught.exception.code, "region_image_error")
-        self.assertFalse(self.annotations_path.exists())
-        self.assertFalse((self.session / "regions").exists())
-
-    def test_crop_write_failure_removes_partial_crops(self) -> None:
-        payload = valid_note(
-            id="two",
-            regions=[
-                {"x": 0, "y": 0, "w": 1, "h": 1},
-                {"x": 1, "y": 1, "w": 1, "h": 1},
-            ],
-        )
-        real_write_bytes = Path.write_bytes
-        crop_writes = {"count": 0}
-
-        def flaky_write_bytes(path, data):
-            if path.parent.name == "regions" and path.suffix == ".png":
-                crop_writes["count"] += 1
-                if crop_writes["count"] == 2:
-                    real_write_bytes(path, b"partial")
-                    raise OSError("disk full")
-            return real_write_bytes(path, data)
-
-        with mock.patch.object(Path, "write_bytes", flaky_write_bytes):
-            with self.assertRaises(AnnotationError) as caught:
-                write_note(self.recording, payload)
-
-        self.assertEqual(caught.exception.code, "internal_error")
-        self.assertEqual(str(caught.exception), "disk full")
-        self.assertEqual(crop_writes["count"], 2)
-        self.assertFalse(self.annotations_path.exists())
-        self.assertEqual(self._crop_names(), [])
-
-    def test_document_write_failure_restores_an_overwritten_crop(self) -> None:
-        regions = self.session / "regions"
-        regions.mkdir()
-        stale = regions / "new-0.png"
-        stale.write_bytes(b"stale crop")
-        real_replace = Path.replace
-
-        def failing_replace(path, target):
-            if path.name == "annotations.json.tmp":
-                raise OSError("disk full")
-            return real_replace(path, target)
-
-        with mock.patch.object(Path, "replace", failing_replace):
-            with self.assertRaises(AnnotationError):
-                write_note(self.recording, valid_note(id="new"))
-
-        self.assertEqual(stale.read_bytes(), b"stale crop")
-        self.assertFalse(self.annotations_path.exists())
-
-    def test_document_write_failure_removes_only_new_crops(self) -> None:
-        self._seed_existing_note()
+    def test_document_write_failure_keeps_the_previous_document(self) -> None:
+        write_note(self.recording, valid_note(id="keep"))
         before = self.annotations_path.read_bytes()
         real_replace = Path.replace
 
@@ -536,7 +457,10 @@ class WriteNoteTransactionTest(unittest.TestCase):
 
         self.assertEqual(caught.exception.code, "annotations_write_error")
         self.assertEqual(self.annotations_path.read_bytes(), before)
-        self.assertEqual(self._crop_names(), ["keep-0.png"])
+        self.assertEqual(
+            [path.name for path in (self.session / "regions").glob("*.png")],
+            ["keep-0.png"],
+        )
 
     # ---- serialization --------------------------------------------------
 
@@ -561,6 +485,170 @@ class WriteNoteTransactionTest(unittest.TestCase):
             json.loads(self.annotations_path.read_text(encoding="utf-8")),
             saved,
         )
+
+
+def range_note(**overrides):
+    note = {
+        "frame_no": 2,
+        "t_ms": 16,
+        "frame_start": 1,
+        "frame_end": 3,
+        "anchors": [
+            {
+                "frame_no": 2,
+                "t_ms": 16,
+                "regions": [{"x": 0, "y": 0, "w": 2, "h": 2}],
+            },
+            {
+                "frame_no": 3,
+                "t_ms": 32,
+                "regions": [{"x": 1, "y": 1, "w": 2, "h": 2}],
+            },
+        ],
+        "tags": ["motion"],
+        "text": "动画应该匀速，不要跳",
+    }
+    note.update(overrides)
+    return note
+
+
+class RangeAnnotationTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        self.session = make_web_session(self.root)
+        self.harness = WebHarness(self.root)
+        self.addCleanup(self.harness.close)
+        self.annotations_path = self.session / "annotations.json"
+
+    def test_range_note_keeps_anchors_and_derives_legacy_regions(self) -> None:
+        status, _, payload = self.harness.json(
+            "POST",
+            f"/api/sessions/{SESSION_ID}/annotations",
+            payload=range_note(),
+        )
+        self.assertEqual(status, 201, payload)
+        note = payload["note"]
+        self.assertEqual(note["frame_start"], 1)
+        self.assertEqual(note["frame_end"], 3)
+        self.assertEqual(len(note["anchors"]), 2)
+        self.assertEqual(note["regions"], note["anchors"][0]["regions"])
+        for anchor in note["anchors"]:
+            for region in anchor["regions"]:
+                self.assertRegex(
+                    region["image"],
+                    r"^regions/[A-Za-z0-9][A-Za-z0-9._-]*\.png$",
+                )
+                self.assertTrue((self.session / region["image"]).is_file())
+        self.assertEqual(
+            Recording.open(self.session).annotations["notes"], [note]
+        )
+
+    def test_anchor_annotated_frame_is_saved_and_served(self) -> None:
+        frame = sorted((self.session / "frames").glob("*.png"))[0]
+        data_url = "data:image/png;base64," + base64.b64encode(
+            frame.read_bytes()
+        ).decode("ascii")
+        note = range_note(
+            anchors=[{
+                "frame_no": 2,
+                "t_ms": 16,
+                "regions": [{"x": 0, "y": 0, "w": 2, "h": 2}],
+                "annotated": data_url,
+            }]
+        )
+        status, _, payload = self.harness.json(
+            "POST",
+            f"/api/sessions/{SESSION_ID}/annotations",
+            payload=note,
+        )
+        self.assertEqual(status, 201, payload)
+        saved = payload["note"]["anchors"][0]
+        self.assertRegex(
+            saved["annotated"],
+            r"^regions/[A-Za-z0-9][A-Za-z0-9._-]*-annotated\.png$",
+        )
+        self.assertTrue((self.session / saved["annotated"]).is_file())
+        status, headers, _ = self.harness.request(
+            "GET",
+            f"/regions/{SESSION_ID}/" + saved["annotated"].rsplit("/", 1)[-1],
+        )
+        self.assertEqual(status, 200)
+        self.assertIn("image/png", headers["Content-Type"].lower())
+
+    def test_invalid_annotated_frame_is_rejected(self) -> None:
+        note = range_note(
+            anchors=[{
+                "frame_no": 2,
+                "t_ms": 16,
+                "regions": [],
+                "annotated": "data:image/png;base64,bm90IGEgcG5n",
+            }]
+        )
+        status, _, payload = self.harness.json(
+            "POST",
+            f"/api/sessions/{SESSION_ID}/annotations",
+            payload=note,
+        )
+        self.assertEqual(status, 400, payload)
+        self.assertEqual(payload["error"]["code"], "invalid_annotation")
+        self.assertFalse(self.annotations_path.exists())
+
+    def test_range_is_derived_from_anchors_when_missing(self) -> None:
+        note = range_note()
+        del note["frame_start"]
+        del note["frame_end"]
+        note["anchors"][0]["frame_no"] = 2
+        note["frame_no"] = 2
+        status, _, payload = self.harness.json(
+            "POST",
+            f"/api/sessions/{SESSION_ID}/annotations",
+            payload=note,
+        )
+        self.assertEqual(status, 201, payload)
+        self.assertEqual(payload["note"]["frame_start"], 2)
+        self.assertEqual(payload["note"]["frame_end"], 3)
+
+    def test_range_without_anchors_is_a_valid_text_note(self) -> None:
+        note = range_note(anchors=[], frame_no=1, t_ms=0)
+        status, _, payload = self.harness.json(
+            "POST",
+            f"/api/sessions/{SESSION_ID}/annotations",
+            payload=note,
+        )
+        self.assertEqual(status, 201, payload)
+        self.assertEqual(payload["note"]["anchors"], [])
+        self.assertEqual(payload["note"]["regions"], [])
+
+    def test_bad_ranges_and_anchors_are_rejected(self) -> None:
+        missing_end = range_note(frame_start=2)
+        del missing_end["frame_end"]
+        cases = [
+            range_note(frame_start=4, frame_end=3),
+            missing_end,
+            range_note(anchors=[{"frame_no": 9, "t_ms": 0, "regions": []}]),
+            range_note(frame_no=3),
+            range_note(anchors=[{
+                "frame_no": 2, "t_ms": 16, "regions": [],
+                "extra": 1,
+            }]),
+            range_note(anchors=[{
+                "frame_no": 2, "t_ms": 16,
+                "regions": [{"x": 0, "y": 0, "w": 1, "h": 1,
+                             "image": "regions/x.png"}],
+            }]),
+        ]
+        for note in cases:
+            with self.subTest(note=str(note)[:100]):
+                status, _, payload = self.harness.json(
+                    "POST",
+                    f"/api/sessions/{SESSION_ID}/annotations",
+                    payload=note,
+                )
+                self.assertEqual(status, 400, payload)
+                self.assertEqual(payload["error"]["code"], "invalid_annotation")
+                self.assertFalse(self.annotations_path.exists())
 
 
 if __name__ == "__main__":

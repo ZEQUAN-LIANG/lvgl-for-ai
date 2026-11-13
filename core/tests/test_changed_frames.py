@@ -181,7 +181,7 @@ class ChangedFramesTest(unittest.TestCase):
     def test_changed_only_keeps_reference_rows_aligned_with_retained_frames(
         self,
     ) -> None:
-        baseline = self._runtime(build=True)
+        baseline = self._runtime(build=True, record_changed_only=False)
         baseline.start()
         baseline.wait(16)
         baseline.stop()

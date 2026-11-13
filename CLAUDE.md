@@ -22,7 +22,7 @@
 # 跑 scenario（默认 --build、--record、headless）
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json --json
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json --record-changed-only
+python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json --idle
 
 # 只读会话证据（不启动 engine / 网页）
 python -I core/session_report.py --latest --log-tail 3
@@ -62,7 +62,7 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 ```
 
 - `--no-build` 复用 `build/lvgl_<token>/lvgl_engine.exe`，缺失时报 `EngineNotFound`；默认 `--build` 会重新配置/编译 `user/app`。
-- `--record-changed-only` 只在画面变化时写 PNG 与 timeline frame / diff 行；`frame_no` 保持连续。
+- 录制只保存画面变化的帧：只在画面变化时写 PNG 与 timeline frame / diff 行；`frame_no` 保持连续。CLI 与网页录制都没有逐帧开关；无变化帧不进入磁盘、时间轴和 AI 摘要。
 - `session_report.py` 与 CLI `--json` 共用 `summarize_session`；只给证据，不做判定。视觉输出必须显式给 `--out`，且不能写入会话证据目录。
 - 环境变量：`LVGL_AI_LVGL_VERSION`（默认 9.6）、`LVGL_AI_LVGL_SRC`、`LVGL_AI_ZLIB_SRC`、`LVGL_AI_LIBPNG_SRC`、`LVGL_AI_SESSIONS_ROOT`、`LVGL_AI_MAX_FRAMES`、`LVGL_AI_MAX_LOG_BYTES`、`LVGL_AI_ENCODE_BUDGET_BYTES`、`LVGL_AI_DEMO`、`LVGL_AI_USER_APP_DIR`。
 - 构建依赖：CMake + Ninja + GCC；首次构建需要拉取 `third_party/` 的 zlib/libpng 源码。
@@ -87,7 +87,7 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 
 **多版本**：`adapter_9x.c` / `adapter_8x.c` 是唯一 include LVGL / lodepng 的文件；engine 其余部分只依赖 `adapter.h`。PNG 编码在 `png_writer.c`，只依赖 libpng/zlib。9.x 用 `lv_indev_create` / `lv_indev_set_read_cb`，8.x 用 `lv_indev_drv_*`。9.2+ 有对象名；9.1 与 8.x 的 `hit` 为空，只能看 `hit_class`。支持 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3；跨版本只比较事件语义与 session 文件集合，不比较像素。
 
-**证据**：`sessions/<id>/` 包含 `manifest.json`（`lvgl-ai-session-v1`，status 只有 `ok` / `build_error` / `link_error` / `crash` / `harness_error`）、`timeline.ndjson`、`frame_diffs.ndjson`、`frames/`、`snapshots/`、`engine.log`、`build.log`、`annotations.json`。录制期间有临时 `.encode/`，正常停止后删除。`record=false` 不写 frames / timeline / frame_diffs，只写临时 `live.rgba`。默认上限 600 帧、日志 16 MB。
+**证据**：`sessions/<id>/` 包含 `manifest.json`（`lvgl-ai-session-v1`，status 只有 `ok` / `build_error` / `link_error` / `crash` / `harness_error`）、`timeline.ndjson`、`frame_diffs.ndjson`、`frames/`、`snapshots/`、`engine.log`、`build.log`、`annotations.json`、`whiteboards.json`、`whiteboards/`。标注是单帧（`frame_no` + `regions`）或时间区间（`frame_start`..`frame_end` + `anchors[]`，每个锚点一帧的 `regions`）。每个 region 同时保存 bbox、原始局部图（`regions/<note>-aN-rM.png`）和带标注局部图（`...-annotated.png`）；每个锚点另有整帧原图与带标注整帧。白板有 `frame` / `range` / `global` 三种 scope，保存即生效；图片在 `whiteboards/`，文字在 `text` / `labels`。AI 读取顺序：`summarize_session` 摘要里的 `annotations` / `whiteboards` 索引（`frame_images`、`annotated`、`regions`、`images`、`text`、`labels`）→ 先读文字和 bbox → 按需打开整帧或局部图。录制期间有临时 `.encode/`，正常停止后删除。`record=false` 不写 frames / timeline / frame_diffs，只写临时 `live.rgba`。默认上限 600 帧、日志 16 MB。
 
 ## 目录与产物
 

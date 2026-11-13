@@ -110,6 +110,7 @@ class RuntimeIntegrationTest(unittest.TestCase):
             build=True,
             width=640,
             height=480,
+            record_changed_only=False,
             sessions_root=self.sessions_root,
         )
         self.addCleanup(rt.stop)

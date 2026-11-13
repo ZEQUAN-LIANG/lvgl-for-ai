@@ -195,10 +195,11 @@ class Runtime:
 
     One instance owns exactly one session; create a new Runtime for another
     run. ``build=True`` (the default) reconfigures when needed and rebuilds
-    ``lvgl_engine`` before launch. ``record=True`` keeps frames.
-    ``record_changed_only=True`` compares each refreshed framebuffer with the
-    previous retained frame and skips pixel-identical ones; frame numbers stay
-    contiguous and ``max_frames`` counts retained frames. ``live_frame=True``
+    ``lvgl_engine`` before launch. ``record=True`` keeps frames and records
+    only frames whose pixels differ from the previous retained frame;
+    ``record_changed_only=False`` is an internal test seam that keeps
+    identical frames too. Frame numbers stay contiguous and ``max_frames``
+    counts retained frames. ``live_frame=True``
     writes an overwritten ``live.rgba`` raw preview for the web stream; it can
     be combined with ``record=True`` and is never an evidence artifact.
     ``record=False`` with ``live_frame=True`` keeps only that preview file, so
@@ -223,7 +224,7 @@ class Runtime:
         build: bool = True,
         record: bool = True,
         live_frame: bool = False,
-        record_changed_only: bool = False,
+        record_changed_only: bool = True,
         headless: bool = True,
         window: bool = False,
         sessions_root: str | Path | None = None,
