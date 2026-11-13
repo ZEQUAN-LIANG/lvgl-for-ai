@@ -15,7 +15,8 @@ CLI / AI ───────── HTTP JSON ───┼── broker（独�
 - 人类和 AI/CLI 走同一个 `/api/flash` job，底层官方 `sftool.exe`；页面通过
   `/api/events` 和 `/api/jobs/<id>/stream` 显示进度与操作者（WEB/AI/CLI）。
 - 网页是终端优先的 Tabby 风格：顶部只有「终端 / 活动」标签；烧录 dock 位于终端上方。
-- 终端直接键盘输入，无发送栏；默认本地回显，标签栏「回显」可关；Enter 发 CRLF，
+- 终端直接键盘输入，无发送栏；默认关闭本地回显（板端 finsh 已回显），标签栏「回显」
+  可开；Enter 发 CR（RT-Thread finsh 用 CR 结束行，发 CRLF 会打印两次 `msh />`），
   Ctrl+L 清屏。
 - `app` 不手填，从 project 路径推导；`/api/suggest` 自动填 project / build / port / baud。
 

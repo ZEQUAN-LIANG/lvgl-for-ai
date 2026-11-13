@@ -77,12 +77,13 @@
   term.open($("terminal"));
   term.writeln("\x1b[2m[host] SiFli Host 就绪，连接串口后开始。\x1b[0m");
 
+  // RT-Thread finsh already echoes every character. Local echo on top of it
+  // shows each keystroke twice, so keep it off unless the user opted in.
   try {
-    if (localStorage.getItem("sifli.localEcho") === "0") {
-      $("localEcho").checked = false;
-    }
+    $("localEcho").checked =
+      localStorage.getItem("sifli.localEcho") === "1";
   } catch {
-    /* localStorage can be disabled */
+    $("localEcho").checked = false;
   }
 
   // -- helpers -------------------------------------------------------
@@ -137,21 +138,50 @@
 
   let fitCanvas = null;
 
+  // xterm's real cell is taller than `fontSize * lineHeight` (it adds the
+  // font's line box), so measuring with a canvas underestimates the row
+  // height and makes the screen overflow the pane. Prefer the renderer's
+  // measured dimensions when they are available, and fall back to a canvas
+  // measurement for the first frame before the renderer has measured.
+  function measureCell() {
+    const core = term._core;
+    const measured =
+      core &&
+      core._renderService &&
+      core._renderService.dimensions &&
+      core._renderService.dimensions.css &&
+      core._renderService.dimensions.css.cell;
+    if (measured && measured.width > 0 && measured.height > 0) {
+      return { width: measured.width, height: measured.height };
+    }
+    fitCanvas = fitCanvas || document.createElement("canvas");
+    const context = fitCanvas.getContext("2d");
+    context.font = `${TERM_SIZE}px ${TERM_FONT}`;
+    return {
+      width: Math.max(6, context.measureText("M").width),
+      height: Math.max(12, Math.round(TERM_SIZE * TERM_LINE_HEIGHT)),
+    };
+  }
+
   function fitTerminal() {
     if (state.currentTab !== "terminal") return;
     const host = $("terminal");
     const rect = host.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
-    fitCanvas = fitCanvas || document.createElement("canvas");
-    const context = fitCanvas.getContext("2d");
-    context.font = `${TERM_SIZE}px ${TERM_FONT}`;
-    const cellWidth = Math.max(6, context.measureText("M").width);
-    const cellHeight = Math.max(
-      12,
-      Math.round(TERM_SIZE * TERM_LINE_HEIGHT),
+    const cell = measureCell();
+    // The canvas sits inside the host's CSS padding; subtract the real
+    // padding instead of a guessed constant, and keep a few pixels at the
+    // bottom so the input line never touches the pane edge.
+    const style = window.getComputedStyle(host);
+    const padX =
+      parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+    const padY =
+      parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+    const cols = Math.max(20, Math.floor((rect.width - padX) / cell.width));
+    const rows = Math.max(
+      6,
+      Math.floor((rect.height - padY - 8) / cell.height),
     );
-    const cols = Math.max(20, Math.floor((rect.width - 12) / cellWidth));
-    const rows = Math.max(6, Math.floor((rect.height - 12) / cellHeight));
     try {
       term.resize(cols, rows);
     } catch {
@@ -927,6 +957,8 @@
     }
   });
 
+  // RT-Thread finsh ends a line on CR alone. Sending CRLF makes it handle
+  // both characters and print the `msh />` prompt twice, so keep Enter as CR.
   term.onData((data) => {
     if (!state.connected || (state.jobRunning && state.jobKind === "flash")) {
       return;
@@ -940,8 +972,26 @@
         term.write(data);
       }
     }
-    const payload = data === "\r" ? "\r\n" : data;
-    void sendRaw(payload);
+    void sendRaw(data);
+  });
+
+  // Chinese IMEs commit a composition with Space; some browsers report that
+  // confirmation as an Enter keydown, which xterm would forward as CR and the
+  // board would answer with an extra `msh />` prompt per keystroke. Swallow
+  // Enter while composing and right after a composition ends.
+  let lastCompositionEnd = 0;
+  if (term.textarea) {
+    term.textarea.addEventListener("compositionend", () => {
+      lastCompositionEnd = performance.now();
+    });
+  }
+  term.attachCustomKeyEventHandler((event) => {
+    if (event.keyCode !== 13) return true;
+    if (event.type === "keypress") return false;
+    if (event.type !== "keydown") return true;
+    if (event.isComposing) return false;
+    if (performance.now() - lastCompositionEnd < 100) return false;
+    return true;
   });
 
   document.addEventListener("keydown", (event) => {
