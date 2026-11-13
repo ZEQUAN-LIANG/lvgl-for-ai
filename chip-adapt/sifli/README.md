@@ -1,7 +1,7 @@
 # 黄山派（SiFli SF32LB52x）适配
 
-把 `user/app/` 下的 LVGL 9.6 应用导出为黄山派 SiFli-SDK 工程。导出产物放在本目录的
-`<app>/` 子目录，不写入下载的 SDK。
+把 `user/app/` 下的 LVGL 9.6 应用导出为黄山派 SiFli-SDK 工程。导出产物放在
+`chip-adapt/exports/<app>/`，不写入下载的 SDK。
 
 ## 目标平台
 
@@ -9,44 +9,30 @@
 | --- | --- |
 | 开发板 | 立创黄山派，板名 `sf32lb52-lchspi-ulp` |
 | SoC | SF32LB52x（HCPU，RT-Thread） |
-| SDK | SiFli-SDK v2.5.1，下载到 `chip-adapt/sifli/vendor/sifli-sdk`（Gitee `SiFli/sifli-sdk`，tag `v2.5.1`） |
+| SDK | SiFli-SDK v2.5.1，下载到 `chip-adapt/vendor/sifli-sdk`（Gitee `SiFli/sifli-sdk`，`release/v2.5`） |
 | LVGL | 9.4.0（SDK 内 `external/lvgl_v9`） |
 | 屏幕 | CO5300，390x450，触摸 FT6146 |
-| 固件构建 | `cd project && scons --board=sf32lb52-lchspi-ulp -j8`（需先运行 SDK 的 `./export.ps1` / `source export.sh`） |
+| 固件构建 | 用 `host/cli.py build --app <app>`（自动导出并构建）；纯 SCons 手动方式见 `chip-adapt/README.md`；官方 `sifli-build-win` 仅作通用参考 |
 
-SDK、示例、工具链、烧录工具、原理图和数据手册都在 `vendor/`，清单见
-`vendor/README.md`；这些是外部下载物，已被 `.gitignore` 忽略，不进入版本库。
+SDK、工具链、sftool 和可选的 Web Flasher 资源都是外部下载物，清单与校验见
+`chip-adapt/vendor/README.md`；它们不进入版本库。
 
 ## 串口与烧录上位机
 
 `host/` 是黄山派的串口 + 烧录上位机（Python broker + xterm.js 网页 + CLI）：一个 broker
 独占 COM 口，网页、CLI、AI 读同一份带序号的字节流；人类和 AI/CLI 共用 `/api/flash` job，
-底层官方 `sftool.exe`。页面是终端优先的 Tabby 风格，顶部只有“终端 / 活动”标签，终端上方
-是烧录 dock（PROJECT / BUILD、构建 / 仅烧录 / 构建并烧录、进度条）；`app` 从 project
-路径推导，project / build / port / baud 由 `/api/suggest` 自动填。串口意外断开和 web
-烧录后默认自动重连；旧 `/tools/sftool/` 官方页仅保留路由，主 UI 无入口。
-
-```powershell
-# 检查/补齐依赖（pyserial、xterm.js、SDK uv lock 环境）
-powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/sifli/host/scripts/bootstrap.ps1
-
-python -I chip-adapt/sifli/host/server.py --open
-# 或双击无黑框入口
-chip-adapt/sifli/host/open-host.vbs
-```
-
-串口默认 `1000000` 波特率；依赖细节见 `host/ENVIRONMENT.md`，CLI、HTTP API 和构建环境
-见 `host/README.md`。
+底层官方 `sftool.exe`。用法、依赖、CLI/HTTP API 见
+[`host/README.md`](host/README.md) 和 [`host/ENVIRONMENT.md`](host/ENVIRONMENT.md)。
 
 ## 共享源码与目标专属生成层
 
-`user/app/hspi_watch` 是唯一源码真源：本地 headless（LVGL 9.6）直接编译它，导出时按
-LVGL 9.4 基线原样复制到 `<app>/src/app/hspi_watch/`，只在每个 `.c` 顶部插入
-`#include "lvgl_ai_sdk.h"`。共享应用只暴露 `void hspi_watch_create(void)`；
+`user/app/sift_watch` 是唯一源码真源：本地 headless（LVGL 9.6）直接编译它，导出时按
+LVGL 9.4 基线原样复制到 `<app>/src/app/sift_watch/`，只在每个 `.c` 顶部插入
+`#include "lvgl_ai_sdk.h"`。共享应用只暴露 `void sift_watch_create(void)`；
 headless 的 `app_create`、SDK 的 `app_create` / `main.c` 和 `user/app/app.c` 的注册表
 都属于目标侧，不进入共享源码。
 
-导出目录完全自包含，只依赖 SiFli SDK；`chip-adapt/sifli/<app>/` 是生成物，已被
+导出目录完全自包含，只依赖 SiFli SDK；`chip-adapt/exports/<app>/` 是生成物，已被
 `.gitignore` 忽略，不进入版本库。
 
 资源层是目标专属生成层：本地 `assets.h` 转发到静态 C 数组头（例如
@@ -161,62 +147,66 @@ while (1) {
 - `lv_obj_set_clickable`、`lv_obj_set_scrollable`、`lv_obj_set_hidden`、`lv_obj_is_hidden`
 - `lv_draw_line_dsc_t` 的 `.points` / `.point_cnt` 多段线绘制
 
-`hspi_watch` 是按 9.4 基线写的示例；`coffee` 等 9.6 应用导出时会得到诊断而不是自动改写。
+`sift_watch` 是按 9.4 基线写的示例；`coffee` 等 9.6 应用导出时会得到诊断而不是自动改写。
 
 ## 导出命令
 
 适配层自带的脚本：
 
 ```bash
-python -I chip-adapt/sifli/export.py hspi_watch --dry-run
-python -I chip-adapt/sifli/export.py hspi_watch
+python -I chip-adapt/sifli/export.py sift_watch --dry-run --force
+python -I chip-adapt/sifli/export.py sift_watch --force
 ```
 
 导出、源码复制和 EZIP 转换全部在适配脚本里，`core/` 不包含芯片导出逻辑。导出的
 README 和返回的验证命令使用 `adapter.json` 的 `lvgl_version`（当前 9.4）：导出工程跟随
 SiFli SDK 的 LVGL 9.4 基线，而源目录本地预览仍用 9.6。
 
+导出结果不是“复制进 SDK”，而是 `chip-adapt/exports/<app>/project` 下的独立 SCons
+工程；构建时用 `SIFLI_SDK=chip-adapt/vendor/sifli-sdk` 引用 SDK。推荐直接：
+
+```bash
+python -I chip-adapt/sifli/host/cli.py build --app sift_watch --actor ai --json
+```
+
+它会先重新导出，再用 uv lock 的 `scons` 和 `~/.sifli` 工具链构建到
+`chip-adapt/exports/sift_watch/project/build_sf32lb52-lchspi-ulp_hcpu/`。
+
 ## 运行时验证（不烧录）
 
 源目录用 LVGL 9.6 跑本地 headless：
 
 ```bash
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/hspi_watch.json
+python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch.json
 ```
 
 导出副本用 LVGL 9.4 跑同一场景；SDK 专有函数由 `sim_sifli` 桩处理：
 
 ```bash
-LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/sifli/hspi_watch/src/app" \
-  python -I core/cli.py --lvgl 9.4 --scenario user/scenarios/hspi_watch.json
+LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/exports/sift_watch/src/app" \
+  python -I core/cli.py --lvgl 9.4 --scenario user/scenarios/sift_watch.json
 ```
 
 `lvgl_ai_sdk.h` 用 `__has_include("littlevgl2rtt.h")` 判断环境：SDK 构建拿真实头，
 运行时验证拿 `sim_sifli.h`。桩只用于验证，不代表 EPIC、触摸或真实刷新行为。
-`hspi_watch` 场景声明 390x450；两次运行都应得到 `status=ok`、`app=hspi_watch`、
+`sift_watch` 场景声明 390x450；两次运行都应得到 `status=ok`、`app=sift_watch`、
 `display=390x450`，并保留 timeline/snapshot 证据。
 
 ## 验证边界
 
 - 导出契约测试可重复执行且不依赖 SiFli SDK：
-  `python -I chip-adapt/sifli/test_export.py`。覆盖源码复制一致性、生成资源头尺寸宏与
+  `python -I chip-adapt/sifli/run_tests.py`。覆盖源码复制一致性、生成资源头尺寸宏与
   图片符号、raw 源收集、导出副本自包含和错误路径。
 - 两次 headless 场景运行是手动验证步骤，不是测试套件的一部分：分别执行上文的源目录
-  9.6 和导出副本 9.4 命令，以会话 `manifest.json` 的 `status=ok`、`app=hspi_watch`、
+  9.6 和导出副本 9.4 命令，以会话 `manifest.json` 的 `status=ok`、`app=sift_watch`、
   `display=390x450` 以及保留的 timeline/snapshot 为证据。
 - 需要 SDK 工具链：EZIP 解码、`scons` 固件构建/链接和真机显示。headless 通过只证明
   共享源码和本地静态资源回退可用，不等于设备验收。
 
 ## SF32LB52x 加速能力与资源规则
 
-| 能力 | 52x 可用 | 说明 |
-| --- | --- | --- |
-| EPIC 2D | 是 | 填充、图片混叠/缩放/旋转（EZIP 仅混叠/缩放，不可旋转）、掩码、A2/A4/A8/L8、YUV、字体合成；渲染列表模式另支持圆角矩形、边框、圆弧、线、多边形、点阵字 |
-| EZIP 硬件解压 | 是 | 大图/动画优先转 EZIP，EPIC 直接解码合成 |
-| LCDC | 是 | 异步刷屏，PSRAM framebuffer |
-| GE2D / DMA2D | 否 | SDK 无对应驱动 |
-| VGLITE / V2D GPU | 否 | 仅 SF32LB58x |
-| 硬件 JPEGD | 否 | 仅 SF32LB57x（`LV_USE_SIFLI_JPEGD`） |
+芯片家族、EPIC/EZIP/LCDC 能力矩阵见 [`../docs/sifli.html`](../docs/sifli.html)；本文件只保留导出
+直接依赖的资源与缓存规则。
 
 模板 `proj.conf` 的基础项：
 
@@ -259,10 +249,10 @@ CONFIG_LV_IMAGE_HEADER_CACHE_DEF_CNT=<文件图片头缓存条目数>
 
 ## 已知限制
 
-- 本机未安装 SiFli-ENV/ARM 工具链，`scons` 固件构建未在导出流程中执行。
+- 本仓库不保证执行固件构建；headless 通过不等于真机 EPIC、触摸或刷新行为。
 - 黄山派实际屏幕 390x450；非 390x450 设计的应用需要自行适配布局。
 - `coffee` 等 9.6 应用不导出；导出器会返回 `unsupported_api` 诊断。
 - EZIP 转换依赖 SDK 的 `tools/png2ezip/ezip.exe`（Windows）；其他平台使用同目录的 `ezip_linux` / `ezip_mac` 需另行适配。
 - `assets.json` 必须声明 `assets/*.png` 里的每张图；缺失会报 `asset_unlisted`。
-- `hspi_watch` 是 390x450 的表盘示例；`watch_bg` 用 EZIP，旋转表针/ring 用 raw PSRAM。
-  本地运行时验证使用 `watch_assets.h`，真机使用 `assets.h` 生成的资源层。
+- `sift_watch` 是 390x450 的双端示例，当前没有图片资源；带图片资源的应用按
+  `assets.json` 声明角色，本地验证使用 `local_header`，真机使用 `assets.h` 生成的资源层。

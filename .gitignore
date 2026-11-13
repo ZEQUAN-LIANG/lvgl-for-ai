@@ -8,12 +8,9 @@ sessions/
 /third_party/*
 !/third_party/README.md
 /build/
-/chip-adapt/sdk/
-/chip-adapt/sifli/vendor/*
-!/chip-adapt/sifli/vendor/README.md
-/chip-adapt/sifli/coffee/
-/chip-adapt/sifli/hspi_watch/
-/chip-adapt/sifli/sift_watch/
+/chip-adapt/vendor/*
+!/chip-adapt/vendor/README.md
+/chip-adapt/exports/
 /chip-adapt/sifli/host/.cache/
 /chip-adapt/sifli/host/logs/
 /chip-adapt/sifli/host/config.json
@@ -23,3 +20,4 @@ sessions/
 .claude/settings.local.json
 /.test-tmp/
 /.test-sessions/
+user/app/**/*.dump

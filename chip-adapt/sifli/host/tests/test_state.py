@@ -20,7 +20,7 @@ class StateSuggestTest(unittest.TestCase):
         self.app = self.root / "user" / "app" / "sift_watch"
         self.app.mkdir(parents=True)
         (self.app / "sift_watch.c").write_text("", encoding="utf-8")
-        self.project = self.root / "chip-adapt" / "sifli" / "sift_watch" / "project"
+        self.project = self.root / "chip-adapt" / "exports" / "sift_watch" / "project"
         self.project.mkdir(parents=True)
         (self.project / "SConstruct").write_text("", encoding="utf-8")
         self.build = self.project / "build_sf32lb52-lchspi-ulp_hcpu"
@@ -32,6 +32,7 @@ class StateSuggestTest(unittest.TestCase):
         self.store = StateStore(self.root / ".cache" / "state.json")
         self.config = {
             "repo_root": str(self.root),
+            "exports_root": str(self.root / "chip-adapt" / "exports"),
             "app": "",
             "project_dir": "",
             "default_baud": 1_000_000,

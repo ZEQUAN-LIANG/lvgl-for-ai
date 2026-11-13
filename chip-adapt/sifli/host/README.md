@@ -35,6 +35,10 @@ chip-adapt/sifli/host/open-host.vbs
 默认 `http://127.0.0.1:8766/`。依赖清单和手工恢复见 `ENVIRONMENT.md`；`bootstrap.ps1 -Check`
 只检查、不安装。
 
+构建链路是 `user/app/<app>/` → `export.py` → `chip-adapt/exports/<app>/project` →
+`scons`。`build --app <app>` 会自动完成前两步；不会把源码复制进 SDK，工程通过
+`SIFLI_SDK` 指向 `chip-adapt/vendor/sifli-sdk`。
+
 CLI 会自动拉起 broker（`--no-autostart` 关闭）：
 
 ```bash
@@ -92,7 +96,7 @@ AI 烧录不需要人工确认；不传 `--port` 时只有唯一候选口才自�
 ## 网页终端与烧录 dock
 
 - PROJECT / BUILD 打开页面时由 `/api/suggest` 填好；project 为
-  `chip-adapt/sifli/<app>/project` 时推导出 `app=<app>`。
+  `chip-adapt/exports/<app>/project` 时推导出 `app=<app>`。
 - **构建**：project 是导出副本时先跑 `export.py <app> --force --json`，再 `scons`；
   否则直接构建该 project。
 - **仅烧录 / 构建并烧录**：创建 `/api/flash` job；读取 build 里的 `sftool_param.json`，
@@ -124,14 +128,19 @@ AI 烧录不需要人工确认；不传 `--port` 时只有唯一候选口才自�
 4. 官方 `export.ps1`（source 后跑 `scons`）。
 
 host 为 scons 注入 `RTT_CC=gcc`、`SIFLI_SDK`/`SIFLI_SDK_PATH`、`PYTHONPATH`、
-`RTT_EXEC_PATH`、`CONAN_HOME`、`PKGS_ROOT` 等；缺 `RTT_CC` 时 SDK 找不到 gcc
-linker script。
+`RTT_EXEC_PATH`、`CONAN_HOME`、`PKGS_ROOT` 等；工具链优先从
+`%USERPROFILE%\.sifli\tools\arm-none-eabi-gcc\<version>\bin` 或
+`SIFLI_SDK_TOOLS_PATH` 发现。通用 scons/export.ps1 用法见官方 `sifli-build-win`
+skill；本仓库不重复教学。
 
-- 依赖安装：`scripts/bootstrap.ps1`；细节见 `ENVIRONMENT.md`。
+- 依赖安装：`scripts/bootstrap.ps1`；细节见 `ENVIRONMENT.md` 和
+  `chip-adapt/vendor/README.md`。
+- `sftool` 查找顺序：`SFTOOL_BIN` → `host/config.json` 的 `sftool` →
+  `%USERPROFILE%\.sifli\tools\sftool\<version>` → `<toolchain_root>/tools/sftool` → PATH。
 - 导出 `user/app`：`python -I chip-adapt/sifli/export.py <app> --force --json`，产物在
-  `chip-adapt/sifli/<app>/`。
-- 模板已含两处修复：`templates/project/Kconfig.proj` 补齐 image cache Kconfig；
-  `templates/src/SConscript` 把 `src/main.c` 编进工程。
+  `chip-adapt/exports/<app>/`。
+- 模板保留 `templates/src/SConscript` 的 `src/main.c` 编译修复；`Kconfig.proj` 只保留
+  `CUSTOM_MEM_MAP`，image cache 符号由 SDK 的 `middleware/lvgl/Kconfig_mem` 提供，避免重复定义。
 
 ## 配置
 

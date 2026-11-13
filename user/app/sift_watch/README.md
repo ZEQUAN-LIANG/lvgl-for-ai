@@ -42,15 +42,15 @@ python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch.json
 ## 黄山派导出
 
 ```bash
-python -I chip-adapt/sifli/export.py sift_watch
-LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/sifli/sift_watch/src/app" \
+python -I chip-adapt/sifli/export.py sift_watch --force
+LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/exports/sift_watch/src/app" \
   python -I core/cli.py --lvgl 9.4 --scenario user/scenarios/sift_watch.json
 ```
 
 导出后再执行：
 
 ```bash
-cd chip-adapt/sifli/sift_watch/project
+cd chip-adapt/exports/sift_watch/project
 scons --board=sf32lb52-lchspi-ulp -j8
 ```
 

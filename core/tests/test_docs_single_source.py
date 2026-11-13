@@ -5,7 +5,7 @@ README instead of restating the app list, HTTP routes, server constants or
 scenario step vocabulary.  These tests pin that static invariant: every link
 resolves, every symbol pointer names something in the linked file, and facts
 owned by code do not reappear in the pages.
-``chip-adapt/sifli.html`` is link-checked only, so its SDK download links may
+``chip-adapt/docs/sifli.html`` is link-checked only, so its SDK download links may
 be absent.
 """
 
@@ -28,7 +28,7 @@ from lvgl_ai.scenario import SCENARIO_SCHEMA, STEP_TYPES  # noqa: E402
 from lvgl_ai.web import live_session, webapp, wire  # noqa: E402
 
 DOCS_DIR = paths.REPO_ROOT / "docs"
-SIFLI_PAGE = paths.REPO_ROOT / "chip-adapt" / "sifli.html"
+SIFLI_PAGE = paths.REPO_ROOT / "chip-adapt" / "docs" / "sifli.html"
 PAGE_NAMES = ("app.html", "scenario-server.html")
 # sifli.html is link-checked but is not an index page: it may mention app
 # names, routes and constants as capability facts.
@@ -121,8 +121,7 @@ def _parse_page(path: Path) -> _PageParser:
 
 EXTERNAL_HREF_PREFIXES = ("#", "http://", "https://", "mailto:")
 MISSING_DOWNLOAD_DIRS = (
-    Path("chip-adapt") / "sdk",
-    Path("chip-adapt") / "sifli" / "vendor",
+    Path("chip-adapt") / "vendor" / "sifli-sdk",
 )
 
 
@@ -225,9 +224,11 @@ class DocsLinkPolicyTest(unittest.TestCase):
         self.assertIn("missing.md", errors[0])
 
     def test_sdk_download_link_may_be_absent(self) -> None:
-        (self.repo_root / "chip-adapt" / "sdk").mkdir(parents=True)
+        (self.repo_root / "chip-adapt" / "vendor" / "sifli-sdk").mkdir(
+            parents=True
+        )
         self.assertEqual(
-            self._check("../chip-adapt/sdk/sifli-sdk/version.txt"), []
+            self._check("../chip-adapt/vendor/sifli-sdk/version.txt"), []
         )
 
 class DocsSingleSourceTest(unittest.TestCase):

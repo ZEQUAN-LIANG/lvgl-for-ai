@@ -12,7 +12,6 @@
 | `coffee`（默认） | AURELIA C9 咖啡机，`coffee/` | LVGL 9.6 |
 | `xiaohongshu` / `xhs` | 小红书复刻，`xiaohongshu/` | LVGL 9.6 |
 | `spectrum` | ORBITAL 频谱播放器，`spectrum/` | LVGL 9.6 |
-| `hspi_watch` | 黄山派 390x450 表盘，`hspi_watch/` | LVGL 9.6 / 导出 9.4 |
 | `sift_watch` | 390x450 像素手表 OS，`sift_watch/` | LVGL 9.6 / 导出 9.4 |
 | 未设置 | `coffee` | LVGL 9.6 |
 | 任意值 | 旧版本忽略选择，显示 `demo/` 的 harness | 9.1 / 8.x |

@@ -38,8 +38,8 @@ TOOL_ROOT = Path(__file__).resolve().parent.parent
 CLI_PATH = TOOL_ROOT / "cli.py"
 SIGINT_DRIVER = Path(__file__).with_name("sigint_idle_driver.py")
 SETTINGS_SCENARIO = paths.REPO_ROOT / "user" / "scenarios" / "settings.json"
-HSPI_WATCH_SCENARIO = (
-    paths.REPO_ROOT / "user" / "scenarios" / "hspi_watch.json"
+SIFT_WATCH_SCENARIO = (
+    paths.REPO_ROOT / "user" / "scenarios" / "sift_watch.json"
 )
 
 
@@ -284,16 +284,16 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(factory.call_args.kwargs["width"], 640)
         self.assertEqual(factory.call_args.kwargs["height"], 480)
 
-    def test_hspi_watch_scenario_forwards_the_device_display(self) -> None:
+    def test_sift_watch_scenario_forwards_the_device_display(self) -> None:
         fake = FakeRuntime()
         with mock.patch.object(cli, "Runtime", return_value=fake) as factory:
             code, _, err = run_cli(
-                ["--scenario", str(HSPI_WATCH_SCENARIO)]
+                ["--scenario", str(SIFT_WATCH_SCENARIO)]
             )
 
         self.assertEqual(code, 0)
         self.assertEqual(err, "")
-        self.assertEqual(factory.call_args.kwargs["app"], "hspi_watch")
+        self.assertEqual(factory.call_args.kwargs["app"], "sift_watch")
         self.assertEqual(factory.call_args.kwargs["width"], 390)
         self.assertEqual(factory.call_args.kwargs["height"], 450)
 

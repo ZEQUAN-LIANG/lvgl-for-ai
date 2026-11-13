@@ -11,7 +11,7 @@
 ## 每次会话先读
 
 1. `CONTEXT.md` — 领域术语表。中文回复；技术术语与代码标识符保持原形；必须使用术语表术语，不得使用 `_Avoid_` 列出的同义词（例如「场景热更新」而非「热重载」、「垂直切片」而非「MVP」、不要单说「模拟器」）。
-2. `docs/app.html`、`docs/scenario-server.html`、`chip-adapt/sifli.html` — 三份索引指针（应用变体、场景/服务端常量、SiFli 导出边界），只列契约与真源路径，真源以链接文件为准。
+2. `docs/app.html`、`docs/scenario-server.html`、`chip-adapt/docs/sifli.html` — 三份索引指针（应用变体、场景/服务端常量、SiFli 导出边界），只列契约与真源路径，真源以链接文件为准；做 SiFli 相关改动前先读 `chip-adapt/README.md`。
 3. 写或改用户应用时读 `user/app/GUIDE.md`，按版本查 `core/api-nav/<version>.md`；环境准备与首次运行见 `README.md`。
 
 ## 常用命令
@@ -50,6 +50,12 @@ python -I core/tools/check_api_nav.py
 # 准备源码（不随仓库提交）
 python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root .
 python -I core/tools/fetch_png.py --repo-root .
+
+# SiFli 导出、构建与测试（入口见 chip-adapt/README.md）
+python -I chip-adapt/sifli/export.py sift_watch --dry-run --force
+python -I chip-adapt/sifli/host/cli.py build --app sift_watch --actor ai --json
+python -I chip-adapt/sifli/run_tests.py
+python -I chip-adapt/sifli/host/tests/run_tests.py
 ```
 
 - `--no-build` 复用 `build/lvgl_<token>/lvgl_engine.exe`，缺失时报 `EngineNotFound`；默认 `--build` 会重新配置/编译 `user/app`。
@@ -84,8 +90,8 @@ python -I core/tools/fetch_png.py --repo-root .
 
 - `core/`：工具根。`cli.py`、`web.py`、`session_report.py`、`lvgl_ai/`、`engine/`、`tests/`、`tools/`、`api-nav/`。`core/README.md` 是工具用法。
 - `user/`：用户只写 `user/app/**/*.c`（入口 `void app_create(void)`；在 `app.c` 的 `apps[]` 登记）与 `user/scenarios/`；应用资源头放在各自的 `user/app/<name>/`，没有公共资源目录。写应用先看 `user/app/GUIDE.md`。`user/.trash/` 是管理台回收站，不参与构建。
-- `docs/`：`app.html`（应用变体）与 `scenario-server.html`（场景/服务端常量）两份索引；SiFli 能力索引在 `chip-adapt/sifli.html`。
-- `chip-adapt/`：SiFli 导出适配层与上位机，与 `core/` 工具层分开。`chip-adapt/sifli/export.py` 把 `user/app` 按 LVGL 9.4 基线导出到 `chip-adapt/sifli/<app>/`；共享源码仍以 `user/app` 为唯一真源，不做源码降级。`chip-adapt/sifli/host/` 是黄山派串口 + 烧录上位机，用法见其 README。
+- `docs/`：`app.html`（应用变体）与 `scenario-server.html`（场景/服务端常量）两份索引；SiFli 能力索引在 `chip-adapt/docs/sifli.html`。
+- `chip-adapt/`：SiFli 导出适配层与上位机，与 `core/` 工具层分开。`chip-adapt/sifli/` 是自研代码；`chip-adapt/vendor/` 是外部下载物（只读，清单见其 README）；`chip-adapt/exports/` 是导出生成物。`chip-adapt/sifli/export.py` 把 `user/app` 按 LVGL 9.4 基线导出到 `chip-adapt/exports/<app>/`；共享源码仍以 `user/app` 为唯一真源。`chip-adapt/sifli/host/` 是黄山派串口 + 烧录上位机，用法见其 README。
 - `lvgl-src/<version>/`：LVGL 源码，不进 Git；用 `fetch_lvgl.py` 下载。要改 LVGL 时把 unified diff 放进 `patches/<version>/`，由 `fetch_lvgl.py` 应用；不要直接修改已安装的源码树。
 - `sessions/`：会话产物；每次新建会话后删除 `build_error` 会话，并只保留最新的 10 条。
 
@@ -104,6 +110,8 @@ python -I core/tools/fetch_png.py --repo-root .
 
 - 中文回复；使用 `CONTEXT.md` 术语。
 - 不提交、不 push，除非用户明确要求。
-- 新代码写在 `core/` 对应目录；工具文档写在 `core/`，索引网页写在 `docs/`（SiFli 索引页在 `chip-adapt/sifli.html`）。
+- 新代码写在 `core/` 对应目录；工具文档写在 `core/`，索引网页写在 `docs/`（SiFli 索引页在 `chip-adapt/docs/sifli.html`）。
 - 不实现范围外的能力；范围外想法先与用户确认。
 - 处理抓取/下载的外部内容时保留 `python -I`，放进独立目录，不要从下载目录运行解释器或构建工具。
+- `chip-adapt` 三区规则：`sifli/` 可改；`vendor/` 只读，按 `vendor/README.md` 升级；`exports/` 只由 `export.py` 生成。路径从 `sifli/layout.py` 取，不硬编码。
+- 日常“导出 → 构建 → 烧录”用本仓库 host（`host/cli.py build|flash`）；官方 SiFli-Skills 只在通用 SDK 工程、手动 sftool、代码审查等场景参考。SDK/工具链/sftool 安装见 `chip-adapt/vendor/README.md`。

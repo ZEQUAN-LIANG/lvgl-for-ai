@@ -467,7 +467,7 @@ class BuildDirIsolationTest(unittest.TestCase):
     def test_exported_app_gets_a_stable_separate_directory(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            first = root / "hspi_watch" / "src" / "app"
+            first = root / "sift_watch" / "src" / "app"
             second = root / "coffee" / "src" / "app"
             first.mkdir(parents=True)
             second.mkdir(parents=True)
