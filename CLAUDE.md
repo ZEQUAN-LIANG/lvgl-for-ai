@@ -24,6 +24,14 @@ python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json --json
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json --idle
 
+# 预编译构建（只需 GCC 与 sdk/<version>；--source 强制 CMake）
+python -I core/cli.py --lvgl 9.6 --prebuilt --scenario user/scenarios/settings.json --json
+python -I core/tools/export_sdk.py --version 9.6 --json
+
+# 统一入口与发布 zip（dist/）
+python -I core/tools/lvgl.py run --scenario user/scenarios/settings.json --json
+python -I core/tools/release.py --out dist --json
+
 # 只读会话证据（不启动 engine / 网页）
 python -I core/session_report.py --latest --log-tail 3
 python -I core/session_report.py sessions/<id> --json
@@ -74,7 +82,8 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 
 **Python 控制层**（`core/lvgl_ai/`）：
 
-- `control/runtime.py`：`Runtime(app=...)` 选择用户应用变体；`pointer` / `key` / `encoder` / `tick` / `wait` / `input` / `snapshot` / `mark`；`wait(ms)`、`wait(frames=n)`、`wait_stable(...)`。
+- `control/runtime.py`：`Runtime(app=...)` 选择用户应用变体；`pointer` / `key` / `encoder` / `tick` / `wait` / `input` / `snapshot` / `mark`；`wait(ms)`、`wait(frames=n)`、`wait_stable(...)`。`build_mode` 默认为 `auto`。
+- `control/prebuilt.py`：宿主 SDK manifest 校验、编译器解析与 gcc 编译/链接命令构造；`control/build_plan.py` 按 `auto` / `source` / `prebuilt` 选择构建路径，预编译对象缓存与源码构建共用 `build/lvgl_<version>/`，切换模式时删除旧 engine。
 - `control/recording.py`：`Recording` 只读视图，`open()` 不启动 engine；`annotations` 是唯一可写入口。
 - `control/evidence.py`：`summarize_session` 是 CLI `--json` 与 `session_report.py` 共用的唯一摘要入口。
 - `core/session_report.py`：只读证据报告与视觉证据子命令（`crop` / `contact-sheet` / `pixel` / `compare`）。
@@ -96,6 +105,9 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 - `docs/`：`app.html`（应用变体）与 `scenario-server.html`（场景/服务端常量）两份索引；SiFli 能力索引在 `chip-adapt/docs/sifli.html`。
 - `chip-adapt/`：SiFli 导出适配层与上位机，与 `core/` 工具层分开。`chip-adapt/sifli/` 是自研代码；`chip-adapt/vendor/` 是外部下载物（只读，清单见其 README）；`chip-adapt/exports/` 是导出生成物。`chip-adapt/sifli/export.py` 把 `user/app` 按 LVGL 9.4 基线导出到 `chip-adapt/exports/<app>/`；共享源码仍以 `user/app` 为唯一真源。`chip-adapt/sifli/host/` 是黄山派串口 + 烧录上位机，用法见其 README；`chip-adapt/sifli/tools/` 放双击入口 `SiFli-Host.exe`。
 - `lvgl-src/<version>/`：LVGL 源码，不进 Git；用 `fetch_lvgl.py` 下载。要改 LVGL 时把 unified diff 放进 `patches/<version>/`，由 `fetch_lvgl.py` 应用；不要直接修改已安装的源码树。
+- `sdk/<version>/`：预编译宿主 SDK（静态库、公共头、`lv_conf.h`、`lvgl-ai-host-sdk-v1` manifest），由 `core/tools/export_sdk.py` 生成；不进 Git。
+- `dist/`：release zip、`.sha256` 与 release manifest，由 `core/tools/release.py` 生成；不进 Git。
+- `bin/lvgl.cmd`：统一入口包装脚本，调用 `core/tools/lvgl.py` 的 `run` / `report` / `serve`；`SKILL.md` 是可分发 skill 的入口契约。
 - `sessions/`：会话产物；每次新建会话后删除 `build_error` 会话，并只保留最新的 10 条。
 
 ## 硬约束

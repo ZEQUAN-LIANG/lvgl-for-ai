@@ -1453,6 +1453,10 @@ def generate_fonts(regular: Path, bold: Path, force: bool) -> None:
         subprocess.run(command, check=True, cwd=HERE,
                        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         text = output.read_text(encoding="utf-8")
+        # The lv_font_conv banner embeds absolute -o/--font paths. Keep the
+        # header portable so release hygiene does not leak the build machine.
+        text = text.replace(str(HERE), ".")
+        text = text.replace(str(source[weight]), Path(source[weight]).name)
         text = text.replace(f"const lv_font_t {name} =",
                             f"static const lv_font_t {name} =")
         text = text.replace("uint8_t glyph_bitmap[]",

@@ -36,6 +36,7 @@ REPO_ROOT = _repo_root_for(TOOL_ROOT)
 ENGINE_DIR = TOOL_ROOT / "engine"
 BUILD_ROOT = REPO_ROOT / "build"
 LVGL_SRC_ROOT = REPO_ROOT / "lvgl-src"
+SDK_ROOT = REPO_ROOT / "sdk"
 THIRD_PARTY_ROOT = REPO_ROOT / "third_party"
 ZLIB_SRC_ROOT = THIRD_PARTY_ROOT / "zlib"
 LIBPNG_SRC_ROOT = THIRD_PARTY_ROOT / "libpng"
@@ -57,6 +58,18 @@ def lvgl_src_for(version: str) -> Path:
     if override:
         return Path(override).expanduser().resolve()
     return LVGL_SRC_ROOT / version
+
+
+def sdk_dir_for(version: str) -> Path:
+    """Directory of the exported host SDK for ``version``.
+
+    ``sdk/<version>`` is the prebuilt counterpart of ``lvgl-src/<version>``.
+    A release package ships the same layout, so the prebuilt build path works
+    without the LVGL source tree.
+    """
+    if not re.fullmatch(r"[0-9A-Za-z._-]+", version):
+        raise ValueError(f"invalid host SDK version: {version!r}")
+    return SDK_ROOT / version
 
 
 def user_app_dir_from_env() -> Path:
@@ -101,7 +114,7 @@ def build_dir_for(
     compatibility. Any other source tree gets its own directory so an exported
     project and the workspace app never share a CMake cache or engine binary.
     """
-    token = _version_token(version)
+    token = version_token(version)
     if user_app_dir is None:
         return BUILD_ROOT / f"lvgl_{token}"
     app_dir = Path(user_app_dir).expanduser().resolve()
@@ -113,7 +126,8 @@ def build_dir_for(
     return BUILD_ROOT / f"lvgl_{token}_export_{label}_{digest}"
 
 
-def _version_token(version: str) -> str:
+def version_token(version: str) -> str:
+    """Filesystem-safe token for a version label (``9.6`` -> ``9_6``)."""
     token = re.sub(r"[^0-9A-Za-z]+", "_", version).strip("_")
     if not token:
         raise ValueError(f"invalid LVGL version: {version!r}")

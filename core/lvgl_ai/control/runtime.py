@@ -108,6 +108,7 @@ class RuntimeOptions:
         width: int | None = _UNSET,
         height: int | None = _UNSET,
         build: bool = _UNSET,
+        build_mode: str | None = _UNSET,
         record: bool = _UNSET,
         live_frame: bool = _UNSET,
         record_changed_only: bool = _UNSET,
@@ -127,6 +128,7 @@ class RuntimeOptions:
             "width": width,
             "height": height,
             "build": build,
+            "build_mode": build_mode,
             "record": record,
             "live_frame": live_frame,
             "record_changed_only": record_changed_only,
@@ -195,7 +197,9 @@ class Runtime:
 
     One instance owns exactly one session; create a new Runtime for another
     run. ``build=True`` (the default) reconfigures when needed and rebuilds
-    ``lvgl_engine`` before launch. ``record=True`` keeps frames and records
+    ``lvgl_engine`` before launch; ``build_mode`` is ``auto`` (source when
+    ``lvgl-src`` exists, otherwise the prebuilt SDK), ``source`` or
+    ``prebuilt``. ``record=True`` keeps frames and records
     only frames whose pixels differ from the previous retained frame;
     ``record_changed_only=False`` is an internal test seam that keeps
     identical frames too. Frame numbers stay contiguous and ``max_frames``
@@ -222,6 +226,7 @@ class Runtime:
         width: int | None = None,
         height: int | None = None,
         build: bool = True,
+        build_mode: str | None = None,
         record: bool = True,
         live_frame: bool = False,
         record_changed_only: bool = True,
@@ -322,9 +327,12 @@ class Runtime:
             configure=_configure_command,
             build=_build_command,
             engine_path=_engine_path,
+            build_mode=build_mode or "auto",
         )
         self.build_dir = self._plan.build_dir
         self.engine_path = self._plan.engine_path
+        # Resolved mode (auto -> source/prebuilt); evidence lives in build.log.
+        self.build_mode = self._plan.mode
         self._engine_command = list(_engine_command) if _engine_command else None
         resolved_sessions_root = (
             Path(sessions_root).expanduser().resolve()

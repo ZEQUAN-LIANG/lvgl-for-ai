@@ -2105,9 +2105,12 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
 
     sessions_root = workspace / "cli-sessions"
     missing_lvgl = workspace / "missing-lvgl-src"
+    # Force the source path: without --source, auto selection may use an
+    # exported sdk/<version> and the probe would no longer capture the
+    # missing-LVGL-source build error.
     build_error = _run_python(
         TOOL_ROOT / "cli.py",
-        ["--json", "--lvgl", "9.6"],
+        ["--json", "--lvgl", "9.6", "--source"],
         env={
             "LVGL_AI_SESSIONS_ROOT": str(sessions_root),
             "LVGL_AI_LVGL_SRC": str(missing_lvgl),

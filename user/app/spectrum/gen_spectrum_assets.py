@@ -695,6 +695,9 @@ def generate_fonts(force: bool) -> None:
             "-r", "0x20-0x7E",
         ], check=True, cwd=HERE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         text = output.read_text(encoding="utf-8")
+        # Keep the generated banner free of build-machine absolute paths.
+        text = text.replace(str(HERE), ".")
+        text = text.replace(str(source), source.name)
         text = text.replace(f"const lv_font_t {name} =",
                             f"static const lv_font_t {name} =")
         text = text.replace("uint8_t glyph_bitmap[]",

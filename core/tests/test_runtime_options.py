@@ -45,6 +45,7 @@ RUNTIME_LIKE_MEMBERS = {
 OPTION_NAMES = {
     "app",
     "build",
+    "build_mode",
     "diff_threshold",
     "headless",
     "height",

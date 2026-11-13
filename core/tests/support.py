@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import os
 import struct
+import subprocess
+import sys
 import unittest
 import tempfile
 import time
@@ -50,6 +52,38 @@ def install_retrying_tempdir() -> None:
 
 
 install_retrying_tempdir()
+
+
+def ensure_host_sdk(version: str = "9.6") -> Path:
+    """Export ``sdk/<version>`` if it is missing; fail instead of skipping.
+
+    The full suite already requires LVGL source and GCC for the real-engine
+    integration tests, so the prebuilt/release integration tests make their
+    SDK prerequisite explicit rather than silently skipping.
+    """
+    from lvgl_ai import paths
+
+    manifest = paths.sdk_dir_for(version) / "manifest.json"
+    if manifest.is_file():
+        return manifest
+    script = paths.TOOL_ROOT / "tools" / "export_sdk.py"
+    result = subprocess.run(
+        [
+            sys.executable, "-I", "-B", str(script),
+            "--version", version, "--force", "--json",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=1800,
+    )
+    if result.returncode != 0 or not manifest.is_file():
+        raise RuntimeError(
+            f"cannot export host SDK {version}: "
+            f"{result.stderr.strip()[-1500:]}"
+        )
+    return manifest
 
 
 def read_ndjson(path: str | Path) -> list[dict]:

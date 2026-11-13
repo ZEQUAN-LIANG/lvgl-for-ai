@@ -122,12 +122,12 @@ class EngineNotFound(ToolError):
         self.engine_path = str(engine_path)
         self.configure_command = list(configure_command)
         self.build_command = list(build_command)
-        message = f"engine binary not found: {self.engine_path}"
-        message += (
-            f"\nconfigure: {_shell_join(self.configure_command)}"
-            f"\nbuild: {_shell_join(self.build_command)}"
-        )
-        super().__init__(message)
+        lines = [f"engine binary not found: {self.engine_path}"]
+        if self.configure_command:
+            lines.append(f"configure: {_shell_join(self.configure_command)}")
+        if self.build_command:
+            lines.append(f"build: {_shell_join(self.build_command)}")
+        super().__init__("\n".join(lines))
 
 
 def _shell_join(command: Sequence[str]) -> str:

@@ -86,6 +86,9 @@ class BuildPlanCase(unittest.TestCase):
             "user_app_dir": self.user_app_dir,
             "zlib_src": self.zlib_src,
             "libpng_src": self.libpng_src,
+            # Keep these tests independent of a real sdk/<version> in the
+            # checkout; prebuilt selection is covered in test_prebuilt.py.
+            "sdk_dir": self.root / "sdk" / "9.6",
             "ccache": False,
             "missing_tools": lambda: [],
             "runner": runner or ScriptedRunner(),
@@ -259,6 +262,7 @@ class ConfigureTriggerTest(BuildPlanCase):
         )
         expected = "\n".join(
             [
+                "# build mode: source",
                 format_build_log(
                     BuildResult(
                         command=plan.configure_command,
@@ -295,6 +299,7 @@ class ConfigureTriggerTest(BuildPlanCase):
         self.assertEqual(runner.calls[0]["command"], plan.build_command)
         expected = "\n".join(
             [
+                "# build mode: source",
                 "# phase: configure\n"
                 f"# skipped: cache matches {self.build_dir / 'CMakeCache.txt'}\n",
                 format_build_log(
@@ -340,7 +345,9 @@ class BuildFailureTest(BuildPlanCase):
             plan.execute(build=True)
         error = caught.exception
         self.assertEqual(error.command, plan.build_command)
-        self.assertTrue(error.log_text.startswith("# phase: configure\n"))
+        self.assertTrue(
+            error.log_text.startswith("# build mode: source\n# phase: configure\n")
+        )
         self.assertIn("# phase: build\n", error.log_text)
         self.assertEqual(error.first_error["file"], "app.c")
         self.assertEqual(error.first_error["line"], 3)
@@ -357,6 +364,7 @@ class BuildFailureTest(BuildPlanCase):
         error = caught.exception
         self.assertTrue(
             error.log_text.startswith(
+                "# build mode: source\n"
                 "# phase: configure\n"
                 f"# skipped: cache matches {self.build_dir / 'CMakeCache.txt'}\n"
             )

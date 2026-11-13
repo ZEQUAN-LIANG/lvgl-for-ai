@@ -2,7 +2,7 @@
 /*******************************************************************************
  * Size: 7 px
  * Bpp: 4
- * Opts: --font C:\Windows\Fonts\consola.ttf --size 7 --bpp 4 --no-compress --no-kerning --format lvgl --lv-font-name spectrum_mono_7 -o I:\Desktop\Used\Tmp\lvgl-for-agent\user\app\spectrum\spectrum_mono_7.c -r 0x20-0x7E
+ * Opts: --font C:\Windows\Fonts\consola.ttf --size 7 --bpp 4 --no-compress --no-kerning --format lvgl --lv-font-name spectrum_mono_7 -o .\user\app\spectrum\spectrum_mono_7.c -r 0x20-0x7E
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE

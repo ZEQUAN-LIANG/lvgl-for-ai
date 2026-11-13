@@ -13,7 +13,10 @@ Exit codes: 0 = session finished ok; 1 = build, link or engine crash;
 2 = harness error (bad flags, scenario, protocol, missing engine).
 
 ``--no-build`` skips the source build and uses the existing ``build/`` engine;
-the default remains ``--build``. ``--app NAME`` selects
+the default remains ``--build``. Build mode is automatic: an existing
+``lvgl-src/<version>`` uses the source build, otherwise ``sdk/<version>`` is
+used through the prebuilt path; ``--prebuilt`` / ``--source`` override that
+choice. ``--app NAME`` selects
 the user app variant by setting ``LVGL_AI_DEMO``; when ``--scenario`` is used and
 the scenario declares ``app``, omitting the flag uses the scenario value.
 A scenario's optional ``display`` object sets the engine width/height; an
@@ -118,6 +121,27 @@ def build_parser() -> argparse.ArgumentParser:
             "--no-build uses an existing build/ engine"
         ),
     )
+    build_mode = parser.add_mutually_exclusive_group()
+    build_mode.add_argument(
+        "--prebuilt",
+        dest="build_mode",
+        action="store_const",
+        const="prebuilt",
+        help=(
+            "compile user/app against the prebuilt host SDK in sdk/<version> "
+            "instead of CMake"
+        ),
+    )
+    build_mode.add_argument(
+        "--source",
+        dest="build_mode",
+        action="store_const",
+        const="source",
+        help=(
+            "build from lvgl-src/<version> with CMake (default: auto; "
+            "prebuilt is used when the source tree is missing)"
+        ),
+    )
     action = parser.add_mutually_exclusive_group()
     action.add_argument(
         "--scenario",
@@ -161,6 +185,8 @@ def main(argv: list[str] | None = None) -> int:
         build=args.build,
         record=args.record,
     )
+    if args.build_mode is not None:
+        runtime_kwargs["build_mode"] = args.build_mode
     if app is not None:
         runtime_kwargs["app"] = app
     runtime_kwargs["record_changed_only"] = True

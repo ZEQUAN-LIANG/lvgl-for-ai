@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Sequence
@@ -36,8 +37,18 @@ from .build import (
 from .engine_guard import ensure_engine_stopped
 from .errors import BuildError, EngineNotFound, LinkError
 from .locks import build_lock
+from .prebuilt import (
+    HostSdk,
+    PREBUILT_MARKER,
+    PrebuiltBuild,
+    compiler_mismatch_message,
+    resolve_compiler,
+    versions_match,
+)
 
 BUILD_TIMEOUT_S = 600.0
+
+BUILD_MODES = ("auto", "source", "prebuilt")
 
 Runner = Callable[..., BuildResult]
 ToolsCheck = Callable[[], Sequence[str]]
@@ -56,7 +67,9 @@ class BuildPlan:
 
     ``lvgl_src``, ``build_dir``, ``engine_dir`` and the user directories are
     resolved once from :mod:`lvgl_ai.paths` unless the caller passes explicit
-    paths. ``configure`` / ``build`` replace the generated commands for
+    paths. ``build_mode`` is ``auto`` (source when ``lvgl-src`` exists,
+    otherwise ``prebuilt`` when ``sdk/<version>`` exists), ``source`` or
+    ``prebuilt``. ``configure`` / ``build`` replace the generated commands for
     embedding and tests; an explicit build command also skips the source-build
     preflight. ``engine_path`` is the test/embedding override and is never
     replaced by the build output. ``runner`` and ``missing_tools`` are seams
@@ -79,7 +92,16 @@ class BuildPlan:
         engine_path: str | Path | None = None,
         missing_tools: ToolsCheck | None = None,
         runner: Runner | None = None,
+        build_mode: str = "auto",
+        sdk_dir: str | Path | None = None,
+        compiler: str | Path | None = None,
+        compiler_version: str | None = None,
     ) -> None:
+        if build_mode not in BUILD_MODES:
+            raise ValueError(
+                f"build_mode must be one of {', '.join(BUILD_MODES)}; "
+                f"got {build_mode!r}"
+            )
         self.version = version
         self.lvgl_src = (
             Path(lvgl_src) if lvgl_src is not None else paths.lvgl_src_for(version)
@@ -103,34 +125,66 @@ class BuildPlan:
         self.libpng_src = (
             Path(libpng_src) if libpng_src is not None else paths.libpng_src()
         )
+        self.sdk_dir = (
+            Path(sdk_dir) if sdk_dir is not None else paths.sdk_dir_for(version)
+        )
         self._build_explicit = build is not None
         self._engine_explicit = engine_path is not None
         self._missing_tools = missing_tools
         self._runner = runner
+        self._compiler = None if compiler is None else str(compiler)
+        self._compiler_version = compiler_version
+        self._prebuilt: PrebuiltBuild | None = None
+        # An explicit build command is an embedding/test toolchain and always
+        # uses the source-plan execution path.
+        self.mode = self._select_mode(build_mode)
+        if self._build_explicit:
+            self.mode = "source"
 
         uses_ccache = ccache_available() if ccache is None else bool(ccache)
-        self.configure_command = (
-            list(configure)
-            if configure is not None
-            else configure_command(
-                self.engine_dir,
-                self.build_dir,
-                lvgl_src=self.lvgl_src,
-                lvgl_version=version,
-                user_app_dir=self.user_app_dir,
-                ccache=uses_ccache,
-                zlib_src=self.zlib_src,
-                libpng_src=self.libpng_src,
+        if self.mode == "prebuilt":
+            self.configure_command = []
+            self.build_command = [
+                sys.executable,
+                "-I",
+                str(paths.TOOL_ROOT / "cli.py"),
+                "--build",
+                "--prebuilt",
+            ]
+        else:
+            self.configure_command = (
+                list(configure)
+                if configure is not None
+                else configure_command(
+                    self.engine_dir,
+                    self.build_dir,
+                    lvgl_src=self.lvgl_src,
+                    lvgl_version=version,
+                    user_app_dir=self.user_app_dir,
+                    ccache=uses_ccache,
+                    zlib_src=self.zlib_src,
+                    libpng_src=self.libpng_src,
+                )
             )
-        )
-        self.build_command = (
-            list(build) if build is not None else build_command(self.build_dir)
-        )
+            self.build_command = (
+                list(build) if build is not None else build_command(self.build_dir)
+            )
         self.engine_path = (
             Path(engine_path)
             if engine_path is not None
             else self.built_engine_path
         )
+
+    def _select_mode(self, requested: str) -> str:
+        if requested != "auto":
+            return requested
+        if self.lvgl_src.is_dir():
+            return "source"
+        if self.sdk_dir.is_dir():
+            return "prebuilt"
+        # Neither exists: keep the source preflight so the error names both
+        # recovery paths (LVGL source and --prebuilt).
+        return "source"
 
     # ---- paths ---------------------------------------------------------
 
@@ -146,12 +200,16 @@ class BuildPlan:
     # ---- preflight and cache -------------------------------------------
 
     def preflight(self) -> None:
-        """Fail fast with an actionable error before spawning CMake.
+        """Fail fast with an actionable error before spawning a build.
 
         A caller-supplied build command is an embedding/test toolchain, so the
-        default CMake/GCC prerequisite check does not apply to it.
+        default prerequisite check does not apply to it. Prebuilt builds
+        validate the SDK manifest and the compiler instead of CMake inputs.
         """
         if self._build_explicit:
+            return
+        if self.mode == "prebuilt":
+            self._resolve_prebuilt().preflight()
             return
         check = (
             self._missing_tools
@@ -165,15 +223,21 @@ class BuildPlan:
             or missing_tools
             or any(not path.is_dir() for path in png_sources)
         ):
-            raise BuildError(
-                build_environment_message(
-                    lvgl_src=self.lvgl_src,
-                    lvgl_version=self.version,
-                    missing_tools=missing_tools,
-                    png_sources=png_sources,
-                ),
-                command=list(self.configure_command),
+            message = build_environment_message(
+                lvgl_src=self.lvgl_src,
+                lvgl_version=self.version,
+                missing_tools=missing_tools,
+                png_sources=png_sources,
             )
+            if (
+                not self.lvgl_src.is_dir()
+                and (self.sdk_dir / "manifest.json").is_file()
+            ):
+                message += (
+                    f" A host SDK exists at {self.sdk_dir}; pass --prebuilt "
+                    "to build without LVGL source."
+                )
+            raise BuildError(message, command=list(self.configure_command))
 
     def needs_configure(self) -> bool:
         """True when the CMake cache is missing, incomplete or stale."""
@@ -191,11 +255,11 @@ class BuildPlan:
 
     def configure(self) -> str:
         """Run CMake configure and return its phase log."""
-        return self._run_step(self.configure_command, "configure")
+        return self._run_command(self.configure_command, "configure")
 
     def build(self) -> str:
         """Run the engine build and return its phase log."""
-        return self._run_step(self.build_command, "build")
+        return self._run_command(self.build_command, "build")
 
     def execute(self, *, build: bool) -> BuildOutcome:
         """Run the plan for one session and resolve the engine to launch.
@@ -204,7 +268,10 @@ class BuildPlan:
         source-build engine. Failures keep the successful phase logs in
         ``log_text``.
         """
-        log_text = self._run_build() if build else None
+        if build and self.mode == "prebuilt" and not self._build_explicit:
+            log_text = self._run_prebuilt()
+        else:
+            log_text = self._run_build() if build else None
         engine_path = self.resolve_engine()
         if log_text is None:
             log_text = (
@@ -240,10 +307,22 @@ class BuildPlan:
 
     def _run_build(self) -> str:
         self.preflight()
-        parts: list[str] = []
+        parts: list[str] = ["# build mode: source"]
         with build_lock(self.build_dir):
             try:
                 ensure_engine_stopped(self.build_dir / paths.engine_filename())
+                marker = self.build_dir / PREBUILT_MARKER
+                if marker.is_file():
+                    # A prebuilt engine is newer than the CMake objects; remove
+                    # it so Ninja actually relinks the source build.
+                    marker.unlink()
+                    engine = self.built_engine_path
+                    if engine.is_file():
+                        engine.unlink()
+                    parts.append(
+                        "# mode switch: removed the prebuilt engine before "
+                        "the source build\n"
+                    )
                 if self.needs_configure():
                     parts.append(self.configure())
                 else:
@@ -259,7 +338,58 @@ class BuildPlan:
                 raise
         return "\n".join(parts)
 
-    def _run_step(self, command: Sequence[str], phase: str) -> str:
+    def _resolve_prebuilt(self) -> PrebuiltBuild:
+        if self._prebuilt is not None:
+            return self._prebuilt
+        sdk = HostSdk.load(self.sdk_dir, expected_version=self.version)
+        compiler, compiler_version = resolve_compiler(
+            override=self._compiler,
+            version=self._compiler_version,
+        )
+        if not versions_match(sdk.compiler_version, compiler_version):
+            raise BuildError(
+                compiler_mismatch_message(
+                    expected=sdk.compiler_version,
+                    found=compiler_version,
+                    compiler=compiler,
+                ),
+                command=[compiler, "--version"],
+            )
+        self._prebuilt = PrebuiltBuild(
+            sdk,
+            compiler=compiler,
+            compiler_version=compiler_version,
+            user_app_dir=self.user_app_dir,
+            engine_dir=self.engine_dir,
+            build_dir=self.build_dir,
+            engine_path=self.built_engine_path,
+        )
+        return self._prebuilt
+
+    def _run_prebuilt(self) -> str:
+        plan = self._resolve_prebuilt()
+        plan.preflight()
+        parts: list[str] = [plan.log_header()]
+        with build_lock(self.build_dir):
+            try:
+                ensure_engine_stopped(self.built_engine_path)
+                plan.object_dir.mkdir(parents=True, exist_ok=True)
+                for step in plan.steps:
+                    if step.object_path.is_file():
+                        parts.append(
+                            f"# cached: {step.source} -> {step.object_path.name}\n"
+                        )
+                        continue
+                    parts.append(self._run_command(step.command, "compile"))
+                parts.append(self._run_command(plan.link_command, "link"))
+            except (BuildError, LinkError) as exc:
+                exc.log_text = "\n".join([*parts, exc.log_text or ""])
+                raise
+            plan.prune_objects()
+            plan.write_marker()
+        return "\n".join(parts)
+
+    def _run_command(self, command: Sequence[str], phase: str) -> str:
         runner = self._runner if self._runner is not None else run_capture
         temp_dir = (self.build_dir / ".build-tmp").resolve()
         temp_dir.mkdir(parents=True, exist_ok=True)

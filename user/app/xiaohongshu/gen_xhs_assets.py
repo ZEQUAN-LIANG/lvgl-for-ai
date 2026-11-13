@@ -1335,6 +1335,9 @@ def generate_fonts(regular: Path, bold: Path, force: bool) -> None:
         subprocess.run(command, check=True, cwd=HERE,
                        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         text = output.read_text(encoding="utf-8")
+        # Keep the generated banner free of build-machine absolute paths.
+        text = text.replace(str(HERE), ".")
+        text = text.replace(str(source[weight]), Path(source[weight]).name)
         text = text.replace(f"const lv_font_t {name} =",
                             f"static const lv_font_t {name} =")
         # All generated fonts share the same internal table names. Prefix them

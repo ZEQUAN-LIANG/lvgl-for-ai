@@ -18,6 +18,9 @@
 - `tools/fetch_lvgl.py`：下载官方 LVGL、校验版本并应用本地 patch。
 - `tools/fetch_png.py`：下载 pin 的 zlib / libpng 源码到 `third_party/`，供 engine 编码 PNG。
 - `tools/new_app.py`：生成应用变体的源文件与场景，并注册到 `user/app/app.c`。
+- `tools/export_sdk.py`：从 `lvgl-src/<version>` 导出宿主预编译 SDK 到 `sdk/<version>`。
+- `tools/release.py`：生成可分发的 skill zip、`.sha256` 与 release manifest。
+- `tools/lvgl.py`：统一入口，分发 `run` / `report` / `serve`。
 - `tools/contract_snapshot.py`：记录/对比六类外部契约快照，用于重构行为冻结；用法见
   [CONTRACT_SNAPSHOT.md](CONTRACT_SNAPSHOT.md)。
 
@@ -25,6 +28,8 @@
 
 需要 Python 3.9+（仅标准库）、CMake 3.20+、Ninja、GCC（Windows 为 MinGW-w64）和 curl；
 ccache 可选，git 用于拉取 `third_party/` 的 PNG 编码器源码以及应用 `patches/`。
+只用预编译宿主 SDK 时，运行时只需要 Python 与 GCC；CMake、Ninja、LVGL 源码和
+`third_party/` 都不是必需项。
 
 Windows 安装、PATH 配置、首次运行与常见错误见仓库根 [README.md](../README.md)。
 本文件只保留工具用法。
@@ -54,6 +59,72 @@ python -I core/tools/fetch_png.py --repo-root .
 脚本按固定 tag/commit 拉取 zlib 1.3.1 与 libpng 1.6.44，校验版本后安装到
 `third_party/zlib/` 和 `third_party/libpng/`；CMake 静态编译这两个库。无法访问 GitHub 时，
 可先手动准备好这两个目录，或设置 `LVGL_AI_ZLIB_SRC` / `LVGL_AI_LIBPNG_SRC` 指向已有源码。
+
+## 预编译宿主 SDK
+
+没有 LVGL 源码时，用预编译宿主 SDK 直接编译 `user/app`。SDK 包含五份静态库
+（engine / adapter / LVGL / libpng / zlib）、公共头、`lv_conf.h` 和
+`manifest.json`（`lvgl-ai-host-sdk-v1`，记录编译器版本、defines、include 顺序、
+链接顺序与每份库的 sha256）：
+
+```bash
+# 从 lvgl-src/<version> 导出；默认输出 sdk/<version>
+python -I core/tools/export_sdk.py --version 9.6
+python -I core/tools/export_sdk.py --version 9.6 --json
+
+# 重新导出已有 SDK
+python -I core/tools/export_sdk.py --version 9.6 --force
+```
+
+SDK 是构建产物（`/sdk/` 不进 Git）。预编译构建只调用 GCC，不需要 CMake、Ninja、
+LVGL 源码或 `third_party/`。构建前会校验 manifest 记录的编译器版本；版本不一致时
+用 `LVGL_AI_GCC` 指向匹配的编译器，或重新导出 SDK。
+
+## 构建方式选择
+
+CLI 的选择规则：
+
+- `lvgl-src/<version>` 存在且未显式指定时，走现有 CMake 源码构建。
+- 源码缺失且 `sdk/<version>` 存在时，自动走预编译构建。
+- `--prebuilt` 强制预编译；`--source` 强制源码构建。
+- `--no-build` 始终只复用 `build/lvgl_<version>/lvgl_engine.exe`。
+
+实际选择写入会话的 `build.log`（`# build mode: prebuilt` 或 CMake 阶段日志）。
+预编译构建的对象缓存位于 `build/lvgl_<version>/.prebuilt/`，缓存键包含源文件、
+头文件、SDK manifest 哈希与编译器版本；切换回源码构建时会删除预编译 engine，
+避免 Ninja 误以为目标已是最新。
+
+```bash
+python -I core/cli.py --lvgl 9.6 --prebuilt --scenario user/scenarios/settings.json --json
+python -I core/cli.py --lvgl 9.6 --source   --scenario user/scenarios/settings.json --json
+```
+
+## 统一入口
+
+`core/tools/lvgl.py` 把 `run` / `report` / `serve` 映射到现有入口；包内
+`bin/lvgl.cmd` 只是包装脚本，不掺协议或构建逻辑：
+
+```bash
+python -I core/tools/lvgl.py run --scenario user/scenarios/settings.json --json
+python -I core/tools/lvgl.py report --latest --log-tail 5
+python -I core/tools/lvgl.py serve
+```
+
+## 发布包
+
+`core/tools/release.py` 产出可分发 skill zip、`.sha256` 和 release manifest：
+
+```bash
+# 默认 9.6；缺少 SDK 时自动导出
+python -I core/tools/release.py --out dist --json
+```
+
+包内包含 `core/`、`user/`、`sdk/<version>/`、预编译 engine、`bin/lvgl.cmd`、
+`SKILL.md`、`CONTEXT.md`、`VERSION.json` 与 `licenses/`。LVGL 源码、`third_party/`、
+`sessions/`、测试目录、`chip-adapt/vendor`、`chip-adapt/exports`、构建中间物和开发机
+绝对路径不会进包（二进制里的 `__FILE__` 与调试信息也会被检查）；打包前会在暂存目录
+从无关工作目录运行 `--no-build`、预编译构建、统一入口和网页端 smoke。`--skip-smoke`
+只用于开发调试。
 
 ## 启动网页端
 
@@ -244,4 +315,4 @@ python -I core/tests/run_tests.py
 python -I core/tools/contract_snapshot.py compare
 ```
 
-测试套件同时包含单元测试和真实 engine 的集成测试：`*IntegrationTest` 类会按仓库既有方式构建 LVGL（当前主要是 9.6，多版本测试覆盖全部支持版本），由同一次 `run_tests.py` 执行；它们不是 skip 或未执行断言。单元测试使用 fake engine / 纯函数，不构建 LVGL。
+测试套件同时包含单元测试和真实 engine 的集成测试：`*IntegrationTest` 类会按仓库既有方式构建 LVGL（当前主要是 9.6，多版本测试覆盖全部支持版本），由同一次 `run_tests.py` 执行；它们不是 skip 或未执行断言。预编译与 release 集成测试在 `sdk/9.6` 缺失时会自动调用 `tools/export_sdk.py`，因此同样需要 `lvgl-src/9.6` 与 GCC。单元测试使用 fake engine / 纯函数，不构建 LVGL。

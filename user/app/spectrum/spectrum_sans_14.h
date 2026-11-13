@@ -2,7 +2,7 @@
 /*******************************************************************************
  * Size: 14 px
  * Bpp: 4
- * Opts: --font C:\Windows\Fonts\segoeuib.ttf --size 14 --bpp 4 --no-compress --no-kerning --format lvgl --lv-font-name spectrum_sans_14 -o I:\Desktop\Used\Tmp\lvgl-for-agent\user\app\spectrum\spectrum_sans_14.c -r 0x20-0x7E
+ * Opts: --font C:\Windows\Fonts\segoeuib.ttf --size 14 --bpp 4 --no-compress --no-kerning --format lvgl --lv-font-name spectrum_sans_14 -o .\user\app\spectrum\spectrum_sans_14.c -r 0x20-0x7E
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE

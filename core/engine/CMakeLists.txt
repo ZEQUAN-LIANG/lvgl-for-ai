@@ -47,6 +47,18 @@ message(STATUS "lvgl_engine: LVGL ${LVGL_AI_LVGL_VERSION} from ${LVGL_AI_LVGL_SR
 message(STATUS "lvgl_engine: zlib from ${LVGL_AI_ZLIB_SRC}")
 message(STATUS "lvgl_engine: libpng from ${LVGL_AI_LIBPNG_SRC}")
 
+# Host SDK export maps the build tree to a relative prefix so __FILE__ and
+# debug information never embed the build machine's absolute paths.
+if(DEFINED LVGL_AI_FILE_PREFIX_MAP AND NOT LVGL_AI_FILE_PREFIX_MAP STREQUAL "")
+    file(TO_CMAKE_PATH "${LVGL_AI_FILE_PREFIX_MAP}" LVGL_AI_FILE_PREFIX_MAP)
+    add_compile_options("SHELL:-ffile-prefix-map=${LVGL_AI_FILE_PREFIX_MAP}=.")
+endif()
+if(DEFINED LVGL_AI_LVGL_SRC_PREFIX_MAP
+   AND NOT LVGL_AI_LVGL_SRC_PREFIX_MAP STREQUAL "")
+    file(TO_CMAKE_PATH "${LVGL_AI_LVGL_SRC_PREFIX_MAP}" LVGL_AI_LVGL_SRC_PREFIX_MAP)
+    add_compile_options("SHELL:-ffile-prefix-map=${LVGL_AI_LVGL_SRC_PREFIX_MAP}=lvgl-src/${LVGL_AI_LVGL_VERSION}")
+endif()
+
 # Version family: the adapter is the only engine-owned target allowed to
 # include LVGL headers (user/app is user code), and the lodepng copy moves
 # between the 8.x and 9.x trees.
@@ -155,15 +167,22 @@ target_compile_options(lvgl_ai_libpng PRIVATE -w)
 # Adapter target: adapter_common.c holds the version-independent mechanics;
 # the version-specific source is the only engine source that includes LVGL
 # and lodepng headers.
+#
+# A host SDK build overrides LVGL_AI_LVGL_SRC_LABEL with a portable label such
+# as "prebuilt-9.6", so the library never embeds the build machine's paths.
+if(NOT DEFINED LVGL_AI_LVGL_SRC_LABEL OR LVGL_AI_LVGL_SRC_LABEL STREQUAL "")
+    set(LVGL_AI_LVGL_SRC_LABEL "${LVGL_AI_LVGL_SRC}")
+endif()
+file(TO_CMAKE_PATH "${LVGL_AI_LVGL_SRC_LABEL}" LVGL_AI_LVGL_SRC_LABEL)
 add_library(adapter STATIC adapter_common.c ${LVGL_AI_ADAPTER_SOURCE})
 target_link_libraries(adapter PRIVATE lvgl)
 target_include_directories(adapter PRIVATE
     ${LVGL_AI_LODEPNG_DIR}
 )
-# The engine reports the exact source tree it was built from. LVGL_AI_LVGL_SRC is
+# The engine reports the exact source tree it was built from. The label is
 # already normalized to forward slashes above, so it is safe inside a C string.
 target_compile_definitions(adapter PRIVATE
-    "LVGL_SRC_PATH=\"${LVGL_AI_LVGL_SRC}\""
+    "LVGL_SRC_PATH=\"${LVGL_AI_LVGL_SRC_LABEL}\""
 )
 target_compile_options(adapter PRIVATE -Wall -Wextra)
 
@@ -177,9 +196,11 @@ target_include_directories(user_app PRIVATE
 )
 target_compile_options(user_app PRIVATE -Wall -Wextra)
 
-# Engine sources only see adapter.h, never version LVGL headers.
-add_executable(lvgl_engine
-    main.c
+# Engine sources only see adapter.h, never version LVGL headers. The OBJECT
+# library is the single compilation of these sources: the executable links the
+# objects directly and the SDK export archives the same objects into
+# libengine.a.
+add_library(engine_core OBJECT
     protocol.c
     session.c
     capture.c
@@ -192,7 +213,12 @@ add_executable(lvgl_engine
     window.c
     stdin_queue.c
 )
-target_link_libraries(lvgl_engine PRIVATE adapter user_app lvgl_ai_libpng)
+target_include_directories(engine_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(engine_core PRIVATE lvgl_ai_libpng)
+target_compile_options(engine_core PRIVATE -Wall -Wextra)
+
+add_executable(lvgl_engine main.c)
+target_link_libraries(lvgl_engine PRIVATE engine_core adapter user_app lvgl_ai_libpng)
 if(NOT WIN32)
     find_package(Threads REQUIRED)
     target_link_libraries(lvgl_engine PRIVATE Threads::Threads)
@@ -207,3 +233,21 @@ endif()
 set_target_properties(lvgl_engine PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+# Host SDK export: a static archive over the same engine objects, plus a
+# convenience target that builds every library the SDK manifest lists.
+add_library(engine_archive STATIC $<TARGET_OBJECTS:engine_core>)
+set_target_properties(engine_archive PROPERTIES OUTPUT_NAME engine)
+add_custom_target(lvgl_ai_sdk
+    DEPENDS lvgl adapter engine_archive lvgl_ai_libpng lvgl_ai_zlib
+)
+
+# SDK builds collect all archives into one directory; normal builds leave the
+# default CMake layout untouched.
+if(DEFINED LVGL_AI_SDK_LIBS_DIR AND NOT LVGL_AI_SDK_LIBS_DIR STREQUAL "")
+    file(TO_CMAKE_PATH "${LVGL_AI_SDK_LIBS_DIR}" LVGL_AI_SDK_LIBS_DIR)
+    set_target_properties(lvgl_ai_zlib lvgl_ai_libpng adapter engine_archive
+        PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${LVGL_AI_SDK_LIBS_DIR}")
+    set_target_properties(lvgl PROPERTIES
+        ARCHIVE_OUTPUT_DIRECTORY "${LVGL_AI_SDK_LIBS_DIR}")
+endif()

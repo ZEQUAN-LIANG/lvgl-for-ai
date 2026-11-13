@@ -104,6 +104,24 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(out.strip(), str(fake.session_dir))
         self.assertEqual(err, "")
 
+    def test_build_mode_flags_are_forwarded(self) -> None:
+        cases = [("--prebuilt", "prebuilt"), ("--source", "source")]
+        for flag, expected in cases:
+            with self.subTest(flag=flag):
+                fake = FakeRuntime()
+                with mock.patch.object(cli, "Runtime", return_value=fake) as factory:
+                    code, _, _ = run_cli([flag])
+                self.assertEqual(code, 0)
+                factory.assert_called_once_with(
+                    lvgl=None, build=True, record=True,
+                    build_mode=expected, record_changed_only=True,
+                )
+
+    def test_prebuilt_and_source_are_mutually_exclusive(self) -> None:
+        code, _, err = run_cli(["--prebuilt", "--source"])
+        self.assertEqual(code, 2)
+        self.assertIn("not allowed with argument", err)
+
     def test_record_defaults_on_and_no_record_disables_it(self) -> None:
         cases = [([], True), (["--record"], True), (["--no-record"], False)]
         for argv, expected in cases:
