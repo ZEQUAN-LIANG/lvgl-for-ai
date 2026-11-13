@@ -20,7 +20,6 @@ sessions/
 /chip-adapt/sifli/host/config.json
 /chip-adapt/sifli/host/vendor/
 /chip-adapt/sifli/host/web/vendor/
-/chip-adapt/sifli/sift_watch/
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
 /.test-tmp/

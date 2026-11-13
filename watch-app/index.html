@@ -1,0 +1,3094 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#040b08">
+<title>SIFT · 390×450 像素手表</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #040b08;
+    --ink-2: #07120d;
+    --panel: #0a1711;
+    --line: #1d3329;
+    --line-2: #2b4738;
+    --paper: #e1eddc;
+    --muted: #789484;
+    --dim: #415a4c;
+    --mint: #72dfba;
+    --mint-hi: #c1ffe8;
+    --sand: #f3b74f;
+    --sand-hi: #ffd57d;
+    --coral: #ff7959;
+    --pixel: "Silkscreen", "Courier New", monospace;
+    --mono: "DM Mono", "Cascadia Code", "SFMono-Regular", monospace;
+    --sans-cn: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    --screen-w: min(390px, calc(100vw - 110px));
+    /* 44/390: match the 1.85" AMOLED's rounded active area at any preview size.
+     * C uses the same 44 px value as SIFT_PANEL_RADIUS. */
+    --panel-radius: calc(var(--screen-w) * 0.11282);
+  }
+
+  * { box-sizing: border-box; }
+  html { min-width: 300px; background: var(--ink); }
+  body {
+    margin: 0;
+    min-height: 100svh;
+    overflow-x: hidden;
+    color: var(--paper);
+    font-family: var(--mono);
+    background:
+      radial-gradient(ellipse 54% 48% at 73% 38%, rgba(243, 183, 79, .13), transparent 68%),
+      radial-gradient(ellipse 45% 48% at 20% 66%, rgba(114, 223, 186, .075), transparent 66%),
+      linear-gradient(155deg, #06100c 0%, #030806 58%, #050b08 100%);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { color: var(--ink); background: var(--sand); }
+
+  .grid-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(114, 223, 186, .05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(114, 223, 186, .05) 1px, transparent 1px);
+    background-size: 48px 48px;
+    -webkit-mask-image: radial-gradient(ellipse 75% 72% at 56% 48%, #000 12%, transparent 78%);
+    mask-image: radial-gradient(ellipse 75% 72% at 56% 48%, #000 12%, transparent 78%);
+    opacity: .7;
+  }
+
+  .ghost {
+    position: fixed;
+    right: -2.5vw;
+    bottom: -7vh;
+    z-index: 0;
+    pointer-events: none;
+    font-family: var(--pixel);
+    font-size: clamp(160px, 28vw, 430px);
+    font-weight: 700;
+    line-height: .7;
+    letter-spacing: -.075em;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(114, 223, 186, .075);
+    transform: rotate(-3deg);
+    user-select: none;
+  }
+
+  .noise {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+    opacity: .12;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.86' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+  }
+
+  .shell {
+    position: relative;
+    z-index: 2;
+    width: min(1240px, calc(100% - clamp(32px, 7vw, 96px)));
+    min-height: 100svh;
+    margin: 0 auto;
+    padding: clamp(30px, 6vh, 70px) 0;
+    display: grid;
+    grid-template-columns: minmax(300px, 440px) minmax(0, auto);
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "intro device"
+      "console device";
+    align-content: center;
+    align-items: center;
+    column-gap: clamp(38px, 6.5vw, 98px);
+    row-gap: 26px;
+  }
+
+  .intro {
+    grid-area: intro;
+    align-self: end;
+    max-width: 440px;
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0;
+    font-family: var(--pixel);
+    font-size: 10px;
+    line-height: 1.5;
+    letter-spacing: .1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    animation: rise .7s .08s both;
+  }
+  .eyebrow .sep { color: var(--dim); }
+  .status-led {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 7px;
+    background: var(--sand);
+    box-shadow: 0 0 0 1px rgba(243, 183, 79, .24), 0 0 14px rgba(243, 183, 79, .8);
+    animation: led 2.6s steps(2, end) infinite;
+  }
+
+  h1 {
+    margin: 20px 0 16px;
+    font-family: var(--pixel);
+    font-size: clamp(86px, 9.4vw, 142px);
+    font-weight: 700;
+    line-height: .78;
+    letter-spacing: -.055em;
+    color: var(--paper);
+    text-shadow: 4px 4px 0 #0b1912, 8px 8px 0 rgba(0, 0, 0, .3);
+    animation: rise .8s .15s both;
+  }
+  h1 .accent {
+    color: var(--sand);
+    text-shadow: 4px 4px 0 #2a1c0b;
+  }
+
+  .cn {
+    margin: 0 0 17px;
+    font-family: var(--sans-cn);
+    font-size: clamp(22px, 2.25vw, 30px);
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: .02em;
+    color: #e5eee0;
+    animation: rise .8s .23s both;
+  }
+
+  .desc {
+    max-width: 35ch;
+    margin: 0;
+    font-family: var(--sans-cn);
+    font-size: 13.5px;
+    line-height: 1.85;
+    letter-spacing: .015em;
+    color: var(--muted);
+    animation: rise .8s .3s both;
+  }
+
+  .console {
+    grid-area: console;
+    align-self: start;
+    width: 100%;
+    max-width: 430px;
+    animation: rise .8s .38s both;
+  }
+
+  .sensor-card {
+    position: relative;
+    display: flex;
+    gap: 18px;
+    padding: 15px;
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(135deg, rgba(16, 33, 25, .9), rgba(6, 14, 10, .88));
+    box-shadow: 6px 6px 0 rgba(0, 0, 0, .3);
+    transition: border-color .35s ease, box-shadow .35s ease;
+  }
+  .sensor-card::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border: 1px solid rgba(114, 223, 186, .055);
+    pointer-events: none;
+  }
+  .sensor-card.is-live {
+    border-color: rgba(114, 223, 186, .55);
+    box-shadow: 6px 6px 0 rgba(0, 0, 0, .3), 0 0 28px rgba(114, 223, 186, .07);
+  }
+
+  .axis-pad {
+    position: relative;
+    flex: 0 0 92px;
+    width: 92px;
+    height: 92px;
+    overflow: hidden;
+    border: 1px solid var(--line-2);
+    background-color: #07110d;
+    background-image:
+      linear-gradient(rgba(114, 223, 186, .085) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(114, 223, 186, .085) 1px, transparent 1px);
+    background-size: 23px 23px;
+  }
+  .axis-pad::before,
+  .axis-pad::after {
+    content: "";
+    position: absolute;
+    background: rgba(114, 223, 186, .25);
+  }
+  .axis-pad::before { left: 0; right: 0; top: 50%; height: 1px; }
+  .axis-pad::after { top: 0; bottom: 0; left: 50%; width: 1px; }
+  .axis-ring {
+    position: absolute;
+    inset: 18px;
+    border: 1px dashed rgba(243, 183, 79, .24);
+  }
+  .axis-dot {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    background: var(--sand);
+    box-shadow: 0 0 12px rgba(243, 183, 79, .75);
+    transform: translate(-50%, -50%);
+    will-change: transform;
+  }
+  .axis-dot::after {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    background: var(--sand-hi);
+  }
+
+  .readout {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+    padding: 2px 0;
+  }
+  .readout-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 0 6px;
+    border-bottom: 1px solid rgba(29, 51, 41, .8);
+  }
+  .readout-row:last-child { padding-bottom: 0; border-bottom: 0; }
+  .readout-row span {
+    font-family: var(--pixel);
+    font-size: 9px;
+    line-height: 1;
+    letter-spacing: .08em;
+    color: var(--muted);
+  }
+  .readout-row strong {
+    font-family: var(--pixel);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: .02em;
+    color: var(--paper);
+    white-space: nowrap;
+  }
+  .readout-row strong.source { color: var(--muted); }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .btn {
+    appearance: none;
+    border: 1px solid var(--line-2);
+    background: #0a1610;
+    color: var(--paper);
+    padding: 11px 13px 10px;
+    font-family: var(--pixel);
+    font-size: 10px;
+    line-height: 1.25;
+    letter-spacing: .035em;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 #010302;
+    transition: transform .12s ease, box-shadow .12s ease, border-color .18s ease, background .18s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:hover {
+    transform: translate(-1px, -1px);
+    border-color: var(--mint);
+    box-shadow: 4px 4px 0 #010302;
+  }
+  .btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 0 0 0 #010302;
+  }
+  .btn:focus-visible {
+    outline: 2px solid var(--sand);
+    outline-offset: 3px;
+  }
+  .btn--primary {
+    color: #1c1307;
+    background: var(--sand);
+    border-color: var(--sand-hi);
+    box-shadow: 3px 3px 0 #2a1b08;
+  }
+  .btn--primary:hover {
+    background: var(--sand-hi);
+    border-color: #fff0bf;
+    box-shadow: 4px 4px 0 #2a1b08;
+  }
+  .btn--quiet { color: var(--muted); }
+  .btn.is-live {
+    color: var(--mint);
+    border-color: rgba(114, 223, 186, .55);
+  }
+  .btn[disabled] {
+    opacity: .45;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: 3px 3px 0 #010302 !important;
+  }
+
+  .status-line {
+    min-height: 1.5em;
+    margin: 12px 0 0;
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.5;
+    letter-spacing: .02em;
+    color: var(--muted);
+    transition: color .2s ease;
+  }
+  .status-line.is-active { color: var(--mint); }
+  .status-line.is-warn { color: var(--coral); }
+
+  .hints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px 16px;
+    padding: 0;
+    margin: 16px 0 0;
+    list-style: none;
+  }
+  .hints li {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 9px;
+    line-height: 1.4;
+    letter-spacing: .02em;
+    color: var(--muted);
+  }
+  kbd {
+    display: inline-block;
+    padding: 4px 6px 3px;
+    border: 1px solid var(--line);
+    background: #08120e;
+    color: var(--muted);
+    font-family: var(--pixel);
+    font-size: 8px;
+    line-height: 1;
+    box-shadow: 2px 2px 0 #010302;
+  }
+
+  .device-stage {
+    grid-area: device;
+    justify-self: center;
+    align-self: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: device-in 1s .16s cubic-bezier(.2, .75, .2, 1) both;
+  }
+
+  .case-wrap {
+    position: relative;
+    filter: drop-shadow(0 30px 34px rgba(0, 0, 0, .66));
+  }
+  .case {
+    position: relative;
+    padding: 15px 18px 16px;
+    border: 1px solid #2d4135;
+    border-radius: calc(var(--panel-radius) + 16px);
+    background:
+      linear-gradient(145deg, #223229 0%, #0b1510 32%, #17251d 66%, #060d09 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), inset 0 0 0 5px rgba(4, 10, 7, .65);
+  }
+  .case::before {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border: 1px solid rgba(114, 223, 186, .11);
+    border-radius: calc(var(--panel-radius) + 10px);
+    pointer-events: none;
+  }
+  .case::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: calc(var(--panel-radius) + 16px);
+    pointer-events: none;
+    background: linear-gradient(112deg, rgba(255, 255, 255, .06), transparent 19%, transparent 78%, rgba(114, 223, 186, .04));
+  }
+  .case-label {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 3px 9px;
+    font-family: var(--pixel);
+    font-size: 8px;
+    letter-spacing: .1em;
+    color: var(--muted);
+  }
+  .case-label span { color: var(--dim); }
+  .screen {
+    position: relative;
+    z-index: 2;
+    width: var(--screen-w);
+    aspect-ratio: 390 / 450;
+    border-radius: var(--panel-radius);
+    background: #040b08;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 2px #30483a,
+      0 0 0 4px #050a07,
+      0 0 0 5px rgba(114, 223, 186, .08),
+      inset 0 0 0 1px rgba(0, 0, 0, .8);
+  }
+  #watch {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--panel-radius);
+    image-rendering: pixelated;
+    touch-action: none;
+    cursor: grab;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #watch:active { cursor: grabbing; }
+  #watch:focus-visible { outline: 2px solid var(--sand); outline-offset: -2px; }
+  .glare {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: var(--panel-radius);
+    pointer-events: none;
+    background: linear-gradient(118deg, transparent 30%, rgba(255, 255, 255, .048) 47%, transparent 57%);
+    mix-blend-mode: screen;
+  }
+  .case-foot {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding-top: 8px;
+    font-family: var(--pixel);
+    font-size: 7px;
+    line-height: 1;
+    letter-spacing: .12em;
+    color: var(--dim);
+  }
+  .case-foot i { width: 18px; height: 1px; background: var(--line); }
+
+  .screw {
+    position: absolute;
+    z-index: 4;
+    width: 6px;
+    height: 6px;
+    background: #31463a;
+    box-shadow: inset 0 0 0 1px #08100c;
+  }
+  .screw::after {
+    content: "";
+    position: absolute;
+    left: 1px;
+    right: 1px;
+    top: 2px;
+    height: 1px;
+    background: #0b1611;
+    transform: rotate(45deg);
+  }
+  .screw.s1 { left: 25px; top: 25px; }
+  .screw.s2 { right: 25px; top: 25px; }
+  .screw.s3 { left: 25px; bottom: 25px; }
+  .screw.s4 { right: 25px; bottom: 25px; }
+
+  .side-keys {
+    position: absolute;
+    top: 33%;
+    right: -20px;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .side-key {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 54px;
+    padding: 0;
+    border: 2px solid #24392e;
+    border-left: 0;
+    border-radius: 0 5px 5px 0;
+    background: repeating-linear-gradient(180deg, #2a4034 0 5px, #14241c 5px 9px);
+    color: var(--muted);
+    font-family: var(--pixel);
+    font-size: 8px;
+    cursor: pointer;
+    box-shadow: inset 2px 0 0 rgba(255, 255, 255, .06), 4px 4px 0 rgba(0, 0, 0, .3);
+    transition: transform .12s ease, border-color .18s ease;
+  }
+  .side-key span { transform: rotate(90deg); }
+  .side-key.key2 { border-color: #385a48; }
+  .side-key.key2 span { color: var(--sand); }
+  .side-key.key1 span { color: var(--mint); }
+  .side-key:hover { transform: translateX(3px); border-color: #4d7560; }
+  .side-key:active { transform: translateX(1px); }
+  .side-key:focus-visible { outline: 2px solid var(--sand); outline-offset: 3px; }
+
+  .panel-chip {
+    padding: 1px 4px;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 6px;
+    letter-spacing: .08em;
+  }
+
+  .stage-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px 13px;
+    margin-top: 15px;
+    font-family: var(--pixel);
+    font-size: 8px;
+    line-height: 1.4;
+    letter-spacing: .07em;
+    color: var(--dim);
+    text-align: center;
+  }
+  .live {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--mint);
+  }
+  .live i {
+    width: 5px;
+    height: 5px;
+    background: var(--mint);
+    box-shadow: 0 0 8px rgba(114, 223, 186, .75);
+    animation: led 1.5s steps(2, end) infinite;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes device-in {
+    from { opacity: 0; transform: translateY(28px) scale(.965); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes led {
+    0%, 42% { opacity: 1; }
+    43%, 100% { opacity: .36; }
+  }
+
+  @media (max-width: 1060px) {
+    .ghost { opacity: .6; right: -10vw; }
+    .shell {
+      grid-template-columns: minmax(280px, 390px) minmax(0, auto);
+      column-gap: 40px;
+    }
+    h1 { font-size: clamp(82px, 12vw, 120px); }
+  }
+
+  @media (max-width: 900px) {
+    .ghost { display: none; }
+    .shell {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto;
+      grid-template-areas:
+        "intro"
+        "device"
+        "console";
+      justify-items: center;
+      row-gap: 30px;
+      width: min(100% - 36px, 620px);
+      padding: 28px 0 48px;
+    }
+    .intro {
+      align-self: auto;
+      width: 100%;
+      max-width: 560px;
+      text-align: left;
+    }
+    h1 { font-size: clamp(76px, 19vw, 120px); margin-top: 16px; }
+    .cn { font-size: clamp(21px, 4.3vw, 28px); }
+    .desc { max-width: 45ch; }
+    .console { max-width: 460px; }
+    .device-stage { width: 100%; }
+    .stage-meta { margin-bottom: 2px; }
+  }
+
+  @media (max-width: 560px) {
+    :root {
+      --screen-w: min(390px, calc(100vw - 82px));
+    }
+    .shell { padding-top: 22px; row-gap: 24px; }
+    .eyebrow { font-size: 9px; }
+    h1 { font-size: clamp(70px, 24vw, 108px); }
+    .desc { display: none; }
+    .cn { margin-bottom: 0; }
+    .sensor-card { gap: 13px; padding: 12px; }
+    .axis-pad { flex-basis: 78px; width: 78px; height: 78px; }
+    .axis-ring { inset: 15px; }
+    .readout-row strong { font-size: 11px; }
+    .btn { flex: 1 1 auto; text-align: center; }
+    .actions { gap: 7px; }
+    .case { padding: 10px 12px 11px; }
+    .case-label { font-size: 7px; padding-bottom: 7px; }
+    .side-keys { right: -15px; gap: 16px; top: 32%; }
+    .side-key { width: 16px; height: 46px; font-size: 7px; }
+    .case { padding: 12px 14px 13px; }
+    .screw.s1 { left: 21px; top: 21px; }
+    .screw.s2 { right: 21px; top: 21px; }
+    .screw.s3 { left: 21px; bottom: 21px; }
+    .screw.s4 { right: 21px; bottom: 21px; }
+    .panel-chip { display: none; }
+    .hints { gap: 7px 12px; }
+    .hints li { font-size: 8px; }
+    .stage-meta { font-size: 7px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .001ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="grid-overlay" aria-hidden="true"></div>
+<div class="ghost" aria-hidden="true">SIFT</div>
+<div class="noise" aria-hidden="true"></div>
+
+<main class="shell">
+  <section class="intro" aria-labelledby="title">
+    <p class="eyebrow"><span class="status-led" aria-hidden="true"></span> WEARABLE STUDY <span class="sep">/</span> N°06</p>
+    <h1 id="title">SIFT<span class="accent">.</span></h1>
+    <p class="cn">一块会随手腕倾斜的<br>像素手表。</p>
+    <p class="desc">六轴沙漏是它的待机画面：拖动表盘倾斜，翻转手表翻转沙漏，左右上下滑动切换页面。按下 KEY2，还有计时器、秒表、天气与设置四枚像素应用；整套系统严格按 390 × 450 的 CO5300 AMOLED 绘制。</p>
+  </section>
+
+  <section class="device-stage" aria-label="SIFT 手表">
+    <div class="case-wrap">
+      <div class="case">
+        <span class="screw s1" aria-hidden="true"></span>
+        <span class="screw s2" aria-hidden="true"></span>
+        <span class="screw s3" aria-hidden="true"></span>
+        <span class="screw s4" aria-hidden="true"></span>
+        <div class="case-label"><span>SIFT / 06</span><span>1.85" AMOLED</span></div>
+        <div class="screen">
+          <canvas id="watch" width="390" height="450" tabindex="0" role="application"
+            aria-label="SIFT 像素手表。拖动表盘倾斜，翻转手表翻转沙漏，左右上下滑动切换页面；按 KEY2 或 A 打开应用。">
+            你的浏览器不支持 Canvas；SIFT 需要 Canvas 才能显示像素手表。
+          </canvas>
+          <div class="glare" aria-hidden="true"></div>
+        </div>
+        <div class="case-foot"><span>390</span><i></i><span>450</span><span class="panel-chip">CO5300</span></div>
+      </div>
+      <div class="side-keys" aria-label="侧键">
+        <button class="side-key key2" id="crownBtn" type="button" aria-label="KEY2 / 打开应用或返回表盘" title="KEY2 · 应用 / 返回"><span>2</span></button>
+        <button class="side-key key1" id="homeBtn" type="button" aria-label="KEY1 / 返回表盘" title="KEY1 · 返回表盘"><span>1</span></button>
+      </div>
+    </div>
+    <div class="stage-meta">
+      <span class="live"><i aria-hidden="true"></i> LIVE FEED</span>
+      <span>390 × 450 / CO5300 / LSM6DS3TR-C</span>
+      <span>SWIPE PAGES / SENSOR FLIP</span>
+    </div>
+  </section>
+
+  <section class="console" aria-label="传感器与手表控制">
+    <div class="sensor-card" id="sensorCard">
+      <div class="axis-pad" aria-hidden="true">
+        <span class="axis-ring"></span>
+        <span class="axis-dot" id="axisDot"></span>
+      </div>
+      <div class="readout">
+        <div class="readout-row"><span>ROLL</span><strong id="rollVal">+00.0°</strong></div>
+        <div class="readout-row"><span>PITCH</span><strong id="pitchVal">+00.0°</strong></div>
+        <div class="readout-row"><span>SOURCE</span><strong class="source" id="sourceVal">SIM</strong></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn--primary" id="sensorBtn" type="button">启用六轴</button>
+      <button class="btn" id="appsBtn" type="button">打开应用</button>
+      <button class="btn btn--quiet" id="resetBtn" type="button">重置</button>
+    </div>
+    <p class="status-line" id="statusLine" aria-live="polite">模拟模式 · 拖动表盘倾斜，左右上下滑动切页</p>
+    <ul class="hints" id="hints">
+      <li><kbd>DRAG</kbd><span>拖动倾斜</span></li>
+      <li><kbd>SWIPE</kbd><span>左右上下切页</span></li>
+      <li><kbd>SENSOR</kbd><span>翻转手表翻转沙漏</span></li>
+      <li><kbd>R</kbd><span>重置沙粒</span></li>
+    </ul>
+  </section>
+</main>
+
+<script>
+/*
+ * SIFT — a 390 x 450 pixel hourglass watch.
+ * The app is drawn entirely on the canvas with a hand-rolled 5x7 bitmap font.
+ * Sand is a 60 x 80 cellular automaton; watch roll bends gravity, pitch is
+ * reported by the six-axis HUD. DeviceOrientation is opt-in; turning the watch
+ * face down flips the hourglass through DeviceMotion. Swipe left/right/up/down
+ * changes pages. Desktop falls back to arrow keys and a slow auto drift.
+ * Panel: CO5300 390 x 450 AMOLED with rounded glass, touch, KEY1/KEY2.
+ * Apps: app drawer, timer, stopwatch, weather sample, settings.
+ */
+(() => {
+  'use strict';
+
+  const W = 390;
+  const H = 450;
+  const CELL = 3;
+  const SIM_HZ = 15;
+  const FLIP_MS = 680;
+  const NECK_ROW = 40;
+  const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  const C = {
+    ink: '#040b08',
+    ink2: '#07130e',
+    panel: '#0a1711',
+    line: '#1d3329',
+    line2: '#2b4738',
+    paper: '#e2eedd',
+    muted: '#789484',
+    dim: '#40574b',
+    mint: '#72dfba',
+    mintHi: '#c1ffe8',
+    mintDim: '#2c6d59',
+    sand: '#f3b74f',
+    sandHi: '#ffd57d',
+    sandDim: '#a8672c',
+    wood: '#9d5d2f',
+    woodDark: '#482815',
+    woodHi: '#d79650',
+    coral: '#ff7959',
+    sky: '#8fcbd6',
+    rain: '#5f909b',
+    cloud: '#a8bab2'
+  };
+
+  const GLYPHS = {
+    ' ': ['00000', '00000', '00000', '00000', '00000', '00000', '00000'],
+    'A': ['01110', '10001', '10001', '11111', '10001', '10001', '10001'],
+    'B': ['11110', '10001', '10001', '11110', '10001', '10001', '11110'],
+    'C': ['01111', '10000', '10000', '10000', '10000', '10000', '01111'],
+    'D': ['11110', '10001', '10001', '10001', '10001', '10001', '11110'],
+    'E': ['11111', '10000', '10000', '11110', '10000', '10000', '11111'],
+    'F': ['11111', '10000', '10000', '11110', '10000', '10000', '10000'],
+    'G': ['01110', '10001', '10000', '10111', '10001', '10001', '01110'],
+    'H': ['10001', '10001', '10001', '11111', '10001', '10001', '10001'],
+    'I': ['11111', '00100', '00100', '00100', '00100', '00100', '11111'],
+    'J': ['00111', '00010', '00010', '00010', '10010', '10010', '01100'],
+    'K': ['10001', '10010', '10100', '11000', '10100', '10010', '10001'],
+    'L': ['10000', '10000', '10000', '10000', '10000', '10000', '11111'],
+    'M': ['10001', '11011', '10101', '10101', '10001', '10001', '10001'],
+    'N': ['10001', '11001', '10101', '10011', '10001', '10001', '10001'],
+    'O': ['01110', '10001', '10001', '10001', '10001', '10001', '01110'],
+    'P': ['11110', '10001', '10001', '11110', '10000', '10000', '10000'],
+    'Q': ['01110', '10001', '10001', '10001', '10101', '10010', '01101'],
+    'R': ['11110', '10001', '10001', '11110', '10100', '10010', '10001'],
+    'S': ['01111', '10000', '10000', '01110', '00001', '00001', '11110'],
+    'T': ['11111', '00100', '00100', '00100', '00100', '00100', '00100'],
+    'U': ['10001', '10001', '10001', '10001', '10001', '10001', '01110'],
+    'V': ['10001', '10001', '10001', '10001', '10001', '01010', '00100'],
+    'W': ['10001', '10001', '10001', '10101', '10101', '11011', '10001'],
+    'X': ['10001', '10001', '01010', '00100', '01010', '10001', '10001'],
+    'Y': ['10001', '10001', '01010', '00100', '00100', '00100', '00100'],
+    'Z': ['11111', '00001', '00010', '00100', '01000', '10000', '11111'],
+    '0': ['01110', '10001', '10011', '10101', '11001', '10001', '01110'],
+    '1': ['00100', '01100', '00100', '00100', '00100', '00100', '01110'],
+    '2': ['01110', '10001', '00001', '00010', '00100', '01000', '11111'],
+    '3': ['11110', '00001', '00001', '01110', '00001', '00001', '11110'],
+    '4': ['00010', '00110', '01010', '10010', '11111', '00010', '00010'],
+    '5': ['11111', '10000', '10000', '11110', '00001', '00001', '11110'],
+    '6': ['01110', '10000', '10000', '11110', '10001', '10001', '01110'],
+    '7': ['11111', '00001', '00010', '00100', '01000', '01000', '01000'],
+    '8': ['01110', '10001', '10001', '01110', '10001', '10001', '01110'],
+    '9': ['01110', '10001', '10001', '01111', '00001', '00001', '01110'],
+    ':': ['00000', '00100', '00100', '00000', '00100', '00100', '00000'],
+    '.': ['00000', '00000', '00000', '00000', '00000', '01100', '01100'],
+    '-': ['00000', '00000', '00000', '11111', '00000', '00000', '00000'],
+    '+': ['00000', '00100', '00100', '11111', '00100', '00100', '00000'],
+    '%': ['11001', '11011', '00100', '00100', '01000', '11011', '10011'],
+    '/': ['00001', '00010', '00010', '00100', '01000', '01000', '10000'],
+    '×': ['00000', '10001', '01010', '00100', '01010', '10001', '00000'],
+    '°': ['01110', '01010', '01110', '00000', '00000', '00000', '00000'],
+    '?': ['01110', '10001', '00001', '00010', '00100', '00000', '00100']
+  };
+
+  GLYPHS['−'] = GLYPHS['-'];
+
+  const SAND_COLORS = [null, C.sand, C.sandHi, C.sandDim, '#ffe3a0'];
+
+  const APPS = [
+    { id: 'timer', title: 'TIMER', subtitle: 'FOCUS', accent: C.sand },
+    { id: 'stopwatch', title: 'STOPWATCH', subtitle: 'PRECISION', accent: C.mint },
+    { id: 'weather', title: 'WEATHER', subtitle: 'LOCAL SKY', accent: C.sky },
+    { id: 'settings', title: 'SETTINGS', subtitle: 'SYSTEM', accent: C.muted }
+  ];
+  const PAGE_ORDER = ['watch', 'apps', 'timer', 'stopwatch', 'weather', 'settings'];
+  const DEFAULT_SETTINGS = { autoDrift: true, h24: true, haptics: true, dim: true };
+  const TIMER_PRESETS = [60, 180, 300, 600];
+  const SETTINGS_ROWS = [
+    { key: 'autoDrift', title: 'AUTO DRIFT', sub: 'IDLE MOTION' },
+    { key: 'h24', title: '24H CLOCK', sub: 'TIME FORMAT' },
+    { key: 'haptics', title: 'HAPTICS', sub: 'FLIP / ALERTS' },
+    { key: 'dim', title: 'DIM STANDBY', sub: 'AFTER 42S' }
+  ];
+  const BACK_RECT = { x: 14, y: 12, w: 38, h: 42 };
+  const TILE_W = 167;
+  const TILE_H = 130;
+  const TILE_GAP = 12;
+  const TILE_X = 22;
+  const TILE_Y = 82;
+
+  const canvas = document.getElementById('watch');
+  const ctx = canvas.getContext('2d', { alpha: false });
+  ctx.imageSmoothingEnabled = false;
+
+  const rollEl = document.getElementById('rollVal');
+  const pitchEl = document.getElementById('pitchVal');
+  const sourceEl = document.getElementById('sourceVal');
+  const sensorCard = document.getElementById('sensorCard');
+  const sensorBtn = document.getElementById('sensorBtn');
+  const appsBtn = document.getElementById('appsBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const statusEl = document.getElementById('statusLine');
+  const hintsEl = document.getElementById('hints');
+  const axisDot = document.getElementById('axisDot');
+  const crownBtn = document.getElementById('crownBtn');
+  const homeBtn = document.getElementById('homeBtn');
+
+  const hash = (x, y) => {
+    let h = Math.imul(x + 374761393, 668265263) ^ Math.imul(y + 1274126177, 2246822519);
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  };
+
+  const signed = (v, digits = 1) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(digits)}`;
+
+  function glyphRuns(glyph, x, y, s) {
+    for (let ry = 0; ry < 7; ry++) {
+      const row = glyph[ry];
+      let start = -1;
+      for (let rx = 0; rx <= 5; rx++) {
+        const on = rx < 5 && row[rx] === '1';
+        if (on && start < 0) start = rx;
+        if (!on && start >= 0) {
+          ctx.fillRect(x + start * s, y + ry * s, (rx - start) * s, s);
+          start = -1;
+        }
+      }
+    }
+  }
+
+  function ptext(text, x, y, scale = 1, color = C.paper, align = 'left', alpha = 1, shadow = null) {
+    const chars = String(text).toUpperCase().split('');
+    const advance = 6 * scale;
+    const width = chars.length ? chars.length * advance - scale : 0;
+    if (align === 'center') x -= width / 2;
+    else if (align === 'right') x -= width;
+    x = Math.round(x);
+    y = Math.round(y);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (shadow) {
+      ctx.fillStyle = shadow;
+      let sx = x + Math.max(1, Math.round(scale / 2));
+      for (const ch of chars) {
+        const glyph = GLYPHS[ch] || GLYPHS['?'];
+        if (ch !== ' ') glyphRuns(glyph, sx, y + Math.max(1, Math.round(scale / 2)), scale);
+        sx += advance;
+      }
+    }
+    ctx.fillStyle = color;
+    let px = x;
+    for (const ch of chars) {
+      const glyph = GLYPHS[ch] || GLYPHS['?'];
+      if (ch !== ' ') glyphRuns(glyph, px, y, scale);
+      px += advance;
+    }
+    ctx.restore();
+    return width;
+  }
+
+  const bgCanvas = document.createElement('canvas');
+  bgCanvas.width = W;
+  bgCanvas.height = H;
+  const bg = bgCanvas.getContext('2d');
+
+  function buildBackground() {
+    bg.fillStyle = C.ink;
+    bg.fillRect(0, 0, W, H);
+
+    const glow = bg.createRadialGradient(195, 218, 20, 195, 218, 255);
+    glow.addColorStop(0, 'rgba(243, 183, 79, .105)');
+    glow.addColorStop(.38, 'rgba(243, 183, 79, .035)');
+    glow.addColorStop(.72, 'rgba(114, 223, 186, .017)');
+    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    bg.fillStyle = glow;
+    bg.fillRect(0, 0, W, H);
+
+    const topGlow = bg.createLinearGradient(0, 0, 0, H);
+    topGlow.addColorStop(0, 'rgba(114, 223, 186, .035)');
+    topGlow.addColorStop(.2, 'rgba(0, 0, 0, 0)');
+    topGlow.addColorStop(.8, 'rgba(0, 0, 0, 0)');
+    topGlow.addColorStop(1, 'rgba(0, 0, 0, .24)');
+    bg.fillStyle = topGlow;
+    bg.fillRect(0, 0, W, H);
+
+    for (let y = 8; y < H; y += 6) {
+      for (let x = 8; x < W; x += 6) {
+        const h = hash(x, y);
+        if (h > .965) {
+          bg.fillStyle = h > .992 ? 'rgba(243, 183, 79, .18)' : 'rgba(114, 223, 186, .09)';
+          bg.fillRect(x, y, h > .992 ? 2 : 1, h > .992 ? 2 : 1);
+        }
+      }
+    }
+
+    for (let i = 0; i < 46; i++) {
+      const x = Math.floor(hash(i, 3) * W);
+      const y = Math.floor(hash(i, 7) * H);
+      const h = hash(i, 11);
+      bg.fillStyle = h > .72 ? 'rgba(243, 183, 79, .18)' : 'rgba(114, 223, 186, .14)';
+      bg.fillRect(x, y, 1, 1);
+      if (h > .9) {
+        bg.fillStyle = 'rgba(226, 238, 221, .11)';
+        bg.fillRect(x - 2, y, 5, 1);
+        bg.fillRect(x, y - 2, 1, 5);
+      }
+    }
+
+    bg.save();
+    for (let a = 0; a < Math.PI * 2; a += .035) {
+      const rr = 148 + Math.sin(a * 3) * 3;
+      const x = Math.round(195 + Math.cos(a) * rr);
+      const y = Math.round(221 + Math.sin(a) * rr * 1.08);
+      if (hash(x, y) > .36) {
+        bg.fillStyle = 'rgba(114, 223, 186, .035)';
+        bg.fillRect(x, y, 1, 1);
+      }
+    }
+    bg.restore();
+
+    bg.fillStyle = 'rgba(111, 134, 117, .18)';
+    for (let i = 0; i < 7; i++) {
+      const y = 100 + i * 35;
+      bg.fillRect(15, y, 2, 1);
+      bg.fillRect(W - 17, y, 2, 1);
+    }
+  }
+
+  const HG = {
+    cx: 195,
+    top: 106,
+    bottom: 346,
+    neckY: 226,
+    centerY: 226,
+    capR: 82,
+    neckR: 14,
+    wall: 7,
+    capW: 216,
+    capH: 14,
+    capTopY: 92,
+    capBottomY: 346
+  };
+
+  const COLS = 60;
+  const ROWS = 80;
+  const GRID_X0 = HG.cx - (COLS * CELL) / 2;
+  const GRID_Y0 = HG.top;
+
+  function halfWidth(y) {
+    const neck = HG.neckY;
+    const t = y < neck
+      ? (neck - y) / (neck - HG.top)
+      : (y - neck) / (HG.bottom - neck);
+    const k = Math.pow(Math.sin(clamp(t, 0, 1) * Math.PI / 2), .78);
+    return HG.neckR + (HG.capR - HG.neckR) * k;
+  }
+
+  const inside = new Uint8Array(COLS * ROWS);
+  for (let y = 0; y < ROWS; y++) {
+    const cy = GRID_Y0 + y * CELL + CELL / 2;
+    const r = halfWidth(cy) - HG.wall;
+    for (let x = 0; x < COLS; x++) {
+      const cx = x * CELL + CELL / 2;
+      if (Math.abs(cx - (COLS * CELL) / 2) <= r) inside[y * COLS + x] = 1;
+    }
+  }
+
+  const sim = {
+    grid: new Uint8Array(COLS * ROWS),
+    next: new Uint8Array(COLS * ROWS),
+    step: 0
+  };
+
+  const state = {
+    targetRoll: 0,
+    targetPitch: 0,
+    smoothRoll: 0,
+    smoothPitch: 0,
+    gravityX: 0,
+    view: 'watch',
+    viewFlashUntil: 0,
+    appIndex: 0,
+    hoverTile: -1,
+    settingsIndex: 0,
+    settings: { ...DEFAULT_SETTINGS },
+    timer: {
+      selected: 2,
+      duration: TIMER_PRESETS[2],
+      remaining: TIMER_PRESETS[2],
+      running: false,
+      endAt: 0,
+      doneAt: 0,
+      alertUntil: 0
+    },
+    stopwatch: {
+      running: false,
+      startAt: 0,
+      elapsed: 0,
+      laps: []
+    },
+    weatherUnit: 'C',
+    sensor: {
+      listening: false,
+      active: false,
+      baseline: null,
+      raw: null,
+      roll: 0,
+      pitch: 0,
+      lastEvent: 0,
+      flipLatched: false,
+      lastFaceDownAt: 0
+    },
+    drag: null,
+    keys: new Set(),
+    manualUntil: 0,
+    lastInteraction: performance.now(),
+    autoNow: false,
+    paused: false,
+    flips: 0,
+    lastFlipAt: 0,
+    flip: { active: false, start: 0, scale: 1 },
+    notice: { text: '', until: 0 },
+    emptySince: 0,
+    stats: { top: 0, bottom: 0, total: 0, flow: 0 },
+    lastStats: 0,
+    lastReadout: 0,
+    lastFrame: 0,
+    dim: 0,
+    lastSensorRoll: 0,
+    battery: .83,
+    pendingSensor: 0,
+    statusUntil: 0
+  };
+
+  function setStatus(text, cls = '', hold = 0) {
+    statusEl.textContent = text;
+    statusEl.classList.toggle('is-active', cls === 'active');
+    statusEl.classList.toggle('is-warn', cls === 'warn');
+    state.statusUntil = hold ? performance.now() + hold : 0;
+  }
+
+  function currentViewBaseStatus() {
+    if (state.view === 'apps') return '应用 · 点选一个像素应用，滑动切页，KEY2 返回表盘';
+    if (state.view === 'timer') return '计时器 · 空格开始/暂停，滑动切页，ESC 返回';
+    if (state.view === 'stopwatch') return '秒表 · 空格开始/停止，L 计次，滑动切页';
+    if (state.view === 'weather') return '天气 · 点击温度切换 °C / °F，滑动切页';
+    if (state.view === 'settings') return '设置 · 点按开关，滑动切页，ESC 返回';
+    return state.sensor.active
+      ? '六轴已接入 · 拖动或翻转手表，左右上下滑动切页'
+      : '模拟模式 · 拖动表盘倾斜，左右上下滑动切页';
+  }
+
+  function restoreStatus() {
+    if (!state.statusUntil || performance.now() >= state.statusUntil) {
+      const live = state.view === 'watch' && state.sensor.active;
+      setStatus(currentViewBaseStatus(), live ? 'active' : '');
+      state.statusUntil = 0;
+    }
+  }
+
+  function hintItemsForView() {
+    if (state.view === 'apps') {
+      return [['TAP', '打开应用'], ['SWIPE', '滑动切页'], ['ESC', '返回表盘']];
+    }
+    if (state.view === 'timer') {
+      return [['SPACE', '开始暂停'], ['SWIPE', '切换页面'], ['R', '重置'], ['ESC', '返回']];
+    }
+    if (state.view === 'stopwatch') {
+      return [['SPACE', '开始停止'], ['SWIPE', '切换页面'], ['L', '计次'], ['ESC', '返回']];
+    }
+    if (state.view === 'weather') {
+      return [['TAP', '切换 °C/°F'], ['SWIPE', '切换页面'], ['ESC', '返回']];
+    }
+    if (state.view === 'settings') {
+      return [['↑↓', '选择'], ['SWIPE', '切换页面'], ['ESC', '返回应用']];
+    }
+    return [['DRAG', '拖动倾斜'], ['SWIPE', '左右上下切页'], ['SENSOR', '翻转沙漏'], ['R', '重置沙粒']];
+  }
+
+  function updateHints() {
+    const items = hintItemsForView();
+    hintsEl.replaceChildren();
+    for (const [key, label] of items) {
+      const li = document.createElement('li');
+      const kbd = document.createElement('kbd');
+      const span = document.createElement('span');
+      kbd.textContent = key;
+      span.textContent = label;
+      li.append(kbd, span);
+      hintsEl.append(li);
+    }
+  }
+
+  function formatClockParts(d = new Date()) {
+    const h24 = d.getHours();
+    const hour = state.settings.h24 ? h24 : ((h24 + 11) % 12 + 1);
+    return {
+      hh: String(hour).padStart(2, '0'),
+      mm: String(d.getMinutes()).padStart(2, '0'),
+      ss: String(d.getSeconds()).padStart(2, '0'),
+      ampm: h24 >= 12 ? 'PM' : 'AM',
+      day: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()],
+      date: `${String(d.getDate()).padStart(2, '0')} ${['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][d.getMonth()]}`
+    };
+  }
+
+  function haptic(duration = 12) {
+    if (!state.settings.haptics || !navigator.vibrate) return;
+    const activation = navigator.userActivation;
+    if (activation && !(activation.isActive || activation.hasBeenActive)) return;
+    try { navigator.vibrate(duration); } catch (_) { /* ignore */ }
+  }
+
+  function saveSettings() {
+    try {
+      localStorage.setItem('sift.settings.v1', JSON.stringify(state.settings));
+    } catch (_) { /* private mode / file:// without storage */ }
+  }
+
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem('sift.settings.v1');
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      for (const key of Object.keys(DEFAULT_SETTINGS)) {
+        if (typeof parsed[key] === 'boolean') state.settings[key] = parsed[key];
+      }
+    } catch (_) { /* keep defaults */ }
+  }
+
+  function setView(view) {
+    if (!view || state.view === view) return;
+    const now = performance.now();
+    state.view = view;
+    state.viewFlashUntil = now + 180;
+    state.lastInteraction = now;
+    state.dim = 0;
+    state.keys.clear();
+    state.hoverTile = -1;
+    state.settingsIndex = 0;
+    state.statusUntil = 0;
+    updateHints();
+    restoreStatus();
+    updatePage(true);
+  }
+
+  function openApp(appId) {
+    const index = APPS.findIndex((app) => app.id === appId);
+    if (index < 0) return;
+    state.appIndex = index;
+    setView(appId);
+  }
+
+  function openApps() {
+    setView('apps');
+  }
+
+  function goHome() {
+    setView('watch');
+  }
+
+  function goBack() {
+    if (state.view === 'watch') return;
+    setView(state.view === 'apps' ? 'watch' : 'apps');
+  }
+
+  function stepPage(direction) {
+    const index = PAGE_ORDER.indexOf(state.view);
+    if (index < 0) return;
+    setView(PAGE_ORDER[(index + direction + PAGE_ORDER.length) % PAGE_ORDER.length]);
+  }
+
+  function navigateSwipe(dx, dy) {
+    const threshold = 42;
+    const ax = Math.abs(dx);
+    const ay = Math.abs(dy);
+    if (ax < threshold && ay < threshold) return;
+    haptic(6);
+    if (ax >= ay) stepPage(dx < 0 ? 1 : -1);
+    else if (dy < 0) openApps();
+    else goHome();
+  }
+
+  function timerRemaining(now) {
+    const timer = state.timer;
+    return timer.running ? Math.max(0, (timer.endAt - now) / 1000) : timer.remaining;
+  }
+
+  function formatMMSS(seconds) {
+    const total = Math.max(0, Math.ceil(seconds));
+    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+  }
+
+  function setTimerPreset(index) {
+    if (index < 0 || index >= TIMER_PRESETS.length) return;
+    const timer = state.timer;
+    timer.selected = index;
+    timer.duration = TIMER_PRESETS[index];
+    timer.remaining = timer.duration;
+    timer.running = false;
+    timer.endAt = 0;
+    timer.doneAt = 0;
+    timer.alertUntil = 0;
+    state.lastInteraction = performance.now();
+    haptic(8);
+  }
+
+  function toggleTimer(now = performance.now()) {
+    const timer = state.timer;
+    if (timer.running) {
+      timer.remaining = timerRemaining(now);
+      timer.running = false;
+    } else {
+      if (timer.remaining <= .001) timer.remaining = timer.duration;
+      timer.endAt = now + timer.remaining * 1000;
+      timer.running = true;
+      timer.doneAt = 0;
+      timer.alertUntil = 0;
+    }
+    state.lastInteraction = now;
+    haptic(8);
+  }
+
+  function resetTimer() {
+    const timer = state.timer;
+    timer.running = false;
+    timer.remaining = timer.duration;
+    timer.endAt = 0;
+    timer.doneAt = 0;
+    timer.alertUntil = 0;
+    state.lastInteraction = performance.now();
+    haptic(6);
+  }
+
+  function updateTimer(now) {
+    const timer = state.timer;
+    if (!timer.running) return;
+    const remaining = (timer.endAt - now) / 1000;
+    if (remaining > 0) {
+      timer.remaining = remaining;
+      return;
+    }
+    timer.running = false;
+    timer.remaining = 0;
+    timer.doneAt = now;
+    timer.alertUntil = now + 6000;
+    haptic([20, 60, 20, 60, 40]);
+    if (state.view !== 'timer') {
+      setStatus('计时结束 · 打开计时器查看', 'active', 5000);
+    }
+  }
+
+  function stopwatchElapsed(now) {
+    const sw = state.stopwatch;
+    return sw.elapsed + (sw.running ? now - sw.startAt : 0);
+  }
+
+  function formatStopwatch(ms) {
+    const totalCs = Math.floor(Math.max(0, ms) / 10);
+    const centis = totalCs % 100;
+    const totalSec = Math.floor(totalCs / 100);
+    return `${String(Math.floor(totalSec / 60)).padStart(2, '0')}:${String(totalSec % 60).padStart(2, '0')}.${String(centis).padStart(2, '0')}`;
+  }
+
+  function toggleStopwatch(now = performance.now()) {
+    const sw = state.stopwatch;
+    if (sw.running) {
+      sw.elapsed = stopwatchElapsed(now);
+      sw.running = false;
+    } else {
+      sw.startAt = now;
+      sw.running = true;
+    }
+    state.lastInteraction = now;
+    haptic(8);
+  }
+
+  function lapStopwatch(now = performance.now()) {
+    const sw = state.stopwatch;
+    if (!sw.running) return;
+    sw.laps.push(stopwatchElapsed(now));
+    state.lastInteraction = now;
+    haptic(6);
+  }
+
+  function resetStopwatch() {
+    const sw = state.stopwatch;
+    sw.running = false;
+    sw.elapsed = 0;
+    sw.startAt = 0;
+    sw.laps = [];
+    state.lastInteraction = performance.now();
+    haptic(6);
+  }
+
+  function weatherData() {
+    const d = new Date();
+    const seed = d.getDate() * 13 + d.getMonth() * 7;
+    const conditions = ['CLEAR', 'CLOUD', 'RAIN'];
+    const condition = conditions[seed % conditions.length];
+    const tempC = 15 + (seed % 8);
+    const tempOffsets = [0, 1, 2, 1, -1];
+    return {
+      condition,
+      tempC,
+      highC: tempC + 3 + (seed % 3),
+      lowC: tempC - 4 - (seed % 2),
+      humidity: 48 + (seed * 7) % 36,
+      wind: 5 + (seed * 11) % 17,
+      night: d.getHours() < 6 || d.getHours() >= 19,
+      hours: tempOffsets.map((offset, i) => ({
+        label: i === 0 ? 'NOW' : `+${i}H`,
+        tempC: tempC + offset,
+        condition: i === 4 ? conditions[(seed + 1) % conditions.length] : condition
+      }))
+    };
+  }
+
+  function tempValue(celsius) {
+    return state.weatherUnit === 'F' ? Math.round(celsius * 9 / 5 + 32) : Math.round(celsius);
+  }
+
+  function toggleWeatherUnit() {
+    state.weatherUnit = state.weatherUnit === 'C' ? 'F' : 'C';
+    state.lastInteraction = performance.now();
+    haptic(5);
+  }
+
+  function toggleSetting(index) {
+    const row = SETTINGS_ROWS[index];
+    if (!row) return;
+    state.settings[row.key] = !state.settings[row.key];
+    if (row.key === 'autoDrift' && !state.settings.autoDrift) {
+      state.autoNow = false;
+      state.targetRoll = 0;
+      state.targetPitch = 0;
+    }
+    if (row.key === 'dim' && !state.settings.dim) state.dim = 0;
+    saveSettings();
+    state.lastInteraction = performance.now();
+    if (row.key === 'haptics' && state.settings.haptics) haptic(14);
+  }
+
+  function notice(text, ms = 1800) {
+    state.notice.text = text;
+    state.notice.until = performance.now() + ms;
+  }
+
+  function resetSand(silent = false) {
+    sim.grid.fill(0);
+    sim.next.fill(0);
+    sim.step = 0;
+    let total = 0;
+    for (let y = 0; y < ROWS; y++) {
+      const cy = GRID_Y0 + y * CELL + CELL / 2;
+      if (cy >= HG.neckY) continue;
+      const surface = HG.top + 19 + Math.floor(hash(7, y) * 8);
+      if (cy < surface) continue;
+      for (let x = 0; x < COLS; x++) {
+        const i = y * COLS + x;
+        if (!inside[i]) continue;
+        const h = hash(x, y);
+        let v = 1;
+        if (h > .89) v = 4;
+        else if (h > .7) v = 2;
+        else if (h > .48) v = 3;
+        sim.grid[i] = v;
+        total++;
+      }
+    }
+    state.stats = { top: total, bottom: 0, total, flow: 0 };
+    state.emptySince = 0;
+    state.flips = 0;
+    state.notice = { text: '', until: 0 };
+    if (!silent) notice('SAND RESET', 1400);
+    updatePage(true);
+  }
+
+  function recount() {
+    let top = 0;
+    let bottom = 0;
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        if (!sim.grid[y * COLS + x]) continue;
+        if (y < NECK_ROW) top++;
+        else bottom++;
+      }
+    }
+    state.stats.top = top;
+    state.stats.bottom = bottom;
+    state.stats.total = top + bottom;
+  }
+
+  function stepSand() {
+    if (state.flip.active) return;
+    const src = sim.grid;
+    const dst = sim.next;
+    dst.fill(0);
+    const gx = state.gravityX;
+    const bias = gx > .08 ? 1 : gx < -.08 ? -1 : 0;
+    const strong = Math.abs(gx) > .35;
+    const rowDir = sim.step & 1 ? 1 : -1;
+    let crossed = 0;
+
+    for (let y = ROWS - 1; y >= 0; y--) {
+      for (let n = 0; n < COLS; n++) {
+        const x = rowDir > 0 ? n : COLS - 1 - n;
+        const i = y * COLS + x;
+        const v = src[i];
+        if (!v) continue;
+
+        if (Math.random() < .48) {
+          if (dst[i] === 0) dst[i] = v;
+          continue;
+        }
+
+        const side = bias || (Math.random() < .5 ? 1 : -1);
+        const moves = [];
+        if (bias) moves.push([side, 1]);
+        moves.push([0, 1]);
+        moves.push([-side, 1]);
+        if (strong) moves.push([side, 0]);
+
+        let moved = false;
+        for (let m = 0; m < moves.length; m++) {
+          const nx = x + moves[m][0];
+          const ny = y + moves[m][1];
+          if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+          const ni = ny * COLS + nx;
+          if (!inside[ni] || src[ni] || dst[ni]) continue;
+          src[i] = 0;
+          dst[ni] = v;
+          if (ny >= NECK_ROW && y < NECK_ROW) crossed++;
+          moved = true;
+          break;
+        }
+        if (!moved && dst[i] === 0) dst[i] = v;
+      }
+    }
+
+    sim.grid = sim.next;
+    sim.next = src;
+    sim.step++;
+    const instant = crossed * SIM_HZ;
+    state.stats.flow = lerp(state.stats.flow, instant, .16);
+  }
+
+  function mirrorSand() {
+    const old = sim.grid;
+    const next = new Uint8Array(COLS * ROWS);
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        const v = old[y * COLS + x];
+        if (v) next[(ROWS - 1 - y) * COLS + x] = v;
+      }
+    }
+    sim.grid = next;
+    sim.next = new Uint8Array(COLS * ROWS);
+    recount();
+    state.emptySince = 0;
+  }
+
+  function flip(reason = 'TEST') {
+    const now = performance.now();
+    if (state.flip.active) return;
+    if (now - state.lastFlipAt < 160) return;
+    state.lastFlipAt = now;
+    const sensor = reason === 'SENSOR';
+    wake();
+    state.lastInteraction = now;
+    state.flip.active = true;
+    state.flip.start = now;
+    state.flip.scale = 1;
+    state.flips++;
+    notice(`FLIP ${String(state.flips).padStart(2, '0')}`, 1000);
+    setStatus(sensor ? `六轴翻转 · 第 ${state.flips} 次` : `沙漏翻转 · 第 ${state.flips} 次`, 'active', 2200);
+    haptic(12);
+  }
+
+  function sensorFaceDown(faceDown, now) {
+    if (!state.sensor.active) return;
+    if (faceDown) {
+      state.sensor.lastFaceDownAt = now;
+      if (!state.sensor.flipLatched && now - state.lastFlipAt > 1200) {
+        state.sensor.flipLatched = true;
+        flip('SENSOR');
+      }
+    } else if (state.sensor.flipLatched && now - state.sensor.lastFaceDownAt > 600) {
+      state.sensor.flipLatched = false;
+    }
+  }
+
+  function updateFlip(now) {
+    if (!state.flip.active) return;
+    const p = clamp((now - state.flip.start) / FLIP_MS, 0, 1);
+    if (p >= 1) {
+      mirrorSand();
+      state.flip.active = false;
+      state.flip.scale = 1;
+      recount();
+      return;
+    }
+    const s = Math.cos(p * Math.PI);
+    state.flip.scale = Math.round(s * 11) / 11;
+  }
+
+  function wake() {
+    if (state.dim > 0) {
+      state.dim = 0;
+      state.lastInteraction = performance.now();
+    }
+  }
+
+  function drawHeader(now) {
+    const pulse = .55 + .45 * (.5 + .5 * Math.sin(now / 440));
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = C.sand;
+    ctx.fillRect(22, 15, 6, 6);
+    ctx.globalAlpha = 1;
+    ptext('SIFT', 34, 13, 2, C.mint, 'left', .92);
+    const sensorLabel = state.sensor.active ? '6-AXIS LIVE' : state.autoNow ? '6-AXIS AUTO' : '6-AXIS SIM';
+    ptext(sensorLabel, 195, 17, 1, state.sensor.active ? C.mint : C.muted, 'center', .9);
+
+    const pct = Math.round(state.battery * 100);
+    ptext(`${pct}%`, 336, 17, 1, C.dim, 'right');
+    const bx = 344;
+    const by = 14;
+    ctx.fillStyle = C.dim;
+    ctx.fillRect(bx, by, 22, 10);
+    ctx.fillRect(bx + 22, by + 3, 2, 4);
+    ctx.fillStyle = C.ink;
+    ctx.fillRect(bx + 2, by + 2, 18, 6);
+    const bars = Math.max(0, Math.min(5, Math.round(state.battery * 5)));
+    for (let i = 0; i < bars; i++) {
+      ctx.fillStyle = i < 2 && state.battery < .25 ? C.coral : C.mint;
+      ctx.fillRect(bx + 3 + i * 3, by + 3, 2, 4);
+    }
+  }
+
+  function drawClock(now) {
+    const clock = formatClockParts();
+    const scale = 6;
+    const top = 32;
+    const x = 22;
+
+    ptext(clock.hh, x, top, scale, C.paper, 'left', 1, '#0a1b13');
+    const colonX = x + 2 * 6 * scale;
+    if ((now % 1000) < 540 || state.dim > 0) {
+      ptext(':', colonX, top, scale, C.sand, 'left', 1, '#221608');
+    }
+    ptext(clock.mm, colonX + 6 * scale, top, scale, C.paper, 'left', 1, '#0a1b13');
+    if (!state.settings.h24) {
+      ptext(clock.ampm, 208, 64, 2, C.sand, 'left', .9);
+    }
+
+    ptext(clock.day, 368, 35, 2, C.mint, 'right', .95);
+    ptext(clock.date, 368, 53, 2, C.paper, 'right', .92);
+    ptext('SEC', 342, 78, 1, C.muted, 'right', .95);
+    ptext(clock.ss, 368, 70, 2, C.sand, 'right', .96);
+
+    ctx.fillStyle = C.line;
+    ctx.fillRect(22, 87, 346, 1);
+    for (let tx = 22; tx <= 368; tx += 43) {
+      ctx.fillStyle = C.mintDim;
+      ctx.globalAlpha = .6;
+      ctx.fillRect(tx, 87, 1, 2);
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = C.sand;
+    ctx.fillRect(194, 86, 3, 3);
+  }
+
+  function drawPost(x) {
+    ctx.fillStyle = C.woodDark;
+    ctx.fillRect(x, 98, 7, 256);
+    ctx.fillStyle = C.wood;
+    ctx.fillRect(x + 1, 100, 2, 252);
+    ctx.fillStyle = C.woodHi;
+    ctx.globalAlpha = .35;
+    ctx.fillRect(x + 1, 102, 1, 210);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = C.woodDark;
+    ctx.fillRect(x, 155, 7, 2);
+    ctx.fillRect(x, 292, 7, 2);
+    ctx.fillStyle = C.woodHi;
+    ctx.fillRect(x + 1, 156, 5, 1);
+  }
+
+  function drawCap(y) {
+    ctx.fillStyle = C.woodDark;
+    ctx.fillRect(HG.cx - HG.capW / 2, y, HG.capW, HG.capH);
+    ctx.fillStyle = C.wood;
+    ctx.fillRect(HG.cx - HG.capW / 2 + 2, y + 2, HG.capW - 4, HG.capH - 4);
+    ctx.fillStyle = C.woodHi;
+    ctx.fillRect(HG.cx - HG.capW / 2 + 5, y + 3, HG.capW - 10, 2);
+    ctx.fillStyle = C.woodDark;
+    ctx.globalAlpha = .8;
+    for (let i = -84; i <= 84; i += 21) {
+      ctx.fillRect(HG.cx + i, y + 4, 1, 7);
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = C.sandDim;
+    ctx.fillRect(HG.cx - 100, y + 5, 4, 4);
+    ctx.fillRect(HG.cx + 96, y + 5, 4, 4);
+    ctx.fillStyle = C.sandHi;
+    ctx.fillRect(HG.cx - 99, y + 6, 2, 1);
+    ctx.fillRect(HG.cx + 97, y + 6, 2, 1);
+    ctx.fillStyle = 'rgba(0, 0, 0, .28)';
+    ctx.fillRect(HG.cx - HG.capW / 2 + 1, y + HG.capH - 2, HG.capW - 2, 2);
+  }
+
+  function drawGlass(now) {
+    for (let y = HG.top; y < HG.bottom; y += CELL) {
+      const r = halfWidth(y + CELL / 2);
+      const rowTint = .028 + ((Math.floor(y / CELL) % 3) === 0 ? .012 : 0);
+      ctx.fillStyle = `rgba(114, 223, 186, ${rowTint})`;
+      ctx.fillRect(HG.cx - r, y, r * 2, CELL);
+    }
+
+    for (let y = HG.top + 6; y < HG.bottom; y += 12) {
+      const r = halfWidth(y) - 10;
+      if (r <= 0) continue;
+      ctx.fillStyle = 'rgba(114, 223, 186, .022)';
+      ctx.fillRect(HG.cx - r, y, r * 2, 1);
+    }
+
+    ctx.globalAlpha = .16;
+    ctx.fillStyle = C.mintHi;
+    ctx.fillRect(HG.cx - 51, HG.top + 27, 3, 18);
+    ctx.fillRect(HG.cx - 45, HG.top + 39, 3, 11);
+    ctx.fillRect(HG.cx - 38, HG.top + 51, 3, 8);
+    ctx.fillStyle = C.mint;
+    ctx.fillRect(HG.cx + 36, HG.bottom - 54, 3, 19);
+    ctx.fillRect(HG.cx + 42, HG.bottom - 65, 3, 8);
+    ctx.globalAlpha = 1;
+
+    for (let y = HG.top; y < HG.bottom; y += CELL) {
+      const r = halfWidth(y + CELL / 2);
+      const nearNeck = Math.abs(y - HG.neckY) < 35;
+      ctx.fillStyle = nearNeck ? C.mint : C.mintDim;
+      ctx.globalAlpha = nearNeck ? .95 : .72;
+      ctx.fillRect(HG.cx - r, y, 2, CELL);
+      ctx.fillRect(HG.cx + r - 2, y, 2, CELL);
+      if ((Math.floor(y / CELL) % 7 === 0) || y < HG.top + 24 || y > HG.bottom - 24) {
+        ctx.fillStyle = C.mintHi;
+        ctx.globalAlpha = .28;
+        ctx.fillRect(HG.cx - r + 2, y, 1, CELL);
+        ctx.fillRect(HG.cx + r - 3, y, 1, CELL);
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = C.mintDim;
+    ctx.globalAlpha = .8;
+    ctx.fillRect(HG.cx - HG.neckR + 1, HG.neckY - 4, 2, 8);
+    ctx.fillRect(HG.cx + HG.neckR - 3, HG.neckY - 4, 2, 8);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawSand(now) {
+    for (let y = 0; y < ROWS; y++) {
+      const py = GRID_Y0 + y * CELL;
+      for (let x = 0; x < COLS; x++) {
+        const v = sim.grid[y * COLS + x];
+        if (!v) continue;
+        const px = GRID_X0 + x * CELL;
+        ctx.fillStyle = SAND_COLORS[v];
+        ctx.fillRect(px, py, CELL, CELL);
+        const surface = y === 0 || sim.grid[(y - 1) * COLS + x] === 0;
+        if (surface) {
+          ctx.fillStyle = v === 3 ? C.sand : C.sandHi;
+          ctx.fillRect(px, py, CELL, 1);
+        } else if ((x + y + Math.floor(now / 900)) % 17 === 0) {
+          ctx.fillStyle = 'rgba(255, 229, 166, .35)';
+          ctx.fillRect(px + 1, py + 1, 1, 1);
+        }
+      }
+    }
+  }
+
+  function drawNeckGlow(now) {
+    const nearlyEmpty = state.stats.total > 0 && state.stats.top / state.stats.total < .05;
+    const f = nearlyEmpty ? 0 : clamp(state.stats.flow / 36, 0, 1);
+    if (f <= 0.02) return;
+    ctx.save();
+    ctx.globalAlpha = .12 + f * .2;
+    ctx.fillStyle = C.sand;
+    ctx.fillRect(HG.cx - 14, HG.neckY - 2, 28, 4);
+    ctx.globalAlpha = .16 + f * .28;
+    ctx.fillStyle = C.sandHi;
+    ctx.fillRect(HG.cx - 5, HG.neckY + 1, 2, 3);
+    ctx.fillRect(HG.cx + 3, HG.neckY - 4, 2, 3);
+    ctx.restore();
+  }
+
+  function drawMotes(now) {
+    const t = now / 1000;
+    ctx.save();
+    for (let i = 0; i < 22; i++) {
+      const x = HG.cx + Math.sin(t * (.08 + (i % 4) * .018) + i * 1.71) * (50 + (i % 5) * 17) + state.smoothRoll * .8;
+      const y = 219 + Math.cos(t * (.12 + (i % 3) * .03) + i * .93) * (94 + (i % 4) * 8);
+      if (x < 96 || x > 294 || y < 102 || y > 350) continue;
+      const amber = i % 3 === 0;
+      ctx.globalAlpha = .16 + (i % 5) * .035;
+      ctx.fillStyle = amber ? C.sand : C.mint;
+      const s = i % 7 === 0 ? 2 : 1;
+      ctx.fillRect(Math.round(x), Math.round(y), s, s);
+    }
+    ctx.restore();
+  }
+
+  function drawHourglass(now) {
+    const glow = ctx.createRadialGradient(HG.cx, HG.neckY, 8, HG.cx, HG.neckY, 185);
+    glow.addColorStop(0, 'rgba(243, 183, 79, .09)');
+    glow.addColorStop(.6, 'rgba(243, 183, 79, .018)');
+    glow.addColorStop(1, 'rgba(243, 183, 79, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(HG.cx - 190, HG.neckY - 190, 380, 380);
+
+    drawPost(HG.cx - 102);
+    drawPost(HG.cx + 95);
+
+    const s = state.flip.active ? state.flip.scale : 1;
+    if (Math.abs(s) < .02) {
+      drawCap(HG.capTopY);
+      drawCap(HG.capBottomY);
+      return;
+    }
+
+    ctx.save();
+    ctx.translate(HG.cx, HG.centerY);
+    ctx.scale(1, s);
+    ctx.translate(-HG.cx, -HG.centerY);
+    drawGlass(now);
+    drawSand(now);
+    drawNeckGlow(now);
+    drawCap(HG.capTopY);
+    drawCap(HG.capBottomY);
+    ctx.restore();
+
+    drawMotes(now);
+  }
+
+  function drawFooter(now) {
+    ctx.fillStyle = C.line;
+    ctx.fillRect(22, 370, 346, 1);
+
+    const remainRaw = state.stats.total ? Math.round(state.stats.top / state.stats.total * 100) : 0;
+    const remain = remainRaw < 5 ? 0 : remainRaw;
+    ptext('ROLL', 22, 376, 1, C.muted);
+    ptext(`${signed(state.smoothRoll, 0)}°`, 22, 385, 2, C.paper);
+    ptext('SAND', 195, 376, 1, C.muted, 'center');
+    ptext(`${remain}%`, 195, 385, 2, C.sand, 'center');
+    ptext('FLOW', 368, 376, 1, C.muted, 'right');
+    ptext(String(Math.min(99, Math.round(state.stats.flow))).padStart(2, '0'), 368, 385, 2, C.mint, 'right');
+
+    const flipReady = state.sensor.active;
+    const pulse = .5 + .5 * Math.sin(now / 230);
+    const flipColor = flipReady ? (state.emptySince && pulse > .5 ? C.sandHi : C.sand) : C.dim;
+    ptext(flipReady ? 'SENSOR FLIP / TURN FACE DOWN' : 'SENSOR FLIP / LINK 6-AXIS',
+      195, 404, 1, flipColor, 'center', flipReady ? .95 : .72);
+
+    let hint = 'SWIPE PAGES  /  DRAG TILT';
+    let hintColor = C.muted;
+    if (now < state.notice.until) {
+      hint = state.notice.text;
+      hintColor = C.sand;
+    } else if (state.sensor.active) {
+      hint = 'SWIPE PAGES  /  DRAG OR TILT';
+    } else if (state.autoNow) {
+      hint = 'SWIPE PAGES  /  AUTO DRIFT';
+    }
+    ptext(hint, 195, 419, 1, hintColor, 'center', .86);
+  }
+
+  function insideRect(p, r) {
+    return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+  }
+
+  function strokeBox(r, color, thickness = 2) {
+    ctx.fillStyle = color;
+    ctx.fillRect(r.x, r.y, r.w, thickness);
+    ctx.fillRect(r.x, r.y + r.h - thickness, r.w, thickness);
+    ctx.fillRect(r.x, r.y, thickness, r.h);
+    ctx.fillRect(r.x + r.w - thickness, r.y, thickness, r.h);
+  }
+
+  function drawButton(r, label, fill, border, color, scale = 2, alpha = 1) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = fill;
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    strokeBox(r, border, 2);
+    ptext(label, r.x + r.w / 2, r.y + Math.round((r.h - 7 * scale) / 2), scale, color, 'center', 1);
+    ctx.restore();
+  }
+
+  function drawBackChevron(now) {
+    const pulse = .78 + .22 * (.5 + .5 * Math.sin(now / 700));
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = C.mint;
+    const x = 22;
+    const y = 22;
+    const pts = [[8, 0], [6, 2], [4, 4], [2, 6], [0, 8], [2, 10], [4, 12], [6, 14], [8, 16]];
+    for (const [dx, dy] of pts) ctx.fillRect(x + dx, y + dy, 2, 2);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawAppHeader(title, subtitle, now) {
+    const clock = formatClockParts();
+    drawBackChevron(now);
+    ptext(title, 48, 16, 3, C.paper, 'left', .98, '#0a1b13');
+    ptext(`${clock.hh}:${clock.mm}`, 368, 18, 2, C.paper, 'right', .86);
+    if (!state.settings.h24) {
+      ptext(clock.ampm, 368, 34, 1, C.sand, 'right', .9);
+    }
+    ctx.fillStyle = C.line;
+    ctx.fillRect(22, 44, 346, 1);
+    ptext(subtitle, 22, 52, 1, C.muted, 'left', .9);
+  }
+
+  function pixelDisc(cx, cy, r, color, innerColor = null) {
+    ctx.fillStyle = color;
+    for (let dy = -r; dy <= r; dy += 3) {
+      const half = Math.floor(Math.sqrt(Math.max(0, r * r - dy * dy)));
+      if (half > 0) ctx.fillRect(Math.round(cx - half), Math.round(cy + dy), half * 2, 3);
+    }
+    if (innerColor) {
+      ctx.fillStyle = innerColor;
+      const rr = Math.max(1, r - 3);
+      for (let dy = -rr; dy <= rr; dy += 3) {
+        const half = Math.floor(Math.sqrt(Math.max(0, rr * rr - dy * dy)));
+        if (half > 0) ctx.fillRect(Math.round(cx - half), Math.round(cy + dy), half * 2, 3);
+      }
+    }
+  }
+
+  function pixelLine(x1, y1, x2, y2, color, size = 2) {
+    const steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
+    ctx.fillStyle = color;
+    for (let i = 0; i <= steps; i += Math.max(1, size)) {
+      const t = steps ? i / steps : 0;
+      ctx.fillRect(Math.round(x1 + (x2 - x1) * t), Math.round(y1 + (y2 - y1) * t), size, size);
+    }
+  }
+
+  function drawHourglassGlyph(cx, cy, s, color, accent) {
+    const top = cy - 10 * s;
+    const bottom = cy + 10 * s;
+    ctx.fillStyle = color;
+    ctx.fillRect(cx - 9 * s, top, 18 * s, 2 * s);
+    ctx.fillRect(cx - 9 * s, bottom - 2 * s, 18 * s, 2 * s);
+    for (let i = 0; i <= 5; i++) {
+      const t = i / 6;
+      const half = Math.max(2 * s, Math.round(9 * s * (1 - t) + 2 * s));
+      const yTop = top + 2 * s + Math.round(t * 8 * s);
+      const yBot = bottom - 2 * s - Math.round(t * 8 * s);
+      ctx.fillRect(cx - half, yTop, 2 * s, 2 * s);
+      ctx.fillRect(cx + half - 2 * s, yTop, 2 * s, 2 * s);
+      ctx.fillRect(cx - half, yBot - 2 * s, 2 * s, 2 * s);
+      ctx.fillRect(cx + half - 2 * s, yBot - 2 * s, 2 * s, 2 * s);
+    }
+    ctx.fillStyle = accent;
+    for (let i = 0; i < 3; i++) {
+      ctx.fillRect(cx - 2 * s + i * 2 * s, cy - 2 * s, s, s);
+      ctx.fillRect(cx - 2 * s + i * 2 * s, cy + s, s, s);
+    }
+  }
+
+  function drawClockGlyph(cx, cy, r, color, accent, stem = false) {
+    pixelDisc(cx, cy, r, color, C.ink2);
+    pixelLine(cx, cy, cx, cy - r + 5, color, 2);
+    pixelLine(cx, cy, cx + r - 6, cy, accent, 2);
+    ctx.fillStyle = color;
+    ctx.fillRect(cx - 2, cy - 2, 4, 4);
+    if (stem) {
+      ctx.fillRect(cx - 3, cy - r - 6, 6, 7);
+      ctx.fillRect(cx + r - 2, cy - r + 4, 6, 4);
+    }
+  }
+
+  function drawSlidersGlyph(cx, cy, color, accent) {
+    const positions = [5, 13, 1];
+    for (let i = 0; i < 3; i++) {
+      const y = cy - 8 + i * 8;
+      ctx.fillStyle = color;
+      ctx.fillRect(cx - 13, y, 26, 2);
+      ctx.fillStyle = i === 1 ? accent : color;
+      ctx.fillRect(cx - 10 + positions[i] * 2, y - 3, 6, 8);
+    }
+  }
+
+  function drawCloud(cx, cy, scale, color) {
+    const unit = Math.max(8, Math.round(24 * scale));
+    const blocks = [
+      [-1.0, .12, 2.0, .5],
+      [-.68, -.4, .85, .6],
+      [-.1, -.72, 1.0, .92],
+      [.48, -.3, .68, .55],
+      [.72, .04, .36, .36]
+    ];
+    ctx.fillStyle = color;
+    for (const [x, y, w, h] of blocks) {
+      ctx.fillRect(Math.round(cx + x * unit), Math.round(cy + y * unit), Math.round(w * unit), Math.round(h * unit));
+    }
+    ctx.fillStyle = 'rgba(0, 0, 0, .18)';
+    ctx.fillRect(Math.round(cx - .82 * unit), Math.round(cy + .58 * unit), Math.round(1.68 * unit), Math.max(2, Math.round(unit * .08)));
+  }
+
+  function drawSun(cx, cy, r, color, rays = true) {
+    pixelDisc(cx, cy, r, color);
+    if (!rays) return;
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4;
+      const r1 = r + 4;
+      const r2 = r + 11;
+      pixelLine(
+        Math.round(cx + Math.cos(a) * r1),
+        Math.round(cy + Math.sin(a) * r1),
+        Math.round(cx + Math.cos(a) * r2),
+        Math.round(cy + Math.sin(a) * r2),
+        color,
+        2
+      );
+    }
+  }
+
+  function drawMoon(cx, cy, r, color) {
+    ctx.fillStyle = color;
+    for (let dy = -r; dy <= r; dy += 3) {
+      for (let dx = -r; dx <= r; dx += 3) {
+        if (dx * dx + dy * dy > r * r) continue;
+        const bx = dx - r * .55;
+        const by = dy - r * .16;
+        if (bx * bx + by * by < (r * .84) * (r * .84)) continue;
+        ctx.fillRect(Math.round(cx + dx), Math.round(cy + dy), 3, 3);
+      }
+    }
+  }
+
+  function drawRain(cx, cy, scale, now, color) {
+    const unit = Math.max(8, Math.round(24 * scale));
+    ctx.fillStyle = color;
+    for (let i = 0; i < 5; i++) {
+      const x = Math.round(cx - unit * .8 + i * unit * .4);
+      const y = Math.round(cy + unit * .65 + ((now / 110 + i * 7) % 20));
+      ctx.fillRect(x, y, 2, 5);
+    }
+  }
+
+  function drawWeatherScene(cx, cy, scene, now) {
+    if (scene.condition === 'CLEAR') {
+      if (scene.night) {
+        drawMoon(cx, cy, 27, C.paper);
+        ctx.fillStyle = C.mint;
+        for (let i = 0; i < 7; i++) {
+          const a = i * 1.7;
+          ctx.globalAlpha = .25 + (i % 3) * .12;
+          ctx.fillRect(Math.round(cx + Math.cos(a) * (48 + i * 2)), Math.round(cy + Math.sin(a) * (52 + i)), 2, 2);
+        }
+        ctx.globalAlpha = 1;
+      } else {
+        drawSun(cx, cy, 24, C.sand);
+      }
+      return;
+    }
+    if (scene.condition === 'CLOUD') {
+      if (scene.night) drawMoon(cx - 14, cy - 12, 18, C.paper);
+      else drawSun(cx - 16, cy - 14, 16, C.sand);
+      drawCloud(cx + 2, cy + 3, 1.15, C.cloud);
+      return;
+    }
+    drawCloud(cx, cy - 4, 1.2, C.cloud);
+    drawRain(cx, cy + 4, 1.25, now, C.rain);
+  }
+
+  function drawMiniWeather(cx, cy, condition, night) {
+    if (condition === 'CLEAR') {
+      if (night) drawMoon(cx, cy, 8, C.paper);
+      else drawSun(cx, cy, 7, C.sand, false);
+    } else if (condition === 'CLOUD') {
+      if (night) drawMoon(cx - 4, cy - 3, 6, C.paper);
+      else drawSun(cx - 4, cy - 3, 5, C.sand, false);
+      drawCloud(cx + 1, cy + 2, .42, C.cloud);
+    } else {
+      drawCloud(cx, cy - 2, .44, C.cloud);
+      ctx.fillStyle = C.rain;
+      for (let i = 0; i < 3; i++) ctx.fillRect(cx - 6 + i * 6, cy + 8 + (i % 2) * 3, 2, 4);
+    }
+  }
+
+  function drawAppGlyph(id, cx, cy, accent, now) {
+    if (id === 'timer') {
+      drawHourglassGlyph(cx, cy - 2, 2, accent, C.sandHi);
+    } else if (id === 'stopwatch') {
+      drawClockGlyph(cx, cy + 2, 18, accent, C.sand, true);
+    } else if (id === 'weather') {
+      drawSun(cx - 8, cy - 4, 11, C.sand);
+      drawCloud(cx + 7, cy + 5, .55, C.cloud);
+    } else {
+      drawSlidersGlyph(cx, cy, C.muted, accent);
+    }
+  }
+
+  function appTileRect(index) {
+    return {
+      x: TILE_X + (index % 2) * (TILE_W + TILE_GAP),
+      y: TILE_Y + Math.floor(index / 2) * (TILE_H + TILE_GAP),
+      w: TILE_W,
+      h: TILE_H
+    };
+  }
+
+  function appTileStatus(app, now) {
+    if (app.id === 'timer') {
+      const timer = state.timer;
+      if (timer.running) return formatMMSS(timerRemaining(now));
+      if (timer.remaining <= .001) return 'DONE';
+      return `${Math.round(timer.duration / 60)}M`;
+    }
+    if (app.id === 'stopwatch') {
+      if (state.stopwatch.running) return 'RUN';
+      if (state.stopwatch.elapsed > 0) return 'HOLD';
+      return 'ZERO';
+    }
+    if (app.id === 'weather') {
+      return `${tempValue(weatherData().tempC)}°${state.weatherUnit}`;
+    }
+    return state.settings.autoDrift ? 'AUTO' : 'MANUAL';
+  }
+
+  function drawAppDrawer(now) {
+    drawAppHeader('APPS', '04 PIXEL TOOLS', now);
+    for (let i = 0; i < APPS.length; i++) {
+      const app = APPS[i];
+      const r = appTileRect(i);
+      const selected = i === state.appIndex;
+      ctx.fillStyle = selected ? 'rgba(243, 183, 79, .075)' : 'rgba(8, 19, 14, .72)';
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      strokeBox(r, selected ? app.accent : C.line, selected ? 2 : 1);
+      ptext(String(i + 1).padStart(2, '0'), r.x + 10, r.y + 9, 1, selected ? app.accent : C.dim, 'left', .9);
+      if (selected) {
+        ctx.fillStyle = app.accent;
+        ctx.fillRect(r.x + r.w - 14, r.y + 8, 4, 4);
+        ctx.fillRect(r.x + r.w - 10, r.y + 12, 4, 4);
+      }
+      drawAppGlyph(app.id, r.x + r.w / 2, r.y + 42, app.accent, now);
+      ptext(app.title, r.x + r.w / 2, r.y + 70, 2, C.paper, 'center', selected ? 1 : .86);
+      ptext(app.subtitle, r.x + r.w / 2, r.y + 91, 1, C.muted, 'center', .9);
+      const status = appTileStatus(app, now);
+      ptext(status, r.x + r.w / 2, r.y + 109, 1, selected ? app.accent : C.muted, 'center', .95);
+      if ((app.id === 'timer' && state.timer.running) || (app.id === 'stopwatch' && state.stopwatch.running)) {
+        ctx.fillStyle = C.sand;
+        ctx.globalAlpha = .4 + .6 * (.5 + .5 * Math.sin(now / 240));
+        ctx.fillRect(r.x + r.w - 16, r.y + r.h - 14, 4, 4);
+        ctx.globalAlpha = 1;
+      }
+    }
+    ctx.fillStyle = C.line;
+    ctx.fillRect(22, 376, 346, 1);
+    ptext('TAP OPEN / SWIPE PAGES / KEY2 HOME', 195, 390, 1, C.dim, 'center', .86);
+  }
+
+  function timerPresetRects() {
+    const w = 79;
+    const gap = 10;
+    return TIMER_PRESETS.map((seconds, index) => ({
+      x: 22 + index * (w + gap),
+      y: 214,
+      w,
+      h: 30,
+      index
+    }));
+  }
+
+  function timerControlRects() {
+    return {
+      start: { x: 72, y: 302, w: 150, h: 42 },
+      reset: { x: 234, y: 302, w: 84, h: 42 }
+    };
+  }
+
+  function drawTimerBar(x, y, w, h, progress, active) {
+    ctx.fillStyle = C.ink2;
+    ctx.fillRect(x, y, w, h);
+    strokeBox({ x, y, w, h }, C.line2, 1);
+    const fillW = Math.max(0, Math.round((w - 4) * clamp(progress, 0, 1)));
+    if (fillW > 0) {
+      ctx.fillStyle = active ? C.sand : C.sandDim;
+      ctx.fillRect(x + 2, y + 2, fillW, h - 4);
+      ctx.fillStyle = active ? C.sandHi : 'rgba(255, 213, 125, .25)';
+      ctx.fillRect(x + 2, y + 2, fillW, 1);
+    }
+    ctx.fillStyle = 'rgba(4, 11, 8, .55)';
+    for (let tx = x + 10; tx < x + w - 4; tx += 10) ctx.fillRect(tx, y + 2, 1, h - 4);
+  }
+
+  function drawTimerView(now) {
+    const timer = state.timer;
+    const remaining = timerRemaining(now);
+    const progress = timer.duration ? remaining / timer.duration : 0;
+    const done = timer.remaining <= .001 && !timer.running;
+    const blink = Math.floor(now / 260) % 2 === 0;
+    const subtitle = `COUNTDOWN / ${Math.round(timer.duration / 60)} MIN`;
+    drawAppHeader('TIMER', subtitle, now);
+
+    if (done && blink) {
+      strokeBox({ x: 58, y: 84, w: 274, h: 64 }, C.sand, 2);
+    }
+    ptext(formatMMSS(remaining), 195, 94, 7, done && blink ? C.sand : C.paper, 'center', 1, '#0a1b13');
+    ptext('REMAINING', 195, 150, 1, C.dim, 'center', .9);
+    drawTimerBar(45, 170, 300, 15, progress, timer.running);
+
+    const presets = timerPresetRects();
+    const labels = TIMER_PRESETS.map((v) => `${v / 60}M`);
+    for (const r of presets) {
+      const active = r.index === timer.selected;
+      drawButton(
+        r,
+        labels[r.index],
+        active ? 'rgba(243, 183, 79, .16)' : 'rgba(8, 19, 14, .8)',
+        active ? C.sand : C.line2,
+        active ? C.sand : C.muted,
+        2,
+        active ? 1 : .86
+      );
+    }
+
+    const stateText = timer.running ? 'RUNNING' : done ? 'TIME UP' : timer.remaining < timer.duration ? 'PAUSED' : 'READY';
+    const stateColor = timer.running ? C.mint : done ? C.sand : C.paper;
+    if (timer.running || done) {
+      ctx.fillStyle = stateColor;
+      ctx.globalAlpha = .4 + .6 * (.5 + .5 * Math.sin(now / 220));
+      ctx.fillRect(195 - Math.round(stateText.length * 4) - 14, 265, 4, 4);
+      ctx.globalAlpha = 1;
+    }
+    ptext(stateText, 195, 260, 2, stateColor, 'center', .96);
+
+    const controls = timerControlRects();
+    const startLabel = timer.running ? 'PAUSE' : done ? 'AGAIN' : 'START';
+    drawButton(
+      controls.start,
+      startLabel,
+      timer.running || done ? C.sand : 'rgba(8, 19, 14, .86)',
+      timer.running || done ? C.sandHi : C.sand,
+      timer.running || done ? C.ink : C.sand,
+      2
+    );
+    drawButton(controls.reset, 'RESET', 'rgba(8, 19, 14, .76)', C.line2, C.muted, 2, .92);
+    ptext('SWIPE PAGES / SPACE START / R RESET', 195, 414, 1, C.dim, 'center', .82);
+  }
+
+  function stopwatchButtonRects() {
+    return {
+      start: { x: 22, y: 318, w: 107, h: 38 },
+      lap: { x: 141, y: 318, w: 107, h: 38 },
+      reset: { x: 260, y: 318, w: 108, h: 38 }
+    };
+  }
+
+  function drawStopwatchRing(now) {
+    const elapsed = stopwatchElapsed(now);
+    const sec = Math.floor(elapsed / 1000);
+    const current = sec % 60;
+    const cx = 195;
+    const cy = 188;
+    const radius = 99;
+    for (let i = 0; i < 60; i++) {
+      const a = i / 60 * Math.PI * 2 - Math.PI / 2;
+      const x = Math.round(cx + Math.cos(a) * radius);
+      const y = Math.round(cy + Math.sin(a) * radius);
+      const major = i % 5 === 0;
+      const trail = (current - i + 60) % 60;
+      let color = C.line2;
+      let size = major ? 3 : 2;
+      if (trail < 6) {
+        color = trail === 5 ? C.mint : C.mintDim;
+        size = major ? 4 : 3;
+      }
+      if (i === current) {
+        color = C.sand;
+        size = 4;
+      }
+      ctx.fillStyle = color;
+      ctx.fillRect(x - Math.floor(size / 2), y - Math.floor(size / 2), size, size);
+    }
+  }
+
+  function drawStopwatchView(now) {
+    const sw = state.stopwatch;
+    const elapsed = stopwatchElapsed(now);
+    const totalSec = Math.floor(elapsed / 1000);
+    const mm = String(Math.floor(totalSec / 60)).padStart(2, '0');
+    const ss = String(totalSec % 60).padStart(2, '0');
+    const cs = String(Math.floor(elapsed / 10) % 100).padStart(2, '0');
+    drawAppHeader('STOPWATCH', sw.running ? 'RUNNING / SPACE TO STOP' : 'PRECISION / SPACE TO START', now);
+    drawStopwatchRing(now);
+    ptext(`${mm}:${ss}`, 195, 157, 6, C.paper, 'center', 1, '#0a1b13');
+    ptext(`.${cs}`, 195, 206, 2, C.sand, 'center', .96);
+    if (sw.running) {
+      ctx.fillStyle = C.coral;
+      ctx.globalAlpha = .45 + .55 * (.5 + .5 * Math.sin(now / 220));
+      ctx.fillRect(144, 222, 4, 4);
+      ctx.globalAlpha = 1;
+    }
+
+    const laps = sw.laps;
+    if (laps.length) {
+      const last = laps[laps.length - 1];
+      ptext(`LAP ${String(laps.length).padStart(2, '0')}  ${formatStopwatch(last)}`, 195, 296, 1, C.muted, 'center', .9);
+    } else {
+      ptext('NO LAPS YET', 195, 296, 1, C.dim, 'center', .82);
+    }
+
+    const controls = stopwatchButtonRects();
+    drawButton(
+      controls.start,
+      sw.running ? 'STOP' : 'START',
+      sw.running ? 'rgba(255, 121, 89, .12)' : C.mint,
+      sw.running ? C.coral : C.mintHi,
+      sw.running ? C.coral : C.ink,
+      2
+    );
+    drawButton(controls.lap, 'LAP', 'rgba(8, 19, 14, .8)', sw.running ? C.mintDim : C.line2, sw.running ? C.mint : C.dim, 2, sw.running ? 1 : .6);
+    drawButton(controls.reset, 'RESET', 'rgba(8, 19, 14, .76)', C.line2, C.muted, 2, .92);
+    ptext('SWIPE PAGES / SPACE START / L LAP', 195, 414, 1, C.dim, 'center', .82);
+  }
+
+  function weatherUnitRect() {
+    return { x: 151, y: 84, w: 217, h: 106 };
+  }
+
+  function drawWeatherView(now) {
+    const data = weatherData();
+    const temp = tempValue(data.tempC);
+    drawAppHeader('WEATHER', 'LOCAL SKY / OFFLINE SAMPLE', now);
+
+    drawWeatherScene(80, 137, data, now);
+    ptext(`${temp}°`, 164, 92, 7, C.paper, 'center', 1, '#0a1b13');
+    ptext(data.condition, 164, 154, 2, C.sky, 'left', .95);
+    ptext(`H ${tempValue(data.highC)}°  L ${tempValue(data.lowC)}°`, 164, 178, 1, C.muted, 'left', .9);
+
+    ctx.fillStyle = 'rgba(8, 19, 14, .8)';
+    ctx.fillRect(314, 96, 44, 24);
+    strokeBox({ x: 314, y: 96, w: 44, h: 24 }, C.sky, 1);
+    ptext(`°${state.weatherUnit}`, 336, 102, 2, C.sky, 'center', .96);
+
+    ctx.fillStyle = C.line;
+    ctx.fillRect(22, 212, 346, 1);
+    ctx.fillStyle = C.mintDim;
+    ctx.fillRect(22, 212, 46, 1);
+
+    for (let i = 0; i < 5; i++) {
+      const hour = data.hours[i];
+      const cx = 54 + i * 70;
+      ptext(hour.label, cx, 224, 1, C.dim, 'center', .9);
+      drawMiniWeather(cx, 250, hour.condition, data.night);
+      ptext(`${tempValue(hour.tempC)}°`, cx, 282, 2, C.paper, 'center', .92);
+      if (i < 4) {
+        ctx.fillStyle = C.line;
+        ctx.fillRect(89 + i * 70, 232, 1, 58);
+      }
+    }
+
+    const boxes = [
+      { x: 22, label: 'HUMIDITY', value: `${data.humidity}%` },
+      { x: 201, label: 'WIND', value: `${data.wind} KMH` }
+    ];
+    for (const box of boxes) {
+      const r = { x: box.x, y: 310, w: 167, h: 50 };
+      ctx.fillStyle = 'rgba(8, 19, 14, .62)';
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      strokeBox(r, C.line, 1);
+      ptext(box.label, r.x + 10, r.y + 9, 1, C.dim, 'left', .9);
+      ptext(box.value, r.x + 10, r.y + 24, 2, C.paper, 'left', .92);
+    }
+    ptext('SWIPE PAGES / TAP TEMP UNIT', 195, 394, 1, C.dim, 'center', .8);
+  }
+
+  function settingsRowRect(index) {
+    return { x: 22, y: 80 + index * 58, w: 346, h: 54 };
+  }
+
+  function settingsSwitchRect(index) {
+    const r = settingsRowRect(index);
+    return { x: r.x + r.w - 62, y: r.y + 16, w: 50, h: 22 };
+  }
+
+  function drawSwitch(r, on) {
+    ctx.fillStyle = on ? 'rgba(243, 183, 79, .2)' : 'rgba(8, 19, 14, .8)';
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    strokeBox(r, on ? C.sand : C.line2, 2);
+    ctx.fillStyle = on ? C.sand : C.dim;
+    ctx.fillRect(r.x + (on ? r.w - 20 : 4), r.y + 3, 16, 16);
+  }
+
+  function drawSettingsView(now) {
+    drawAppHeader('SETTINGS', 'SYSTEM / 04 OPTIONS', now);
+    for (let i = 0; i < SETTINGS_ROWS.length; i++) {
+      const row = SETTINGS_ROWS[i];
+      const r = settingsRowRect(i);
+      const selected = i === state.settingsIndex;
+      if (selected) {
+        ctx.fillStyle = 'rgba(243, 183, 79, .055)';
+        ctx.fillRect(r.x, r.y, r.w, r.h);
+        ctx.fillStyle = C.sand;
+        ctx.fillRect(r.x - 6, r.y + 10, 3, r.h - 20);
+      }
+      ptext(row.title, r.x + 2, r.y + 10, 2, C.paper, 'left', .94);
+      ptext(row.sub, r.x + 2, r.y + 30, 1, C.dim, 'left', .9);
+      const on = !!state.settings[row.key];
+      const sw = settingsSwitchRect(i);
+      drawSwitch(sw, on);
+      ptext(on ? 'ON' : 'OFF', sw.x - 8, sw.y + 6, 1, on ? C.sand : C.dim, 'right', .92);
+      ctx.fillStyle = C.line;
+      ctx.fillRect(r.x, r.y + r.h - 2, r.w, 1);
+    }
+
+    ctx.fillStyle = C.line;
+    ctx.fillRect(22, 316, 346, 1);
+    const sensor = state.sensor.active ? '6-AXIS LIVE' : 'SIMULATED';
+    const info = [
+      ['SENSOR', sensor],
+      ['PANEL', '390 × 450'],
+      ['KEYS', 'KEY1 / KEY2'],
+      ['IMU', 'LSM6DS3TR-C'],
+      ['OS', 'SIFT 0.6']
+    ];
+    for (let i = 0; i < info.length; i++) {
+      const y = 328 + i * 16;
+      ptext(info[i][0], 22, y, 1, C.dim, 'left', .86);
+      ptext(info[i][1], 368, y, 1, i === 0 && state.sensor.active ? C.mint : C.muted, 'right', .9);
+    }
+    ptext('SWIPE PAGES / TAP ROW / ESC BACK', 195, 414, 1, C.dim, 'center', .82);
+  }
+
+
+  function drawScreenNoise() {
+    ctx.save();
+    ctx.globalAlpha = .055;
+    ctx.fillStyle = C.ink;
+    for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+    ctx.restore();
+  }
+
+  function drawWatchFace(now) {
+    drawHeader(now);
+    drawClock(now);
+    drawHourglass(now);
+    drawFooter(now);
+  }
+
+  function drawDim(now) {
+    if (state.dim <= 0) return;
+    ctx.fillStyle = `rgba(1, 4, 2, ${state.dim * .62})`;
+    ctx.fillRect(0, 0, W, H);
+    if (state.dim > .35) {
+      ctx.save();
+      ctx.globalAlpha = clamp((state.dim - .35) / .45, 0, 1);
+      ctx.fillStyle = 'rgba(2, 8, 5, .9)';
+      ctx.fillRect(124, 210, 142, 30);
+      ctx.fillStyle = C.mintDim;
+      ctx.fillRect(124, 210, 142, 1);
+      ctx.fillRect(124, 239, 142, 1);
+      ctx.fillRect(124, 210, 1, 30);
+      ctx.fillRect(265, 210, 1, 30);
+      ctx.globalAlpha *= (now % 1400) < 900 ? .98 : .35;
+      ptext('TAP TO WAKE', 195, 219, 2, C.mint, 'center', .95);
+      ctx.restore();
+    }
+  }
+
+  function drawViewFlash(now) {
+    if (now >= state.viewFlashUntil) return;
+    const a = clamp((state.viewFlashUntil - now) / 180, 0, 1);
+    ctx.fillStyle = `rgba(4, 11, 8, ${a * .62})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = `rgba(114, 223, 186, ${a * .22})`;
+    ctx.fillRect(0, Math.round((1 - a) * H), W, 2);
+  }
+
+  function drawTimerAlert(now) {
+    if (state.view === 'timer' || now >= state.timer.alertUntil) return;
+    const pulse = .6 + .4 * (.5 + .5 * Math.sin(now / 180));
+    ctx.fillStyle = 'rgba(2, 8, 5, .97)';
+    ctx.fillRect(22, 404, 346, 28);
+    ctx.fillStyle = C.sand;
+    ctx.globalAlpha = pulse;
+    ctx.fillRect(22, 404, 346, 2);
+    ctx.fillRect(22, 430, 346, 2);
+    ctx.globalAlpha = 1;
+    ptext('TIMER DONE  /  TAP TO OPEN', 195, 414, 1, C.sand, 'center', .98);
+  }
+
+  function draw(now) {
+    ctx.drawImage(bgCanvas, 0, 0);
+    if (state.view === 'apps') drawAppDrawer(now);
+    else if (state.view === 'timer') drawTimerView(now);
+    else if (state.view === 'stopwatch') drawStopwatchView(now);
+    else if (state.view === 'weather') drawWeatherView(now);
+    else if (state.view === 'settings') drawSettingsView(now);
+    else drawWatchFace(now);
+    drawScreenNoise();
+    if (state.view === 'watch') drawDim(now);
+    drawViewFlash(now);
+    drawTimerAlert(now);
+  }
+
+  function updateTilt(dt, now) {
+    const manual = state.keys.size > 0 || now < state.manualUntil;
+
+    if (state.sensor.active && !manual) {
+      state.targetRoll = state.sensor.roll;
+      state.targetPitch = state.sensor.pitch;
+      state.autoNow = false;
+    } else if (!state.sensor.active && !manual) {
+      const idle = now - state.lastInteraction;
+      if (!REDUCED && state.settings.autoDrift && state.view === 'watch' && idle > 3200) {
+        const t = now / 1000;
+        state.targetRoll = Math.sin(t * .55) * 15 + Math.sin(t * .19 + 1.2) * 5;
+        state.targetPitch = Math.cos(t * .37) * 7;
+        state.autoNow = true;
+      } else {
+        state.autoNow = false;
+        state.targetRoll *= Math.exp(-dt * 3.8);
+        state.targetPitch *= Math.exp(-dt * 3.8);
+      }
+    } else {
+      state.autoNow = false;
+    }
+
+    if (state.keys.size) {
+      let kx = 0;
+      let ky = 0;
+      if (state.keys.has('ArrowLeft')) kx -= 1;
+      if (state.keys.has('ArrowRight')) kx += 1;
+      if (state.keys.has('ArrowUp')) ky -= 1;
+      if (state.keys.has('ArrowDown')) ky += 1;
+      state.targetRoll = clamp(state.targetRoll + kx * 52 * dt, -45, 45);
+      state.targetPitch = clamp(state.targetPitch + ky * 40 * dt, -32, 32);
+      state.manualUntil = now + 260;
+      state.lastInteraction = now;
+    }
+
+    const ease = 1 - Math.exp(-dt * (state.sensor.active && !manual ? 8 : 5.5));
+    state.smoothRoll = lerp(state.smoothRoll, state.targetRoll, ease);
+    state.smoothPitch = lerp(state.smoothPitch, state.targetPitch, ease);
+    state.gravityX = Math.sin(state.smoothRoll * Math.PI / 180) * 1.3;
+  }
+
+  function updateStats(now) {
+    if (now - state.lastStats > 220) {
+      recount();
+      state.lastStats = now;
+      const ratio = state.stats.total ? state.stats.top / state.stats.total : 0;
+      if (ratio < .05) {
+        if (!state.emptySince) state.emptySince = now;
+        /* The bottom chamber stays full; only a six-axis flip moves it. */
+        state.stats.flow = 0;
+      } else {
+        state.emptySince = 0;
+      }
+      state.stats.flow *= .86;
+    }
+  }
+
+  function updateIdle(now) {
+    if (state.view === 'watch' && state.settings.dim && now - state.lastInteraction > 42000) {
+      state.dim = Math.min(1, state.dim + .012);
+    } else {
+      state.dim = Math.max(0, state.dim - .06);
+    }
+  }
+
+  function updatePage(force = false) {
+    rollEl.textContent = `${signed(state.smoothRoll, 1)}°`;
+    pitchEl.textContent = `${signed(state.smoothPitch, 1)}°`;
+    sourceEl.textContent = state.sensor.active ? '6-AXIS' : state.autoNow ? 'SIM/AUTO' : 'SIM';
+    sourceEl.style.color = state.sensor.active ? 'var(--mint)' : state.autoNow ? 'var(--sand)' : '';
+    const maxX = 36;
+    const maxY = 36;
+    const tx = clamp(state.smoothRoll / 45, -1, 1) * maxX;
+    const ty = clamp(state.smoothPitch / 32, -1, 1) * maxY;
+    axisDot.style.transform = `translate(calc(-50% + ${tx.toFixed(1)}px), calc(-50% + ${ty.toFixed(1)}px))`;
+    sensorCard.classList.toggle('is-live', state.sensor.active);
+    sensorBtn.classList.toggle('is-live', state.sensor.active);
+    if (!state.sensor.active && !state.sensor.listening) {
+      sensorBtn.textContent = '启用六轴';
+    } else if (state.sensor.active) {
+      sensorBtn.textContent = '重新校零';
+    }
+    appsBtn.textContent = state.view === 'watch' ? '打开应用' : state.view === 'apps' ? '返回表盘' : '应用菜单';
+    if (force) restoreStatus();
+  }
+
+  function tick(now) {
+    if (!state.lastFrame) state.lastFrame = now;
+    const dt = Math.min(.05, Math.max(0, (now - state.lastFrame) / 1000));
+    state.lastFrame = now;
+
+    if (!state.paused) {
+      updateFlip(now);
+      updateTilt(dt, now);
+      let accum = state._accum || 0;
+      accum += dt;
+      const step = 1 / SIM_HZ;
+      let guard = 0;
+      while (accum >= step && guard++ < 4) {
+        stepSand();
+        accum -= step;
+      }
+      state._accum = accum;
+      updateTimer(now);
+      updateStats(now);
+      updateIdle(now);
+    }
+
+    if (now - state.lastReadout > 90) {
+      updatePage();
+      state.lastReadout = now;
+    }
+    if (state.statusUntil && now > state.statusUntil) {
+      state.statusUntil = 0;
+      restoreStatus();
+    }
+    draw(now);
+    requestAnimationFrame(tick);
+  }
+
+  function pointFromEvent(e) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - r.left) / r.width * W,
+      y: (e.clientY - r.top) / r.height * H,
+      cx: e.clientX,
+      cy: e.clientY,
+      rect: r
+    };
+  }
+
+  function handleCanvasTap(p) {
+    if (state.view !== 'watch' && insideRect(p, BACK_RECT)) {
+      goBack();
+      return;
+    }
+    if (state.view !== 'timer' && performance.now() < state.timer.alertUntil && insideRect(p, { x: 22, y: 404, w: 346, h: 28 })) {
+      openApp('timer');
+      return;
+    }
+    if (state.view === 'watch') {
+      if (insideRect(p, { x: 96, y: 8, w: 58, h: 32 })) openApps();
+      return;
+    }
+    if (state.view === 'apps') {
+      for (let i = 0; i < APPS.length; i++) {
+        if (insideRect(p, appTileRect(i))) {
+          state.appIndex = i;
+          openApp(APPS[i].id);
+          return;
+        }
+      }
+      return;
+    }
+    if (state.view === 'timer') {
+      for (const r of timerPresetRects()) {
+        if (insideRect(p, r)) {
+          setTimerPreset(r.index);
+          return;
+        }
+      }
+      const controls = timerControlRects();
+      if (insideRect(p, controls.start)) toggleTimer();
+      else if (insideRect(p, controls.reset)) resetTimer();
+      return;
+    }
+    if (state.view === 'stopwatch') {
+      const controls = stopwatchButtonRects();
+      if (insideRect(p, controls.start)) toggleStopwatch();
+      else if (insideRect(p, controls.lap)) lapStopwatch();
+      else if (insideRect(p, controls.reset)) resetStopwatch();
+      return;
+    }
+    if (state.view === 'weather') {
+      if (insideRect(p, weatherUnitRect())) toggleWeatherUnit();
+      return;
+    }
+    if (state.view === 'settings') {
+      for (let i = 0; i < SETTINGS_ROWS.length; i++) {
+        if (insideRect(p, settingsRowRect(i))) {
+          state.settingsIndex = i;
+          toggleSetting(i);
+          return;
+        }
+      }
+    }
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    const p = pointFromEvent(e);
+    const now = performance.now();
+    const wasDim = state.dim > .05;
+    wake();
+    state.lastInteraction = now;
+    state.drag = {
+      active: true,
+      moved: false,
+      swipe: false,
+      suppress: wasDim,
+      pointerId: e.pointerId,
+      sx: p.cx,
+      sy: p.cy,
+      sr: state.targetRoll,
+      sp: state.targetPitch,
+      view: state.view,
+      rect: p.rect,
+      at: now
+    };
+    canvas.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    const d = state.drag;
+    if (!d || !d.active || d.pointerId !== e.pointerId) return;
+    const dx = e.clientX - d.sx;
+    const dy = e.clientY - d.sy;
+    if (!d.moved && Math.hypot(dx, dy) > 6) d.moved = true;
+    const scale = W / Math.max(1, d.rect.width);
+    const maxd = Math.max(Math.abs(dx), Math.abs(dy)) * scale;
+    const elapsed = performance.now() - d.at;
+    if (!d.swipe && maxd >= 42 && (maxd >= 90 || elapsed <= 280)) {
+      d.swipe = true;
+      state.targetRoll = d.sr;
+      state.targetPitch = d.sp;
+      state.manualUntil = 0;
+    }
+    if (!d.suppress && d.view === 'watch' && !d.swipe) {
+      const rw = Math.max(1, d.rect.width);
+      const rh = Math.max(1, d.rect.height);
+      state.targetRoll = clamp(d.sr + dx / rw * 150, -45, 45);
+      state.targetPitch = clamp(d.sp + dy / rh * 105, -32, 32);
+      state.manualUntil = performance.now() + 1800;
+      state.lastInteraction = performance.now();
+    }
+    e.preventDefault();
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (state.drag || state.view !== 'apps') return;
+    const p = pointFromEvent(e);
+    for (let i = 0; i < APPS.length; i++) {
+      if (insideRect(p, appTileRect(i))) {
+        state.appIndex = i;
+        state.hoverTile = i;
+        return;
+      }
+    }
+    state.hoverTile = -1;
+  });
+
+  function endPointer(e) {
+    const d = state.drag;
+    if (!d || d.pointerId !== e.pointerId) return;
+    const now = performance.now();
+    const p = pointFromEvent(e);
+    const dx = (e.clientX - d.sx) * (W / Math.max(1, d.rect.width));
+    const dy = (e.clientY - d.sy) * (H / Math.max(1, d.rect.height));
+    const maxd = Math.max(Math.abs(dx), Math.abs(dy));
+    const elapsed = now - d.at;
+    const shouldSwipe = d.swipe || (!d.suppress && maxd >= 42 &&
+      (maxd >= 90 || d.view !== 'watch' || elapsed <= 280));
+    if (shouldSwipe) {
+      navigateSwipe(dx, dy);
+    } else if (!d.moved && !d.suppress && elapsed < 600) {
+      handleCanvasTap(p);
+    } else if (d.view === 'watch' && d.moved) {
+      state.manualUntil = now + 650;
+    }
+    state.drag = null;
+    state.lastInteraction = now;
+    try { canvas.releasePointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+    e.preventDefault();
+  }
+  canvas.addEventListener('pointerup', endPointer);
+  canvas.addEventListener('pointercancel', endPointer);
+  canvas.addEventListener('pointerleave', (e) => {
+    if (state.drag && state.drag.active) endPointer(e);
+  });
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  window.addEventListener('keydown', (e) => {
+    if (e.target instanceof HTMLButtonElement && (e.code === 'Space' || e.code === 'Enter')) return;
+    const k = e.key;
+    const now = performance.now();
+    if (state.view === 'watch') {
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(k)) {
+        e.preventDefault();
+        wake();
+        state.lastInteraction = now;
+        state.manualUntil = now + 1400;
+        if (k === 'ArrowLeft') state.targetRoll = clamp(state.targetRoll - 6, -45, 45);
+        else if (k === 'ArrowRight') state.targetRoll = clamp(state.targetRoll + 6, -45, 45);
+        else if (k === 'ArrowUp') state.targetPitch = clamp(state.targetPitch - 5, -32, 32);
+        else if (k === 'ArrowDown') state.targetPitch = clamp(state.targetPitch + 5, -32, 32);
+        state.keys.add(k);
+      } else if (e.code === 'Space') {
+        e.preventDefault();
+        openApps();
+      } else if (k === 'r' || k === 'R') {
+        e.preventDefault();
+        wake();
+        resetSand();
+        setStatus('沙粒已重置 · 倒置沙漏重新开始', 'active', 2200);
+      } else if (k === 'a' || k === 'A') {
+        e.preventDefault();
+        wake();
+        state.lastInteraction = now;
+        openApps();
+      }
+      return;
+    }
+
+    wake();
+    state.lastInteraction = now;
+    if (k === 'Escape') {
+      e.preventDefault();
+      goBack();
+      return;
+    }
+
+    if (state.view === 'apps') {
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(k)) {
+        e.preventDefault();
+        const col = state.appIndex % 2;
+        const row = Math.floor(state.appIndex / 2);
+        if (k === 'ArrowLeft' && col > 0) state.appIndex--;
+        if (k === 'ArrowRight' && col < 1) state.appIndex++;
+        if (k === 'ArrowUp' && row > 0) state.appIndex -= 2;
+        if (k === 'ArrowDown' && row < 1) state.appIndex += 2;
+      } else if (e.code === 'Space' || k === 'Enter') {
+        e.preventDefault();
+        openApp(APPS[state.appIndex].id);
+      }
+      return;
+    }
+
+    if (state.view === 'timer') {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        toggleTimer(now);
+      } else if (k === 'r' || k === 'R') {
+        e.preventDefault();
+        resetTimer();
+      } else if (k === 'ArrowLeft' || k === 'ArrowRight') {
+        e.preventDefault();
+        const dir = k === 'ArrowLeft' ? -1 : 1;
+        setTimerPreset((state.timer.selected + dir + TIMER_PRESETS.length) % TIMER_PRESETS.length);
+      }
+      return;
+    }
+
+    if (state.view === 'stopwatch') {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        toggleStopwatch(now);
+      } else if (k === 'l' || k === 'L') {
+        e.preventDefault();
+        lapStopwatch(now);
+      } else if (k === 'r' || k === 'R') {
+        e.preventDefault();
+        resetStopwatch();
+      }
+      return;
+    }
+
+    if (state.view === 'weather') {
+      if (e.code === 'Space' || k === 'u' || k === 'U') {
+        e.preventDefault();
+        toggleWeatherUnit();
+      }
+      return;
+    }
+
+    if (state.view === 'settings') {
+      if (k === 'ArrowUp' || k === 'ArrowDown') {
+        e.preventDefault();
+        state.settingsIndex = clamp(state.settingsIndex + (k === 'ArrowUp' ? -1 : 1), 0, SETTINGS_ROWS.length - 1);
+      } else if (e.code === 'Space' || k === 'Enter') {
+        e.preventDefault();
+        toggleSetting(state.settingsIndex);
+      }
+    }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    state.keys.delete(e.key);
+  });
+  window.addEventListener('blur', () => {
+    state.keys.clear();
+    state.drag = null;
+  });
+
+  function crownAction() {
+    wake();
+    state.lastInteraction = performance.now();
+    if (state.view === 'watch') openApps();
+    else goHome();
+  }
+
+  crownBtn.addEventListener('click', crownAction);
+  homeBtn.addEventListener('click', () => {
+    wake();
+    state.lastInteraction = performance.now();
+    goHome();
+  });
+  appsBtn.addEventListener('click', () => {
+    wake();
+    state.lastInteraction = performance.now();
+    if (state.view === 'watch') openApps();
+    else if (state.view === 'apps') goHome();
+    else openApps();
+  });
+  resetBtn.addEventListener('click', () => {
+    state.lastInteraction = performance.now();
+    if (state.view !== 'watch') setView('watch');
+    resetSand();
+    setStatus('沙粒已重置 · 倒置沙漏重新开始', 'active', 2200);
+  });
+
+
+  async function enableSensors() {
+    wake();
+    state.lastInteraction = performance.now();
+
+    if (state.sensor.active) {
+      state.sensor.baseline = null;
+      state.sensor.roll = 0;
+      state.sensor.pitch = 0;
+      state.sensor.listening = true;
+      notice('SENSOR ZEROED', 1500);
+      setStatus('保持当前姿势 · 六轴已重新校零', 'active', 2400);
+      return;
+    }
+
+    if (!('DeviceOrientationEvent' in window)) {
+      setStatus('此浏览器没有六轴接口 · 继续用拖拽模拟', 'warn', 4200);
+      return;
+    }
+
+    try {
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const result = await DeviceOrientationEvent.requestPermission();
+        if (result !== 'granted') throw new Error('permission');
+      }
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        try { await DeviceMotionEvent.requestPermission(); } catch (_) { /* orientation is enough */ }
+      }
+
+      if (!state.sensor.listening) {
+        window.addEventListener('deviceorientation', onOrientation, true);
+        window.addEventListener('devicemotion', onMotion, true);
+        state.sensor.listening = true;
+      }
+      state.sensor.baseline = null;
+      state.pendingSensor = performance.now();
+      sensorBtn.textContent = '等待传感器';
+      setStatus('等待六轴数据…', 'active', 4000);
+      window.setTimeout(() => {
+        if (!state.sensor.active) {
+          sensorBtn.textContent = '重试六轴';
+          notice('NO SENSOR DATA', 2200);
+          setStatus('没有收到六轴数据 · 继续用拖拽或方向键模拟', 'warn', 5000);
+        }
+      }, 2400);
+    } catch (err) {
+      sensorBtn.textContent = '重试六轴';
+      setStatus('六轴权限未开启 · 继续用拖拽模拟', 'warn', 5000);
+      notice('SENSOR OFFLINE', 2200);
+    }
+  }
+
+  function onOrientation(e) {
+    if (e.gamma == null && e.beta == null) return;
+    const now = performance.now();
+    state.sensor.lastEvent = now;
+    if (!state.sensor.baseline) {
+      state.sensor.baseline = { beta: e.beta || 0, gamma: e.gamma || 0 };
+      if (!state.sensor.active) {
+        state.sensor.active = true;
+        state.sensor.listening = true;
+        setStatus('六轴已接入 · 翻转手表翻转沙漏，滑动切页', 'active', 2400);
+        notice('6-AXIS LINKED', 2200);
+        sensorBtn.textContent = '重新校零';
+      } else {
+        notice('SENSOR ZEROED', 1400);
+      }
+      state.sensor.roll = 0;
+      state.sensor.pitch = 0;
+      updatePage(true);
+      return;
+    }
+    const base = state.sensor.baseline;
+    let roll = (e.gamma || 0) - base.gamma;
+    if (roll > 180) roll -= 360;
+    if (roll < -180) roll += 360;
+    const pitch = (e.beta || 0) - base.beta;
+    state.sensor.roll = clamp(roll * 1.15, -45, 45);
+    state.sensor.pitch = clamp(pitch * .9, -32, 32);
+    state.sensor.raw = { beta: e.beta, gamma: e.gamma };
+    if (state.dim > .05 && Math.abs(state.sensor.roll - state.lastSensorRoll) > 7) {
+      wake();
+      state.lastInteraction = now;
+    }
+    state.lastSensorRoll = state.sensor.roll;
+    const faceDown = Math.abs(e.beta || 0) > 135 || Math.abs(e.gamma || 0) > 135;
+    sensorFaceDown(faceDown, now);
+  }
+
+  function onMotion(e) {
+    const a = e.accelerationIncludingGravity;
+    if (!a) return;
+    sensorFaceDown((a.z || 0) < -5.5, performance.now());
+  }
+
+  sensorBtn.addEventListener('click', enableSensors);
+
+  if (navigator.getBattery) {
+    navigator.getBattery().then((b) => {
+      state.battery = b.level;
+      b.addEventListener('levelchange', () => { state.battery = b.level; });
+    }).catch(() => { /* keep fallback */ });
+  }
+
+  window.__sift = {
+    flip: (reason = 'TEST') => flip(reason),
+    reset: () => resetSand(true),
+    pause: () => { state.paused = true; },
+    resume: () => { state.paused = false; },
+    setTilt: (roll, pitch = 0) => {
+      state.sensor.active = false;
+      state.manualUntil = performance.now() + 1e9;
+      state.targetRoll = clamp(roll, -45, 45);
+      state.targetPitch = clamp(pitch, -32, 32);
+      state.smoothRoll = state.targetRoll;
+      state.smoothPitch = state.targetPitch;
+      state.gravityX = Math.sin(state.smoothRoll * Math.PI / 180) * 1.3;
+    },
+    advance: (seconds = 5) => {
+      const steps = Math.max(1, Math.round(seconds * SIM_HZ));
+      for (let i = 0; i < steps; i++) stepSand();
+      recount();
+      return { ...state.stats, flips: state.flips };
+    },
+    view: () => state.view,
+    openApps: () => openApps(),
+    openApp: (id) => openApp(id),
+    goHome: () => goHome(),
+    goBack: () => goBack(),
+    tapAt: (x, y) => handleCanvasTap({ x, y }),
+    timer: () => ({
+      selected: state.timer.selected,
+      duration: state.timer.duration,
+      remaining: timerRemaining(performance.now()),
+      running: state.timer.running,
+      done: state.timer.remaining <= .001 && !state.timer.running
+    }),
+    toggleTimer: () => toggleTimer(),
+    resetTimer: () => resetTimer(),
+    setTimerPreset: (index) => setTimerPreset(index),
+    setTimerRemaining: (seconds) => {
+      const t = state.timer;
+      t.duration = Math.max(1, seconds);
+      t.remaining = Math.max(0, seconds);
+      t.running = false;
+      t.endAt = 0;
+      t.doneAt = 0;
+      t.alertUntil = 0;
+    },
+    stopwatch: () => ({
+      running: state.stopwatch.running,
+      elapsed: stopwatchElapsed(performance.now()),
+      laps: state.stopwatch.laps.length
+    }),
+    toggleStopwatch: () => toggleStopwatch(),
+    lapStopwatch: () => lapStopwatch(),
+    resetStopwatch: () => resetStopwatch(),
+    toggleWeatherUnit: () => toggleWeatherUnit(),
+    weather: () => ({ ...weatherData(), unit: state.weatherUnit }),
+    toggleSetting: (index) => toggleSetting(index),
+    settings: () => ({ ...state.settings }),
+    hints: () => hintItemsForView().map(([key, label]) => `${key} ${label}`),
+    stats: () => ({
+      view: state.view,
+      roll: +state.smoothRoll.toFixed(2),
+      pitch: +state.smoothPitch.toFixed(2),
+      source: state.sensor.active ? '6-AXIS' : state.autoNow ? 'SIM/AUTO' : 'SIM',
+      top: state.stats.top,
+      bottom: state.stats.bottom,
+      total: state.stats.total,
+      flow: +state.stats.flow.toFixed(1),
+      flips: state.flips,
+      flipping: state.flip.active,
+      dim: +state.dim.toFixed(2)
+    })
+  };
+
+  loadSettings();
+  buildBackground();
+  resetSand(true);
+  updateHints();
+  restoreStatus();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
