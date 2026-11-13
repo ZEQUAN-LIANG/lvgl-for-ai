@@ -9,10 +9,34 @@
 | --- | --- |
 | 开发板 | 立创黄山派，板名 `sf32lb52-lchspi-ulp` |
 | SoC | SF32LB52x（HCPU，RT-Thread） |
-| SDK | SiFli-SDK v2.5.1，下载到 `chip-adapt/sdk/sifli-sdk`（Gitee `SiFli/sifli-sdk`，release/v2.5） |
+| SDK | SiFli-SDK v2.5.1，下载到 `chip-adapt/sifli/vendor/sifli-sdk`（Gitee `SiFli/sifli-sdk`，tag `v2.5.1`） |
 | LVGL | 9.4.0（SDK 内 `external/lvgl_v9`） |
 | 屏幕 | CO5300，390x450，触摸 FT6146 |
-| 固件构建 | `cd project && scons --board=sf32lb52-lchspi-ulp -j8`（需先运行 SDK 的 `set_env.bat` / `source export.sh`） |
+| 固件构建 | `cd project && scons --board=sf32lb52-lchspi-ulp -j8`（需先运行 SDK 的 `./export.ps1` / `source export.sh`） |
+
+SDK、示例、工具链、烧录工具、原理图和数据手册都在 `vendor/`，清单见
+`vendor/README.md`；这些是外部下载物，已被 `.gitignore` 忽略，不进入版本库。
+
+## 串口与烧录上位机
+
+`host/` 是黄山派的串口 + 烧录上位机（Python broker + xterm.js 网页 + CLI）：一个 broker
+独占 COM 口，网页、CLI、AI 读同一份带序号的字节流；人类和 AI/CLI 共用 `/api/flash` job，
+底层官方 `sftool.exe`。页面是终端优先的 Tabby 风格，顶部只有“终端 / 活动”标签，终端上方
+是烧录 dock（PROJECT / BUILD、构建 / 仅烧录 / 构建并烧录、进度条）；`app` 从 project
+路径推导，project / build / port / baud 由 `/api/suggest` 自动填。串口意外断开和 web
+烧录后默认自动重连；旧 `/tools/sftool/` 官方页仅保留路由，主 UI 无入口。
+
+```powershell
+# 检查/补齐依赖（pyserial、xterm.js、SDK uv lock 环境）
+powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/sifli/host/scripts/bootstrap.ps1
+
+python -I chip-adapt/sifli/host/server.py --open
+# 或双击无黑框入口
+chip-adapt/sifli/host/open-host.vbs
+```
+
+串口默认 `1000000` 波特率；依赖细节见 `host/ENVIRONMENT.md`，CLI、HTTP API 和构建环境
+见 `host/README.md`。
 
 ## 共享源码与目标专属生成层
 

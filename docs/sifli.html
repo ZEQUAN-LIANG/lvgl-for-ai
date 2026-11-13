@@ -172,7 +172,7 @@
 <header>
   <h1>SiFli SDK 图形能力（LVGL）</h1>
   <p class="lede">SiFli-SDK v2.5.1 的显示引擎、编解码引擎与 2D 加速引擎，面向 LVGL 9.4 应用；黄山派 SF32LB52x 为重点。</p>
-  <p class="scope">本页是混合索引：能力矩阵 + 关键事实 + 真源路径。不复制大段实现，不写性能结论；涉及快慢时只记录「走硬件 / 走软件」的路径事实和官方定性描述。除特别说明外，SDK 路径相对 <code>chip-adapt/sdk/sifli-sdk/</code>，仓库路径相对仓库根。</p>
+  <p class="scope">本页是混合索引：能力矩阵 + 关键事实 + 真源路径。不复制大段实现，不写性能结论；涉及快慢时只记录「走硬件 / 走软件」的路径事实和官方定性描述。除特别说明外，SDK 路径相对 <code>chip-adapt/sifli/vendor/sifli-sdk/</code>，仓库路径相对仓库根。</p>
 </header>
 
 <main>
@@ -357,7 +357,7 @@
     </table>
   </div>
 
-  <p>真源：<a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/hal/lcdc.md">hal/lcdc.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/hal/dsi.md">hal/dsi.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/drivers/Include/bf0_hal_lcdc.h">bf0_hal_lcdc.h</a>、<a href="../chip-adapt/sdk/sifli-sdk/customer/peripherals/display/jdi387a/jdi387a.c">jdi387a.c</a>。</p>
+  <p>真源：<a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/hal/lcdc.md">hal/lcdc.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/hal/dsi.md">hal/dsi.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/drivers/Include/bf0_hal_lcdc.h">bf0_hal_lcdc.h</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/customer/peripherals/display/jdi387a/jdi387a.c">jdi387a.c</a>。</p>
 
   <div class="note">
     <strong>52x / 黄山派</strong>52x 只有 DBI / SPI-DCX 路径，没有 DSI 和 DPI；黄山派 CO5300 走 <code>LCDC_INTF_SPI_DCX_4DATA</code>（QAD-SPI），不是 MIPI DBI 8/16bit，也不是 DSI/DPI。JDI 枚举在 LCDC 接口表里全家族可用，但实际以板级屏幕为准。
@@ -383,10 +383,10 @@
   <h3>2.4 黄山派 CO5300 链路</h3>
   <ul>
     <li>屏幕：CO5300，390x450，QAD-SPI 4 数据线；面板带 GRAM，TE 打开，LCDC 使用 <code>HAL_LCDC_SYNC_VER</code> 同步。</li>
-    <li>板级开关：<code>CONFIG_BSP_USING_EPIC=y</code>、<code>CONFIG_BSP_USING_LCD=y</code>、<code>CONFIG_LCD_USING_TFT_CO5300=y</code>、<code>CONFIG_BSP_USING_TOUCHD=y</code>，见 <a href="../chip-adapt/sdk/sifli-sdk/customer/boards/sf32lb52-lchspi-ulp/hcpu/board.conf">board.conf</a>。</li>
+    <li>板级开关：<code>CONFIG_BSP_USING_EPIC=y</code>、<code>CONFIG_BSP_USING_LCD=y</code>、<code>CONFIG_LCD_USING_TFT_CO5300=y</code>、<code>CONFIG_BSP_USING_TOUCHD=y</code>，见 <a href="../chip-adapt/sifli/vendor/sifli-sdk/customer/boards/sf32lb52-lchspi-ulp/hcpu/board.conf">board.conf</a>。</li>
     <li>52x 没有压缩 framebuffer，默认走 <code>LCD_FB_USING_ONE_UNCOMPRESSED</code>：一个 PSRAM 全屏 framebuffer + SRAM partial 绘制缓冲。开启 <code>CONFIG_LV_FB_TWO_NOT_SCREEN_SIZE=y</code> 时是两个 partial 缓冲，每个 <code>LV_FB_LINE_NUM</code> 行，不是两个全屏 FB。</li>
     <li>刷新路径：LVGL 先画到 SRAM partial buffer → <code>drv_lcd_fb_write_send()</code> 合并脏区并拷贝到 PSRAM framebuffer（部分拷贝由 EPIC 的 <code>drv_epic_copy</code> 完成）→ LCDC 在 TE 同步下送 CO5300 GRAM。</li>
-    <li>真源：<a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/lv_drivers_v9/lv_lcd.c">lv_lcd.c</a>（flush / flush_wait / rounder / render_start）、<a href="../chip-adapt/sdk/sifli-sdk/rtos/rtthread/bsp/sifli/drivers/drv_lcd_fb.c">drv_lcd_fb.c</a>、<a href="../chip-adapt/sdk/sifli-sdk/customer/peripherals/display/co5300/co5300.c">co5300.c</a>。</li>
+    <li>真源：<a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/lv_drivers_v9/lv_lcd.c">lv_lcd.c</a>（flush / flush_wait / rounder / render_start）、<a href="../chip-adapt/sifli/vendor/sifli-sdk/rtos/rtthread/bsp/sifli/drivers/drv_lcd_fb.c">drv_lcd_fb.c</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/customer/peripherals/display/co5300/co5300.c">co5300.c</a>。</li>
   </ul>
 
   <h2>3. 编解码引擎</h2>
@@ -414,9 +414,9 @@
     <li>EZIP 是 SiFli 私有压缩格式。HAL 支持 AHB 和 EPIC 两种输出：AHB 模式把解压结果写到指定内存，EPIC 模式把解压结果直接送入 EPIC，由 EPIC 完成混叠和缩放；<strong>EZIP 不支持旋转</strong>。</li>
     <li>AHB 模式下同一个 EZIP 硬件还支持 LZ4 和 GZIP4 解压；图像 EZIP 走 <code>HAL_EZIP_MODE_EZIP</code>。</li>
     <li>EZIPA 是动画容器，基于 EPIC + EZIP 逐帧合成；SDK 文档常称「APNG」，但运行时代码解析的是私有 <code>ezipa_hdr_t</code>、帧表和动画控制表，不是标准 APNG chunk。</li>
-    <li>LVGL v9 的 EZIP 解码器由 <code>LV_USE_DRAW_EPIC &amp;&amp; LV_USE_EZIP</code> 启用，注册在 <a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/lv_drivers_v9/lvsf_img_decoder.c">lvsf_img_decoder.c</a>。变量源只给压缩数据打 <code>LV_IMAGE_FLAGS_EZIP</code> 标记，不做 CPU 解压；文件源在打开时装载到 PSRAM/SRAM 缓存，NOR MTD 上可通过物理地址直接映射，减少拷贝。</li>
-    <li>绘制时 <code>LV_IMAGE_FLAGS_EZIP</code> 被映射为 <code>EPIC_INPUT_EZIP</code>，见 <a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/lv_drivers_v9/sifli/lv_draw_epic_img.c">lv_draw_epic_img.c</a>；真正解压发生在 EPIC 混叠时，不在 <code>lv_image_set_src()</code>。</li>
-    <li>EZIPA 的 LVGL 控件在 <a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/lvsf_v9/lvsf_ezipa.c">lvsf_ezipa.c</a>，解码器在 <a href="../chip-adapt/sdk/sifli-sdk/middleware/ezipa_dec/ezipa_dec.c">ezipa_dec.c</a>。</li>
+    <li>LVGL v9 的 EZIP 解码器由 <code>LV_USE_DRAW_EPIC &amp;&amp; LV_USE_EZIP</code> 启用，注册在 <a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/lv_drivers_v9/lvsf_img_decoder.c">lvsf_img_decoder.c</a>。变量源只给压缩数据打 <code>LV_IMAGE_FLAGS_EZIP</code> 标记，不做 CPU 解压；文件源在打开时装载到 PSRAM/SRAM 缓存，NOR MTD 上可通过物理地址直接映射，减少拷贝。</li>
+    <li>绘制时 <code>LV_IMAGE_FLAGS_EZIP</code> 被映射为 <code>EPIC_INPUT_EZIP</code>，见 <a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/lv_drivers_v9/sifli/lv_draw_epic_img.c">lv_draw_epic_img.c</a>；真正解压发生在 EPIC 混叠时，不在 <code>lv_image_set_src()</code>。</li>
+    <li>EZIPA 的 LVGL 控件在 <a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/lvsf_v9/lvsf_ezipa.c">lvsf_ezipa.c</a>，解码器在 <a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/ezipa_dec/ezipa_dec.c">ezipa_dec.c</a>。</li>
   </ul>
 
   <h3>3.2 JPEG / PNG / GIF</h3>
@@ -432,7 +432,7 @@
   <ul>
     <li>ffmpeg 路径：h264、h263、mjpeg 等视频编码，mp3、aac、opus、vorbis 等音频编码；封装支持 ogg、mp4。h264/h263 解码后是 YUV，52x/56x/57x 可以直接用 YUV420p 显示。</li>
     <li>EZIP 视频：每帧单独 EZIP 压缩，不做帧间压缩，仍使用 mp4 封装；解码后拿到的是 EZIP 数据，UI 直接显示，硬件解压由 EPIC/EZIP 完成。</li>
-    <li>MJPEG 在 58x 上有硬件解码路径；文档中「MJPEG 只在 58x 硬件解码」的说法对 57x 不完全准确，代码里同时存在 57x 的 <code>HAL_JPEGD</code> 路径。以 <a href="../chip-adapt/sdk/sifli-sdk/external/ffmpeg/libavcodec/mjpegdec.c">mjpegdec.c</a> 和芯片寄存器定义为最终依据。</li>
+    <li>MJPEG 在 58x 上有硬件解码路径；文档中「MJPEG 只在 58x 硬件解码」的说法对 57x 不完全准确，代码里同时存在 57x 的 <code>HAL_JPEGD</code> 路径。以 <a href="../chip-adapt/sifli/vendor/sifli-sdk/external/ffmpeg/libavcodec/mjpegdec.c">mjpegdec.c</a> 和芯片寄存器定义为最终依据。</li>
   </ul>
 
   <h3>3.4 资源生成与加载</h3>
@@ -441,7 +441,7 @@
     <li><code>-cfile 1</code> 是像素格式 C 文件，<code>-cfile 2</code> 是 EZIP C 文件；小图可用 <code>-dpt 1</code> 直接转像素，大图用 <code>-dpt 4</code> 配合 <code>-ers</code>（2 的幂）控制解压缓冲。</li>
     <li>57x 的资源必须加 <code>-winsize 2048</code>；SDK 的 <code>Env.ImgResource()</code> 在 <code>SOC_SF32LB57X</code> 时会自动补上。</li>
     <li>运行时文件加载：<code>lv_image_set_src(img, "A:/x.ezip")</code> 需要 <code>CONFIG_LV_USE_FS_POSIX=y</code> 和盘符配置；文件模式节省内存，预加载到 PSRAM 的 <code>dsc</code> 模式占用更多内存。图片文件数据缓存池由 <code>CONFIG_IMAGE_CACHE_IN_PSRAM_SIZE</code> / <code>CONFIG_IMAGE_CACHE_IN_SRAM_SIZE</code> 配置。</li>
-    <li>真源：<a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/app_note/ezip_tool_usage.md">ezip_tool_usage.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/tools/png2ezip/Help.txt">Help.txt</a>、<a href="../chip-adapt/sdk/sifli-sdk/example/multimedia/lvgl/ezip_v9/src/main.c">ezip_v9/src/main.c</a>。</li>
+    <li>真源：<a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/app_note/ezip_tool_usage.md">ezip_tool_usage.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/tools/png2ezip/Help.txt">Help.txt</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/example/multimedia/lvgl/ezip_v9/src/main.c">ezip_v9/src/main.c</a>。</li>
   </ul>
 
   <h2>4. 加速引擎：EPIC</h2>
@@ -474,7 +474,7 @@
   </div>
 
   <h3>4.2 单步渲染（默认）</h3>
-  <p>未开启 <code>CONFIG_DRV_EPIC_NEW_API</code> 时，LVGL v9 使用 <a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/lv_drivers_v9/sifli/lv_draw_epic.c">sifli/lv_draw_epic.c</a> 的 draw unit。能派给 EPIC 的任务是白名单：</p>
+  <p>未开启 <code>CONFIG_DRV_EPIC_NEW_API</code> 时，LVGL v9 使用 <a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/lv_drivers_v9/sifli/lv_draw_epic.c">sifli/lv_draw_epic.c</a> 的 draw unit。能派给 EPIC 的任务是白名单：</p>
   <ul>
     <li>矩形填充：纯色，或 2 个色标的水平/垂直渐变；带 alpha 或 mask 的填充。</li>
     <li>图片：普通混叠、缩放、旋转；EZIP/JPG/YUV 可以混叠/缩放，但不能旋转。</li>
@@ -484,7 +484,7 @@
   <p>以下任务在单步模式下明确回退到软件绘制：圆角矩形、超过 2 个色标的渐变、渐变输出格式不受支持、带 recolor 的图片/图层、RGB565A8 带旋转/缩放、不支持的图片颜色格式、非完整边框或圆角边框、矢量字体。arc、line 的 evaluate 分支被 <code>#if 0</code> 关闭；shadow（BOX_SHADOW）、LETTER、TRIANGLE、MASK_RECTANGLE 没有 EPIC 分支，全部走 SW draw unit。</p>
 
   <h3>4.3 渲染列表（可选）</h3>
-  <p>开启 <code>CONFIG_DRV_EPIC_NEW_API=y</code> 后，LVGL v9 改用 <a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/lv_drivers_v9/sifli_renderlist/lv_draw_epic.c">sifli_renderlist/lv_draw_epic.c</a>。驱动层把一系列渲染操作收集成列表，支持：</p>
+  <p>开启 <code>CONFIG_DRV_EPIC_NEW_API=y</code> 后，LVGL v9 改用 <a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/lv_drivers_v9/sifli_renderlist/lv_draw_epic.c">sifli_renderlist/lv_draw_epic.c</a>。驱动层把一系列渲染操作收集成列表，支持：</p>
   <div class="table-wrap">
     <table>
       <thead>
@@ -505,8 +505,8 @@
     </table>
   </div>
   <p>所以更准确的说法是：这些操作由 EPIC 渲染列表执行，最终填充/混叠在 EPIC；但圆角矩形、圆弧、斜线、圆角边框、多边形的几何遮罩由 CPU（58x 的圆弧可用 VGLite）生成，不是 EPIC 自己画几何形状。纯 EPIC 几何的是无圆角矩形、图片混叠/变换、水平/垂直实线、无圆角边框和字形混叠。</p>
-  <p>官方 <a href="../chip-adapt/sdk/sifli-sdk/example/rt_device/gpu/render_list_mode/README.md">render_list_mode</a> 示例明确支持 <code>sf32lb52-lchspi-ulp</code>；<code>watch</code>（LVGL v8）工程的 <code>proj.conf</code> 已开启 <code>CONFIG_DRV_EPIC_NEW_API=y</code>。驱动文档明确渲染列表不能用于 55x。驱动层还有 <code>DRV_EPIC_DRAW_SHADOW</code>（CPU 生成覆盖 mask + EPIC masked fill），但 LVGL v9 的 render-list draw unit 目前没有派发 <code>BOX_SHADOW</code>，所以 LVGL v9 的阴影仍走软件。</p>
-  <p>真源：<a href="../chip-adapt/sdk/sifli-sdk/rtos/rtthread/bsp/sifli/drivers/drv_epic_rl_draw.c">drv_epic_rl_draw.c</a>、<a href="../chip-adapt/sdk/sifli-sdk/rtos/rtthread/bsp/sifli/drivers/drv_epic_mask.c">drv_epic_mask.c</a>、<a href="../chip-adapt/sdk/sifli-sdk/rtos/rtthread/bsp/sifli/drivers/drv_epic.h">drv_epic.h</a>。</p>
+  <p>官方 <a href="../chip-adapt/sifli/vendor/sifli-sdk/example/rt_device/gpu/render_list_mode/README.md">render_list_mode</a> 示例明确支持 <code>sf32lb52-lchspi-ulp</code>；<code>watch</code>（LVGL v8）工程的 <code>proj.conf</code> 已开启 <code>CONFIG_DRV_EPIC_NEW_API=y</code>。驱动文档明确渲染列表不能用于 55x。驱动层还有 <code>DRV_EPIC_DRAW_SHADOW</code>（CPU 生成覆盖 mask + EPIC masked fill），但 LVGL v9 的 render-list draw unit 目前没有派发 <code>BOX_SHADOW</code>，所以 LVGL v9 的阴影仍走软件。</p>
+  <p>真源：<a href="../chip-adapt/sifli/vendor/sifli-sdk/rtos/rtthread/bsp/sifli/drivers/drv_epic_rl_draw.c">drv_epic_rl_draw.c</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/rtos/rtthread/bsp/sifli/drivers/drv_epic_mask.c">drv_epic_mask.c</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/rtos/rtthread/bsp/sifli/drivers/drv_epic.h">drv_epic.h</a>。</p>
 
   <h3>4.4 限制与不支持项</h3>
   <ul>
@@ -532,7 +532,7 @@
     <li><code>src/SConscript</code>：用 <code>Glob('*.c')</code> + <code>DefineGroup</code> 收集应用源文件；新增子目录要在父 <code>SConscript</code> 显式导入。</li>
     <li><code>src/main.c</code>：应用入口。</li>
   </ul>
-  <p>配置优先级：<code>proj.conf</code> &gt; <code>board.conf</code> &gt; Kconfig 默认值；板级差异化可放在 <code>project/sf32lb52-lchspi-ulp_hcpu/proj.conf</code>，优先级最高。真源：<a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/app_development/create_application.md">create_application.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/app_development/build_and_configuration.md">build_and_configuration.md</a>。</p>
+  <p>配置优先级：<code>proj.conf</code> &gt; <code>board.conf</code> &gt; Kconfig 默认值；板级差异化可放在 <code>project/sf32lb52-lchspi-ulp_hcpu/proj.conf</code>，优先级最高。真源：<a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/app_development/create_application.md">create_application.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/app_development/build_and_configuration.md">build_and_configuration.md</a>。</p>
 
   <h3>5.2 应用入口</h3>
   <p>最小工程的标准写法：</p>
@@ -546,15 +546,15 @@ while (1) {
     <li><code>littlevgl2rtt_init("lcd")</code> 内部调用 <code>lv_hal_init()</code>，初始化 LCD、触摸、按键、滚轮，并注册图片解码器和 FPS 统计；它<strong>不调用</strong> <code>lv_init()</code>。</li>
     <li><code>lv_init()</code> 由 <code>gui_lib_init()</code> 在 RT-Thread 组件初始化阶段完成，通过 <code>INIT_COMPONENT_EXPORT</code> 注册；应用不要再调一次。</li>
     <li>主循环用 <code>lv_task_handler()</code>（<code>lv_timer_handler()</code> 的兼容别名），返回值作为 <code>rt_thread_mdelay()</code> 的延时。</li>
-    <li>真源：<a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/littlevgl2rtt.c">littlevgl2rtt.c</a>、<a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/littlevgl2rtt.h">littlevgl2rtt.h</a>、<a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/lv_drivers_v9/lvgl_drv.c">lvgl_drv.c</a>。</li>
+    <li>真源：<a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/littlevgl2rtt.c">littlevgl2rtt.c</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/littlevgl2rtt.h">littlevgl2rtt.h</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/lv_drivers_v9/lvgl_drv.c">lvgl_drv.c</a>。</li>
   </ul>
 
   <h3>5.3 多应用 / 多页面</h3>
   <ul>
     <li>产品级 UI 用 <code>GUI_APP_FRAMEWORK</code>：<code>gui_app_init(1)</code>、<code>gui_app_run("Main")</code>，应用通过 <code>BUILTIN_APP_EXPORT</code> 注册。</li>
     <li>页面生命周期：<code>on_start</code> 创建控件/订阅服务；<code>on_resume</code> 启动 timer；<code>on_pause</code> 停止 timer；<code>on_stop</code> 退订/释放内存。</li>
-    <li>参考 <a href="../chip-adapt/sdk/sifli-sdk/example/multimedia/lvgl/watch_v9">watch_v9</a>（LVGL v9）和 <a href="../chip-adapt/sdk/sifli-sdk/example/multimedia/lvgl/watch">watch</a>（LVGL v8）。</li>
-    <li>真源：<a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/middleware/gui_app_framework.md">gui_app_framework.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/middleware/include/gui_app_fwk.h">gui_app_fwk.h</a>。</li>
+    <li>参考 <a href="../chip-adapt/sifli/vendor/sifli-sdk/example/multimedia/lvgl/watch_v9">watch_v9</a>（LVGL v9）和 <a href="../chip-adapt/sifli/vendor/sifli-sdk/example/multimedia/lvgl/watch">watch</a>（LVGL v8）。</li>
+    <li>真源：<a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/middleware/gui_app_framework.md">gui_app_framework.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/include/gui_app_fwk.h">gui_app_fwk.h</a>。</li>
   </ul>
 
   <h3>5.4 关键配置</h3>
@@ -587,7 +587,7 @@ while (1) {
   <h3>5.6 调试与测量</h3>
   <ul>
     <li>串口 <code>fps2</code> 开关 FPS/CPU/EPIC 统计；日志每 2 秒输出一次，包含 FPS、CPU load、EPIC 占用、LVGL idle、cache miss。</li>
-    <li>代码里可以调 <code>set_display_fps_and_cpu_load(1)</code> 和 <code>lv_get_fps()</code>；这些 API 在 <a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/littlevgl2rtt.h">littlevgl2rtt.h</a>。</li>
+    <li>代码里可以调 <code>set_display_fps_and_cpu_load(1)</code> 和 <code>lv_get_fps()</code>；这些 API 在 <a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/littlevgl2rtt.h">littlevgl2rtt.h</a>。</li>
     <li>本页不给出测量值，也不比较快慢；量化结论以目标板实测为准。</li>
   </ul>
 
@@ -595,11 +595,11 @@ while (1) {
   <ul>
     <li>SDK 的 <code>skills/sifli-code-review</code> 要求：Allman 大括号、4 空格缩进、snake_case、宏大写、header guard、注释用英文、不连续空行、不重排 include。</li>
     <li>示例工程的 <code>proj.conf</code> 只打开示例真正需要的配置项；提交信息格式为 <code>[bug|new|opt|chore][module_name] ...</code>。</li>
-    <li>真源：<a href="../chip-adapt/sdk/sifli-sdk/skills/sifli-code-review/SKILL.md">sifli-code-review/SKILL.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/.clang-format">.clang-format</a>。</li>
+    <li>真源：<a href="../chip-adapt/sifli/vendor/sifli-sdk/skills/sifli-code-review/SKILL.md">sifli-code-review/SKILL.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/.clang-format">.clang-format</a>。</li>
   </ul>
 
   <h2>6. demo 对接</h2>
-  <p>最小工程从 <a href="../chip-adapt/sdk/sifli-sdk/example/get-started/hello_world/rtt">hello_world/rtt</a> 复制；LVGL v9 的 demo 参考 <a href="../chip-adapt/sdk/sifli-sdk/example/multimedia/lvgl/lvgl_v9_demos">lvgl_v9_demos</a>；产品级多页面参考 <a href="../chip-adapt/sdk/sifli-sdk/example/multimedia/lvgl/watch_v9">watch_v9</a>（LVGL v9）或 <a href="../chip-adapt/sdk/sifli-sdk/example/multimedia/lvgl/watch">watch</a>（LVGL v8）。</p>
+  <p>最小工程从 <a href="../chip-adapt/sifli/vendor/sifli-sdk/example/get-started/hello_world/rtt">hello_world/rtt</a> 复制；LVGL v9 的 demo 参考 <a href="../chip-adapt/sifli/vendor/sifli-sdk/example/multimedia/lvgl/lvgl_v9_demos">lvgl_v9_demos</a>；产品级多页面参考 <a href="../chip-adapt/sifli/vendor/sifli-sdk/example/multimedia/lvgl/watch_v9">watch_v9</a>（LVGL v9）或 <a href="../chip-adapt/sifli/vendor/sifli-sdk/example/multimedia/lvgl/watch">watch</a>（LVGL v8）。</p>
 
   <h3>6.1 最小工程步骤</h3>
   <ol>
@@ -617,13 +617,13 @@ while (1) {
         <tr><th>示例</th><th>用途</th></tr>
       </thead>
       <tbody>
-        <tr><td><a href="../chip-adapt/sdk/sifli-sdk/example/get-started/hello_world/rtt">hello_world/rtt</a></td><td>最小工程模板：<code>project/</code> + <code>src/</code> + <code>main.c</code></td></tr>
-        <tr><td><a href="../chip-adapt/sdk/sifli-sdk/example/multimedia/lvgl/lvgl_v9_demos">lvgl_v9_demos</a></td><td>LVGL v9 demo 工程；<code>lvgl_v9_demos/project/proj.conf</code> 可作配置基线</td></tr>
-        <tr><td><a href="../chip-adapt/sdk/sifli-sdk/example/multimedia/lvgl/watch_v9">watch_v9</a></td><td>LVGL v9 产品级多应用模板；使用 <code>GUI_APP_FRAMEWORK</code></td></tr>
-        <tr><td><a href="../chip-adapt/sdk/sifli-sdk/example/multimedia/lvgl/watch">watch</a></td><td>LVGL v8 产品级模板；<code>proj.conf</code> 开启 <code>CONFIG_DRV_EPIC_NEW_API=y</code></td></tr>
-        <tr><td><a href="../chip-adapt/sdk/sifli-sdk/example/multimedia/lvgl/ezip_v9">ezip_v9</a></td><td>EZIP 文件加载、PSRAM 预加载、<code>A:/</code> 盘符示例</td></tr>
-        <tr><td><a href="../chip-adapt/sdk/sifli-sdk/example/rt_device/gpu/render_list_mode">render_list_mode</a></td><td>EPIC 渲染列表；官方支持 <code>sf32lb52-lchspi-ulp</code></td></tr>
-        <tr><td><a href="../chip-adapt/sdk/sifli-sdk/example/lcd_fb">lcd_fb</a></td><td>LCD framebuffer / LCDC 送屏路径，不是 LVGL 应用</td></tr>
+        <tr><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/example/get-started/hello_world/rtt">hello_world/rtt</a></td><td>最小工程模板：<code>project/</code> + <code>src/</code> + <code>main.c</code></td></tr>
+        <tr><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/example/multimedia/lvgl/lvgl_v9_demos">lvgl_v9_demos</a></td><td>LVGL v9 demo 工程；<code>lvgl_v9_demos/project/proj.conf</code> 可作配置基线</td></tr>
+        <tr><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/example/multimedia/lvgl/watch_v9">watch_v9</a></td><td>LVGL v9 产品级多应用模板；使用 <code>GUI_APP_FRAMEWORK</code></td></tr>
+        <tr><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/example/multimedia/lvgl/watch">watch</a></td><td>LVGL v8 产品级模板；<code>proj.conf</code> 开启 <code>CONFIG_DRV_EPIC_NEW_API=y</code></td></tr>
+        <tr><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/example/multimedia/lvgl/ezip_v9">ezip_v9</a></td><td>EZIP 文件加载、PSRAM 预加载、<code>A:/</code> 盘符示例</td></tr>
+        <tr><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/example/rt_device/gpu/render_list_mode">render_list_mode</a></td><td>EPIC 渲染列表；官方支持 <code>sf32lb52-lchspi-ulp</code></td></tr>
+        <tr><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/example/lcd_fb">lcd_fb</a></td><td>LCD framebuffer / LCDC 送屏路径，不是 LVGL 应用</td></tr>
       </tbody>
     </table>
   </div>
@@ -690,17 +690,17 @@ while (1) {
         <tr><th>主题</th><th>真源</th></tr>
       </thead>
       <tbody>
-        <tr><td>SDK 版本</td><td><a href="../chip-adapt/sdk/sifli-sdk/version.txt">version.txt</a></td></tr>
-        <tr><td>EPIC HAL</td><td><a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/hal/epic.md">hal/epic.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/drivers/Include/bf0_hal_epic.h">bf0_hal_epic.h</a>、<a href="../chip-adapt/sdk/sifli-sdk/drivers/hal/bf0_hal_epic.c">bf0_hal_epic.c</a></td></tr>
-        <tr><td>EPIC 驱动</td><td><a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/drivers/epic.md">drivers/epic.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/lv_drivers_v9/sifli">sifli/</a>、<a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/lv_drivers_v9/sifli_renderlist">sifli_renderlist/</a></td></tr>
-        <tr><td>EZIP / EZIPA</td><td><a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/hal/ezip.md">hal/ezip.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/lv_drivers_v9/lvsf_img_decoder.c">lvsf_img_decoder.c</a>、<a href="../chip-adapt/sdk/sifli-sdk/middleware/ezipa_dec/ezipa_dec.c">ezipa_dec.c</a></td></tr>
-        <tr><td>LCDC / 显示</td><td><a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/hal/lcdc.md">hal/lcdc.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/hal/dsi.md">hal/dsi.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/drivers/Include/bf0_hal_lcdc.h">bf0_hal_lcdc.h</a>、<a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/lv_drivers_v9/lv_lcd.c">lv_lcd.c</a>、<a href="../chip-adapt/sdk/sifli-sdk/rtos/rtthread/bsp/sifli/drivers/drv_lcd_fb.c">drv_lcd_fb.c</a>、<a href="../chip-adapt/sdk/sifli-sdk/customer/peripherals/display/co5300/co5300.c">co5300.c</a>、<a href="../chip-adapt/sdk/sifli-sdk/customer/peripherals/display/jdi387a/jdi387a.c">jdi387a.c</a></td></tr>
-        <tr><td>JPEG / 视频</td><td><a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/middleware/video.md">middleware/video.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/lv_drivers_v9/lvsf_jpeg_decoder.c">lvsf_jpeg_decoder.c</a>、<a href="../chip-adapt/sdk/sifli-sdk/external/ffmpeg/libavcodec/mjpegdec.c">mjpegdec.c</a></td></tr>
-        <tr><td>LVGL 适配</td><td><a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/lv_conf_sifli.h">lv_conf_sifli.h</a>、<a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/littlevgl2rtt.c">littlevgl2rtt.c</a>、<a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/lv_drivers_v9/lvgl_drv.c">lvgl_drv.c</a>、<a href="../chip-adapt/sdk/sifli-sdk/middleware/lvgl/Kconfig">middleware/lvgl/Kconfig</a></td></tr>
-        <tr><td>官方写法</td><td><a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/app_development/create_application.md">create_application.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/app_development/build_and_configuration.md">build_and_configuration.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/quickstart/build.md">quickstart/build.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/middleware/gui_app_framework.md">gui_app_framework.md</a></td></tr>
-        <tr><td>资源工具</td><td><a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/app_note/ezip_tool_usage.md">ezip_tool_usage.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/tools/png2ezip/Help.txt">png2ezip/Help.txt</a>、<a href="../chip-adapt/sdk/sifli-sdk/example/multimedia/lvgl/ezip_v9">ezip_v9</a></td></tr>
-        <tr><td>代码风格</td><td><a href="../chip-adapt/sdk/sifli-sdk/skills/sifli-code-review/SKILL.md">sifli-code-review/SKILL.md</a>、<a href="../chip-adapt/sdk/sifli-sdk/.clang-format">.clang-format</a></td></tr>
-        <tr><td>官方内存 / EPIC 数据</td><td><a href="../chip-adapt/sdk/sifli-sdk/docs/source/zh_CN/app_note/memory_usage.md">memory_usage.md</a>（本页不转述具体数字）</td></tr>
+        <tr><td>SDK 版本</td><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/version.txt">version.txt</a></td></tr>
+        <tr><td>EPIC HAL</td><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/hal/epic.md">hal/epic.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/drivers/Include/bf0_hal_epic.h">bf0_hal_epic.h</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/drivers/hal/bf0_hal_epic.c">bf0_hal_epic.c</a></td></tr>
+        <tr><td>EPIC 驱动</td><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/drivers/epic.md">drivers/epic.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/lv_drivers_v9/sifli">sifli/</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/lv_drivers_v9/sifli_renderlist">sifli_renderlist/</a></td></tr>
+        <tr><td>EZIP / EZIPA</td><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/hal/ezip.md">hal/ezip.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/lv_drivers_v9/lvsf_img_decoder.c">lvsf_img_decoder.c</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/ezipa_dec/ezipa_dec.c">ezipa_dec.c</a></td></tr>
+        <tr><td>LCDC / 显示</td><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/hal/lcdc.md">hal/lcdc.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/hal/dsi.md">hal/dsi.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/drivers/Include/bf0_hal_lcdc.h">bf0_hal_lcdc.h</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/lv_drivers_v9/lv_lcd.c">lv_lcd.c</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/rtos/rtthread/bsp/sifli/drivers/drv_lcd_fb.c">drv_lcd_fb.c</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/customer/peripherals/display/co5300/co5300.c">co5300.c</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/customer/peripherals/display/jdi387a/jdi387a.c">jdi387a.c</a></td></tr>
+        <tr><td>JPEG / 视频</td><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/middleware/video.md">middleware/video.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/lv_drivers_v9/lvsf_jpeg_decoder.c">lvsf_jpeg_decoder.c</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/external/ffmpeg/libavcodec/mjpegdec.c">mjpegdec.c</a></td></tr>
+        <tr><td>LVGL 适配</td><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/lv_conf_sifli.h">lv_conf_sifli.h</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/littlevgl2rtt.c">littlevgl2rtt.c</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/lv_drivers_v9/lvgl_drv.c">lvgl_drv.c</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/middleware/lvgl/Kconfig">middleware/lvgl/Kconfig</a></td></tr>
+        <tr><td>官方写法</td><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/app_development/create_application.md">create_application.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/app_development/build_and_configuration.md">build_and_configuration.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/quickstart/build.md">quickstart/build.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/middleware/gui_app_framework.md">gui_app_framework.md</a></td></tr>
+        <tr><td>资源工具</td><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/app_note/ezip_tool_usage.md">ezip_tool_usage.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/tools/png2ezip/Help.txt">png2ezip/Help.txt</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/example/multimedia/lvgl/ezip_v9">ezip_v9</a></td></tr>
+        <tr><td>代码风格</td><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/skills/sifli-code-review/SKILL.md">sifli-code-review/SKILL.md</a>、<a href="../chip-adapt/sifli/vendor/sifli-sdk/.clang-format">.clang-format</a></td></tr>
+        <tr><td>官方内存 / EPIC 数据</td><td><a href="../chip-adapt/sifli/vendor/sifli-sdk/docs/source/zh_CN/app_note/memory_usage.md">memory_usage.md</a>（本页不转述具体数字）</td></tr>
         <tr><td>本仓库适配</td><td><a href="../chip-adapt/sifli/README.md">chip-adapt/sifli/README.md</a>、<a href="../chip-adapt/sifli/adapter.json">adapter.json</a>、<a href="../chip-adapt/sifli/export.py">export.py</a>、<a href="../chip-adapt/sifli/templates">templates/</a></td></tr>
       </tbody>
     </table>
