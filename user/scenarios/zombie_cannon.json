@@ -1,0 +1,35 @@
+{
+  "schema": "lvgl-ai-scenario-v1",
+  "name": "zombie_cannon",
+  "app": "zombie_cannon",
+  "display": {
+    "width": 390,
+    "height": 460
+  },
+  "steps": [
+    {"type": "wait", "ms": 300},
+    {"type": "mark", "id": "title"},
+    {"type": "snapshot", "label": "title"},
+    {"type": "click_at", "x": 195, "y": 287, "hold_ms": 90},
+    {"type": "wait", "ms": 1600},
+    {"type": "snapshot", "label": "wave_start"},
+    {"type": "pointer", "action": "down", "x": 252, "y": 218},
+    {"type": "wait", "ms": 900},
+    {"type": "snapshot", "label": "manual_aim"},
+    {"type": "pointer", "action": "up", "x": 252, "y": 218},
+    {"type": "wait", "ms": 4200},
+    {"type": "snapshot", "label": "auto_fire"},
+    {"type": "click_at", "x": 24, "y": 442, "hold_ms": 60},
+    {"type": "wait", "ms": 160},
+    {"type": "snapshot", "label": "paused"},
+    {"type": "click_at", "x": 195, "y": 220, "hold_ms": 60},
+    {"type": "wait", "ms": 800},
+    {"type": "snapshot", "label": "resumed"},
+    {"type": "wait", "ms": 9000},
+    {"type": "mark", "id": "late_wave"},
+    {"type": "snapshot", "label": "late_wave"},
+    {"type": "click_at", "x": 195, "y": 146, "hold_ms": 60},
+    {"type": "wait", "ms": 1200},
+    {"type": "snapshot", "label": "after_choice"}
+  ]
+}

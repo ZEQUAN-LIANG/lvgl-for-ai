@@ -399,6 +399,14 @@ lv_timer_create(tick_cb, 16, NULL);
 raw 源收集和 EZIP/真机验证边界见
 [`chip-adapt/sifli/README.md`](../../chip-adapt/sifli/README.md)。
 
+`sift_watch/game/` 展示了另一种共享方式：游戏模块不依赖 LVGL 对象，只接收 RGB565
+framebuffer，由 `sift_watch` 和独立的 `zombie_cannon` 应用各自驱动。音效、振动、随机数
+和高分持久化通过 `zc_hooks_t` 注入；板端 `sift_watch.c` 已接好振动、进程内存档和
+audprc → audcodec DAC → AW8155 扬声器通路，`zc_synth.c` 负责程序化音效。独立
+`zombie_cannon` 场景用于 390x460 视觉预览；黄山派随 `sift_watch` 导出，游戏自动适配
+390x450 与圆角安全区。两端都支持 AI 模式：标题 12 秒或战斗中 10 秒无操作后接管；
+一旦接管，升级/结算菜单不再等待秒数，升级立即随机选卡、结算立即重开。
+
 ---
 
 ## 5. 硬约束与常见坑

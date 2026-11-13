@@ -203,12 +203,27 @@ def _load_asset_manifest(
             detail={"schema": payload.get("schema")},
         )
     raw_assets = payload.get("assets")
-    if not isinstance(raw_assets, dict) or not raw_assets:
+    raw_cache = payload.get("cache", {})
+    if not isinstance(raw_assets, dict):
         raise ExportError(
             "asset_manifest_invalid",
             f"{manifest_path} has no assets",
             detail={"file": str(manifest_path)},
         )
+    if not raw_assets:
+        # A cache-only manifest lets canvas-only apps reserve the PSRAM cache
+        # pool without inventing a dummy image.
+        if not isinstance(raw_cache, dict) or not raw_cache:
+            raise ExportError(
+                "asset_manifest_invalid",
+                f"{manifest_path} has no assets",
+                detail={"file": str(manifest_path)},
+            )
+        return {
+            "assets": {},
+            "cache": raw_cache,
+            "local_header": str(payload.get("local_header", "")),
+        }
 
     macros: dict[str, str] = {}
     for name in raw_assets:

@@ -129,6 +129,14 @@ class AssetPlanTest(unittest.TestCase):
         self.assertEqual(plan.local_header, "")
         self.assertEqual(plan.cache["image_cache_psram_size"], 0)
 
+    def test_cache_only_manifest_has_no_assets_but_reserves_cache(self):
+        self._write_manifest({}, cache={"image_cache_psram_size": 2097152})
+        plan = self._plan()
+        self.assertFalse(plan.has_assets)
+        self.assertEqual(plan.records, [])
+        self.assertEqual(plan.files, {})
+        self.assertEqual(plan.cache["image_cache_psram_size"], 2097152)
+
     def test_raw_hot_asset_generates_size_macros_and_cache(self):
         write_png(self.assets / "probe.png", 37, 19)
         self._write_manifest(

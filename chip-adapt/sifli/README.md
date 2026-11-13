@@ -69,7 +69,9 @@ headless 的 `app_create`、SDK 的 `app_create` / `main.c` 和 `user/app/app.c`
 ## 图片资源与 assets.json
 
 应用把 PNG 源放在 `user/app/<app>/assets/*.png`，并在 `user/app/<app>/assets.json`
-声明每张图的角色：
+声明每张图的角色。纯 canvas 应用也可以用 `"assets": {}` 加非空 `cache` 做
+cache-only 清单，只申请 PSRAM/SRAM 池而不生成图片符号（`sift_watch` 用它同时容纳
+手表画布和游戏静态背景）：
 
 ```json
 {
@@ -191,6 +193,25 @@ LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/exports/sift_watch/src/app" \
 运行时验证拿 `sim_sifli.h`。桩只用于验证，不代表 EPIC、触摸或真实刷新行为。
 `sift_watch` 场景声明 390x450；两次运行都应得到 `status=ok`、`app=sift_watch`、
 `display=390x450`，并保留 timeline/snapshot 证据。
+
+`sift_watch/game/` 的 ZOMBIE 无尽尸潮也在这条共享源码路径里。它只写 RGB565
+framebuffer，不依赖 LVGL 9.5/9.6 API；`sift_watch_zombie.json` 覆盖进入游戏、手动瞄准、
+暂停、升级卡和返回应用抽屉。游戏声音直接走板级音频通路：`audprc` 生成 16 kHz
+单声道 PCM，`audcodec` **DAC1**（`AU_DAC1P/N`）输出到 AW8155 功放
+（`PA_USING_AW8155`，PA42 使能）；`game/zc_audio.c` 管理设备/DMA/PA，
+`game/zc_synth.c` 是可移植的合成器。板级 `board.conf` 已打开
+`BSP_ENABLE_AUD_CODEC`、`BSP_ENABLE_AUD_PRC`、`BSP_AUDPRC_TX0_DMA` 和
+`PA_USING_AW8155`，导出模板不需要额外改配置。黄山派需要外接 GH-1.25mm
+4Ω/8Ω 喇叭，并短接核心板 5-6、7-8、11-12 跳线帽。导出的 9.4 副本可用同一场景验证：
+
+```bash
+LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/exports/sift_watch/src/app" \
+  python -I core/cli.py --lvgl 9.4 --scenario user/scenarios/sift_watch_zombie.json
+```
+
+`zombie_cannon` 是 390x460 的独立预览外壳，不进入导出；黄山派以 `sift_watch` 为准。
+没有板子时可以先听合成器的离线 WAV：`.scratch/tmp/zc/zc_sfx_demo.wav`（由
+`zc_synth.c` 直接渲染，不含板端 DAC/功放音染）。
 
 ## 验证边界
 
