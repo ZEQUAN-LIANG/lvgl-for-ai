@@ -1,12 +1,12 @@
 """The docs index pages stay indexes, not copies of drifting facts.
 
-``docs/app.html`` and ``docs/scenario-server.html`` must point at code,
-README or SPEC instead of restating the app list, HTTP routes, server
-constants or scenario step vocabulary.  These tests pin that static
-invariant: every link resolves, every symbol pointer names something in the
-linked file, and facts owned by code do not reappear in the pages.
-``docs/sifli.html`` is link-checked only, so its SDK download links may be
-absent; the one-off audit report is outside both contracts.
+``docs/app.html`` and ``docs/scenario-server.html`` must point at code or
+README instead of restating the app list, HTTP routes, server constants or
+scenario step vocabulary.  These tests pin that static invariant: every link
+resolves, every symbol pointer names something in the linked file, and facts
+owned by code do not reappear in the pages.
+``chip-adapt/sifli.html`` is link-checked only, so its SDK download links may
+be absent.
 """
 
 from __future__ import annotations
@@ -28,11 +28,18 @@ from lvgl_ai.scenario import SCENARIO_SCHEMA, STEP_TYPES  # noqa: E402
 from lvgl_ai.web import live_session, webapp, wire  # noqa: E402
 
 DOCS_DIR = paths.REPO_ROOT / "docs"
+SIFLI_PAGE = paths.REPO_ROOT / "chip-adapt" / "sifli.html"
 PAGE_NAMES = ("app.html", "scenario-server.html")
 # sifli.html is link-checked but is not an index page: it may mention app
-# names, routes and constants as capability facts.  audit-2026-11-11.html is a
-# one-off report and stays outside both lists.
+# names, routes and constants as capability facts.
 LINK_PAGES = PAGE_NAMES + ("sifli.html",)
+
+
+def _link_page(name: str) -> Path:
+    if name == "sifli.html":
+        return SIFLI_PAGE
+    return DOCS_DIR / name
+
 
 # Server constants whose values may not be copied into the docs.  Names may
 # appear as symbol pointers; values may not.
@@ -105,16 +112,18 @@ class _PageParser(HTMLParser):
             self.texts.append(text)
 
 
-def _parse_page(name: str) -> _PageParser:
+def _parse_page(path: Path) -> _PageParser:
     parser = _PageParser()
-    parser.feed((DOCS_DIR / name).read_text(encoding="utf-8"))
+    parser.feed(path.read_text(encoding="utf-8"))
     parser.close()
     return parser
 
 
 EXTERNAL_HREF_PREFIXES = ("#", "http://", "https://", "mailto:")
-SDK_DOWNLOAD_DIR = Path("chip-adapt") / "sdk"
-LOCAL_TRACKER_DIR = Path(".scratch") / "ai-tools"
+MISSING_DOWNLOAD_DIRS = (
+    Path("chip-adapt") / "sdk",
+    Path("chip-adapt") / "sifli" / "vendor",
+)
 
 
 def _within(path: Path, root: Path) -> bool:
@@ -122,14 +131,14 @@ def _within(path: Path, root: Path) -> bool:
 
 
 def _optional_target(target: Path, repo_root: Path) -> bool:
-    if _within(target, (repo_root / SDK_DOWNLOAD_DIR).resolve()):
-        return True
-    tracker = (repo_root / LOCAL_TRACKER_DIR).resolve()
-    return _within(target, tracker) and not tracker.exists()
+    return any(
+        _within(target, (repo_root / directory).resolve())
+        for directory in MISSING_DOWNLOAD_DIRS
+    )
 
 
 def broken_links(
-    page: Path, *, docs_dir: Path, repo_root: Path
+    page: Path, *, base_dir: Path, repo_root: Path
 ) -> list[str]:
     parser = _PageParser()
     parser.feed(page.read_text(encoding="utf-8"))
@@ -141,7 +150,7 @@ def broken_links(
         target = href.split("#", 1)[0]
         if not target:
             continue
-        resolved = (docs_dir / target).resolve()
+        resolved = (base_dir / target).resolve()
         if _optional_target(resolved, repo_root):
             continue
         if not resolved.exists():
@@ -203,7 +212,7 @@ class DocsLinkPolicyTest(unittest.TestCase):
             f'<a href="{href}">link</a>', encoding="utf-8"
         )
         return broken_links(
-            self.page, docs_dir=self.docs_dir, repo_root=self.repo_root
+            self.page, base_dir=self.docs_dir, repo_root=self.repo_root
         )
 
     def test_existing_repo_link_passes(self) -> None:
@@ -221,31 +230,12 @@ class DocsLinkPolicyTest(unittest.TestCase):
             self._check("../chip-adapt/sdk/sifli-sdk/version.txt"), []
         )
 
-    def test_scratch_truth_link_may_be_absent_without_local_tracker(self) -> None:
-        (self.repo_root / ".scratch" / "tmp").mkdir(parents=True)
-        self.assertEqual(
-            self._check("../.scratch/ai-tools/spec.md"), []
-        )
-
-    def test_scratch_truth_link_must_resolve_when_local_tracker_exists(self) -> None:
-        (self.repo_root / ".scratch" / "ai-tools").mkdir(parents=True)
-        errors = self._check("../.scratch/ai-tools/spec.md")
-        self.assertEqual(len(errors), 1)
-        self.assertIn("spec.md", errors[0])
-
-    def test_scratch_truth_link_passes_when_target_exists(self) -> None:
-        target = self.repo_root / ".scratch" / "ai-tools" / "spec.md"
-        target.parent.mkdir(parents=True)
-        target.write_text("spec", encoding="utf-8")
-        self.assertEqual(
-            self._check("../.scratch/ai-tools/spec.md"), []
-        )
-
-
 class DocsSingleSourceTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.pages = {name: _parse_page(name) for name in PAGE_NAMES}
+        cls.pages = {
+            name: _parse_page(DOCS_DIR / name) for name in PAGE_NAMES
+        }
         app_c = (paths.USER_APP_DIR / "app.c").read_text(encoding="utf-8-sig")
         cls.app_names = [name for name, _symbol in parse_app_entries(app_c)]
 
@@ -256,22 +246,23 @@ class DocsSingleSourceTest(unittest.TestCase):
 
     def test_every_link_resolves(self) -> None:
         for name in LINK_PAGES:
+            page = _link_page(name)
             self.assertEqual(
                 broken_links(
-                    DOCS_DIR / name,
-                    docs_dir=DOCS_DIR,
+                    page,
+                    base_dir=page.parent,
                     repo_root=paths.REPO_ROOT,
                 ),
                 [],
                 name,
             )
 
-    def test_every_link_page_is_an_existing_docs_file(self) -> None:
+    def test_every_link_page_exists(self) -> None:
         for name in LINK_PAGES:
             with self.subTest(name=name):
-                self.assertTrue((DOCS_DIR / name).is_file(), name)
+                self.assertTrue(_link_page(name).is_file(), name)
         # The sifli page is link-checked against real repository links only.
-        self.assertTrue(_parse_page("sifli.html").hrefs)
+        self.assertTrue(_parse_page(SIFLI_PAGE).hrefs)
 
     def test_sifli_page_is_link_checked_but_not_an_index_page(self) -> None:
         self.assertIn("sifli.html", LINK_PAGES)

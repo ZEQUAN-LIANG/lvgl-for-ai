@@ -23,16 +23,12 @@ def _repo_root_for(tool_root: Path) -> Path:
     """Resolve the workspace root for all supported layouts.
 
     Flat development checkout: the tool code and ``user/`` share ``<repo>``.
-    Legacy development checkout: ``<repo>/.scratch/lvgl-ai-new`` -> ``<repo>``.
     Tool subdirectory: ``<workspace>/<tool>`` -> the parent directory, which
     owns ``user/``.
     """
     if (tool_root / "user").is_dir():
         return tool_root
-    parent = tool_root.parent
-    if parent.name == ".scratch":
-        return parent.parent
-    return parent
+    return tool_root.parent
 
 
 REPO_ROOT = _repo_root_for(TOOL_ROOT)

@@ -2,7 +2,6 @@
 *.pyc
 __pycache__/
 .scratch/tmp/
-/.scratch/
 sessions/
 /lvgl-src/*
 !/lvgl-src/README.md

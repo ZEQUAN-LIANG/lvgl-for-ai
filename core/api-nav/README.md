@@ -2,8 +2,6 @@
 
 给写 `user/app/*.c` 的 AI 用的按版本 API 导航。每份文件只讲 `app_create()` 里常见任务涉及的函数、类型、头文件路径和最小片段，不做全量 API 转储；跨版本差异集中在每份的「与相邻版本差异」一节。
 
-设计依据是 `../../.scratch/ai-tools/spec.md` 的「版本范围」与「现在做 / 现在不做」；旧 SPEC 的 `### LVGL API 导航`、`### 多版本` 与 `## Out of Scope` 章节已不可用。
-
 ## 按版本选择
 
 `LVGL_AI_LVGL_VERSION` 选择 `lvgl-src/<version>`，默认是 9.6：

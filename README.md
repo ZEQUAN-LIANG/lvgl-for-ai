@@ -10,7 +10,7 @@
 
 - `core/`：Python 控制层、C engine、测试、工具与 API 导航。
 - `user/`：应用变体（`user/app/`）与场景（`user/scenarios/`）；每个应用自己持有资源头。
-- `docs/`：三份契约索引指针页（应用变体、场景/服务端常量、SiFli 导出边界）。
+- `docs/`：两份契约索引指针页（应用变体、场景/服务端常量）；SiFli 导出边界索引在 `chip-adapt/sifli.html`。
 - `licenses/`：LVGL、lodepng、zlib 与 libpng 的完整许可文本。
 - `lvgl-src/README.md`、`third_party/README.md`、`patches/README.md`：源码与 patch 目录的使用说明。
 
@@ -20,9 +20,7 @@
 - `third_party/zlib/`、`third_party/libpng/`：zlib / libpng 源码树，用 `core/tools/fetch_png.py` 下载。
 - `build/`：engine 构建产物。
 - `sessions/`：运行时生成的会话证据。
-- `.scratch/tmp/`：下载缓存与临时目录。
-- `.scratch/ai-tools/`：设计真源与历史票据，不进入公开快照。
-- `.scratch/research/`：研究素材，不进入公开快照。
+- `.scratch/tmp/`：下载缓存与临时目录（由下载脚本按需创建）。
 - 预编译 engine、Python 第三方依赖（项目只使用标准库，**不需要 `pip install`**）。
 
 公开仓库是单提交发布快照，完整开发历史不公开。
@@ -169,7 +167,7 @@ python -I core/tools/new_app.py myapp --dry-run
 | `third_party/` | zlib / libpng 源码（按需下载，Git 忽略） |
 | `build/` | engine 构建产物（Git 忽略） |
 | `sessions/` | 会话证据（Git 忽略） |
-| `docs/` | 应用变体、场景/服务端常量与 SiFli 导出边界的索引指针页 |
+| `docs/` | 应用变体与场景/服务端常量的索引指针页；SiFli 能力索引见 `chip-adapt/sifli.html` |
 | `licenses/` | 第三方许可全文 |
 | `patches/` | LVGL patch 组织说明与可选 patch |
 
@@ -206,11 +204,9 @@ python -I core/tools/fetch_lvgl.py --version 9.5 --repo-root .
 - `core/README.md`：工具用法（网页端、CLI、Python API、会话产物、测试）。
 - `docs/app.html`：应用变体写法索引。
 - `docs/scenario-server.html`：场景格式与服务端常量索引。
-- `docs/sifli.html`：SiFli SDK 图形能力与导出边界索引。
+- `chip-adapt/sifli.html`：SiFli SDK 图形能力与导出边界索引。
 - `CONTEXT.md`：领域术语表。
-- `CLAUDE.md` / `AGENTS.md`：AI 编码代理的仓库工作说明（两份内容一致）。
-
-公开快照不包含 `.scratch/ai-tools/`；设计真源与历史票据只保留在开发仓库中。
+- `CLAUDE.md`：AI 编码代理的仓库工作说明；`AGENTS.md` 指向它。
 
 ## 许可
 

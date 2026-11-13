@@ -37,6 +37,8 @@ RGB565 `lv_canvas`。
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch.json
 ```
 
+390×450 像素设计预览在 `user/app/sift_watch/watch-app.html`，用浏览器直接打开。
+
 ## 黄山派导出
 
 ```bash
