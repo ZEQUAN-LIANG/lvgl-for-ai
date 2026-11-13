@@ -13,6 +13,7 @@
 - `docs/`：两份契约索引指针页（应用变体、场景/服务端常量）；SiFli 导出边界索引在 `chip-adapt/docs/sifli.html`。
 - `chip-adapt/`：SiFli 导出适配层与上位机；入口、下载物和生成物分区见 `chip-adapt/README.md`。
 - `licenses/`：LVGL、lodepng、zlib 与 libpng 的完整许可文本。
+- `LVGL-AI-Viewer.exe`、`chip-adapt/sifli/tools/SiFli-Host.exe`：Windows 双击启动器；源码、图标与构建脚本在 `core/tools/launchers/`。
 - `lvgl-src/README.md`、`third_party/README.md`、`patches/README.md`：源码与 patch 目录的使用说明。
 
 **不包含**（需要在本机生成或下载）
@@ -24,7 +25,7 @@
 - `chip-adapt/exports/`：导出生成的 SDK 工程副本。
 - `sessions/`：运行时生成的会话证据。
 - `.scratch/tmp/`：下载缓存与临时目录（由下载脚本按需创建）。
-- 预编译 engine、Python 第三方依赖（项目只使用标准库，**不需要 `pip install`**）。
+- 预编译 engine、Python 第三方依赖（项目只使用标准库，**不需要 `pip install`**）；双击启动器 exe 是随仓库提供的例外。
 
 公开仓库是单提交发布快照，完整开发历史不公开。
 
@@ -117,7 +118,7 @@ python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --source gitee
 - 首次构建会编译整个 LVGL，通常需要数分钟；工具对 configure / build 每个阶段设置 600 秒硬超时。
 - CLI 成功退出码为 `0`，stdout 最后一行是会话目录；会话 `manifest.json` 的 `status` 应为 `ok`。
 - 网页端默认地址 `http://127.0.0.1:8765/`；端口冲突时用 `--port 0` 或 `--port 8766`，Ctrl+C 停止。
-- Windows 无控制台启动可双击仓库根的 `open-web.vbs`（需要 `pythonw.exe` 在 PATH 中）。
+- Windows 无控制台启动可双击仓库根的 `LVGL-AI-Viewer.exe`（需要 `pythonw.exe` 或 `pyw.exe` 在 PATH 中；用 `python -I core/tools/launchers/build.py` 重新生成）。
 
 ## 常用命令
 

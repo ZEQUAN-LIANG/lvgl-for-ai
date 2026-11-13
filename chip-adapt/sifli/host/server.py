@@ -1,7 +1,7 @@
 """HTTP broker and web UI for the SiFli Huangshan Pi host.
 
 Run with ``python -I chip-adapt/sifli/host/server.py --open`` (or double-click
-``open-host.vbs``).  The server owns the COM port; the browser, CLI and an AI
+``chip-adapt/sifli/tools/SiFli-Host.exe``).  The server owns the COM port; the browser, CLI and an AI
 agent all use the same HTTP/JSON API and the same byte cursor.
 """
 

@@ -1,6 +1,6 @@
 """Warm-start decision for the no-console web viewer.
 
-``open-web.vbs`` only starts ``web.pyw`` hidden. The decision to reuse a
+``LVGL-AI-Viewer.exe`` only starts ``web.pyw`` hidden. The decision to reuse a
 viewer that is already listening or to start a new server lives here, next to
 the server address constants and the shared page URL, so the check, the
 browser URL and the bound address cannot drift and the behavior can be tested

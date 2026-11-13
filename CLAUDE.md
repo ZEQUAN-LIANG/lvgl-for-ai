@@ -36,6 +36,9 @@ python -I core/web.py --app coffee --open
 python -I core/web.py --manage --open
 pythonw -I core/web.pyw          # Windows 无控制台
 
+# 重建 Windows 双击启动器（MinGW gcc + windres）
+python -I core/tools/launchers/build.py
+
 # 新建应用骨架
 python -I core/tools/new_app.py myapp --dry-run
 
@@ -88,10 +91,10 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 
 ## 目录与产物
 
-- `core/`：工具根。`cli.py`、`web.py`、`session_report.py`、`lvgl_ai/`、`engine/`、`tests/`、`tools/`、`api-nav/`。`core/README.md` 是工具用法。
+- `core/`：工具根。`cli.py`、`web.py`、`session_report.py`、`lvgl_ai/`、`engine/`、`tests/`、`tools/`、`api-nav/`。`core/tools/launchers/` 是 Windows 双击启动器、图标生成器与构建脚本。`core/README.md` 是工具用法。
 - `user/`：用户只写 `user/app/**/*.c`（入口 `void app_create(void)`；在 `app.c` 的 `apps[]` 登记）与 `user/scenarios/`；应用资源头放在各自的 `user/app/<name>/`，没有公共资源目录。写应用先看 `user/app/GUIDE.md`。`user/.trash/` 是管理台回收站，不参与构建。
 - `docs/`：`app.html`（应用变体）与 `scenario-server.html`（场景/服务端常量）两份索引；SiFli 能力索引在 `chip-adapt/docs/sifli.html`。
-- `chip-adapt/`：SiFli 导出适配层与上位机，与 `core/` 工具层分开。`chip-adapt/sifli/` 是自研代码；`chip-adapt/vendor/` 是外部下载物（只读，清单见其 README）；`chip-adapt/exports/` 是导出生成物。`chip-adapt/sifli/export.py` 把 `user/app` 按 LVGL 9.4 基线导出到 `chip-adapt/exports/<app>/`；共享源码仍以 `user/app` 为唯一真源。`chip-adapt/sifli/host/` 是黄山派串口 + 烧录上位机，用法见其 README。
+- `chip-adapt/`：SiFli 导出适配层与上位机，与 `core/` 工具层分开。`chip-adapt/sifli/` 是自研代码；`chip-adapt/vendor/` 是外部下载物（只读，清单见其 README）；`chip-adapt/exports/` 是导出生成物。`chip-adapt/sifli/export.py` 把 `user/app` 按 LVGL 9.4 基线导出到 `chip-adapt/exports/<app>/`；共享源码仍以 `user/app` 为唯一真源。`chip-adapt/sifli/host/` 是黄山派串口 + 烧录上位机，用法见其 README；`chip-adapt/sifli/tools/` 放双击入口 `SiFli-Host.exe`。
 - `lvgl-src/<version>/`：LVGL 源码，不进 Git；用 `fetch_lvgl.py` 下载。要改 LVGL 时把 unified diff 放进 `patches/<version>/`，由 `fetch_lvgl.py` 应用；不要直接修改已安装的源码树。
 - `sessions/`：会话产物；每次新建会话后删除 `build_error` 会话，并只保留最新的 10 条。
 
@@ -105,6 +108,7 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 - 不改已安装的 `lvgl-src/<version>/`；要改 LVGL 就把 unified diff 放进 `patches/<version>/`，由 `fetch_lvgl.py` 应用。
 - 不引入第二套协议客户端；CLI、网页与 `session_report.py` 都走 `Runtime` / `Recording` / `summarize_session`。
 - 发布包布局是 `<package>/lvgl-ai-new/`；开发仓库工具根是 `core/`，两者由 `paths.py` 区分。
+- Windows 双击启动器只负责拉起 `pythonw` / `pyw`；端口、URL、HTTP 与串口逻辑留在 Python。
 
 ## 工作规则
 

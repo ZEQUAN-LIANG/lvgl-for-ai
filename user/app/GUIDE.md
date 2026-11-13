@@ -53,7 +53,7 @@ python -I core/tools/new_app.py hello
 脚本只生成骨架，业务界面仍要自己写。它不构建；生成后按 2.2 或 2.1 走源码构建。
 名字必须是 `^[a-z][a-z0-9_]{0,31}$`，且不能与现有应用或场景重名。
 
-双击仓库根 `open-web.vbs` 打开普通页面后，点顶部「应用管理」；也可以运行
+双击仓库根 `LVGL-AI-Viewer.exe` 打开普通页面后，点顶部「应用管理」；也可以运行
 `python -I core/web.py --manage --open` 在启动时直接打开管理对话框。管理台可以
 新建、预览、删除和恢复。删除会移到 `user/.trash/apps/<trash-id>/`；内置应用受保护，
 永久删除需要再次确认。
