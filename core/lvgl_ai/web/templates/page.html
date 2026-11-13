@@ -486,6 +486,23 @@ input[type="checkbox"]:focus-visible { outline: 1px solid var(--accent); outline
 .wb-tools button:hover { background: #2d2d2d; }
 .draw-tools button.on,
 .wb-tools button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.color-palette { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.draw-options .color-palette button,
+.wb-tools .color-palette button {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: var(--swatch);
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.draw-options .color-palette button:hover,
+.wb-tools .color-palette button:hover { transform: scale(1.12); }
+.draw-options .color-palette button.on,
+.wb-tools .color-palette button.on {
+  box-shadow: 0 0 0 2px #181818, 0 0 0 3px var(--accent);
+}
 .draw-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
 .draw-options .small, .wb-tools .small {
   display: flex;
@@ -960,10 +977,12 @@ const MODEL = {{MODEL_JSON}};
   let drawTextGuard = false;
   let drawBoard = null;
   let drawLayer = null;
+  let drawColor = "#00c8ff";
   let rangeStart = null;
   let rangeEnd = null;
   let wbBoard = null;
   let wbTool = "paint";
+  let wbColor = "#111111";
   let wbShape = null;
   let wbHistory = [];
   let wbRedo = [];
@@ -1267,7 +1286,14 @@ const MODEL = {{MODEL_JSON}};
   /* ---- annotation board ------------------------------------------------ */
 
   const SHAPE_TOOLS = { rect: 1, ellipse: 1, line: 1, arrow: 1, highlight: 1 };
-  const DRAW_COLOR = "#e5484d";
+
+  function hexToRgba(hex, alpha) {
+    const value = hex.replace("#", "");
+    const r = parseInt(value.slice(0, 2), 16);
+    const g = parseInt(value.slice(2, 4), 16);
+    const b = parseInt(value.slice(4, 6), 16);
+    return "rgba(" + r + "," + g + "," + b + "," + alpha + ")";
+  }
 
   const CropLogic = (function () {
     function stampDisk(mask, mw, mh, cx, cy, r) {
@@ -1394,7 +1420,7 @@ const MODEL = {{MODEL_JSON}};
   }
 
   function makeShape(kind, a, b, color) {
-    const stroke = color || DRAW_COLOR;
+    const stroke = color || drawColor;
     const left = Math.min(a.x, b.x);
     const top = Math.min(a.y, b.y);
     const width = Math.abs(b.x - a.x);
@@ -1405,7 +1431,7 @@ const MODEL = {{MODEL_JSON}};
         top: top,
         width: width,
         height: height,
-        fill: kind === "highlight" ? "rgba(255,214,0,0.35)" : "rgba(229,72,77,0.06)",
+        fill: hexToRgba(stroke, kind === "highlight" ? 0.35 : 0.06),
         stroke: kind === "highlight" ? "" : stroke,
         strokeWidth: kind === "highlight" ? 0 : 2,
         strokeUniform: true
@@ -1417,7 +1443,7 @@ const MODEL = {{MODEL_JSON}};
         top: top,
         rx: width / 2,
         ry: height / 2,
-        fill: "rgba(229,72,77,0.06)",
+        fill: hexToRgba(stroke, 0.06),
         stroke: stroke,
         strokeWidth: 2,
         strokeUniform: true
@@ -1462,7 +1488,7 @@ const MODEL = {{MODEL_JSON}};
     });
     drawBoard.isDrawingMode = true;
     drawBoard.freeDrawingBrush = new fabric.PencilBrush(drawBoard);
-    drawBoard.freeDrawingBrush.color = DRAW_COLOR;
+    drawBoard.freeDrawingBrush.color = drawColor;
     const sizeInput = $("draw-size");
     drawBoard.freeDrawingBrush.width = sizeInput ? Number(sizeInput.value) || 6 : 6;
 
@@ -1568,7 +1594,7 @@ const MODEL = {{MODEL_JSON}};
       left: point.x,
       top: point.y,
       fontSize: fontSize,
-      fill: DRAW_COLOR,
+      fill: drawColor,
       fontFamily: '"Microsoft YaHei", sans-serif',
       padding: 4
     });
@@ -1676,6 +1702,19 @@ const MODEL = {{MODEL_JSON}};
       obj.editable = canEdit;
     });
     drawBoard.requestRenderAll();
+  }
+
+  function setDrawColor(color) {
+    drawColor = color;
+    const palette = $("draw-colors");
+    if (palette) {
+      palette.querySelectorAll("button[data-draw-color]").forEach(function (button) {
+        button.classList.toggle("on", button.dataset.drawColor === color);
+      });
+    }
+    if (drawBoard && drawBoard.freeDrawingBrush) {
+      drawBoard.freeDrawingBrush.color = color;
+    }
   }
 
   function recordDrawAdd(obj) {
@@ -1985,6 +2024,13 @@ const MODEL = {{MODEL_JSON}};
         if (button) setDrawTool(button.dataset.drawTool);
       });
     }
+    const colors = $("draw-colors");
+    if (colors) {
+      colors.addEventListener("click", function (event) {
+        const button = event.target.closest("button[data-draw-color]");
+        if (button) setDrawColor(button.dataset.drawColor);
+      });
+    }
     const sizeInput = $("draw-size");
     if (sizeInput) {
       sizeInput.addEventListener("input", function () {
@@ -2077,7 +2123,7 @@ const MODEL = {{MODEL_JSON}};
     });
     wbBoard.isDrawingMode = true;
     wbBoard.freeDrawingBrush = new fabric.PencilBrush(wbBoard);
-    wbBoard.freeDrawingBrush.color = "#1f2328";
+    wbBoard.freeDrawingBrush.color = wbColor;
     const sizeInput = $("wb-size");
     wbBoard.freeDrawingBrush.width = sizeInput ? Number(sizeInput.value) || 4 : 4;
     wbBoard.on("path:created", function (event) {
@@ -2101,7 +2147,7 @@ const MODEL = {{MODEL_JSON}};
     if (!wbVisible || opt.target || wbTool === "paint") return;
     const point = wbBoard.getPointer(opt.e);
     if (SHAPE_TOOLS[wbTool]) {
-      const obj = makeShape(wbTool, point, point, "#1f2328");
+      const obj = makeShape(wbTool, point, point, wbColor);
       obj.highlight = wbTool === "highlight";
       obj.selectable = false;
       obj.evented = false;
@@ -2118,7 +2164,7 @@ const MODEL = {{MODEL_JSON}};
       left: point.x,
       top: point.y,
       fontSize: fontSize,
-      fill: "#1f2328",
+      fill: wbColor,
       fontFamily: '"Microsoft YaHei", sans-serif',
       padding: 4
     });
@@ -2147,7 +2193,7 @@ const MODEL = {{MODEL_JSON}};
     if (shape.kind === "line" || shape.kind === "arrow") {
       const index = wbBoard.getObjects().indexOf(shape.obj);
       wbBoard.remove(shape.obj);
-      const next = makeShape(shape.kind, shape.start, point, "#1f2328");
+      const next = makeShape(shape.kind, shape.start, point, wbColor);
       next.selectable = false;
       next.evented = false;
       next.lockRotation = true;
@@ -2213,6 +2259,19 @@ const MODEL = {{MODEL_JSON}};
       obj.editable = canEdit;
     });
     wbBoard.requestRenderAll();
+  }
+
+  function setWbColor(color) {
+    wbColor = color;
+    const palette = $("wb-colors");
+    if (palette) {
+      palette.querySelectorAll("button[data-wb-color]").forEach(function (button) {
+        button.classList.toggle("on", button.dataset.wbColor === color);
+      });
+    }
+    if (wbBoard && wbBoard.freeDrawingBrush) {
+      wbBoard.freeDrawingBrush.color = color;
+    }
   }
 
   function recordWbAdd(obj) {
@@ -2572,6 +2631,13 @@ const MODEL = {{MODEL_JSON}};
       tools.addEventListener("click", function (event) {
         const button = event.target.closest("button[data-wb-tool]");
         if (button) setWbTool(button.dataset.wbTool);
+      });
+    }
+    const colors = $("wb-colors");
+    if (colors) {
+      colors.addEventListener("click", function (event) {
+        const button = event.target.closest("button[data-wb-color]");
+        if (button) setWbColor(button.dataset.wbColor);
       });
     }
     const scopes = $("wb-scope-btns");

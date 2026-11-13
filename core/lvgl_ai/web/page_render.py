@@ -274,6 +274,19 @@ def _render_replay(model: ReplayModel) -> str:
             <button type="button" data-draw-tool="text" title="文字">文字</button>
           </div>
           <div class="draw-options">
+            <span class="small">颜色</span>
+            <div class="color-palette" id="draw-colors" role="group" aria-label="标注颜色">
+              <button type="button" data-draw-color="#00c8ff" class="on" style="--swatch: #00c8ff" title="青色" aria-label="青色"></button>
+              <button type="button" data-draw-color="#3ddc84" style="--swatch: #3ddc84" title="绿色" aria-label="绿色"></button>
+              <button type="button" data-draw-color="#ffd400" style="--swatch: #ffd400" title="黄色" aria-label="黄色"></button>
+              <button type="button" data-draw-color="#ff8a3d" style="--swatch: #ff8a3d" title="橙色" aria-label="橙色"></button>
+              <button type="button" data-draw-color="#e5484d" style="--swatch: #e5484d" title="红色" aria-label="红色"></button>
+              <button type="button" data-draw-color="#ff5ccf" style="--swatch: #ff5ccf" title="品红" aria-label="品红"></button>
+              <button type="button" data-draw-color="#ffffff" style="--swatch: #ffffff" title="白色" aria-label="白色"></button>
+              <button type="button" data-draw-color="#111111" style="--swatch: #111111" title="黑色" aria-label="黑色"></button>
+            </div>
+          </div>
+          <div class="draw-options">
             <label class="small">笔粗 <input id="draw-size" type="range" min="2" max="16" value="6"></label>
             <label class="small">字号 <input id="draw-font-size" type="number" min="10" max="72" value="18"></label>
             <button id="draw-undo" type="button" class="mini-btn" title="撤销（Ctrl+Z）">撤销</button>
@@ -336,6 +349,17 @@ def _render_replay(model: ReplayModel) -> str:
         <button type="button" data-wb-tool="line" title="直线">直线</button>
         <button type="button" data-wb-tool="highlight" title="高亮">高亮</button>
         <button type="button" data-wb-tool="text" title="文字">文字</button>
+        <span class="small">颜色</span>
+        <div class="color-palette" id="wb-colors" role="group" aria-label="白板颜色">
+          <button type="button" data-wb-color="#00c8ff" style="--swatch: #00c8ff" title="青色" aria-label="青色"></button>
+          <button type="button" data-wb-color="#3ddc84" style="--swatch: #3ddc84" title="绿色" aria-label="绿色"></button>
+          <button type="button" data-wb-color="#ffd400" style="--swatch: #ffd400" title="黄色" aria-label="黄色"></button>
+          <button type="button" data-wb-color="#ff8a3d" style="--swatch: #ff8a3d" title="橙色" aria-label="橙色"></button>
+          <button type="button" data-wb-color="#e5484d" style="--swatch: #e5484d" title="红色" aria-label="红色"></button>
+          <button type="button" data-wb-color="#ff5ccf" style="--swatch: #ff5ccf" title="品红" aria-label="品红"></button>
+          <button type="button" data-wb-color="#ffffff" style="--swatch: #ffffff" title="白色" aria-label="白色"></button>
+          <button type="button" data-wb-color="#111111" class="on" style="--swatch: #111111" title="黑色" aria-label="黑色"></button>
+        </div>
         <label class="small">笔粗 <input id="wb-size" type="range" min="2" max="16" value="4"></label>
         <label class="small">字号 <input id="wb-font-size" type="number" min="10" max="72" value="20"></label>
         <button id="wb-undo" type="button" class="mini-btn">撤销</button>
