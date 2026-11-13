@@ -110,15 +110,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="record frames and evidence files (default: on)",
     )
     parser.add_argument(
-        "--record-changed-only",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help=(
-            "only save frames whose pixels differ from the previous retained "
-            "frame; web live enables this by default (default: off)"
-        ),
-    )
-    parser.add_argument(
         "--build",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -172,8 +163,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     if app is not None:
         runtime_kwargs["app"] = app
-    if args.record_changed_only:
-        runtime_kwargs["record_changed_only"] = True
+    runtime_kwargs["record_changed_only"] = True
     display = None if scenario is None else scenario.get("display")
     if display is not None:
         runtime_kwargs["width"] = display["width"]

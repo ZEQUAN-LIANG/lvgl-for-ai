@@ -31,6 +31,7 @@ class AsyncEncodingTest(unittest.TestCase):
             "lvgl": "9.6",
             "build": True,
             "app": "coffee",
+            "record_changed_only": False,
             "sessions_root": self.sessions_root,
         }
         options.update(kwargs)

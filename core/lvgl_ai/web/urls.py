@@ -22,7 +22,17 @@ def annotations_url(session_id: str) -> str:
     return f"/api/sessions/{quote(str(session_id))}/annotations"
 
 
+def whiteboards_url(session_id: str) -> str:
+    return f"/api/sessions/{quote(str(session_id))}/whiteboards"
+
+
 def region_url(session_id: str, image: str) -> str:
     """URL of one annotation crop; ``image`` is a ``regions/<file>.png`` path."""
     filename = str(image).rsplit("/", 1)[-1]
     return f"/regions/{session_id}/{filename}"
+
+
+def whiteboard_image_url(session_id: str, image: str) -> str:
+    """URL of one whiteboard PNG; ``image`` is a ``whiteboards/<file>.png`` path."""
+    filename = str(image).rsplit("/", 1)[-1]
+    return f"/whiteboards/{session_id}/{filename}"

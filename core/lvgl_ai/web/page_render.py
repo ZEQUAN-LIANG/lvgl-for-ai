@@ -221,9 +221,7 @@ def _render_replay(model: ReplayModel) -> str:
               <span id="stage-empty-text">{_text(empty_text)}</span>
               <span class="stage-empty-sub" id="stage-empty-sub">{_text(empty_sub)}</span>
             </div>
-            <div class="overlay-layer" id="annotation-layer">
-              <div id="selection-box" class="selection-box" hidden></div>
-            </div>
+            <div id="draw-layer" hidden><canvas id="draw-canvas" aria-label="标注画板"></canvas></div>
             <div class="overlay-layer" id="diff-layer" hidden></div>
           </div>
         </div>
@@ -247,6 +245,14 @@ def _render_replay(model: ReplayModel) -> str:
         <span id="frame-position" class="transport-readout">{_text(position)}</span>
         <span id="frame-time" class="transport-time muted">t={_text(first_t_ms)} ms</span>
       </div>
+      <section class="snapshots-strip replay-only">
+        <div class="side-head"><span class="index">02</span><h3>关键画面</h3><span class="side-note">点击跳转</span>
+          <button id="snapshot-back" type="button" class="ghost-btn snapshot-back" hidden>← 回到帧序列</button>
+        </div>
+        <div id="snapshots" class="snapshots">
+          {_render_snapshots(snapshots)}
+        </div>
+      </section>
     </div>
     <aside class="viewer-side">
       <section class="side-block replay-only">
@@ -254,39 +260,100 @@ def _render_replay(model: ReplayModel) -> str:
         <label class="toggle"><input type="checkbox" id="diff-toggle"> 显示只读像素 diff（仅证据，不判定）</label>
         <p id="diff-note" class="hint">diff 默认关闭。</p>
       </section>
-      <section class="side-block replay-only">
-        <div class="side-head"><span class="index">02</span><h3>关键画面</h3></div>
-        <div id="snapshots" class="snapshots">
-          {_render_snapshots(snapshots)}
-        </div>
-        <button id="snapshot-back" type="button" class="ghost-btn" hidden>← 回到帧序列</button>
-      </section>
       <section class="side-block annotation-block">
         <div class="side-head"><span class="index">03</span><h3>标注</h3></div>
-        <p class="hint annotation-locked">测试/录制中不能标注；停止后即可框选。</p>
+        <p class="hint annotation-locked">测试/录制中不能标注。要标注请用上方「录制」；停止录制后会自动打开回放并定位到最后一帧。</p>
         <div id="annotation-form">
-          <p class="hint" id="annotation-hint">在画面上拖动框选区域，可多次框选；保存后会自动截出区域 PNG（regions/），AI 可直接读取 annotations.json 里的 image 路径。</p>
-          <div id="pending-regions" class="pending" hidden></div>
-          <label class="field">标签 <input id="annotation-tags" type="text" placeholder="layout, color"></label>
-          <label class="field">说明 <textarea id="annotation-text" rows="3" placeholder="描述问题或期望"></textarea></label>
+          <div class="draw-tools" id="draw-tools" role="toolbar" aria-label="标注工具">
+            <button type="button" data-draw-tool="paint" class="on" title="画笔">画笔</button>
+            <button type="button" data-draw-tool="rect" title="矩形">矩形</button>
+            <button type="button" data-draw-tool="ellipse" title="椭圆">椭圆</button>
+            <button type="button" data-draw-tool="arrow" title="箭头">箭头</button>
+            <button type="button" data-draw-tool="line" title="直线">直线</button>
+            <button type="button" data-draw-tool="highlight" title="高亮">高亮</button>
+            <button type="button" data-draw-tool="text" title="文字">文字</button>
+          </div>
+          <div class="draw-options">
+            <label class="small">笔粗 <input id="draw-size" type="range" min="2" max="16" value="6"></label>
+            <label class="small">字号 <input id="draw-font-size" type="number" min="10" max="72" value="18"></label>
+            <button id="draw-undo" type="button" class="mini-btn" title="撤销（Ctrl+Z）">撤销</button>
+            <button id="draw-redo" type="button" class="mini-btn" title="重做（Ctrl+Y）">重做</button>
+            <button id="draw-clear" type="button" class="mini-btn">清空</button>
+          </div>
+          <div class="range-row">
+            <span class="range-chip" id="range-current">当前帧 —</span>
+            <span class="range-chip" id="range-start-chip">起点：未设</span>
+            <span class="range-chip" id="range-end-chip">终点：未设</span>
+            <button id="range-start" type="button" class="mini-btn">设为起点</button>
+            <button id="range-end" type="button" class="mini-btn">设为终点</button>
+            <button id="range-clear" type="button" class="mini-btn" hidden>清除范围</button>
+          </div>
+          <p class="hint" id="annotation-hint">圈出问题、写一句话即可。切到其他帧继续画，保存成一条跨帧标注；只写文字也可以。</p>
+          <div id="pending-summary" class="pending" hidden></div>
+          <label class="field">说明 <textarea id="annotation-text" rows="3" placeholder="哪里不对 / 应该是什么样"></textarea></label>
           <div class="row">
             <button id="annotation-save" type="button" class="primary-btn" disabled>保存标注</button>
-            <button id="annotation-clear" type="button" class="ghost-btn">清除框选</button>
+            <button id="annotation-clear" type="button" class="ghost-btn">清空画板</button>
           </div>
           <p id="annotation-status" role="status" class="hint"></p>
         </div>
         <ul id="annotation-list" class="notes">{_render_notes(model.note_views(), model.annotations_error)}</ul>
       </section>
+      <section class="side-block" id="wb-ref-block">
+        <div class="side-head"><span class="index">04</span><h3>白板参考</h3>
+          <span class="side-actions">
+            <button id="wb-open-frame" type="button" class="mini-btn">当前帧白板</button>
+            <button id="wb-open-global" type="button" class="mini-btn">全局白板</button>
+          </span>
+        </div>
+        <div id="wb-ref-list" class="wb-refs"><p class="hint">当前帧没有白板说明。</p></div>
+      </section>
       <section class="side-block live-note">
-        <p class="hint">测试/录制中：在画面上点击、拖动或使用方向键与运行时交互。运行期间不能标注；停止录制后打开回放会话即可框选标注。</p>
+        <p class="hint">测试预览不保存会话；「录制」会保存。要标注就在录制里操作，停止录制后会自动打开回放并定位到最后一帧。</p>
       </section>
       <section class="side-block empty-note">
         <p class="hint">当前没有可回放的帧。点击上方「测试」或「录制」开始，或从顶部选择其他会话。</p>
       </section>
     </aside>
   </div>
+  <div class="wb-overlay" id="whiteboard" hidden>
+    <div class="wb-panel">
+      <div class="wb-head">
+        <h3>白板说明</h3>
+        <div class="wb-scope" id="wb-scope-btns" role="group" aria-label="白板作用域">
+          <button type="button" data-wb-scope="frame" class="on">这一帧</button>
+          <button type="button" data-wb-scope="range">这一段</button>
+          <button type="button" data-wb-scope="global">全局</button>
+        </div>
+        <span class="hint" id="wb-scope-label"></span>
+        <button id="wb-close" type="button" class="ghost-btn">关闭</button>
+      </div>
+      <div class="wb-tools" id="wb-tools">
+        <button type="button" data-wb-tool="paint" class="on" title="画笔">画笔</button>
+        <button type="button" data-wb-tool="rect" title="矩形">矩形</button>
+        <button type="button" data-wb-tool="ellipse" title="椭圆">椭圆</button>
+        <button type="button" data-wb-tool="arrow" title="箭头">箭头</button>
+        <button type="button" data-wb-tool="line" title="直线">直线</button>
+        <button type="button" data-wb-tool="highlight" title="高亮">高亮</button>
+        <button type="button" data-wb-tool="text" title="文字">文字</button>
+        <label class="small">笔粗 <input id="wb-size" type="range" min="2" max="16" value="4"></label>
+        <label class="small">字号 <input id="wb-font-size" type="number" min="10" max="72" value="20"></label>
+        <button id="wb-undo" type="button" class="mini-btn">撤销</button>
+        <button id="wb-redo" type="button" class="mini-btn">重做</button>
+        <button id="wb-clear" type="button" class="mini-btn">清空</button>
+      </div>
+      <div class="wb-stage"><canvas id="wb-canvas" width="800" height="480"></canvas></div>
+      <label class="field">一句话说明
+        <textarea id="wb-text" rows="2" placeholder="AI 主要读这段文字和画布上的文字，图形只是辅助"></textarea>
+      </label>
+      <div class="wb-foot">
+        <span id="wb-status" class="hint" role="status"></span>
+        <button id="wb-save" type="button" class="primary-btn">保存</button>
+      </div>
+    </div>
+  </div>
   <section class="timeline-block replay-only">
-    <div class="side-head"><span class="index">04</span><h3>时间线</h3><span class="side-note">点击帧行跳转</span></div>
+    <div class="side-head"><span class="index">05</span><h3>时间线</h3><span class="side-note">点击帧行跳转</span></div>
     <div class="table-wrap">
       <table id="timeline">
         <thead><tr><th>类型</th><th>帧</th><th>时间</th><th>详情</th></tr></thead>
@@ -341,15 +408,49 @@ def _render_notes(
             if view["region_text"]
             else ""
         )
-        crops = ""
-        if view["crops"]:
+        frame_links = ""
+        if view.get("frames"):
+            links = []
+            for frame in view["frames"]:
+                frame_no = _text(frame["frame_no"])
+                url = _attr(frame["url"])
+                annotated = frame.get("annotated")
+                preview = _attr(annotated or frame["url"])
+                primary = _attr(annotated or frame["url"])
+                title = (
+                    f"打开带标注的完整帧 {frame_no}"
+                    if annotated else f"打开完整帧 {frame_no}"
+                )
+                links.append(
+                    f'<a class="note-frame-link" href="{primary}" '
+                    f'target="_blank" rel="noopener" title="{title}">'
+                    f'<img class="note-frame" src="{preview}" '
+                    f'alt="帧 {frame_no}" loading="lazy">'
+                    f'<span class="note-frame-no">帧 {frame_no}</span></a>'
+                )
+                if annotated:
+                    links.append(
+                        f'<a class="note-original-link" href="{url}" '
+                        f'target="_blank" rel="noopener" '
+                        f'title="打开原始帧 {frame_no}">原图</a>'
+                    )
+            frame_links = '<div class="note-frames">' + "".join(links) + "</div>"
+        crops_html = ""
+        if view.get("crops"):
             links = [
                 f'<a href="{_attr(crop["url"])}" target="_blank" rel="noopener">'
                 f'<img class="note-crop" src="{_attr(crop["url"])}" '
-                f'alt="{_attr(crop["alt"])}"></a>'
+                f'alt="{_attr(crop["alt"])}" loading="lazy"></a>'
                 for crop in view["crops"]
             ]
-            crops = '<div class="note-crops">' + "".join(links) + "</div>"
+            crops_html = '<div class="note-crops">' + "".join(links) + "</div>"
+        delete = ""
+        if view.get("id"):
+            delete = (
+                f'<button type="button" class="note-delete" '
+                f'data-delete-note="{_attr(view["id"])}" '
+                f'title="删除这条标注">删除</button>'
+            )
         text = f"<p>{_text(view['text'])}</p>" if view["text"] else ""
         frame_attr = (
             f' data-note-frame="{_text(view["frame_no"])}"'
@@ -358,8 +459,9 @@ def _render_notes(
         )
         parts.append(
             f'<li data-note-id="{_attr(view["id"])}"{frame_attr}>'
-            f'<span class="note-meta">{_text(view["meta"])}</span> '
-            f"{tags}{text}{regions}{crops}</li>"
+            f'<span class="note-meta">{_text(view["meta"])}</span>'
+            f'<span class="note-tools">{delete}</span>'
+            f"{tags}{text}{regions}{frame_links}{crops_html}</li>"
         )
     return "".join(parts)
 
@@ -450,6 +552,11 @@ def _model_json(replay: ReplayModel | None) -> str:
         "notesCount": note_count,
         "annotationsUrl": (
             urls.annotations_url(replay.session_id)
+            if replay and replay.session_id
+            else None
+        ),
+        "whiteboardsUrl": (
+            urls.whiteboards_url(replay.session_id)
             if replay and replay.session_id
             else None
         ),

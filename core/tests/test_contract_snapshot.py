@@ -93,7 +93,7 @@ class ContractSnapshotTest(unittest.TestCase):
         )
         self.assertEqual(self._probe("method_post_timeline")["status"], 405)
         self.assertEqual(self._probe("method_put")["status"], 501)
-        self.assertEqual(self._probe("method_delete")["status"], 501)
+        self.assertEqual(self._probe("method_delete")["status"], 405)
         create = self._probe("app_create")
         self.assertEqual(create["status"], 201)
         self.assertIn("action", create["json_shape"]["object"])
@@ -129,11 +129,11 @@ class ContractSnapshotTest(unittest.TestCase):
             for option in action["option_strings"]
         }
         self.assertTrue(
-            {"--record", "--no-record", "--record-changed-only", "--build",
+            {"--record", "--no-record", "--build",
              "--scenario", "--idle", "--json"}.issubset(options)
         )
         self.assertEqual(cli["cli"]["help"]["exit"], 0)
-        self.assertIn("--record-changed-only", cli["cli"]["help"]["text"])
+        self.assertNotIn("--record-changed-only", cli["cli"]["help"]["text"])
         self.assertEqual(cli["cli"]["invalid_exit"], 2)
         self.assertEqual(cli["cli"]["json_success"]["exit"], 0)
         self.assertEqual(

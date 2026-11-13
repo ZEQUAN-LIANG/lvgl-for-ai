@@ -202,7 +202,10 @@ class MultiVersionMatrixTest(unittest.TestCase):
             with self.subTest(version=version), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 baseline = Runtime(
-                    lvgl=version, build=True, sessions_root=root / "baseline"
+                    lvgl=version,
+                    build=True,
+                    record_changed_only=False,
+                    sessions_root=root / "baseline",
                 )
                 baseline.start()
                 baseline.wait(16)
@@ -213,6 +216,7 @@ class MultiVersionMatrixTest(unittest.TestCase):
                 rt = Runtime(
                     lvgl=version,
                     build=True,
+                    record_changed_only=False,
                     sessions_root=root / "reference",
                     reference=reference,
                 )

@@ -671,7 +671,12 @@ class SettingsScenarioIntegrationTest(unittest.TestCase):
         self.sessions_root = Path(self._tmp.name) / "sessions"
 
     def test_settings_scenario_runs_on_the_real_engine(self) -> None:
-        rt = Runtime(lvgl="9.6", build=True, sessions_root=self.sessions_root)
+        rt = Runtime(
+            lvgl="9.6",
+            build=True,
+            record_changed_only=False,
+            sessions_root=self.sessions_root,
+        )
         self.addCleanup(rt.stop)
         rt.start()
         replies = play_scenario(rt, SETTINGS_SCENARIO)

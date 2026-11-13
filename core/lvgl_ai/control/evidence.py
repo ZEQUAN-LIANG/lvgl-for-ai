@@ -14,6 +14,7 @@ files report as empty lists and ``recorded=False`` instead of raising.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import Any
@@ -44,6 +45,8 @@ SUMMARY_FIELDS = (
     "effective_app",
     "snapshots",
     "frames",
+    "annotations",
+    "whiteboards",
     "marks",
     "inputs",
     "frame_diffs",
@@ -62,6 +65,8 @@ CLI_EVIDENCE_FIELDS = (
     "requested_app",
     "effective_app",
     "snapshots",
+    "annotations",
+    "whiteboards",
     "marks",
     "log_tail",
 )
@@ -97,6 +102,8 @@ def summarize_session(
         "effective_app": _effective_app(log_text),
         "snapshots": _snapshots(session_dir, timeline, recording.snapshots),
         "frames": [str(path.resolve()) for path in recording.frames],
+        "annotations": _annotations_summary(session_dir),
+        "whiteboards": _whiteboards_summary(session_dir),
         "marks": [dict(row) for row in timeline if row["type"] == "mark"],
         "inputs": [dict(row) for row in timeline if row["type"] == "input"],
         "frame_diffs": [dict(row) for row in frame_diffs],
@@ -105,6 +112,169 @@ def summarize_session(
         "error": manifest.get("error"),
     }
     return {field: values[field] for field in SUMMARY_FIELDS}
+
+
+def _read_json_object(path: Path) -> dict[str, Any] | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _abs_image(session_dir: Path, relative: Any) -> str | None:
+    """Absolute path of one evidence image, or None when it escapes the session."""
+    if not isinstance(relative, str) or not relative:
+        return None
+    try:
+        path = (session_dir / relative).resolve()
+        path.relative_to(session_dir.resolve())
+    except (OSError, ValueError):
+        return None
+    return str(path) if path.is_file() else None
+
+
+def _region_images(session_dir: Path, regions: Any) -> list[str]:
+    images: list[str] = []
+    if not isinstance(regions, list):
+        return images
+    for region in regions:
+        if not isinstance(region, dict):
+            continue
+        image = _abs_image(session_dir, region.get("image"))
+        if image is not None:
+            images.append(image)
+    return images
+
+
+def _region_boxes(regions: Any, frame_no: Any) -> list[dict[str, Any]]:
+    boxes: list[dict[str, Any]] = []
+    if not isinstance(regions, list):
+        return boxes
+    for region in regions:
+        if not isinstance(region, dict):
+            continue
+        boxes.append(
+            {
+                "frame_no": frame_no,
+                "x": region.get("x"),
+                "y": region.get("y"),
+                "w": region.get("w"),
+                "h": region.get("h"),
+                "image": region.get("image"),
+                "annotated": region.get("annotated"),
+            }
+        )
+    return boxes
+
+
+def _frame_images(session_dir: Path, frames: list[Any]) -> list[str]:
+    """Whole-frame PNG paths; an agent crops the boxes itself."""
+    directory = session_dir / "frames"
+    if not directory.is_dir():
+        return []
+    by_number: dict[int, str] = {}
+    for path in directory.glob("*.png"):
+        if path.stem.isdigit():
+            by_number[int(path.stem)] = str(path.resolve())
+    images: list[str] = []
+    for frame_no in frames:
+        if isinstance(frame_no, int) and frame_no in by_number:
+            images.append(by_number[frame_no])
+    return images
+
+
+def _annotations_summary(session_dir: Path) -> dict[str, Any]:
+    """Notes as an index an agent can read before opening the crop PNGs."""
+    path = session_dir / "annotations.json"
+    if not path.is_file():
+        return {"count": 0, "notes": []}
+    data = _read_json_object(path)
+    if data is None or not isinstance(data.get("notes"), list):
+        return {
+            "count": 0, "notes": [], "error": "annotations_unreadable"
+        }
+    notes: list[dict[str, Any]] = []
+    for note in data["notes"]:
+        if not isinstance(note, dict):
+            continue
+        frames: list[Any] = []
+        images: list[str] = []
+        annotated: list[str] = []
+        annotated_regions: list[str] = []
+        boxes: list[dict[str, Any]] = []
+        anchors = note.get("anchors")
+        if isinstance(anchors, list) and anchors:
+            for anchor in anchors:
+                if not isinstance(anchor, dict):
+                    continue
+                frame_no = anchor.get("frame_no")
+                frames.append(frame_no)
+                images.extend(_region_images(session_dir, anchor.get("regions")))
+                boxes.extend(_region_boxes(anchor.get("regions"), frame_no))
+                image = _abs_image(session_dir, anchor.get("annotated"))
+                if image is not None:
+                    annotated.append(image)
+                for region in anchor.get("regions") or []:
+                    if not isinstance(region, dict):
+                        continue
+                    image = _abs_image(session_dir, region.get("annotated"))
+                    if image is not None:
+                        annotated_regions.append(image)
+        else:
+            frame_no = note.get("frame_no")
+            frames.append(frame_no)
+            images.extend(_region_images(session_dir, note.get("regions")))
+            boxes.extend(_region_boxes(note.get("regions"), frame_no))
+        anchored = list(dict.fromkeys(frames))
+        notes.append(
+            {
+                "id": note.get("id"),
+                "frame_start": note.get("frame_start", note.get("frame_no")),
+                "frame_end": note.get("frame_end", note.get("frame_no")),
+                "anchor_frames": anchored,
+                "text": note.get("text"),
+                "tags": note.get("tags") if isinstance(note.get("tags"), list) else [],
+                "frame_images": _frame_images(session_dir, anchored),
+                "annotated": annotated,
+                "annotated_regions": annotated_regions,
+                "regions": boxes,
+                "images": images,
+            }
+        )
+    return {"count": len(notes), "notes": notes}
+
+
+def _whiteboards_summary(session_dir: Path) -> dict[str, Any]:
+    """Whiteboards with the text and labels an agent can execute against."""
+    path = session_dir / "whiteboards.json"
+    if not path.is_file():
+        return {"count": 0, "pending": 0, "items": []}
+    data = _read_json_object(path)
+    if data is None or not isinstance(data.get("whiteboards"), list):
+        return {
+            "count": 0, "pending": 0, "items": [],
+            "error": "whiteboards_unreadable",
+        }
+    items: list[dict[str, Any]] = []
+    for item in data["whiteboards"]:
+        if not isinstance(item, dict):
+            continue
+        labels = item.get("labels")
+        items.append(
+            {
+                "id": item.get("id"),
+                "scope": item.get("scope") if isinstance(item.get("scope"), dict) else {},
+                "text": item.get("text"),
+                "labels": [
+                    label for label in labels or [] if isinstance(label, str)
+                ] if isinstance(labels, list) else [],
+                "image": _abs_image(session_dir, item.get("image")),
+                "confirmed": item.get("confirmed") is True,
+            }
+        )
+    pending = sum(1 for item in items if not item["confirmed"])
+    return {"count": len(items), "pending": pending, "items": items}
 
 
 def _effective_app(log_text: str) -> str | None:

@@ -32,8 +32,8 @@ from ..control.input import TOKEN_PATTERN, is_token
 from ..control.recording import Recording
 from ..control.runtime import Runtime
 from ..scenario import scenario_index
-from . import page_render, replay_model
-from .annotations import AnnotationError, write_note
+from . import page_render, replay_model, whiteboards
+from .annotations import AnnotationError, delete_note, write_note
 from .live_session import (
     LiveError,
     LiveSession,
@@ -44,6 +44,11 @@ from .urls import page_url
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 MAX_BODY_BYTES = 1024 * 1024
+# A whiteboard payload carries a base64 PNG plus the Fabric object tree.
+WHITEBOARD_BODY_BYTES = 12 * 1024 * 1024
+# An annotation payload may carry one composed PNG per anchor frame.
+ANNOTATION_BODY_BYTES = 12 * 1024 * 1024
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 # Page tracking for --exit-on-close: the page refreshes its id every 10 s (the
 # interval lives in web/wire.py); a page unseen for two minutes is treated as
 # gone. Closing the last browser page stops the server after a short grace so a
@@ -104,6 +109,13 @@ ANNOTATION_ERROR_STATUS = {
     "internal_error": 500,
     "invalid_annotation": 400,
     "region_image_error": 400,
+    "unknown_annotation": 404,
+}
+WHITEBOARD_ERROR_STATUS = {
+    "invalid_whiteboard": 400,
+    "whiteboards_unreadable": 409,
+    "whiteboards_write_error": 500,
+    "unknown_whiteboard": 404,
 }
 CSP = (
     "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
@@ -523,6 +535,66 @@ class WebApp:
             raise HttpError(status, exc.code, str(exc)) from exc
         return HTTPStatus.CREATED, {"annotations": document, "note": note}
 
+    def delete_annotation(
+        self, session_id: str, note_id: str
+    ) -> tuple[int, dict[str, Any]]:
+        recording = self.open_recording(session_id)
+        try:
+            document = delete_note(recording, note_id)
+        except AnnotationError as exc:
+            status = ANNOTATION_ERROR_STATUS.get(
+                exc.code, HTTPStatus.BAD_REQUEST
+            )
+            raise HttpError(status, exc.code, str(exc)) from exc
+        return HTTPStatus.OK, {
+            "annotations": document,
+            "deleted": note_id,
+        }
+
+    # ---- whiteboards ---------------------------------------------------
+
+    def whiteboards_payload(self, session_id: str) -> dict[str, Any]:
+        recording = self.open_recording(session_id)
+        try:
+            return {"whiteboards": whiteboards.read_whiteboards(recording)}
+        except whiteboards.WhiteboardError as exc:
+            status = WHITEBOARD_ERROR_STATUS.get(
+                exc.code, HTTPStatus.BAD_REQUEST
+            )
+            raise HttpError(status, exc.code, str(exc)) from exc
+
+    def save_whiteboard(
+        self, session_id: str, payload: dict[str, Any]
+    ) -> tuple[int, dict[str, Any]]:
+        recording = self.open_recording(session_id)
+        try:
+            document, item = whiteboards.save_whiteboard(recording, payload)
+        except whiteboards.WhiteboardError as exc:
+            status = WHITEBOARD_ERROR_STATUS.get(
+                exc.code, HTTPStatus.BAD_REQUEST
+            )
+            raise HttpError(status, exc.code, str(exc)) from exc
+        return HTTPStatus.CREATED, {
+            "whiteboards": document,
+            "whiteboard": item,
+        }
+
+    def delete_whiteboard(
+        self, session_id: str, whiteboard_id: str
+    ) -> tuple[int, dict[str, Any]]:
+        recording = self.open_recording(session_id)
+        try:
+            document = whiteboards.delete_whiteboard(recording, whiteboard_id)
+        except whiteboards.WhiteboardError as exc:
+            status = WHITEBOARD_ERROR_STATUS.get(
+                exc.code, HTTPStatus.BAD_REQUEST
+            )
+            raise HttpError(status, exc.code, str(exc)) from exc
+        return HTTPStatus.OK, {
+            "whiteboards": document,
+            "deleted": whiteboard_id,
+        }
+
     # ---- browser page tracking ----------------------------------------
 
     def page_open(self, page_id: str) -> dict[str, Any]:
@@ -599,6 +671,9 @@ class _WebHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         self._dispatch("POST")
 
+    def do_DELETE(self) -> None:
+        self._dispatch("DELETE")
+
     # ---- dispatch ------------------------------------------------------
 
     def _dispatch(self, method: str) -> None:
@@ -639,6 +714,10 @@ class _WebHandler(BaseHTTPRequestHandler):
             return self._send_json(
                 HTTPStatus.OK, {"sessions": self.app.sessions()}
             )
+
+        if path == "/static/fabric.min.js":
+            self._require(method, ("GET",))
+            return self._serve_static("fabric.min.js")
 
         if path == "/api/live":
             self._require(method, ("GET",))
@@ -750,8 +829,25 @@ class _WebHandler(BaseHTTPRequestHandler):
                             self.app.annotations_payload(session_id),
                         )
                     if method == "POST":
-                        body = self._read_json_body()
+                        body = self._read_json_body(ANNOTATION_BODY_BYTES)
                         status, payload = self.app.add_annotation(
+                            session_id, body
+                        )
+                        return self._send_json(status, payload)
+                    raise HttpError(
+                        HTTPStatus.METHOD_NOT_ALLOWED,
+                        "method_not_allowed",
+                        f"{method} is not allowed here",
+                    )
+                if sub == "whiteboards":
+                    if method == "GET":
+                        return self._send_json(
+                            HTTPStatus.OK,
+                            self.app.whiteboards_payload(session_id),
+                        )
+                    if method == "POST":
+                        body = self._read_json_body(WHITEBOARD_BODY_BYTES)
+                        status, payload = self.app.save_whiteboard(
                             session_id, body
                         )
                         return self._send_json(status, payload)
@@ -774,6 +870,23 @@ class _WebHandler(BaseHTTPRequestHandler):
                     )
                 self._require(method, ("GET",))
                 return self._send_json(HTTPStatus.OK, handler(session_id))
+            if len(parts) == 5:
+                session_id, sub = parts[2], parts[3]
+                if sub == "annotations":
+                    self._require(method, ("DELETE",))
+                    status, payload = self.app.delete_annotation(
+                        session_id, unquote(parts[4])
+                    )
+                    return self._send_json(status, payload)
+                if sub == "whiteboards":
+                    self._require(method, ("DELETE",))
+                    status, payload = self.app.delete_whiteboard(
+                        session_id, unquote(parts[4])
+                    )
+                    return self._send_json(status, payload)
+                raise HttpError(
+                    HTTPStatus.NOT_FOUND, "not_found", f"unknown path: {path}"
+                )
             raise HttpError(
                 HTTPStatus.NOT_FOUND, "not_found", f"unknown path: {path}"
             )
@@ -782,6 +895,7 @@ class _WebHandler(BaseHTTPRequestHandler):
             path.startswith("/frames/")
             or path.startswith("/snapshots/")
             or path.startswith("/regions/")
+            or path.startswith("/whiteboards/")
         ):
             self._require(method, ("GET",))
             kind = path.strip("/").split("/")[0]
@@ -849,7 +963,9 @@ class _WebHandler(BaseHTTPRequestHandler):
         if 0 <= length <= MAX_DRAIN_BYTES:
             self._discard_body(length)
 
-    def _read_json_body(self) -> dict[str, Any]:
+    def _read_json_body(
+        self, limit: int = MAX_BODY_BYTES
+    ) -> dict[str, Any]:
         raw_length = self.headers.get("Content-Length")
         if raw_length is None:
             raise HttpError(
@@ -871,13 +987,13 @@ class _WebHandler(BaseHTTPRequestHandler):
                 "invalid_content_length",
                 "Content-Length must not be negative",
             )
-        if length > MAX_BODY_BYTES:
+        if length > limit:
             if length <= MAX_DRAIN_BYTES:
                 self._discard_body(length)
             raise HttpError(
                 HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
                 "payload_too_large",
-                f"body must be at most {MAX_BODY_BYTES} bytes",
+                f"body must be at most {limit} bytes",
             )
         data = self.rfile.read(length)
         try:
@@ -948,6 +1064,25 @@ class _WebHandler(BaseHTTPRequestHandler):
                 sent = frame.seq
         except Exception:  # noqa: BLE001 - headers are already streaming
             return
+
+    def _serve_static(self, name: str) -> None:
+        path = STATIC_DIR / name
+        if not path.is_file():
+            raise HttpError(
+                HTTPStatus.NOT_FOUND, "not_found", "file not found"
+            )
+        try:
+            data = path.read_bytes()
+        except OSError as exc:
+            raise HttpError(
+                HTTPStatus.INTERNAL_SERVER_ERROR, "read_error", str(exc)
+            ) from exc
+        self._send(
+            HTTPStatus.OK,
+            data,
+            "text/javascript; charset=utf-8",
+            cache_control="public, max-age=31536000, immutable",
+        )
 
     def _serve_png(self, kind: str, session_id: str, filename: str) -> None:
         session_dir = self.app.session_path(session_id)

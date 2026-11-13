@@ -95,7 +95,7 @@ class CliUnitTest(unittest.TestCase):
         code, out, err = run_cli([])
 
         factory.assert_called_once_with(
-            lvgl=None, build=True, record=True
+            lvgl=None, build=True, record=True, record_changed_only=True
         )
         self.assertEqual(code, 0)
         self.assertEqual(fake.start_calls, 1)
@@ -113,13 +113,14 @@ class CliUnitTest(unittest.TestCase):
                     code, _, _ = run_cli(argv)
                 self.assertEqual(code, 0)
                 factory.assert_called_once_with(
-                    lvgl=None, build=True, record=expected
+                    lvgl=None, build=True, record=expected,
+                    record_changed_only=True,
                 )
 
-    def test_record_changed_only_is_opt_in(self) -> None:
+    def test_recording_always_keeps_only_changed_frames(self) -> None:
         fake = FakeRuntime()
         with mock.patch.object(cli, "Runtime", return_value=fake) as factory:
-            code, _, _ = run_cli(["--record-changed-only"])
+            code, _, _ = run_cli([])
         self.assertEqual(code, 0)
         factory.assert_called_once_with(
             lvgl=None,
@@ -137,7 +138,8 @@ class CliUnitTest(unittest.TestCase):
                     code, _, _ = run_cli(argv)
                 self.assertEqual(code, 0)
                 factory.assert_called_once_with(
-                    lvgl=None, build=expected, record=True
+                    lvgl=None, build=expected, record=True,
+                    record_changed_only=True,
                 )
 
     def test_scenario_is_played_and_json_reports_the_session(self) -> None:
@@ -233,7 +235,8 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(err, "")
         factory.assert_called_once_with(
-            lvgl=None, build=True, record=True, app="coffee"
+            lvgl=None, build=True, record=True, app="coffee",
+            record_changed_only=True,
         )
         self.assertEqual(one_json(out)["app"], "coffee")
 
@@ -249,6 +252,7 @@ class CliUnitTest(unittest.TestCase):
             build=True,
             record=True,
             app="xiaohongshu",
+            record_changed_only=True,
         )
 
     def test_app_flag_overrides_the_scenario_app(self) -> None:
@@ -487,7 +491,12 @@ class CliRealEngineIntegrationTest(unittest.TestCase):
 
     def test_cli_scenario_timeline_matches_the_library_path(self) -> None:
         library_root = self.root / "library"
-        rt = Runtime(lvgl="9.6", build=True, sessions_root=library_root)
+        rt = Runtime(
+            lvgl="9.6",
+            build=True,
+            record_changed_only=True,
+            sessions_root=library_root,
+        )
         rt.start()
         play_scenario(rt, SETTINGS_SCENARIO)
         rt.stop()

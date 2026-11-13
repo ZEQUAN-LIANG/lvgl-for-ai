@@ -33,7 +33,12 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
         self.sessions_root = Path(self._tmp.name) / "sessions"
 
     def _runtime(self) -> Runtime:
-        return Runtime(lvgl="9.6", build=True, sessions_root=self.sessions_root)
+        return Runtime(
+            lvgl="9.6",
+            build=True,
+            record_changed_only=False,
+            sessions_root=self.sessions_root,
+        )
 
     def test_pointer_hits_named_button_and_timeline_input_rows(self) -> None:
         rt = self._runtime()
@@ -212,7 +217,12 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
 
     def test_same_input_sequence_has_identical_frames(self) -> None:
         def run_once(root: Path) -> list[tuple[str, str]]:
-            rt = Runtime(lvgl="9.6", build=True, sessions_root=root)
+            rt = Runtime(
+                lvgl="9.6",
+                build=True,
+                record_changed_only=False,
+                sessions_root=root,
+            )
             try:
                 rt.start()
                 rt.pointer("down", *BUTTON_CENTER)
