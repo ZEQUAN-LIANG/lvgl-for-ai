@@ -711,7 +711,7 @@
     <div class="stage-meta">
       <span class="live"><i aria-hidden="true"></i> LIVE FEED</span>
       <span>390 × 450 / CO5300 / LSM6DS3TR-C</span>
-      <span>SWIPE PAGES / SENSOR FLIP</span>
+      <span>TAP FLIP / DRAG ORBIT / SWIPE PAGES</span>
     </div>
   </section>
 
@@ -747,9 +747,25 @@
  * SIFT — a 390 x 450 pixel hourglass watch.
  * The app is drawn entirely on the canvas with a hand-rolled 5x7 bitmap font.
  * Sand is a 60 x 80 cellular automaton; watch roll bends gravity, pitch is
- * reported by the six-axis HUD. DeviceOrientation is opt-in; turning the watch
- * face down flips the hourglass through DeviceMotion. Swipe left/right/up/down
- * changes pages. Desktop falls back to arrow keys and a slow auto drift.
+ * reported by the six-axis HUD.
+ *
+ * PSEUDO3D-PREVIEW: tap the hourglass to flip it; drag the hourglass to orbit
+ * the view around it (yaw is unbounded, full 360°) and vertical drag changes
+ * elevation. Page swipes start outside the hourglass region so the gestures do
+ * not fight. Every sand cell
+ * carries a 1-bit front/back tag; pitch migrates tags at the sand surface and
+ * shifts the front/back sand layers. The frame is four posts plus two cap
+ * boxes drawn with an orthographic Canvas 2D projection; the glass is a lathe
+ * with front/back rim ellipses; the sand surface ellipses follow the actual
+ * pile width. Static glass and halo are cached, and the two 60x80 sand layers
+ * are blitted, not drawn cell by cell. This is preview-only: sift_watch.c
+ * still uses the 2D CA and sends pitch to the HUD only. Keep the porting
+ * targets in mind — 240 MHz M33, 25 Hz full redraw, RGB565, no alpha, no
+ * WebGL/raycast/per-grain projection.
+ *
+ * DeviceOrientation is opt-in; turning the watch face down flips the hourglass
+ * through DeviceMotion. Swipe left/right/up/down changes pages. Desktop falls
+ * back to arrow keys and a slow auto drift.
  * Panel: CO5300 390 x 450 AMOLED with rounded glass, touch, KEY1/KEY2.
  * Apps: app drawer, timer, stopwatch, weather sample, settings.
  */
@@ -842,6 +858,8 @@
   GLYPHS['−'] = GLYPHS['-'];
 
   const SAND_COLORS = [null, C.sand, C.sandHi, C.sandDim, '#ffe3a0'];
+  /* PSEUDO3D-PREVIEW: darker palette for the back depth layer. */
+  const SAND_BACK = [null, '#8f5a28', '#a8743a', '#5c3618', '#b88a4a'];
 
   const APPS = [
     { id: 'timer', title: 'TIMER', subtitle: 'FOCUS', accent: C.sand },
@@ -1023,6 +1041,81 @@
   const GRID_X0 = HG.cx - (COLS * CELL) / 2;
   const GRID_Y0 = HG.top;
 
+  /* PSEUDO3D-PREVIEW: per-cell front/back depth tags drive a cheap 3D look.
+   * Keep the loops bounded: 60 x 80 cells, one extra 4800-cell pass per sim
+   * step, two 60x80 offscreen sand layers. No per-grain 3D projection. */
+  const DEPTH_BACK = 0;
+  const DEPTH_FRONT = 1;
+  const P3 = {
+    enabled: true,
+    pitchSign: 1,        // flip this alone if front/back feels reversed
+    depthDeadzone: 0.07, // |sin(pitch)|, about 4 degrees
+    depthRate: 0.14,     // per-step depth migration at full tilt
+    surfaceBand: 3,      // cells below the surface eligible for migration
+    basePitchPx: 9,      // max front sand shift in screen pixels
+    parallaxPx: 15       // max extra back-layer offset in screen pixels
+  };
+
+  /* PSEUDO3D-PREVIEW: offscreen layers. The halo and glass are built once;
+   * the two 60x80 sand layers are rebuilt only when the sim grid changes. */
+  const haloCanvas = document.createElement('canvas');
+  haloCanvas.width = 96;
+  haloCanvas.height = 96;
+  const halo = haloCanvas.getContext('2d');
+
+  const GLASS_X0 = HG.cx - 90;
+  const GLASS_Y0 = HG.top;
+  const glassCanvas = document.createElement('canvas');
+  glassCanvas.width = 180;
+  glassCanvas.height = 240;
+  const glass = glassCanvas.getContext('2d');
+
+  /* PSEUDO3D-PREVIEW: the sand layers are baked at screen resolution (3 px
+   * per cell) so each grain gets a 3x3 sprite instead of one flat block. */
+  const SAND_W = COLS * CELL;
+  const SAND_H = ROWS * CELL;
+  const sandBaseCanvas = document.createElement('canvas');
+  sandBaseCanvas.width = SAND_W;
+  sandBaseCanvas.height = SAND_H;
+  const sandBaseCtx = sandBaseCanvas.getContext('2d');
+  const sandBackCanvas = document.createElement('canvas');
+  sandBackCanvas.width = SAND_W;
+  sandBackCanvas.height = SAND_H;
+  const sandBackCtx = sandBackCanvas.getContext('2d');
+  const sandBaseImage = sandBaseCtx.createImageData(SAND_W, SAND_H);
+  const sandBackImage = sandBackCtx.createImageData(SAND_W, SAND_H);
+  const sandBasePixels = new Uint32Array(sandBaseImage.data.buffer);
+  const sandBackPixels = new Uint32Array(sandBackImage.data.buffer);
+
+  /* ImageData is RGBA byte order; on little-endian this packs as 0xAABBGGRR. */
+  function packColor(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return (0xff000000 | ((n & 0xff) << 16) | (n & 0xff00) | ((n >> 16) & 0xff)) >>> 0;
+  }
+  const SAND_BACK_RGB = SAND_BACK.map((c) => (c ? packColor(c) : 0));
+  /* Surface-lit particle palette and 3x3 grain masks. Empty mask pixels are
+   * filled with the shadow color so the pile stays opaque. */
+  const SAND_TONE_RGB = [C.sandDim, C.sand, C.sandHi, '#ffe3a0'].map(packColor);
+  const SAND_SHADOW_RGB = packColor('#6b3f1c');
+  const SAND_GRAIN_MASKS = [
+    [7, 7, 7], [6, 7, 3], [3, 7, 6],
+    [5, 7, 5], [7, 3, 7], [2, 7, 7]
+  ];
+  /* PSEUDO3D-PREVIEW: a shallow rectangular frame around the lathe glass.
+   * Orbiting the camera 360 degrees rotates the four posts and the two cap
+   * boxes; the glass itself is rotationally symmetric. */
+  const FRAME = {
+    halfX: 106,
+    halfZ: 90,
+    postHalf: 4,
+    postTop: 120,
+    capHalfX: 108,
+    capHalfZ: 92,
+    capHalfY: 7,
+    capY: 127
+  };
+  const WOOD_LIGHT = [-0.35, 0.8, 0.45];
+
   function halfWidth(y) {
     const neck = HG.neckY;
     const t = y < neck
@@ -1042,11 +1135,420 @@
     }
   }
 
+  function buildHalo() {
+    const g = halo.createRadialGradient(48, 48, 2, 48, 48, 48);
+    g.addColorStop(0, 'rgba(243, 183, 79, .09)');
+    g.addColorStop(.6, 'rgba(243, 183, 79, .018)');
+    g.addColorStop(1, 'rgba(243, 183, 79, 0)');
+    halo.fillStyle = g;
+    halo.fillRect(0, 0, 96, 96);
+  }
+
+  /* PSEUDO3D-PREVIEW: bake the static glass tint/edges once. */
+  function buildGlassLayer() {
+    glass.clearRect(0, 0, glassCanvas.width, glassCanvas.height);
+    drawGlassInto(glass, GLASS_X0, GLASS_Y0);
+  }
+
+  function buildSandLayers() {
+    rebuildSandLayers();
+  }
+
+  /* Lit-surface tone: the top few rows are bright, deeper sand falls into
+   * shadow. hash() adds per-grain variation without any per-frame math. */
+  function grainTone(x, y, surface) {
+    let tone = 3 - ((y - surface) >> 4);
+    if (tone < 0) tone = 0;
+    if (hash(x * 7 + 1, y * 11 + 3) > .78) tone++;
+    return tone > 3 ? 3 : tone;
+  }
+
+  function writeBackBlock(pixels, x, y, v, loose) {
+    const px = x * CELL;
+    const py = y * CELL;
+    const dark = SAND_BACK_RGB[v] || SAND_BACK_RGB[1];
+    if (loose) {
+      for (let r = 1; r < 3; r++) {
+        const off = (py + r) * SAND_W + px;
+        pixels[off + 1] = dark;
+        pixels[off + 2] = dark;
+      }
+      return;
+    }
+    for (let r = 0; r < CELL; r++) {
+      const off = (py + r) * SAND_W + px;
+      for (let c = 0; c < CELL; c++) pixels[off + c] = dark;
+    }
+  }
+
+  /* One cell = one 3x3 grain stamp. Empty mask pixels become shadow, so the
+   * pile stays opaque while the surface reads as loose grains. Falling cells
+   * use a 2x2 stamp with transparent edges. */
+  function writeGrain(pixels, x, y, tone, top, loose) {
+    const px = x * CELL;
+    const py = y * CELL;
+    if (loose) {
+      const color = SAND_TONE_RGB[tone];
+      for (let r = 1; r < 3; r++) {
+        const off = (py + r) * SAND_W + px;
+        pixels[off + 1] = color;
+        pixels[off + 2] = color;
+      }
+      return;
+    }
+    const mask = SAND_GRAIN_MASKS[(hash(x, y) * SAND_GRAIN_MASKS.length) | 0];
+    const baseColor = SAND_TONE_RGB[tone];
+    const topColor = SAND_TONE_RGB[Math.min(3, tone + 1)];
+    for (let r = 0; r < 3; r++) {
+      const bits = mask[r];
+      const off = (py + r) * SAND_W + px;
+      for (let c = 0; c < 3; c++) {
+        if (!(bits & (4 >> c))) {
+          pixels[off + c] = SAND_SHADOW_RGB;
+        } else if (top && r === 0) {
+          pixels[off + c] = topColor;
+        } else {
+          pixels[off + c] = baseColor;
+        }
+      }
+    }
+    if (top) pixels[py * SAND_W + px + 1] = SAND_TONE_RGB[3];
+  }
+
+  function rebuildSandLayers() {
+    sandBasePixels.fill(0);
+    sandBackPixels.fill(0);
+    state.surfTop.fill(-1);
+    state.surfBottom.fill(-1);
+    let topSum = 0;
+    let topCount = 0;
+    let bottomSum = 0;
+    let bottomCount = 0;
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        const i = y * COLS + x;
+        const v = sim.grid[i];
+        if (!v) continue;
+        let surface;
+        if (y < NECK_ROW) {
+          if (state.surfTop[x] < 0) state.surfTop[x] = y;
+          surface = state.surfTop[x];
+          topSum += y;
+          topCount++;
+        } else {
+          if (state.surfBottom[x] < 0) state.surfBottom[x] = y;
+          surface = state.surfBottom[x];
+          bottomSum += y;
+          bottomCount++;
+        }
+        const top = y === 0 || sim.grid[i - COLS] === 0;
+        const loose = y + 1 < ROWS && sim.grid[i + COLS] === 0;
+        let tone = grainTone(x, y, surface);
+        const side = x === 0 || sim.grid[i - 1] === 0 ||
+                     x === COLS - 1 || sim.grid[i + 1] === 0;
+        if (side && !loose && tone > 0) tone--;
+        writeGrain(sandBasePixels, x, y, tone, top, loose);
+        writeBackBlock(sandBackPixels, x, y, v, loose);
+      }
+    }
+    let topMin = COLS;
+    let topMax = -1;
+    let bottomMin = COLS;
+    let bottomMax = -1;
+    for (let x = 0; x < COLS; x++) {
+      if (state.surfTop[x] >= 0) {
+        if (x < topMin) topMin = x;
+        if (x > topMax) topMax = x;
+      }
+      if (state.surfBottom[x] >= 0) {
+        if (x < bottomMin) bottomMin = x;
+        if (x > bottomMax) bottomMax = x;
+      }
+    }
+    sandBaseCtx.putImageData(sandBaseImage, 0, 0);
+    sandBackCtx.putImageData(sandBackImage, 0, 0);
+    state.surf.top = topCount ? Math.round(topSum / topCount) : -1;
+    state.surf.bottom = bottomCount ? Math.round(bottomSum / bottomCount) : -1;
+    state.surfTopMinX = topMin;
+    state.surfTopMaxX = topMax;
+    state.surfBottomMinX = bottomMin;
+    state.surfBottomMaxX = bottomMax;
+    state.lastSandStep = sim.step;
+    state.sandDirty = false;
+    state.baseOffset = 0;
+    state.backOffset = 0;
+    state.backCellShift = 0;
+  }
+
+  function rebuildBaseLayer(offCells) {
+    sandBasePixels.fill(0);
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        const i = y * COLS + x;
+        const v = sim.grid[i];
+        if (!v) continue;
+        const ny = y + offCells;
+        if (ny < 0 || ny >= ROWS) continue;
+        if ((y < NECK_ROW) !== (ny < NECK_ROW)) continue;
+        if (!inside[ny * COLS + x]) continue;
+        const surface = y < NECK_ROW ? state.surfTop[x] : state.surfBottom[x];
+        const top = y === 0 || sim.grid[i - COLS] === 0;
+        const loose = y + 1 < ROWS && sim.grid[i + COLS] === 0;
+        let tone = grainTone(x, y, surface);
+        const side = x === 0 || sim.grid[i - 1] === 0 ||
+                     x === COLS - 1 || sim.grid[i + 1] === 0;
+        if (side && !loose && tone > 0) tone--;
+        writeGrain(sandBasePixels, x, ny, tone, top, loose);
+      }
+    }
+    sandBaseCtx.putImageData(sandBaseImage, 0, 0);
+    state.baseOffset = offCells;
+  }
+
+  /* The back silhouette is shifted in whole cells to stay inside the glass;
+   * the remaining sub-cell pixels are applied when it is blitted. */
+  function rebuildBackLayer(offCells, xCells) {
+    sandBackPixels.fill(0);
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        const i = y * COLS + x;
+        const v = sim.grid[i];
+        if (!v) continue;
+        const nx = x + xCells;
+        const ny = y + offCells;
+        if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+        if ((y < NECK_ROW) !== (ny < NECK_ROW)) continue;
+        if (!inside[ny * COLS + nx]) continue;
+        const loose = y + 1 < ROWS && sim.grid[i + COLS] === 0;
+        writeBackBlock(sandBackPixels, nx, ny, v, loose);
+      }
+    }
+    sandBackCtx.putImageData(sandBackImage, 0, 0);
+    state.backOffset = offCells;
+    state.backCellShift = xCells;
+  }
+
+  function drawSandLayers() {
+    if (sim.step !== state.lastSandStep || state.sandDirty) rebuildSandLayers();
+    const pitchNorm = clamp(state.smoothPitch / 32, -1, 1) * P3.pitchSign;
+    const baseOff = Math.round(pitchNorm * P3.basePitchPx / CELL);
+    const backOff = baseOff + Math.round(-pitchNorm * P3.parallaxPx / CELL);
+    /* Orbiting moves the back silhouette sideways, revealing the thickness
+     * of the sand instead of a flat decal. */
+    const backPx = Math.round(Math.sin(state.orbit.yaw) * 8);
+    const backCells = Math.trunc(backPx / CELL);
+    const backRem = backPx - backCells * CELL;
+    const backPxY = Math.round(Math.cos(state.orbit.yaw) *
+                              Math.sin(state.orbit.elevation) * 6);
+    if (baseOff !== state.baseOffset) rebuildBaseLayer(baseOff);
+    if (backOff !== state.backOffset || backCells !== state.backCellShift) {
+      rebuildBackLayer(backOff, backCells);
+    }
+    ctx.drawImage(sandBackCanvas, GRID_X0 + backRem, GRID_Y0 + backPxY);
+    ctx.drawImage(sandBaseCanvas, GRID_X0, GRID_Y0);
+  }
+
+  /* PSEUDO3D-PREVIEW: orthographic orbit camera. Yaw spins around the
+   * hourglass axis; elevation lifts the camera above the horizon. */
+  function orbitMatrix() {
+    const yaw = state.orbit.yaw;
+    const elev = state.orbit.elevation;
+    return {
+      cy: Math.cos(yaw), sy: Math.sin(yaw),
+      ce: Math.cos(elev), se: Math.sin(elev)
+    };
+  }
+
+  /* World: +x right, +y up, +z toward the viewer. Screen y is down. */
+  function project3(x, y, z, m) {
+    const angle = state.flip.active ? state.flip.angle : 0;
+    const fc = Math.cos(angle);
+    const fs = Math.sin(angle);
+    const yf = y * fc - z * fs;
+    const zf = y * fs + z * fc;
+    return {
+      x: HG.cx + x * m.cy - zf * m.sy,
+      y: HG.centerY - yf * m.ce + x * m.sy * m.se + zf * m.cy * m.se,
+      depth: -(x * m.ce * m.sy + yf * m.se + zf * m.ce * m.cy)
+    };
+  }
+
+  const BOX_FACES = [
+    { idx: [4, 5, 6, 7], n: [0, 0, 1] },
+    { idx: [1, 0, 3, 2], n: [0, 0, -1] },
+    { idx: [7, 6, 2, 3], n: [0, 1, 0] },
+    { idx: [0, 1, 5, 4], n: [0, -1, 0] },
+    { idx: [5, 6, 2, 1], n: [1, 0, 0] },
+    { idx: [0, 4, 7, 3], n: [-1, 0, 0] }
+  ];
+
+  /* Draw only the visible box faces on one side of the glass plane, so the
+   * back faces go before the glass and the front faces after it. */
+  function drawBox3(cx, cy, cz, hx, hy, hz, m, back) {
+    const corners = [
+      [cx - hx, cy - hy, cz - hz], [cx + hx, cy - hy, cz - hz],
+      [cx + hx, cy + hy, cz - hz], [cx - hx, cy + hy, cz - hz],
+      [cx - hx, cy - hy, cz + hz], [cx + hx, cy - hy, cz + hz],
+      [cx + hx, cy + hy, cz + hz], [cx - hx, cy + hy, cz + hz]
+    ];
+    const camX = -m.ce * m.sy;
+    const camY = -m.se;
+    const camZ = -m.ce * m.cy;
+    const angle = state.flip.active ? state.flip.angle : 0;
+    const fc = Math.cos(angle);
+    const fs = Math.sin(angle);
+    const list = [];
+    for (let i = 0; i < BOX_FACES.length; i++) {
+      const f = BOX_FACES[i];
+      const nx = f.n[0];
+      const ny = f.n[1] * fc - f.n[2] * fs;
+      const nz = f.n[1] * fs + f.n[2] * fc;
+      if (nx * camX + ny * camY + nz * camZ >= 0) continue;
+      const pts = [];
+      let depth = 0;
+      for (let k = 0; k < 4; k++) {
+        const c = corners[f.idx[k]];
+        const p = project3(c[0], c[1], c[2], m);
+        pts.push(p);
+        depth += p.depth;
+      }
+      depth /= 4;
+      if ((depth > 0) !== back) continue;
+      const lum = nx * WOOD_LIGHT[0] + ny * WOOD_LIGHT[1] + nz * WOOD_LIGHT[2];
+      list.push({
+        pts,
+        depth,
+        color: lum > .5 ? C.woodHi : lum > .05 ? C.wood : C.woodDark
+      });
+    }
+    list.sort((a, b) => b.depth - a.depth);
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      ctx.fillStyle = f.color;
+      ctx.beginPath();
+      ctx.moveTo(f.pts[0].x, f.pts[0].y);
+      for (let k = 1; k < 4; k++) ctx.lineTo(f.pts[k].x, f.pts[k].y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = C.woodDark;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+
+  const FRAME_POSTS = [
+    [-FRAME.halfX, -FRAME.halfZ], [FRAME.halfX, -FRAME.halfZ],
+    [-FRAME.halfX, FRAME.halfZ], [FRAME.halfX, FRAME.halfZ]
+  ];
+
+  function drawFrame3D(m, back) {
+    for (let i = 0; i < FRAME_POSTS.length; i++) {
+      const p = FRAME_POSTS[i];
+      drawBox3(p[0], 0, p[1], FRAME.postHalf, FRAME.postTop, FRAME.postHalf, m, back);
+    }
+    drawBox3(0, FRAME.capY, 0, FRAME.capHalfX, FRAME.capHalfY, FRAME.capHalfZ, m, back);
+    drawBox3(0, -FRAME.capY, 0, FRAME.capHalfX, FRAME.capHalfY, FRAME.capHalfZ, m, back);
+  }
+
+  /* Grain and bolt details on the cap face that currently faces the camera. */
+  function drawCapDetails(m) {
+    let faces;
+    if (m.se > .05) {
+      faces = [FRAME.capY + FRAME.capHalfY, -FRAME.capY + FRAME.capHalfY];
+    } else if (m.se < -.05) {
+      faces = [FRAME.capY - FRAME.capHalfY, -FRAME.capY - FRAME.capHalfY];
+    } else {
+      return;
+    }
+    ctx.save();
+    ctx.lineWidth = 1;
+    for (let f = 0; f < faces.length; f++) {
+      const y = faces[f];
+      ctx.globalAlpha = .45;
+      ctx.strokeStyle = C.woodDark;
+      for (let i = -1; i <= 1; i++) {
+        const a = project3(-78, y, i * 44, m);
+        const b = project3(78, y, i * 44, m);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = .9;
+      ctx.fillStyle = C.sandDim;
+      for (let sx = -1; sx <= 1; sx += 2) {
+        for (let sz = -1; sz <= 1; sz += 2) {
+          const p = project3(sx * 96, y, sz * 64, m);
+          ctx.fillRect(Math.round(p.x) - 1, Math.round(p.y) - 1, 3, 3);
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawOrbitRims(m) {
+    const angle = state.flip.active ? state.flip.angle : 0;
+    const fc = Math.cos(angle);
+    const fs = Math.sin(angle);
+    /* Only the two cap rims; the neck ring read as a floating circle. */
+    const rings = [
+      { y: 120, r: HG.capR - 2 },
+      { y: -120, r: HG.capR - 2 }
+    ];
+    ctx.save();
+    ctx.lineWidth = 2;
+    for (let i = 0; i < rings.length; i++) {
+      const ring = rings[i];
+      const cx = HG.cx - ring.y * fs * m.sy;
+      const cy = HG.centerY - ring.y * fc * m.ce + ring.y * fs * m.cy * m.se;
+      const ry = Math.max(1, ring.r * Math.abs(fs * m.ce + fc * m.cy * m.se));
+      ctx.globalAlpha = .55;
+      ctx.strokeStyle = C.mintDim;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, ring.r, ry, 0, Math.PI, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = .8;
+      ctx.strokeStyle = C.mintHi;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, ring.r, ry, 0, 0, Math.PI);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   const sim = {
     grid: new Uint8Array(COLS * ROWS),
     next: new Uint8Array(COLS * ROWS),
+    depth: new Uint8Array(COLS * ROWS),
+    nextDepth: new Uint8Array(COLS * ROWS),
     step: 0
   };
+
+  /* TRUE-3D sand: a 24x32x24 voxel grid clipped to the glass lathe. The
+   * simulation runs at 15 Hz in place (bottom-up); rendering buckets visible
+   * voxels into depth bins, so there is no per-particle sort. */
+  const VX = 24;
+  const VY = 32;
+  const VZ = 24;
+  const VCELL = 7.5;
+  const VNECK = 16;
+  const voxGrid = new Uint8Array(VX * VY * VZ);
+  const voxTmp = new Uint8Array(VX * VY * VZ);
+  const voxInside = new Uint8Array(VX * VY * VZ);
+  const vox = { top: 0, bottom: 0, total: 0, flow: 0, step: 0 };
+  for (let iy = 0; iy < VY; iy++) {
+    const yLocal = HG.top + (iy + .5) * ((HG.bottom - HG.top) / VY);
+    const r = halfWidth(yLocal) - HG.wall;
+    for (let ix = 0; ix < VX; ix++) {
+      const wx = (ix + .5) * VCELL - 90;
+      for (let iz = 0; iz < VZ; iz++) {
+        const wz = (iz + .5) * VCELL - 90;
+        if (wx * wx + wz * wz <= r * r) {
+          voxInside[(iy * VX + ix) * VZ + iz] = 1;
+        }
+      }
+    }
+  }
 
   const state = {
     targetRoll: 0,
@@ -1054,6 +1556,21 @@
     smoothRoll: 0,
     smoothPitch: 0,
     gravityX: 0,
+    gravityZ: 0,
+    orbit: { yaw: 0, targetYaw: 0, elevation: 0.30, targetElevation: 0.30 },
+    streamDepth: DEPTH_FRONT,
+    surf: { top: -1, bottom: -1 },
+    surfTop: new Int16Array(COLS),
+    surfBottom: new Int16Array(COLS),
+    surfTopMinX: 0,
+    surfTopMaxX: -1,
+    surfBottomMinX: 0,
+    surfBottomMaxX: -1,
+    sandDirty: true,
+    lastSandStep: -1,
+    baseOffset: 0,
+    backOffset: 0,
+    backCellShift: 0,
     view: 'watch',
     viewFlashUntil: 0,
     appIndex: 0,
@@ -1095,10 +1612,10 @@
     paused: false,
     flips: 0,
     lastFlipAt: 0,
-    flip: { active: false, start: 0, scale: 1 },
+    flip: { active: false, start: 0, angle: 0 },
     notice: { text: '', until: 0 },
     emptySince: 0,
-    stats: { top: 0, bottom: 0, total: 0, flow: 0 },
+    stats: { top: 0, bottom: 0, total: 0, flow: 0, front: 0, back: 0, bottomFront: 0, bottomBack: 0, bottomCx: 0 },
     lastStats: 0,
     lastReadout: 0,
     lastFrame: 0,
@@ -1423,29 +1940,125 @@
     state.notice.until = performance.now() + ms;
   }
 
-  function resetSand(silent = false) {
-    sim.grid.fill(0);
-    sim.next.fill(0);
-    sim.step = 0;
-    let total = 0;
-    for (let y = 0; y < ROWS; y++) {
-      const cy = GRID_Y0 + y * CELL + CELL / 2;
-      if (cy >= HG.neckY) continue;
-      const surface = HG.top + 19 + Math.floor(hash(7, y) * 8);
-      if (cy < surface) continue;
-      for (let x = 0; x < COLS; x++) {
-        const i = y * COLS + x;
-        if (!inside[i]) continue;
-        const h = hash(x, y);
-        let v = 1;
-        if (h > .89) v = 4;
-        else if (h > .7) v = 2;
-        else if (h > .48) v = 3;
-        sim.grid[i] = v;
-        total++;
+  function voxCount() {
+    let top = 0;
+    let bottom = 0;
+    for (let iy = 0; iy < VY; iy++) {
+      for (let ix = 0; ix < VX; ix++) {
+        const base = (iy * VX + ix) * VZ;
+        for (let iz = 0; iz < VZ; iz++) {
+          if (!voxGrid[base + iz]) continue;
+          if (iy < VNECK) top++;
+          else bottom++;
+        }
       }
     }
-    state.stats = { top: total, bottom: 0, total, flow: 0 };
+    vox.top = top;
+    vox.bottom = bottom;
+    if (top + bottom > vox.total) vox.total = top + bottom;
+    state.stats.top = top;
+    state.stats.bottom = bottom;
+    state.stats.total = vox.total || top + bottom || 1;
+    state.stats.flow = vox.flow;
+    state.stats.front = 0;
+    state.stats.back = 0;
+    state.stats.bottomFront = 0;
+    state.stats.bottomBack = 0;
+    state.stats.bottomCx = 0;
+  }
+
+  function voxInit() {
+    voxGrid.fill(0);
+    let top = 0;
+    for (let iy = 0; iy < VNECK; iy++) {
+      for (let ix = 0; ix < VX; ix++) {
+        for (let iz = 0; iz < VZ; iz++) {
+          const i = (iy * VX + ix) * VZ + iz;
+          if (!voxInside[i]) continue;
+          voxGrid[i] = 1 + ((hash(ix * 7 + iz * 3, iy * 5) * 4) | 0);
+          top++;
+        }
+      }
+    }
+    vox.total = top;
+    vox.top = top;
+    vox.bottom = 0;
+    vox.flow = 0;
+    vox.step = 0;
+    voxCount();
+  }
+
+  const VOX_DIRS = [
+    [1, 0], [-1, 0], [0, 1], [0, -1],
+    [1, 1], [1, -1], [-1, 1], [-1, -1]
+  ];
+
+  /* 3-D falling sand. Bottom-up in-place moves keep volume exactly; the neck
+   * has only a few cells, so it naturally throttles the flow. */
+  function voxStep() {
+    if (state.flip.active) return;
+    vox.step++;
+    const step = vox.step;
+    let crossed = 0;
+    for (let iy = VY - 1; iy >= 0; iy--) {
+      const xf = (step + iy) & 1;
+      const zf = (step + iy * 3) & 1;
+      for (let nx = 0; nx < VX; nx++) {
+        const ix = xf ? nx : VX - 1 - nx;
+        const rowBase = (iy * VX + ix) * VZ;
+        for (let nz = 0; nz < VZ; nz++) {
+          const iz = zf ? nz : VZ - 1 - nz;
+          const i = rowBase + iz;
+          const v = voxGrid[i];
+          if (!v) continue;
+          if (hash(ix * 13 + iz * 7, iy * 11 + step) < .35) continue;
+          let moved = false;
+          if (iy + 1 < VY) {
+            const ni = ((iy + 1) * VX + ix) * VZ + iz;
+            if (voxInside[ni] && !voxGrid[ni]) {
+              voxGrid[ni] = v;
+              voxGrid[i] = 0;
+              moved = true;
+              if (iy < VNECK && iy + 1 >= VNECK) crossed++;
+            }
+          }
+          if (!moved && iy + 1 < VY) {
+            const start = (hash(ix * 3 + iz * 5, iy * 7 + step) * 8) | 0;
+            for (let k = 0; k < 8; k++) {
+              const d = VOX_DIRS[(start + k) & 7];
+              const tx = ix + d[0];
+              const tz = iz + d[1];
+              if (tx < 0 || tx >= VX || tz < 0 || tz >= VZ) continue;
+              const ni = ((iy + 1) * VX + tx) * VZ + tz;
+              if (!voxInside[ni] || voxGrid[ni]) continue;
+              voxGrid[ni] = v;
+              voxGrid[i] = 0;
+              if (iy < VNECK && iy + 1 >= VNECK) crossed++;
+              break;
+            }
+          }
+        }
+      }
+    }
+    vox.flow = lerp(vox.flow, crossed * 9, .18);
+    voxCount();
+  }
+
+  function voxMirror() {
+    voxTmp.fill(0);
+    for (let iy = 0; iy < VY; iy++) {
+      for (let ix = 0; ix < VX; ix++) {
+        const src = (iy * VX + ix) * VZ;
+        const dst = ((VY - 1 - iy) * VX + ix) * VZ;
+        for (let iz = 0; iz < VZ; iz++) voxTmp[dst + iz] = voxGrid[src + iz];
+      }
+    }
+    voxGrid.set(voxTmp);
+    voxCount();
+  }
+
+  function resetSand(silent = false) {
+    voxInit();
     state.emptySince = 0;
     state.flips = 0;
     state.notice = { text: '', until: 0 };
@@ -1454,86 +2067,39 @@
   }
 
   function recount() {
-    let top = 0;
-    let bottom = 0;
-    for (let y = 0; y < ROWS; y++) {
-      for (let x = 0; x < COLS; x++) {
-        if (!sim.grid[y * COLS + x]) continue;
-        if (y < NECK_ROW) top++;
-        else bottom++;
-      }
-    }
-    state.stats.top = top;
-    state.stats.bottom = bottom;
-    state.stats.total = top + bottom;
+    voxCount();
   }
 
   function stepSand() {
-    if (state.flip.active) return;
-    const src = sim.grid;
-    const dst = sim.next;
-    dst.fill(0);
-    const gx = state.gravityX;
-    const bias = gx > .08 ? 1 : gx < -.08 ? -1 : 0;
-    const strong = Math.abs(gx) > .35;
-    const rowDir = sim.step & 1 ? 1 : -1;
-    let crossed = 0;
+    voxStep();
+  }
 
-    for (let y = ROWS - 1; y >= 0; y--) {
-      for (let n = 0; n < COLS; n++) {
-        const x = rowDir > 0 ? n : COLS - 1 - n;
-        const i = y * COLS + x;
-        const v = src[i];
-        if (!v) continue;
-
-        if (Math.random() < .48) {
-          if (dst[i] === 0) dst[i] = v;
-          continue;
+  /* PSEUDO3D-PREVIEW: nudge the front/back tag of the top few sand cells
+   * toward the pitch direction. One bounded pass per chamber per step. */
+  function redistributeDepth() {
+    const gz = state.gravityZ * P3.pitchSign;
+    const strength = Math.abs(gz);
+    if (strength <= P3.depthDeadzone) return;
+    const target = gz > 0 ? DEPTH_FRONT : DEPTH_BACK;
+    const rate = strength * P3.depthRate;
+    for (let chamber = 0; chamber < 2; chamber++) {
+      const y0 = chamber === 0 ? 0 : NECK_ROW;
+      const y1 = chamber === 0 ? NECK_ROW : ROWS;
+      for (let x = 0; x < COLS; x++) {
+        let y = y0;
+        while (y < y1 && !sim.grid[y * COLS + x]) y++;
+        const last = Math.min(y + P3.surfaceBand, y1);
+        for (; y < last; y++) {
+          const i = y * COLS + x;
+          if (!sim.grid[i] || sim.depth[i] === target) continue;
+          if (hash(x * 13 + sim.step * 7, y * 31) < rate) sim.depth[i] = target;
         }
-
-        const side = bias || (Math.random() < .5 ? 1 : -1);
-        const moves = [];
-        if (bias) moves.push([side, 1]);
-        moves.push([0, 1]);
-        moves.push([-side, 1]);
-        if (strong) moves.push([side, 0]);
-
-        let moved = false;
-        for (let m = 0; m < moves.length; m++) {
-          const nx = x + moves[m][0];
-          const ny = y + moves[m][1];
-          if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
-          const ni = ny * COLS + nx;
-          if (!inside[ni] || src[ni] || dst[ni]) continue;
-          src[i] = 0;
-          dst[ni] = v;
-          if (ny >= NECK_ROW && y < NECK_ROW) crossed++;
-          moved = true;
-          break;
-        }
-        if (!moved && dst[i] === 0) dst[i] = v;
       }
     }
-
-    sim.grid = sim.next;
-    sim.next = src;
-    sim.step++;
-    const instant = crossed * SIM_HZ;
-    state.stats.flow = lerp(state.stats.flow, instant, .16);
   }
 
   function mirrorSand() {
-    const old = sim.grid;
-    const next = new Uint8Array(COLS * ROWS);
-    for (let y = 0; y < ROWS; y++) {
-      for (let x = 0; x < COLS; x++) {
-        const v = old[y * COLS + x];
-        if (v) next[(ROWS - 1 - y) * COLS + x] = v;
-      }
-    }
-    sim.grid = next;
-    sim.next = new Uint8Array(COLS * ROWS);
-    recount();
+    voxMirror();
     state.emptySince = 0;
   }
 
@@ -1547,7 +2113,7 @@
     state.lastInteraction = now;
     state.flip.active = true;
     state.flip.start = now;
-    state.flip.scale = 1;
+    state.flip.angle = 0;
     state.flips++;
     notice(`FLIP ${String(state.flips).padStart(2, '0')}`, 1000);
     setStatus(sensor ? `六轴翻转 · 第 ${state.flips} 次` : `沙漏翻转 · 第 ${state.flips} 次`, 'active', 2200);
@@ -1573,12 +2139,11 @@
     if (p >= 1) {
       mirrorSand();
       state.flip.active = false;
-      state.flip.scale = 1;
+      state.flip.angle = 0;
       recount();
       return;
     }
-    const s = Math.cos(p * Math.PI);
-    state.flip.scale = Math.round(s * 11) / 11;
+    state.flip.angle = p * Math.PI;
   }
 
   function wake() {
@@ -1686,52 +2251,59 @@
     ctx.fillRect(HG.cx - HG.capW / 2 + 1, y + HG.capH - 2, HG.capW - 2, 2);
   }
 
-  function drawGlass(now) {
+  function drawGlassInto(c, ox = 0, oy = 0) {
+    c.save();
+    c.translate(-ox, -oy);
     for (let y = HG.top; y < HG.bottom; y += CELL) {
       const r = halfWidth(y + CELL / 2);
       const rowTint = .028 + ((Math.floor(y / CELL) % 3) === 0 ? .012 : 0);
-      ctx.fillStyle = `rgba(114, 223, 186, ${rowTint})`;
-      ctx.fillRect(HG.cx - r, y, r * 2, CELL);
+      c.fillStyle = `rgba(114, 223, 186, ${rowTint})`;
+      c.fillRect(HG.cx - r, y, r * 2, CELL);
     }
 
     for (let y = HG.top + 6; y < HG.bottom; y += 12) {
       const r = halfWidth(y) - 10;
       if (r <= 0) continue;
-      ctx.fillStyle = 'rgba(114, 223, 186, .022)';
-      ctx.fillRect(HG.cx - r, y, r * 2, 1);
+      c.fillStyle = 'rgba(114, 223, 186, .022)';
+      c.fillRect(HG.cx - r, y, r * 2, 1);
     }
 
-    ctx.globalAlpha = .16;
-    ctx.fillStyle = C.mintHi;
-    ctx.fillRect(HG.cx - 51, HG.top + 27, 3, 18);
-    ctx.fillRect(HG.cx - 45, HG.top + 39, 3, 11);
-    ctx.fillRect(HG.cx - 38, HG.top + 51, 3, 8);
-    ctx.fillStyle = C.mint;
-    ctx.fillRect(HG.cx + 36, HG.bottom - 54, 3, 19);
-    ctx.fillRect(HG.cx + 42, HG.bottom - 65, 3, 8);
-    ctx.globalAlpha = 1;
+    c.globalAlpha = .16;
+    c.fillStyle = C.mintHi;
+    c.fillRect(HG.cx - 51, HG.top + 27, 3, 18);
+    c.fillRect(HG.cx - 45, HG.top + 39, 3, 11);
+    c.fillRect(HG.cx - 38, HG.top + 51, 3, 8);
+    c.fillStyle = C.mint;
+    c.fillRect(HG.cx + 36, HG.bottom - 54, 3, 19);
+    c.fillRect(HG.cx + 42, HG.bottom - 65, 3, 8);
+    c.globalAlpha = 1;
 
     for (let y = HG.top; y < HG.bottom; y += CELL) {
       const r = halfWidth(y + CELL / 2);
       const nearNeck = Math.abs(y - HG.neckY) < 35;
-      ctx.fillStyle = nearNeck ? C.mint : C.mintDim;
-      ctx.globalAlpha = nearNeck ? .95 : .72;
-      ctx.fillRect(HG.cx - r, y, 2, CELL);
-      ctx.fillRect(HG.cx + r - 2, y, 2, CELL);
+      c.fillStyle = nearNeck ? C.mint : C.mintDim;
+      c.globalAlpha = nearNeck ? .95 : .72;
+      c.fillRect(HG.cx - r, y, 2, CELL);
+      c.fillRect(HG.cx + r - 2, y, 2, CELL);
       if ((Math.floor(y / CELL) % 7 === 0) || y < HG.top + 24 || y > HG.bottom - 24) {
-        ctx.fillStyle = C.mintHi;
-        ctx.globalAlpha = .28;
-        ctx.fillRect(HG.cx - r + 2, y, 1, CELL);
-        ctx.fillRect(HG.cx + r - 3, y, 1, CELL);
+        c.fillStyle = C.mintHi;
+        c.globalAlpha = .28;
+        c.fillRect(HG.cx - r + 2, y, 1, CELL);
+        c.fillRect(HG.cx + r - 3, y, 1, CELL);
       }
     }
-    ctx.globalAlpha = 1;
+    c.globalAlpha = 1;
 
-    ctx.fillStyle = C.mintDim;
-    ctx.globalAlpha = .8;
-    ctx.fillRect(HG.cx - HG.neckR + 1, HG.neckY - 4, 2, 8);
-    ctx.fillRect(HG.cx + HG.neckR - 3, HG.neckY - 4, 2, 8);
-    ctx.globalAlpha = 1;
+    c.fillStyle = C.mintDim;
+    c.globalAlpha = .8;
+    c.fillRect(HG.cx - HG.neckR + 1, HG.neckY - 4, 2, 8);
+    c.fillRect(HG.cx + HG.neckR - 3, HG.neckY - 4, 2, 8);
+    c.globalAlpha = 1;
+    c.restore();
+  }
+
+  function drawGlass(now) {
+    drawGlassInto(ctx, 0, 0);
   }
 
   function drawSand(now) {
@@ -1775,7 +2347,7 @@
     ctx.save();
     for (let i = 0; i < 22; i++) {
       const x = HG.cx + Math.sin(t * (.08 + (i % 4) * .018) + i * 1.71) * (50 + (i % 5) * 17) + state.smoothRoll * .8;
-      const y = 219 + Math.cos(t * (.12 + (i % 3) * .03) + i * .93) * (94 + (i % 4) * 8);
+      const y = 219 + Math.cos(t * (.12 + (i % 3) * .03) + i * .93) * (94 + (i % 4) * 8) + state.smoothPitch * .15;
       if (x < 96 || x > 294 || y < 102 || y > 350) continue;
       const amber = i % 3 === 0;
       ctx.globalAlpha = .16 + (i % 5) * .035;
@@ -1786,35 +2358,104 @@
     ctx.restore();
   }
 
-  function drawHourglass(now) {
-    const glow = ctx.createRadialGradient(HG.cx, HG.neckY, 8, HG.cx, HG.neckY, 185);
-    glow.addColorStop(0, 'rgba(243, 183, 79, .09)');
-    glow.addColorStop(.6, 'rgba(243, 183, 79, .018)');
-    glow.addColorStop(1, 'rgba(243, 183, 79, 0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(HG.cx - 190, HG.neckY - 190, 380, 380);
-
-    drawPost(HG.cx - 102);
-    drawPost(HG.cx + 95);
-
-    const s = state.flip.active ? state.flip.scale : 1;
-    if (Math.abs(s) < .02) {
-      drawCap(HG.capTopY);
-      drawCap(HG.capBottomY);
-      return;
+  const VOX_TONE = [C.sandDim, C.sand, C.sandHi, '#ffe3a0'];
+  /* Four 8x8 lit grain sprites: only a light upper/left edge. A dark lower
+   * edge would line up across a voxel layer and read as a stripe. */
+  const voxAtlas = document.createElement('canvas');
+  voxAtlas.width = 32;
+  voxAtlas.height = 8;
+  {
+    const a = voxAtlas.getContext('2d');
+    for (let i = 0; i < 4; i++) {
+      a.fillStyle = VOX_TONE[i];
+      a.fillRect(i * 8, 0, 8, 8);
+      a.fillStyle = 'rgba(255,227,160,.42)';
+      a.fillRect(i * 8, 0, 8, 1);
+      a.fillRect(i * 8, 0, 1, 8);
     }
+  }
+  const V_BINS = 16;
+  const V_CAP = 512;
+  const voxPx = new Int16Array(V_BINS * V_CAP);
+  const voxPy = new Int16Array(V_BINS * V_CAP);
+  const voxCol = new Uint8Array(V_BINS * V_CAP);
+  const voxBins = new Uint16Array(V_BINS);
 
+  function voxSolid(ix, iy, iz) {
+    if (ix < 0 || ix >= VX || iy < 0 || iy >= VY || iz < 0 || iz >= VZ) return false;
+    return voxGrid[(iy * VX + ix) * VZ + iz] !== 0;
+  }
+
+  /* Painter's algorithm with 16 depth bins: visible voxels are bucketed by
+   * projected depth, then drawn far-to-near. No per-particle sort. */
+  function drawVoxels(m) {
+    voxBins.fill(0);
+    for (let iy = 0; iy < VY; iy++) {
+      for (let ix = 0; ix < VX; ix++) {
+        const base = (iy * VX + ix) * VZ;
+        for (let iz = 0; iz < VZ; iz++) {
+          const v = voxGrid[base + iz];
+          if (!v) continue;
+          if (voxSolid(ix - 1, iy, iz) && voxSolid(ix + 1, iy, iz) &&
+              voxSolid(ix, iy - 1, iz) && voxSolid(ix, iy + 1, iz) &&
+              voxSolid(ix, iy, iz - 1) && voxSolid(ix, iy, iz + 1)) {
+            continue;
+          }
+          const wx = (ix + .5) * VCELL - 90;
+          const wy = -((HG.top + (iy + .5) * ((HG.bottom - HG.top) / VY)) - HG.centerY);
+          const wz = (iz + .5) * VCELL - 90;
+          const p = project3(wx, wy, wz, m);
+          let bin = Math.floor((p.depth + 220) / 440 * V_BINS);
+          if (bin < 0) bin = 0;
+          else if (bin >= V_BINS) bin = V_BINS - 1;
+          if (voxBins[bin] >= V_CAP) continue;
+          const pos = bin * V_CAP + voxBins[bin]++;
+          voxPx[pos] = p.x;
+          voxPy[pos] = p.y;
+          let ci = v - 1;
+          if (bin >= 12 && ci > 0) ci--;
+          else if (bin <= 3 && ci < 3) ci++;
+          voxCol[pos] = ci;
+        }
+      }
+    }
+    ctx.imageSmoothingEnabled = false;
+    for (let bin = V_BINS - 1; bin >= 0; bin--) {
+      const base = bin * V_CAP;
+      const n = voxBins[bin];
+      for (let k = 0; k < n; k++) {
+        ctx.drawImage(voxAtlas, voxCol[base + k] * 8, 0, 8, 8,
+                      voxPx[base + k] - 4, voxPy[base + k] - 4, 8, 8);
+      }
+    }
+  }
+
+  function drawHourglass(now) {
     ctx.save();
-    ctx.translate(HG.cx, HG.centerY);
-    ctx.scale(1, s);
-    ctx.translate(-HG.cx, -HG.centerY);
-    drawGlass(now);
-    drawSand(now);
-    drawNeckGlow(now);
-    drawCap(HG.capTopY);
-    drawCap(HG.capBottomY);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(haloCanvas, HG.cx - 190, HG.neckY - 190, 380, 380);
     ctx.restore();
 
+    const m = orbitMatrix();
+    const angle = state.flip.active ? state.flip.angle : 0;
+    const fc = Math.cos(angle);
+    const fs = Math.sin(angle);
+    const kv = fc * m.ce - fs * m.cy * m.se;
+    const shear = fs * m.sy;
+
+    drawFrame3D(m, true);
+
+    ctx.save();
+    ctx.setTransform(1, 0, shear, kv, 0, HG.centerY - kv * HG.centerY);
+    ctx.imageSmoothingEnabled = state.flip.active;
+    ctx.drawImage(glassCanvas, GLASS_X0, GLASS_Y0);
+    ctx.restore();
+
+    drawVoxels(m);
+    drawOrbitRims(m);
+    drawFrame3D(m, false);
+    drawCapDetails(m);
+    drawNeckGlow(now);
     drawMotes(now);
   }
 
@@ -1837,17 +2478,23 @@
     ptext(flipReady ? 'SENSOR FLIP / TURN FACE DOWN' : 'SENSOR FLIP / LINK 6-AXIS',
       195, 404, 1, flipColor, 'center', flipReady ? .95 : .72);
 
-    let hint = 'SWIPE PAGES  /  DRAG TILT';
+    let hint = 'TAP FLIP  /  DRAG ORBIT  /  SWIPE PAGES';
     let hintColor = C.muted;
     if (now < state.notice.until) {
       hint = state.notice.text;
       hintColor = C.sand;
     } else if (state.sensor.active) {
-      hint = 'SWIPE PAGES  /  DRAG OR TILT';
+      hint = 'TAP FLIP  /  DRAG ORBIT  /  TILT SENSOR';
     } else if (state.autoNow) {
-      hint = 'SWIPE PAGES  /  AUTO DRIFT';
+      hint = 'TAP FLIP  /  DRAG ORBIT  /  AUTO DRIFT';
     }
     ptext(hint, 195, 419, 1, hintColor, 'center', .86);
+  }
+
+  /* Dragging the hourglass itself orbits the 3D view; page swipes start
+   * outside this region so the two gestures do not fight. */
+  function insideOrbitZone(p) {
+    return p.x > 36 && p.x < 354 && p.y > 74 && p.y < 372;
   }
 
   function insideRect(p, r) {
@@ -2523,6 +3170,14 @@
     state.smoothRoll = lerp(state.smoothRoll, state.targetRoll, ease);
     state.smoothPitch = lerp(state.smoothPitch, state.targetPitch, ease);
     state.gravityX = Math.sin(state.smoothRoll * Math.PI / 180) * 1.3;
+    state.gravityZ = Math.sin(state.smoothPitch * Math.PI / 180);
+  }
+
+  function updateOrbit(dt) {
+    const o = state.orbit;
+    const ease = 1 - Math.exp(-dt * 12);
+    o.yaw = lerp(o.yaw, o.targetYaw, ease);
+    o.elevation = lerp(o.elevation, o.targetElevation, ease);
   }
 
   function updateStats(now) {
@@ -2578,6 +3233,7 @@
     if (!state.paused) {
       updateFlip(now);
       updateTilt(dt, now);
+      updateOrbit(dt);
       let accum = state._accum || 0;
       accum += dt;
       const step = 1 / SIM_HZ;
@@ -2626,6 +3282,7 @@
     }
     if (state.view === 'watch') {
       if (insideRect(p, { x: 96, y: 8, w: 58, h: 32 })) openApps();
+      else flip('TAP');
       return;
     }
     if (state.view === 'apps') {
@@ -2689,6 +3346,9 @@
       sy: p.cy,
       sr: state.targetRoll,
       sp: state.targetPitch,
+      oy: state.orbit.targetYaw,
+      oe: state.orbit.targetElevation,
+      orbitZone: state.view === 'watch' && insideOrbitZone(p),
       view: state.view,
       rect: p.rect,
       at: now
@@ -2706,17 +3366,19 @@
     const scale = W / Math.max(1, d.rect.width);
     const maxd = Math.max(Math.abs(dx), Math.abs(dy)) * scale;
     const elapsed = performance.now() - d.at;
-    if (!d.swipe && maxd >= 42 && (maxd >= 90 || elapsed <= 280)) {
+    if (!d.orbitZone && !d.swipe && maxd >= 42 && (maxd >= 90 || elapsed <= 280)) {
       d.swipe = true;
       state.targetRoll = d.sr;
       state.targetPitch = d.sp;
+      state.orbit.targetYaw = d.oy;
+      state.orbit.targetElevation = d.oe;
       state.manualUntil = 0;
     }
-    if (!d.suppress && d.view === 'watch' && !d.swipe) {
+    if (!d.suppress && d.view === 'watch' && d.orbitZone && !d.swipe) {
       const rw = Math.max(1, d.rect.width);
       const rh = Math.max(1, d.rect.height);
-      state.targetRoll = clamp(d.sr + dx / rw * 150, -45, 45);
-      state.targetPitch = clamp(d.sp + dy / rh * 105, -32, 32);
+      state.orbit.targetYaw = d.oy + dx / rw * Math.PI * 2;
+      state.orbit.targetElevation = clamp(d.oe - dy / rh * 1.15, -0.05, 0.85);
       state.manualUntil = performance.now() + 1800;
       state.lastInteraction = performance.now();
     }
@@ -2745,8 +3407,8 @@
     const dy = (e.clientY - d.sy) * (H / Math.max(1, d.rect.height));
     const maxd = Math.max(Math.abs(dx), Math.abs(dy));
     const elapsed = now - d.at;
-    const shouldSwipe = d.swipe || (!d.suppress && maxd >= 42 &&
-      (maxd >= 90 || d.view !== 'watch' || elapsed <= 280));
+    const shouldSwipe = !d.orbitZone && (d.swipe || (!d.suppress && maxd >= 42 &&
+      (maxd >= 90 || d.view !== 'watch' || elapsed <= 280)));
     if (shouldSwipe) {
       navigateSwipe(dx, dy);
     } else if (!d.moved && !d.suppress && elapsed < 600) {
@@ -3014,6 +3676,12 @@
     reset: () => resetSand(true),
     pause: () => { state.paused = true; },
     resume: () => { state.paused = false; },
+    setFlipAngle: (deg = 0) => {
+      state.paused = true;
+      state.flip.active = true;
+      state.flip.angle = clamp(deg, 0, 180) * Math.PI / 180;
+    },
+    toggle3D: () => { P3.enabled = !P3.enabled; return P3.enabled; },
     setTilt: (roll, pitch = 0) => {
       state.sensor.active = false;
       state.manualUntil = performance.now() + 1e9;
@@ -3022,11 +3690,23 @@
       state.smoothRoll = state.targetRoll;
       state.smoothPitch = state.targetPitch;
       state.gravityX = Math.sin(state.smoothRoll * Math.PI / 180) * 1.3;
+      state.gravityZ = Math.sin(state.smoothPitch * Math.PI / 180);
     },
+    setOrbit: (yawDeg = 0, elevDeg = 17) => {
+      state.orbit.yaw = yawDeg * Math.PI / 180;
+      state.orbit.targetYaw = state.orbit.yaw;
+      state.orbit.elevation = clamp(elevDeg * Math.PI / 180, -0.05, 0.85);
+      state.orbit.targetElevation = state.orbit.elevation;
+    },
+    orbit: () => ({
+      yaw: +(state.orbit.yaw * 180 / Math.PI).toFixed(1),
+      elevation: +(state.orbit.elevation * 180 / Math.PI).toFixed(1)
+    }),
     advance: (seconds = 5) => {
       const steps = Math.max(1, Math.round(seconds * SIM_HZ));
       for (let i = 0; i < steps; i++) stepSand();
       recount();
+      rebuildSandLayers();
       return { ...state.stats, flips: state.flips };
     },
     view: () => state.view,
@@ -3071,10 +3751,18 @@
       view: state.view,
       roll: +state.smoothRoll.toFixed(2),
       pitch: +state.smoothPitch.toFixed(2),
+      orbitYaw: +(state.orbit.yaw * 180 / Math.PI).toFixed(1),
+      orbitElevation: +(state.orbit.elevation * 180 / Math.PI).toFixed(1),
       source: state.sensor.active ? '6-AXIS' : state.autoNow ? 'SIM/AUTO' : 'SIM',
       top: state.stats.top,
       bottom: state.stats.bottom,
       total: state.stats.total,
+      front: state.stats.front,
+      back: state.stats.back,
+      bottomFront: state.stats.bottomFront,
+      bottomBack: state.stats.bottomBack,
+      bottomCx: +state.stats.bottomCx.toFixed(2),
+      streamDepth: state.streamDepth === DEPTH_FRONT ? 'front' : 'back',
       flow: +state.stats.flow.toFixed(1),
       flips: state.flips,
       flipping: state.flip.active,
@@ -3084,7 +3772,10 @@
 
   loadSettings();
   buildBackground();
+  buildHalo();
+  buildGlassLayer();
   resetSand(true);
+  buildSandLayers();
   updateHints();
   restoreStatus();
   requestAnimationFrame(tick);

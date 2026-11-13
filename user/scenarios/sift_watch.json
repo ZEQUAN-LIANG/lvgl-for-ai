@@ -209,7 +209,7 @@
     },
     {
       "type": "snapshot",
-      "label": "drag_tilt"
+      "label": "drag_orbit"
     },
     {
       "type": "key",
@@ -266,11 +266,19 @@
     },
     {
       "type": "wait",
-      "ms": 200
+      "ms": 260
     },
     {
       "type": "snapshot",
-      "label": "tap_no_flip"
+      "label": "tap_flip"
+    },
+    {
+      "type": "wait",
+      "ms": 500
+    },
+    {
+      "type": "snapshot",
+      "label": "tap_flip_done"
     }
   ]
 }

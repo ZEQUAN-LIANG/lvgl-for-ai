@@ -3,7 +3,14 @@
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #include "app.h"
+#include "game/zc_audio.h"
+#include "game/zc_game.h"
 
+#if defined(LVGL_AI_EZIP_ASSETS) && defined(RT_USING_FINSH)
+#include "finsh.h"
+#endif
+
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -64,6 +71,31 @@
 #define SIFT_RENDER_MS 40U
 #define SIFT_SWIPE_MIN 42
 #define SIFT_SWIPE_LONG 90
+#define SIFT_FLIP_MS 680U
+#define SIFT_ORBIT_MIN_ELEV (-0.05f)
+#define SIFT_ORBIT_MAX_ELEV 0.85f
+/* PSEUDO3D: the glass stays a lathe; only pitch offsets, the back sand
+ * silhouette, the stream layer and the wooden frame move in depth. */
+#define SIFT_P3_PITCH_SIGN 1
+#define SIFT_P3_BASE_PITCH_PX 9
+#define SIFT_P3_PARALLAX_PX 15
+/* True-3D sand: 24 x 32 x 24 voxels clipped to the glass lathe. */
+#define SIFT_VX 24
+#define SIFT_VY 32
+#define SIFT_VZ 24
+#define SIFT_VNECK 16
+#define SIFT_VCELL 7.5f
+#define SIFT_HG_CX 195
+#define SIFT_HG_CY 226
+#define SIFT_FRAME_HALF_X 106
+#define SIFT_FRAME_HALF_Z 90
+#define SIFT_FRAME_POST_HALF 4
+#define SIFT_FRAME_POST_TOP 120
+#define SIFT_FRAME_CAP_HALF_X 108
+#define SIFT_FRAME_CAP_HALF_Z 92
+#define SIFT_FRAME_CAP_HALF_Y 7
+#define SIFT_FRAME_CAP_Y 127
+#define SIFT_PI 3.14159265f
 /* This board's accelerometer z axis points into the screen: face-up is
  * negative, face-down is positive. */
 #define SIFT_IMU_FACE_DOWN_MG (550)
@@ -89,6 +121,8 @@ static const uint16_t COL_SAND = RGB565(243, 183, 79);
 static const uint16_t COL_SAND_HI = RGB565(255, 213, 125);
 static const uint16_t COL_SAND_DIM = RGB565(168, 103, 44);
 static const uint16_t COL_SAND_PALE = RGB565(255, 227, 160);
+/* Shadow edge on the voxel grain sprites. */
+static const uint16_t COL_SAND_SHADOW = RGB565(107, 63, 28);
 static const uint16_t COL_WOOD = RGB565(157, 93, 47);
 static const uint16_t COL_WOOD_DARK = RGB565(72, 40, 21);
 static const uint16_t COL_WOOD_HI = RGB565(215, 150, 80);
@@ -174,8 +208,13 @@ typedef enum {
     VIEW_TIMER,
     VIEW_STOPWATCH,
     VIEW_WEATHER,
-    VIEW_SETTINGS
+    VIEW_SETTINGS,
+    VIEW_ZOMBIE
 } sift_view_t;
+
+/* The horizontal page ring stays the six original watch pages; ZOMBIE is
+ * launched from the app drawer, not by wrapping past SETTINGS. */
+#define SIFT_PAGE_COUNT 6
 
 typedef struct {
     int hour;
@@ -214,9 +253,6 @@ typedef struct {
     int32_t sensor_pitch;
     uint32_t last_tick;
     uint32_t sim_accum;
-    uint8_t *sand;
-    uint8_t *sand_next;
-    uint8_t step_phase;
     sift_stats_t stats;
     uint32_t empty_since;
     uint32_t notice_until;
@@ -245,11 +281,24 @@ typedef struct {
     bool touch_moved;
     bool touch_swiping;
     bool touch_suppress;
+    bool touch_orbit;
     int touch_start_x;
     int touch_start_y;
     int touch_start_roll;
     int touch_start_pitch;
+    float touch_start_yaw;
+    float touch_start_elev;
     uint32_t touch_at;
+    /* PSEUDO3D: orbit camera, flip animation and the per-column sand
+     * surface used by the 3D rendering. */
+    float orbit_yaw;
+    float orbit_yaw_target;
+    float orbit_elev;
+    float orbit_elev_target;
+    float flip_angle;
+    uint32_t flip_start;
+    uint32_t last_flip_at;
+    bool flip_active;
 } sift_state_t;
 
 static sift_state_t s;
@@ -257,12 +306,33 @@ static uint16_t *s_fb;
 static lv_obj_t *s_canvas;
 static lv_group_t *s_group;
 static lv_timer_t *s_render_timer;
-static uint8_t s_sand_a[SIFT_COLS * SIFT_ROWS];
-static uint8_t s_sand_b[SIFT_COLS * SIFT_ROWS];
-static uint8_t s_inside[SIFT_COLS * SIFT_ROWS];
-static uint32_t s_rand_state = 0x51F7A11DU;
+static uint8_t s_vox[SIFT_VX * SIFT_VY * SIFT_VZ];
+static uint8_t s_vox_tmp[SIFT_VX * SIFT_VY * SIFT_VZ];
+static uint8_t s_vox_inside[SIFT_VX * SIFT_VY * SIFT_VZ];
+static uint16_t s_vox_top;
+static uint16_t s_vox_bottom;
+static uint16_t s_vox_total;
+static uint16_t s_vox_flow;
+static uint32_t s_vox_step;
+#define SIFT_VBINS 16
+#define SIFT_VCAP 512
+static int16_t s_vpx[SIFT_VBINS * SIFT_VCAP];
+static int16_t s_vpy[SIFT_VBINS * SIFT_VCAP];
+static uint8_t s_vpc[SIFT_VBINS * SIFT_VCAP];
+static uint16_t s_vbins[SIFT_VBINS];
+static uint16_t s_vox_sprite[4][8][8];
+static bool s_vox_sprites_ready;
+
+/* The game canvas shares s_fb with the watch.  The second buffer is the
+ * pre-rendered backdrop; it is allocated on first entry into the game page. */
+static uint16_t *s_game_bg;
+static bool s_game_ready;
+static zc_save_t s_game_save = {0, 0, 1};
+static bool s_game_save_loaded;
 
 static void sift_render(void);
+static void sift_game_enter(void);
+static void vibe_pulse_ms(uint32_t ms);
 static void sift_tick_cb(lv_timer_t *timer);
 static void sift_canvas_event_cb(lv_event_t *event);
 static void sift_handle_tap(int x, int y);
@@ -275,6 +345,47 @@ static int weather_temp(int celsius);
 static void sift_imu_zero(void);
 static void vibe_pulse(void);
 
+/* Stable game platform seam: zc_audio owns the audprc/audcodec/AW8155 path. */
+static void game_sfx(zc_sfx_t id, void *user)
+{
+    (void)user;
+    zc_audio_play(id);
+}
+
+static void game_haptic(zc_haptic_t kind, void *user)
+{
+    (void)user;
+    if(kind == ZC_HAPTIC_TAP) vibe_pulse_ms(18);
+    else if(kind == ZC_HAPTIC_HIT) vibe_pulse_ms(35);
+    else if(kind == ZC_HAPTIC_BOSS) vibe_pulse_ms(70);
+    else if(kind == ZC_HAPTIC_LEVEL) vibe_pulse_ms(25);
+    else vibe_pulse_ms(90);
+}
+
+static bool game_load(zc_save_t *save, void *user)
+{
+    (void)user;
+    if(!s_game_save_loaded) return false;
+    *save = s_game_save;
+    return true;
+}
+
+static void game_store(const zc_save_t *save, void *user)
+{
+    (void)user;
+    s_game_save = *save;
+    s_game_save_loaded = true;
+}
+
+static const zc_hooks_t s_game_hooks = {
+    game_sfx,
+    game_haptic,
+    NULL,
+    game_load,
+    game_store,
+    NULL
+};
+
 static int32_t clamp_i32(int32_t value, int32_t low, int32_t high)
 {
     if(value < low) return low;
@@ -282,12 +393,16 @@ static int32_t clamp_i32(int32_t value, int32_t low, int32_t high)
     return value;
 }
 
-static uint32_t sift_rand(void)
+static float clamp_f32(float value, float low, float high)
 {
-    s_rand_state ^= s_rand_state << 13;
-    s_rand_state ^= s_rand_state >> 17;
-    s_rand_state ^= s_rand_state << 5;
-    return s_rand_state;
+    if(value < low) return low;
+    if(value > high) return high;
+    return value;
+}
+
+static int32_t round_f32(float value)
+{
+    return (int32_t)(value >= 0.0f ? value + 0.5f : value - 0.5f);
 }
 
 static uint32_t sift_hash(int32_t x, int32_t y)
@@ -562,139 +677,181 @@ static void timer_update(uint32_t now)
     printf("[sift_watch] timer done\n");
 }
 
-static void sand_recount(void)
+static void vox_count(void)
 {
     uint16_t top = 0;
     uint16_t bottom = 0;
-    for(int32_t y = 0; y < SIFT_ROWS; y++) {
-        for(int32_t x = 0; x < SIFT_COLS; x++) {
-            if(s.sand[y * SIFT_COLS + x] == 0) continue;
-            if(y < SIFT_NECK_ROW) top++;
-            else bottom++;
+    for(int32_t iy = 0; iy < SIFT_VY; iy++) {
+        for(int32_t ix = 0; ix < SIFT_VX; ix++) {
+            const uint8_t *row = &s_vox[(iy * SIFT_VX + ix) * SIFT_VZ];
+            for(int32_t iz = 0; iz < SIFT_VZ; iz++) {
+                if(row[iz] == 0) continue;
+                if(iy < SIFT_VNECK) top++;
+                else bottom++;
+            }
         }
     }
+    s_vox_top = top;
+    s_vox_bottom = bottom;
+    if((uint16_t)(top + bottom) > s_vox_total) s_vox_total = (uint16_t)(top + bottom);
     s.stats.top = top;
     s.stats.bottom = bottom;
-    s.stats.total = top + bottom;
+    s.stats.total = s_vox_total > 0 ? s_vox_total : 1;
+    s.stats.flow = s_vox_flow;
+}
+
+static void vox_init(void)
+{
+    memset(s_vox_inside, 0, sizeof(s_vox_inside));
+    for(int32_t iy = 0; iy < SIFT_VY; iy++) {
+        int32_t row = (int32_t)((iy + 0.5f) * ((float)SIFT_ROWS / (float)SIFT_VY));
+        row = clamp_i32(row, 0, SIFT_ROWS - 1);
+        int32_t table_row = row < SIFT_NECK_ROW ? row : (SIFT_ROWS - 1 - row);
+        float r = (float)hg_half_widths[table_row];
+        for(int32_t ix = 0; ix < SIFT_VX; ix++) {
+            float wx = (ix + 0.5f) * SIFT_VCELL - 90.0f;
+            for(int32_t iz = 0; iz < SIFT_VZ; iz++) {
+                float wz = (iz + 0.5f) * SIFT_VCELL - 90.0f;
+                if(wx * wx + wz * wz <= r * r) {
+                    s_vox_inside[(iy * SIFT_VX + ix) * SIFT_VZ + iz] = 1;
+                }
+            }
+        }
+    }
+
+    memset(s_vox, 0, sizeof(s_vox));
+    uint16_t top = 0;
+    for(int32_t iy = 0; iy < SIFT_VNECK; iy++) {
+        for(int32_t ix = 0; ix < SIFT_VX; ix++) {
+            for(int32_t iz = 0; iz < SIFT_VZ; iz++) {
+                int32_t i = (iy * SIFT_VX + ix) * SIFT_VZ + iz;
+                if(!s_vox_inside[i]) continue;
+                s_vox[i] = (uint8_t)(1 + (sift_hash(ix * 7 + iz * 3, iy * 5) % 4U));
+                top++;
+            }
+        }
+    }
+    s_vox_total = top;
+    s_vox_top = top;
+    s_vox_bottom = 0;
+    s_vox_flow = 0;
+    s_vox_step = 0;
+    vox_count();
 }
 
 static void sand_init(void)
 {
-    memset(s_sand_a, 0, sizeof(s_sand_a));
-    memset(s_sand_b, 0, sizeof(s_sand_b));
-    s.sand = s_sand_a;
-    s.sand_next = s_sand_b;
-    s.step_phase = 0;
     s.flips = 0;
     s.empty_since = 0;
-
-    for(int32_t y = 0; y < SIFT_ROWS; y++) {
-        int32_t cell_y = SIFT_GRID_Y0 + y * SIFT_CELL + 1;
-        if(cell_y >= SIFT_NECK_Y) continue;
-        for(int32_t x = 0; x < SIFT_COLS; x++) {
-            int32_t index = y * SIFT_COLS + x;
-            if(!s_inside[index]) continue;
-            if(y * SIFT_CELL < 20) continue;
-            uint8_t value = (uint8_t)(1 + (sift_rand() % 4));
-            s.sand[index] = value;
-        }
-    }
-    sand_recount();
+    s.flip_active = false;
+    s.flip_angle = 0.0f;
+    vox_init();
 }
 
 static void sand_mirror(void)
 {
-    memset(s.sand_next, 0, sizeof(s_sand_b));
-    for(int32_t y = 0; y < SIFT_ROWS; y++) {
-        for(int32_t x = 0; x < SIFT_COLS; x++) {
-            uint8_t value = s.sand[y * SIFT_COLS + x];
-            if(value != 0) {
-                s.sand_next[(SIFT_ROWS - 1 - y) * SIFT_COLS + x] = value;
-            }
+    memset(s_vox_tmp, 0, sizeof(s_vox_tmp));
+    for(int32_t iy = 0; iy < SIFT_VY; iy++) {
+        for(int32_t ix = 0; ix < SIFT_VX; ix++) {
+            const int32_t src = (iy * SIFT_VX + ix) * SIFT_VZ;
+            const int32_t dst = ((SIFT_VY - 1 - iy) * SIFT_VX + ix) * SIFT_VZ;
+            memcpy(&s_vox_tmp[dst], &s_vox[src], SIFT_VZ);
         }
     }
-    uint8_t *tmp = s.sand;
-    s.sand = s.sand_next;
-    s.sand_next = tmp;
+    memcpy(s_vox, s_vox_tmp, sizeof(s_vox));
     s.empty_since = 0;
-    sand_recount();
+    vox_count();
 }
 
 static void sift_flip(void)
 {
-    sand_mirror();
+    uint32_t now = lv_tick_get();
+    if(s.flip_active) return;
+    if(now - s.last_flip_at < 160U) return;
+    s.last_flip_at = now;
+    s.flip_active = true;
+    s.flip_start = now;
+    s.flip_angle = 0.0f;
     s.flips++;
-    s.last_input = lv_tick_get();
+    s.last_input = now;
     snprintf(s.notice, sizeof(s.notice), "FLIP %02d", s.flips);
-    s.notice_until = lv_tick_get() + 1200U;
+    s.notice_until = now + 1200U;
     vibe_pulse();
-    printf("[sift_watch] flip=%d source=sensor\n", s.flips);
+    printf("[sift_watch] flip=%d\n", s.flips);
+}
+
+/* A real X-axis rotation: the frame turns in depth and the glass/sand plane
+ * shears; the voxel grid is projected with the same rotation. */
+static void update_flip(uint32_t now)
+{
+    if(!s.flip_active) return;
+    uint32_t elapsed = now - s.flip_start;
+    if(elapsed >= SIFT_FLIP_MS) {
+        sand_mirror();
+        s.flip_active = false;
+        s.flip_angle = 0.0f;
+        return;
+    }
+    s.flip_angle = (float)elapsed / (float)SIFT_FLIP_MS * SIFT_PI;
 }
 
 static void sand_step(void)
 {
-    uint8_t *src = s.sand;
-    uint8_t *dst = s.sand_next;
-    memset(dst, 0, sizeof(s_sand_b));
-    int32_t bias = s.smooth_roll > 3 ? 1 : (s.smooth_roll < -3 ? -1 : 0);
-    bool strong = s.smooth_roll > 18 || s.smooth_roll < -18;
-    bool reverse = (s.step_phase++ & 1U) != 0U;
+    if(s.flip_active) return;
+    s_vox_step++;
+    const uint32_t step = s_vox_step;
     uint16_t crossed = 0;
+    static const int8_t dirs[8][2] = {
+        {1, 0}, {-1, 0}, {0, 1}, {0, -1},
+        {1, 1}, {1, -1}, {-1, 1}, {-1, -1},
+    };
 
-    for(int32_t y = SIFT_ROWS - 1; y >= 0; y--) {
-        for(int32_t n = 0; n < SIFT_COLS; n++) {
-            int32_t x = reverse ? SIFT_COLS - 1 - n : n;
-            int32_t index = y * SIFT_COLS + x;
-            uint8_t value = src[index];
-            if(value == 0) continue;
-            if((sift_rand() % 100U) < 48U) {
-                if(dst[index] == 0) dst[index] = value;
-                continue;
-            }
+    for(int32_t iy = SIFT_VY - 1; iy >= 0; iy--) {
+        const int32_t xf = (int32_t)((step + (uint32_t)iy) & 1U);
+        const int32_t zf = (int32_t)((step + (uint32_t)iy * 3U) & 1U);
+        for(int32_t nx = 0; nx < SIFT_VX; nx++) {
+            const int32_t ix = xf ? nx : SIFT_VX - 1 - nx;
+            const int32_t row_base = (iy * SIFT_VX + ix) * SIFT_VZ;
+            for(int32_t nz = 0; nz < SIFT_VZ; nz++) {
+                const int32_t iz = zf ? nz : SIFT_VZ - 1 - nz;
+                const int32_t i = row_base + iz;
+                const uint8_t v = s_vox[i];
+                if(v == 0) continue;
+                if((sift_hash(ix * 13 + iz * 7, iy * 11 + (int32_t)step) % 100U) < 35U) continue;
 
-            int32_t side = bias != 0 ? bias : ((sift_rand() & 1U) ? 1 : -1);
-            int32_t moves[4][2];
-            int32_t move_count = 0;
-            if(bias != 0) {
-                moves[move_count][0] = side;
-                moves[move_count][1] = 1;
-                move_count++;
+                bool moved = false;
+                if(iy + 1 < SIFT_VY) {
+                    const int32_t ni = ((iy + 1) * SIFT_VX + ix) * SIFT_VZ + iz;
+                    if(s_vox_inside[ni] && s_vox[ni] == 0) {
+                        s_vox[ni] = v;
+                        s_vox[i] = 0;
+                        moved = true;
+                        if(iy < SIFT_VNECK && iy + 1 >= SIFT_VNECK) crossed++;
+                    }
+                }
+                if(!moved && iy + 1 < SIFT_VY) {
+                    const int32_t start = (int32_t)(sift_hash(ix * 3 + iz * 5,
+                                                             iy * 7 + (int32_t)step) % 8U);
+                    for(int32_t k = 0; k < 8; k++) {
+                        const int8_t *d = dirs[(start + k) & 7];
+                        const int32_t tx = ix + d[0];
+                        const int32_t tz = iz + d[1];
+                        if(tx < 0 || tx >= SIFT_VX || tz < 0 || tz >= SIFT_VZ) continue;
+                        const int32_t ni = ((iy + 1) * SIFT_VX + tx) * SIFT_VZ + tz;
+                        if(!s_vox_inside[ni] || s_vox[ni] != 0) continue;
+                        s_vox[ni] = v;
+                        s_vox[i] = 0;
+                        if(iy < SIFT_VNECK && iy + 1 >= SIFT_VNECK) crossed++;
+                        break;
+                    }
+                }
             }
-            moves[move_count][0] = 0;
-            moves[move_count][1] = 1;
-            move_count++;
-            moves[move_count][0] = -side;
-            moves[move_count][1] = 1;
-            move_count++;
-            if(strong) {
-                moves[move_count][0] = side;
-                moves[move_count][1] = 0;
-                move_count++;
-            }
-
-            bool moved = false;
-            for(int32_t m = 0; m < move_count; m++) {
-                int32_t nx = x + moves[m][0];
-                int32_t ny = y + moves[m][1];
-                if(nx < 0 || nx >= SIFT_COLS || ny < 0 || ny >= SIFT_ROWS) continue;
-                int32_t ni = ny * SIFT_COLS + nx;
-                if(!s_inside[ni] || src[ni] != 0 || dst[ni] != 0) continue;
-                src[index] = 0;
-                dst[ni] = value;
-                if(ny >= SIFT_NECK_ROW && y < SIFT_NECK_ROW) crossed++;
-                moved = true;
-                break;
-            }
-            if(!moved && dst[index] == 0) dst[index] = value;
         }
     }
 
-    uint8_t *tmp = s.sand;
-    s.sand = s.sand_next;
-    s.sand_next = tmp;
-    uint32_t instant = (uint32_t)crossed * 12U;
-    s.stats.flow = (uint16_t)((s.stats.flow * 7U + instant * 2U) / 10U);
-    sand_recount();
+    uint32_t target = (uint32_t)crossed * 9U;
+    s_vox_flow = (uint16_t)(((uint32_t)s_vox_flow * 82U + target * 18U) / 100U);
+    vox_count();
 }
 
 static void update_tilt(uint32_t now)
@@ -728,6 +885,17 @@ static void update_tilt(uint32_t now)
     int32_t ease = s.sensor_live && !manual ? 2 : 5;
     s.smooth_roll += (s.target_roll - s.smooth_roll) / ease;
     s.smooth_pitch += (s.target_pitch - s.smooth_pitch) / ease;
+}
+
+/* PSEUDO3D: the orbit camera eases toward the drag target at ~12/s, matching
+ * the HTML preview. Angles are radians. */
+static void update_orbit(uint32_t elapsed_ms)
+{
+    float dt = (float)elapsed_ms / 1000.0f;
+    if(dt > 0.1f) dt = 0.1f;
+    float ease = 1.0f - expf(-dt * 12.0f);
+    s.orbit_yaw += (s.orbit_yaw_target - s.orbit_yaw) * ease;
+    s.orbit_elev += (s.orbit_elev_target - s.orbit_elev) * ease;
 }
 
 static void update_idle(uint32_t now)
@@ -862,22 +1030,385 @@ static int32_t hg_half_width(int32_t row)
     return hg_half_widths[row];
 }
 
-static void draw_cap(int32_t y)
+/* PSEUDO3D: orthographic orbit camera. World +x right, +y up, +z toward the
+ * viewer; yaw spins around the hourglass axis and elevation lifts the camera.
+ * The glass is a lathe, so only the wooden frame and the sand layers reveal
+ * the rotation. Cost per frame: 4 trig calls, 6 boxes, <=18 quads. */
+typedef struct {
+    float cy;
+    float sy;
+    float ce;
+    float se;
+} orbit_m_t;
+
+typedef struct {
+    int32_t xs[4];
+    int32_t ys[4];
+    int32_t depth;
+    uint16_t color;
+} quad_face_t;
+
+static void orbit_matrix(orbit_m_t *m)
 {
-    fill_rect(195 - 108, y, 216, 14, COL_WOOD_DARK);
-    fill_rect(195 - 106, y + 2, 212, 10, COL_WOOD);
-    fill_rect(195 - 103, y + 3, 206, 2, COL_WOOD_HI);
-    for(int32_t x = 195 - 84; x <= 195 + 84; x += 21) {
-        fill_rect(x, y + 4, 1, 7, COL_WOOD_DARK);
+    m->cy = cosf(s.orbit_yaw);
+    m->sy = sinf(s.orbit_yaw);
+    m->ce = cosf(s.orbit_elev);
+    m->se = sinf(s.orbit_elev);
+}
+
+static float flip_cos(void)
+{
+    return s.flip_active ? cosf(s.flip_angle) : 1.0f;
+}
+
+static float flip_sin(void)
+{
+    return s.flip_active ? sinf(s.flip_angle) : 0.0f;
+}
+
+/* Local glass/voxel plane: X rotation compresses vertically and shears rows
+ * sideways at nonzero yaw. */
+static int32_t map_local_y(float local_y, const orbit_m_t *m)
+{
+    float k = flip_cos() * m->ce - flip_sin() * m->cy * m->se;
+    return round_f32((float)SIFT_HG_CY + (local_y - (float)SIFT_HG_CY) * k);
+}
+
+static int32_t map_local_x(float x, float local_y, const orbit_m_t *m)
+{
+    return round_f32(x + (local_y - (float)SIFT_HG_CY) * flip_sin() * m->sy);
+}
+
+static void project3(int32_t x, int32_t y, int32_t z, const orbit_m_t *m,
+                     int32_t *out_x, int32_t *out_y, int32_t *out_depth)
+{
+    float fc = flip_cos();
+    float fs = flip_sin();
+    float yf = (float)y * fc - (float)z * fs;
+    float zf = (float)y * fs + (float)z * fc;
+    float px = (float)SIFT_HG_CX + (float)x * m->cy - zf * m->sy;
+    float py = (float)SIFT_HG_CY - yf * m->ce +
+               (float)x * m->sy * m->se + zf * m->cy * m->se;
+    float pd = -((float)x * m->ce * m->sy + yf * m->se +
+                 zf * m->ce * m->cy);
+    *out_x = round_f32(px);
+    *out_y = round_f32(py);
+    *out_depth = round_f32(pd * 100.0f);
+}
+
+/* Half-ellipse outline sampled every few degrees; 2 px blocks keep the
+ * pixel-art edge and avoid per-pixel anti-aliasing. */
+static void ellipse_arc(int32_t cx, int32_t cy, int32_t rx, int32_t ry,
+                        int32_t start_deg, int32_t end_deg, uint16_t color, int32_t size)
+{
+    int32_t steps = 48;
+    for(int32_t i = 0; i <= steps; i++) {
+        float a = ((float)start_deg + (float)(end_deg - start_deg) *
+                   (float)i / (float)steps) * SIFT_PI / 180.0f;
+        int32_t x = cx + round_f32((float)rx * cosf(a));
+        int32_t y = cy + round_f32((float)ry * sinf(a));
+        fill_rect(x - size / 2, y - size / 2, size, size, color);
     }
-    fill_rect(195 - 100, y + 5, 4, 4, COL_SAND_DIM);
-    fill_rect(195 + 96, y + 5, 4, 4, COL_SAND_DIM);
+}
+
+static void fill_quad(const int32_t *xs, const int32_t *ys, uint16_t color)
+{
+    int32_t min_y = ys[0];
+    int32_t max_y = ys[0];
+    for(int32_t i = 1; i < 4; i++) {
+        if(ys[i] < min_y) min_y = ys[i];
+        if(ys[i] > max_y) max_y = ys[i];
+    }
+    if(min_y < 0) min_y = 0;
+    if(max_y >= SIFT_H) max_y = SIFT_H - 1;
+    for(int32_t y = min_y; y <= max_y; y++) {
+        int32_t xi[4];
+        int32_t count = 0;
+        for(int32_t i = 0; i < 4; i++) {
+            int32_t j = (i + 1) & 3;
+            int32_t y1 = ys[i];
+            int32_t y2 = ys[j];
+            if((y1 <= y && y2 > y) || (y2 <= y && y1 > y)) {
+                xi[count++] = xs[i] + (int32_t)(((int64_t)(y - y1) *
+                                                (xs[j] - xs[i])) / (y2 - y1));
+            }
+        }
+        if(count < 2) continue;
+        int32_t x0 = xi[0];
+        int32_t x1 = xi[0];
+        for(int32_t i = 1; i < count; i++) {
+            if(xi[i] < x0) x0 = xi[i];
+            if(xi[i] > x1) x1 = xi[i];
+        }
+        fill_rect(x0, y, x1 - x0 + 1, 1, color);
+    }
+}
+
+static void draw_box3(int32_t cx, int32_t cy, int32_t cz,
+                      int32_t hx, int32_t hy, int32_t hz,
+                      const orbit_m_t *m, bool back)
+{
+    static const int8_t face_idx[6][4] = {
+        {4, 5, 6, 7}, {1, 0, 3, 2}, {7, 6, 2, 3},
+        {0, 1, 5, 4}, {5, 6, 2, 1}, {0, 4, 7, 3},
+    };
+    static const int8_t face_n[6][3] = {
+        {0, 0, 1}, {0, 0, -1}, {0, 1, 0},
+        {0, -1, 0}, {1, 0, 0}, {-1, 0, 0},
+    };
+    int32_t corners[8][3] = {
+        {cx - hx, cy - hy, cz - hz}, {cx + hx, cy - hy, cz - hz},
+        {cx + hx, cy + hy, cz - hz}, {cx - hx, cy + hy, cz - hz},
+        {cx - hx, cy - hy, cz + hz}, {cx + hx, cy - hy, cz + hz},
+        {cx + hx, cy + hy, cz + hz}, {cx - hx, cy + hy, cz + hz},
+    };
+    int32_t cam_x = round_f32(-m->ce * m->sy * 100.0f);
+    int32_t cam_y = round_f32(-m->se * 100.0f);
+    int32_t cam_z = round_f32(-m->ce * m->cy * 100.0f);
+    quad_face_t list[6];
+    int32_t count = 0;
+    float fc = flip_cos();
+    float fs = flip_sin();
+
+    for(int32_t f = 0; f < 6; f++) {
+        float nx = (float)face_n[f][0];
+        float ny = (float)face_n[f][1] * fc - (float)face_n[f][2] * fs;
+        float nz = (float)face_n[f][1] * fs + (float)face_n[f][2] * fc;
+        if(nx * cam_x + ny * cam_y + nz * cam_z >= 0.0f) continue;
+        quad_face_t face;
+        int32_t depth = 0;
+        for(int32_t k = 0; k < 4; k++) {
+            const int32_t *c = corners[face_idx[f][k]];
+            int32_t d;
+            project3(c[0], c[1], c[2], m, &face.xs[k], &face.ys[k], &d);
+            depth += d;
+        }
+        face.depth = depth / 4;
+        if((face.depth > 0) != back) continue;
+        float lum = nx * -0.35f + ny * 0.8f + nz * 0.45f;
+        face.color = lum > 0.5f ? COL_WOOD_HI : (lum > 0.05f ? COL_WOOD : COL_WOOD_DARK);
+        list[count++] = face;
+    }
+
+    /* Farther faces first inside each batch. */
+    for(int32_t i = 1; i < count; i++) {
+        quad_face_t key = list[i];
+        int32_t j = i - 1;
+        while(j >= 0 && list[j].depth < key.depth) {
+            list[j + 1] = list[j];
+            j--;
+        }
+        list[j + 1] = key;
+    }
+
+    for(int32_t i = 0; i < count; i++) {
+        fill_quad(list[i].xs, list[i].ys, list[i].color);
+        for(int32_t k = 0; k < 4; k++) {
+            int32_t n = (k + 1) & 3;
+            draw_line(list[i].xs[k], list[i].ys[k],
+                      list[i].xs[n], list[i].ys[n], COL_WOOD_DARK, 1);
+        }
+    }
+}
+
+static void draw_frame3d(const orbit_m_t *m, bool back)
+{
+    static const int16_t posts[4][2] = {
+        {-SIFT_FRAME_HALF_X, -SIFT_FRAME_HALF_Z},
+        {SIFT_FRAME_HALF_X, -SIFT_FRAME_HALF_Z},
+        {-SIFT_FRAME_HALF_X, SIFT_FRAME_HALF_Z},
+        {SIFT_FRAME_HALF_X, SIFT_FRAME_HALF_Z},
+    };
+    for(int32_t i = 0; i < 4; i++) {
+        draw_box3(posts[i][0], 0, posts[i][1],
+                  SIFT_FRAME_POST_HALF, SIFT_FRAME_POST_TOP, SIFT_FRAME_POST_HALF, m, back);
+    }
+    draw_box3(0, SIFT_FRAME_CAP_Y, 0,
+              SIFT_FRAME_CAP_HALF_X, SIFT_FRAME_CAP_HALF_Y, SIFT_FRAME_CAP_HALF_Z, m, back);
+    draw_box3(0, -SIFT_FRAME_CAP_Y, 0,
+              SIFT_FRAME_CAP_HALF_X, SIFT_FRAME_CAP_HALF_Y, SIFT_FRAME_CAP_HALF_Z, m, back);
+}
+
+/* Grain and bolt details on the cap face currently facing the camera. */
+static void draw_cap_details(const orbit_m_t *m)
+{
+    int32_t faces[2];
+    if(m->se > 0.05f) {
+        faces[0] = SIFT_FRAME_CAP_Y + SIFT_FRAME_CAP_HALF_Y;
+        faces[1] = -SIFT_FRAME_CAP_Y + SIFT_FRAME_CAP_HALF_Y;
+    }
+    else if(m->se < -0.05f) {
+        faces[0] = SIFT_FRAME_CAP_Y - SIFT_FRAME_CAP_HALF_Y;
+        faces[1] = -SIFT_FRAME_CAP_Y - SIFT_FRAME_CAP_HALF_Y;
+    }
+    else {
+        return;
+    }
+
+    for(int32_t f = 0; f < 2; f++) {
+        int32_t face_y = faces[f];
+        for(int32_t i = -1; i <= 1; i++) {
+            int32_t ax, ay, bx, by, d;
+            project3(-78, face_y, i * 44, m, &ax, &ay, &d);
+            project3(78, face_y, i * 44, m, &bx, &by, &d);
+            draw_line(ax, ay, bx, by, COL_WOOD_DARK, 1);
+        }
+        for(int32_t sx = -1; sx <= 1; sx += 2) {
+            for(int32_t sz = -1; sz <= 1; sz += 2) {
+                int32_t px, py, d;
+                project3(sx * 96, face_y, sz * 64, m, &px, &py, &d);
+                fill_rect(px - 1, py - 1, 3, 3, COL_SAND_DIM);
+            }
+        }
+    }
+}
+
+static void draw_orbit_rims(const orbit_m_t *m)
+{
+    /* Only the two cap rims; the neck ring read as a floating circle. */
+    static const int16_t ring_y[2] = {120, -120};
+    static const int16_t ring_r[2] = {80, 80};
+    float fc = flip_cos();
+    float fs = flip_sin();
+    for(int32_t i = 0; i < 2; i++) {
+        int32_t cx = round_f32((float)SIFT_HG_CX -
+                               (float)ring_y[i] * fs * m->sy);
+        int32_t cy = round_f32((float)SIFT_HG_CY -
+                               (float)ring_y[i] * fc * m->ce +
+                               (float)ring_y[i] * fs * m->cy * m->se);
+        int32_t ry = round_f32((float)ring_r[i] *
+                               fabsf(fs * m->ce + fc * m->cy * m->se));
+        if(ry < 1) ry = 1;
+        ellipse_arc(cx, cy, ring_r[i], ry, 180, 360, COL_MINT_DIM, 2);
+        ellipse_arc(cx, cy, ring_r[i], ry, 0, 180, COL_MINT_HI, 2);
+    }
+}
+
+/* Glass body as a lathe under the card transform: local rows map to screen
+ * with the X rotation, and yaw shears the rows sideways. */
+static void draw_glass_3d(const orbit_m_t *m)
+{
+    float k = flip_cos() * m->ce - flip_sin() * m->cy * m->se;
+    if(fabsf(k) < 0.02f) return;
+    int32_t rh = round_f32((float)SIFT_CELL * fabsf(k));
+    if(rh < 1) rh = 1;
+    for(int32_t row = 0; row < SIFT_ROWS; row++) {
+        float local_y = (float)SIFT_HG_TOP + (float)row * (float)SIFT_CELL;
+        int32_t y = map_local_y(local_y, m);
+        int32_t cx = map_local_x((float)SIFT_HG_CX, local_y, m);
+        int32_t half = hg_half_width(row < 40 ? row : 79 - row) + 7;
+        fill_rect(cx - half, y, half * 2, rh, COL_GLASS);
+        uint16_t edge = (row < 4 || row > 75) ? COL_MINT : COL_MINT_DIM;
+        fill_rect(cx - half, y, 2, rh, edge);
+        fill_rect(cx + half - 2, y, 2, rh, edge);
+        if((row % 7) == 0 || row < 8 || row > 71) {
+            fill_rect(cx - half + 2, y, 1, rh, COL_MINT_HI);
+            fill_rect(cx + half - 3, y, 1, rh, COL_MINT_HI);
+        }
+    }
+
+    static const int16_t hi_x[5] = {144, 150, 157, 231, 237};
+    static const int16_t hi_top[5] = {133, 145, 157, 281, 292};
+    static const int16_t hi_h[5] = {18, 11, 8, 8, 19};
+    for(int32_t i = 0; i < 5; i++) {
+        float center = (float)hi_top[i] + (float)hi_h[i] * 0.5f;
+        int32_t cy = map_local_y(center, m);
+        int32_t cx = map_local_x((float)hi_x[i], center, m);
+        int32_t hh = round_f32((float)hi_h[i] * fabsf(k));
+        if(hh < 1) hh = 1;
+        fill_rect(cx, cy - hh / 2, 3, hh, i < 3 ? COL_MINT_HI : COL_MINT);
+    }
+    int32_t neck_y = map_local_y((float)(SIFT_NECK_Y - 4), m);
+    int32_t neck_h = round_f32(8.0f * fabsf(k));
+    if(neck_h < 1) neck_h = 1;
+    int32_t neck_cx1 = map_local_x((float)(SIFT_HG_CX - 14 + 1), (float)(SIFT_NECK_Y - 4), m);
+    int32_t neck_cx2 = map_local_x((float)(SIFT_HG_CX + 14 - 3), (float)(SIFT_NECK_Y - 4), m);
+    fill_rect(neck_cx1, neck_y - neck_h / 2, 2, neck_h, COL_MINT_DIM);
+    fill_rect(neck_cx2, neck_y - neck_h / 2, 2, neck_h, COL_MINT_DIM);
+}
+
+static inline bool vox_solid(int32_t ix, int32_t iy, int32_t iz)
+{
+    if(ix < 0 || ix >= SIFT_VX || iy < 0 || iy >= SIFT_VY ||
+       iz < 0 || iz >= SIFT_VZ) {
+        return false;
+    }
+    return s_vox[(iy * SIFT_VX + ix) * SIFT_VZ + iz] != 0;
+}
+
+static void build_vox_sprites(void)
+{
+    uint16_t tones[4] = {COL_SAND_DIM, COL_SAND, COL_SAND_HI, COL_SAND_PALE};
+    for(int32_t i = 0; i < 4; i++) {
+        for(int32_t r = 0; r < 8; r++) {
+            for(int32_t c = 0; c < 8; c++) s_vox_sprite[i][r][c] = tones[i];
+        }
+        /* Only a light upper/left edge: a dark lower edge would line up
+         * across a voxel layer and read as a stripe through the pile. */
+        for(int32_t c = 0; c < 8; c++) s_vox_sprite[i][0][c] = COL_SAND_PALE;
+        for(int32_t r = 0; r < 8; r++) s_vox_sprite[i][r][0] = COL_SAND_PALE;
+    }
+    s_vox_sprites_ready = true;
+}
+
+/* Draw visible voxels into 16 depth bins, then paint far-to-near. Each voxel
+ * is one 7x7 lit grain sprite; interior cells are skipped entirely. */
+static void draw_voxels(const orbit_m_t *m)
+{
+    if(!s_vox_sprites_ready) build_vox_sprites();
+    memset(s_vbins, 0, sizeof(s_vbins));
+
+    for(int32_t iy = 0; iy < SIFT_VY; iy++) {
+        for(int32_t ix = 0; ix < SIFT_VX; ix++) {
+            const int32_t base = (iy * SIFT_VX + ix) * SIFT_VZ;
+            for(int32_t iz = 0; iz < SIFT_VZ; iz++) {
+                const uint8_t v = s_vox[base + iz];
+                if(v == 0) continue;
+                if(vox_solid(ix - 1, iy, iz) && vox_solid(ix + 1, iy, iz) &&
+                   vox_solid(ix, iy - 1, iz) && vox_solid(ix, iy + 1, iz) &&
+                   vox_solid(ix, iy, iz - 1) && vox_solid(ix, iy, iz + 1)) {
+                    continue;
+                }
+                const float wx = (ix + 0.5f) * SIFT_VCELL - 90.0f;
+                const float wz = (iz + 0.5f) * SIFT_VCELL - 90.0f;
+                const float y_local = (float)SIFT_HG_TOP +
+                    (iy + 0.5f) * ((float)(SIFT_HG_BOTTOM - SIFT_HG_TOP) / SIFT_VY);
+                const float wy = -(y_local - (float)SIFT_HG_CY);
+                int32_t px, py, depth;
+                project3(round_f32(wx), round_f32(wy), round_f32(wz), m,
+                         &px, &py, &depth);
+                int32_t bin = (depth + 22000) * SIFT_VBINS / 44000;
+                bin = clamp_i32(bin, 0, SIFT_VBINS - 1);
+                if(s_vbins[bin] >= SIFT_VCAP) continue;
+                const int32_t pos = bin * SIFT_VCAP + s_vbins[bin]++;
+                s_vpx[pos] = (int16_t)px;
+                s_vpy[pos] = (int16_t)py;
+                int32_t ci = (int32_t)v - 1;
+                if(bin >= 12 && ci > 0) ci--;
+                else if(bin <= 3 && ci < 3) ci++;
+                s_vpc[pos] = (uint8_t)ci;
+            }
+        }
+    }
+
+    for(int32_t bin = SIFT_VBINS - 1; bin >= 0; bin--) {
+        const int32_t base = bin * SIFT_VCAP;
+        const uint16_t n = s_vbins[bin];
+        for(uint16_t k = 0; k < n; k++) {
+            const int32_t px = s_vpx[base + k];
+            const int32_t py = s_vpy[base + k];
+            const uint16_t (*sprite)[8] = s_vox_sprite[s_vpc[base + k]];
+            for(int32_t r = 0; r < 8; r++) {
+                for(int32_t c = 0; c < 8; c++) {
+                    put_px(px - 4 + c, py - 4 + r, sprite[r][c]);
+                }
+            }
+        }
+    }
 }
 
 static void draw_hourglass(void)
 {
-    uint16_t sand_colors[] = {COL_SAND, COL_SAND_HI, COL_SAND_DIM, COL_SAND_PALE};
-
     /* Warm glow behind the glass. */
     for(int32_t y = 110; y < 350; y += 9) {
         for(int32_t x = 45; x < 345; x += 9) {
@@ -889,48 +1420,24 @@ static void draw_hourglass(void)
         }
     }
 
-    /* Wooden posts. */
-    fill_rect(93, 98, 7, 256, COL_WOOD_DARK);
-    fill_rect(94, 100, 2, 252, COL_WOOD);
-    fill_rect(96, 102, 1, 210, COL_WOOD_HI);
-    fill_rect(291, 98, 7, 256, COL_WOOD_DARK);
-    fill_rect(292, 100, 2, 252, COL_WOOD);
-    fill_rect(294, 102, 1, 210, COL_WOOD_HI);
+    orbit_m_t m;
+    orbit_matrix(&m);
 
-    /* Glass body. */
-    for(int32_t row = 0; row < SIFT_ROWS; row++) {
-        int32_t half = hg_half_width(row < 40 ? row : 79 - row) + 7;
-        int32_t y = SIFT_HG_TOP + row * SIFT_CELL;
-        fill_rect(195 - half, y, half * 2, SIFT_CELL, COL_GLASS);
-        fill_rect(195 - half, y, 2, SIFT_CELL, row < 4 || row > 75 ? COL_MINT : COL_MINT_DIM);
-        fill_rect(195 + half - 2, y, 2, SIFT_CELL, row < 4 || row > 75 ? COL_MINT : COL_MINT_DIM);
-    }
-
-    /* Sand grains. */
-    for(int32_t y = 0; y < SIFT_ROWS; y++) {
-        for(int32_t x = 0; x < SIFT_COLS; x++) {
-            uint8_t value = s.sand[y * SIFT_COLS + x];
-            if(value == 0) continue;
-            int32_t px = SIFT_GRID_X0 + x * SIFT_CELL;
-            int32_t py = SIFT_GRID_Y0 + y * SIFT_CELL;
-            uint16_t color = sand_colors[(value - 1) & 3];
-            fill_rect(px, py, SIFT_CELL, SIFT_CELL, color);
-            if(y == 0 || s.sand[(y - 1) * SIFT_COLS + x] == 0) {
-                fill_rect(px, py, SIFT_CELL, 1, COL_SAND_HI);
-            }
-        }
-    }
+    draw_frame3d(&m, true);
+    draw_glass_3d(&m);
+    draw_voxels(&m);
+    draw_orbit_rims(&m);
+    draw_frame3d(&m, false);
+    draw_cap_details(&m);
 
     bool nearly_empty = s.stats.total > 0 &&
                         (s.stats.top * 100U / s.stats.total) < 5U;
     if(!nearly_empty && s.stats.flow > 2U) {
-        fill_rect(181, 224, 28, 3, COL_SAND);
-        fill_rect(188, 220, 2, 9, COL_SAND_HI);
-        fill_rect(200, 222, 2, 7, COL_SAND_HI);
+        int32_t glow_y = map_local_y((float)SIFT_NECK_Y, &m);
+        fill_rect(181, glow_y - 2, 28, 3, COL_SAND);
+        fill_rect(188, glow_y - 6, 2, 9, COL_SAND_HI);
+        fill_rect(200, glow_y - 4, 2, 7, COL_SAND_HI);
     }
-
-    draw_cap(92);
-    draw_cap(346);
 }
 
 static void draw_button(int32_t x, int32_t y, int32_t w, int32_t h, const char *label,
@@ -967,8 +1474,9 @@ static void draw_watch_footer(void)
                             : "SENSOR FLIP / LINK 6-AXIS",
               195, 404, 1, flip_color, 1);
 
-    const char *hint = s.sensor_live ? "SWIPE PAGES  /  DRAG OR TILT"
-                                     : "SWIPE PAGES  /  DRAG TILT";
+    const char *hint = "TAP FLIP  /  DRAG ORBIT  /  SWIPE PAGES";
+    if(s.sensor_live) hint = "TAP FLIP  /  DRAG ORBIT  /  TILT SENSOR";
+    else if(s.auto_now) hint = "TAP FLIP  /  DRAG ORBIT  /  AUTO DRIFT";
     if(lv_tick_get() < s.notice_until) hint = s.notice;
     draw_text(hint, 195, 419, 1, COL_MUTED, 1);
 }
@@ -1043,32 +1551,56 @@ static void draw_icon_settings(int32_t cx, int32_t cy)
     fill_rect(cx - 14, cy + 7, 6, 8, COL_SAND);
 }
 
+static void draw_icon_zombie(int32_t cx, int32_t cy)
+{
+    /* A small infected head behind a cannon, framed by a reticle. */
+    fill_rect(cx - 8, cy - 20, 16, 13, COL_LINE);
+    fill_rect(cx - 6, cy - 18, 12, 9, COL_MINT_DIM);
+    fill_rect(cx - 4, cy - 15, 3, 3, COL_SAND);
+    fill_rect(cx + 2, cy - 15, 3, 3, COL_SAND);
+    fill_rect(cx - 5, cy - 10, 10, 2, COL_INK);
+    fill_rect(cx - 2, cy - 8, 4, 2, COL_SAND_DIM);
+    fill_rect(cx - 13, cy + 7, 26, 6, COL_INK);
+    fill_rect(cx - 10, cy + 8, 20, 4, COL_LINE2);
+    fill_rect(cx - 4, cy + 3, 8, 8, COL_LINE2);
+    draw_line(cx, cy + 4, cx + 15, cy - 6, COL_SAND_DIM, 3);
+    fill_rect(cx + 13, cy - 9, 5, 5, COL_SAND);
+    /* reticle brackets */
+    fill_rect(cx - 24, cy + 2, 7, 2, COL_MINT);
+    fill_rect(cx - 24, cy + 2, 2, 7, COL_MINT);
+    fill_rect(cx + 18, cy + 2, 7, 2, COL_MINT);
+    fill_rect(cx + 23, cy + 2, 2, 7, COL_MINT);
+    fill_rect(cx - 24, cy - 4, 2, 6, COL_MINT_DIM);
+    fill_rect(cx + 23, cy - 4, 2, 6, COL_MINT_DIM);
+}
+
 static void draw_tile_icon(uint8_t index, int32_t cx, int32_t cy)
 {
     if(index == 0) draw_mini_hourglass(cx, cy, COL_SAND, COL_SAND_HI);
     else if(index == 1) draw_icon_stopwatch(cx, cy);
     else if(index == 2) draw_icon_weather(cx, cy);
-    else draw_icon_settings(cx, cy);
+    else if(index == 3) draw_icon_settings(cx, cy);
+    else draw_icon_zombie(cx, cy);
 }
 
 static void app_tile_rect(uint8_t index, int32_t *x, int32_t *y, int32_t *w, int32_t *h)
 {
-    *x = 22 + (index % 2) * 179;
-    *y = 82 + (index / 2) * 142;
-    *w = 167;
+    *x = 22 + (index % 3) * 119;
+    *y = 82 + (index / 3) * 142;
+    *w = 108;
     *h = 130;
 }
 
 static const char *app_title(uint8_t index)
 {
-    static const char *names[] = {"TIMER", "STOPWATCH", "WEATHER", "SETTINGS"};
-    return names[index & 3U];
+    static const char *names[] = {"TIMER", "STOPWATCH", "WEATHER", "SETTINGS", "ZOMBIE"};
+    return names[index < 5U ? index : 0U];
 }
 
 static const char *app_subtitle(uint8_t index)
 {
-    static const char *names[] = {"FOCUS", "PRECISION", "LOCAL SKY", "SYSTEM"};
-    return names[index & 3U];
+    static const char *names[] = {"FOCUS", "PRECISION", "LOCAL SKY", "SYSTEM", "ENDLESS"};
+    return names[index < 5U ? index : 0U];
 }
 
 static void app_status(uint8_t index, char *out, size_t out_size)
@@ -1091,15 +1623,20 @@ static void app_status(uint8_t index, char *out, size_t out_size)
         int temp = weather_temp(temp_c);
         snprintf(out, out_size, "%d~%c", temp, s.weather_unit);
     }
-    else {
+    else if(index == 3) {
         snprintf(out, out_size, "%s", s.auto_drift ? "AUTO" : "MANUAL");
+    }
+    else {
+        int32_t best = zc_best_wave();
+        if(best > 0) snprintf(out, out_size, "WAVE %02d", (int)(best > 99 ? 99 : best));
+        else snprintf(out, out_size, "READY");
     }
 }
 
 static void draw_app_drawer(void)
 {
-    draw_app_header("APPS", "04 PIXEL TOOLS");
-    for(uint8_t i = 0; i < 4; i++) {
+    draw_app_header("APPS", "05 PIXEL TOOLS");
+    for(uint8_t i = 0; i < 5; i++) {
         int32_t x;
         int32_t y;
         int32_t w;
@@ -1480,6 +2017,13 @@ static void draw_panel_mask(void)
 static void sift_render(void)
 {
     clock_update();
+    if(s.view == VIEW_ZOMBIE) {
+        if(s_game_ready) zc_render();
+        else draw_background();
+        draw_panel_mask();
+        if(s_canvas != NULL) lv_obj_invalidate(s_canvas);
+        return;
+    }
     draw_background();
     switch(s.view) {
     case VIEW_APPS:
@@ -1513,14 +2057,68 @@ static bool point_in_rect(int32_t x, int32_t y, int32_t rx, int32_t ry, int32_t 
     return x >= rx && x < rx + rw && y >= ry && y < ry + rh;
 }
 
+/* Dragging the hourglass itself orbits the 3D view; page swipes start
+ * outside this region so the two gestures do not fight. */
+static bool inside_orbit_zone(int32_t x, int32_t y)
+{
+    return x > 36 && x < 354 && y > 74 && y < 372;
+}
+
+static void sift_game_enter(void)
+{
+    if(s_game_ready) {
+        zc_enter();
+        if(zc_audio_start()) {
+            zc_audio_set_enabled(true);
+            zc_audio_set_muted(!zc_audio_on());
+        }
+        return;
+    }
+    if(s_fb == NULL) {
+        printf("[sift_watch] game has no canvas\n");
+        return;
+    }
+    if(s_game_bg == NULL) {
+#if defined(SIFT_HAS_APP_CANVAS_ALLOC)
+        s_game_bg = (uint16_t *)app_canvas_mem_alloc((size_t)SIFT_W * SIFT_H * sizeof(uint16_t));
+#else
+        s_game_bg = (uint16_t *)lv_malloc((size_t)SIFT_W * SIFT_H * sizeof(uint16_t));
+#endif
+    }
+    zc_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.width = SIFT_W;
+    cfg.height = SIFT_H;
+    cfg.safe_inset = SIFT_PANEL_RADIUS;
+    cfg.embedded = true;
+    cfg.show_scanlines = true;
+    cfg.hooks = &s_game_hooks;
+    s_game_ready = zc_create(s_fb, s_game_bg, &cfg);
+    if(s_game_ready) {
+        zc_enter();
+        if(zc_audio_start()) {
+            zc_audio_set_enabled(true);
+            zc_audio_set_muted(!zc_audio_on());
+        }
+    }
+    printf("[sift_watch] game ready=%d bg=%s audio=%d\n", s_game_ready ? 1 : 0,
+           s_game_bg != NULL ? "yes" : "no", zc_audio_is_started() ? 1 : 0);
+}
+
 static void open_view(sift_view_t view)
 {
+    sift_view_t previous = s.view;
+    if(previous == VIEW_ZOMBIE && view != VIEW_ZOMBIE) {
+        zc_leave();
+        zc_audio_set_enabled(false);
+    }
     s.view = view;
     s.settings_index = 0;
     s.manual_until = 0;
     s.last_input = lv_tick_get();
     s.dimmed = false;
     vibe_pulse();
+    if(view == VIEW_ZOMBIE && previous != VIEW_ZOMBIE) sift_game_enter();
     printf("[sift_watch] view=%d\n", (int)view);
 }
 
@@ -1531,7 +2129,7 @@ static void go_back(void)
 
 static void sift_page_step(int32_t direction)
 {
-    int32_t next = ((int32_t)s.view + direction + 6) % 6;
+    int32_t next = ((int32_t)s.view + direction + SIFT_PAGE_COUNT) % SIFT_PAGE_COUNT;
     open_view((sift_view_t)next);
 }
 
@@ -1570,8 +2168,13 @@ static void sift_handle_tap(int x, int y)
     }
 
     if(s.view == VIEW_WATCH) {
+        /* Header apps icon still opens the drawer; every other tap flips
+         * the hourglass, same as the HTML preview. */
         if(point_in_rect(x, y, 96, 8, 58, 32)) {
             open_view(VIEW_APPS);
+        }
+        else {
+            sift_flip();
         }
         return;
     }
@@ -1582,12 +2185,12 @@ static void sift_handle_tap(int x, int y)
     }
 
     if(s.view == VIEW_APPS) {
-        for(uint8_t i = 0; i < 4; i++) {
+        for(uint8_t i = 0; i < 5; i++) {
             int32_t rx, ry, rw, rh;
             app_tile_rect(i, &rx, &ry, &rw, &rh);
             if(point_in_rect(x, y, rx, ry, rw, rh)) {
                 s.app_index = i;
-                open_view((sift_view_t)(VIEW_TIMER + i));
+                open_view(i == 4 ? VIEW_ZOMBIE : (sift_view_t)(VIEW_TIMER + i));
                 return;
             }
         }
@@ -1649,6 +2252,14 @@ static void sift_handle_key(uint32_t key)
         return;
     }
 
+    if(s.view == VIEW_ZOMBIE) {
+        /* ENTER confirms, HOME/ESC pauses or leaves.  zc_key owns the mode
+         * policy; only an unhandled HOME falls back to the app drawer. */
+        if(!zc_key(key) && (key == LV_KEY_HOME || key == LV_KEY_ESC)) open_view(VIEW_APPS);
+        s.last_input = now;
+        return;
+    }
+
     if(s.view == VIEW_WATCH) {
         if(key == LV_KEY_ENTER || key == LV_KEY_NEXT || key == LV_KEY_RIGHT) {
             open_view(VIEW_APPS);
@@ -1667,11 +2278,14 @@ static void sift_handle_key(uint32_t key)
     }
 
     if(s.view == VIEW_APPS) {
-        if(key == LV_KEY_RIGHT) s.app_index = (uint8_t)((s.app_index + 1) & 3U);
-        else if(key == LV_KEY_LEFT) s.app_index = (uint8_t)((s.app_index + 3) & 3U);
-        else if(key == LV_KEY_DOWN) s.app_index = (uint8_t)((s.app_index + 2) & 3U);
-        else if(key == LV_KEY_UP) s.app_index = (uint8_t)((s.app_index + 2) & 3U);
-        else if(key == LV_KEY_ENTER) open_view((sift_view_t)(VIEW_TIMER + s.app_index));
+        int32_t col = s.app_index % 3;
+        if(key == LV_KEY_RIGHT && s.app_index + 1 < 5) s.app_index++;
+        else if(key == LV_KEY_LEFT && col > 0) s.app_index--;
+        else if(key == LV_KEY_DOWN && s.app_index + 3 < 5) s.app_index = (uint8_t)(s.app_index + 3);
+        else if(key == LV_KEY_UP && s.app_index >= 3) s.app_index = (uint8_t)(s.app_index - 3);
+        else if(key == LV_KEY_ENTER) {
+            open_view(s.app_index == 4 ? VIEW_ZOMBIE : (sift_view_t)(VIEW_TIMER + s.app_index));
+        }
         s.last_input = now;
         return;
     }
@@ -1736,6 +2350,24 @@ static void sift_canvas_event_cb(lv_event_t *event)
         return;
     }
 
+    if(s.view == VIEW_ZOMBIE) {
+        int32_t x = 0, y = 0;
+        bool has_point = event_point(event, &x, &y);
+        if(code == LV_EVENT_PRESSED) {
+            if(has_point) zc_pointer(ZC_POINTER_DOWN, (int)x, (int)y);
+        }
+        else if(code == LV_EVENT_PRESSING) {
+            if(has_point) zc_pointer(ZC_POINTER_MOVE, (int)x, (int)y);
+        }
+        else if(code == LV_EVENT_RELEASED) {
+            zc_pointer(has_point ? ZC_POINTER_UP : ZC_POINTER_CANCEL, (int)x, (int)y);
+        }
+        else if(code == LV_EVENT_PRESS_LOST) {
+            zc_pointer(ZC_POINTER_CANCEL, 0, 0);
+        }
+        return;
+    }
+
     if(code == LV_EVENT_PRESSED) {
         int32_t x, y;
         if(!event_point(event, &x, &y)) return;
@@ -1744,6 +2376,7 @@ static void sift_canvas_event_cb(lv_event_t *event)
         s.touch_active = true;
         s.touch_moved = false;
         s.touch_swiping = false;
+        s.touch_orbit = false;
         s.touch_suppress = s.dimmed;
         if(s.dimmed) {
             s.dimmed = false;
@@ -1753,6 +2386,9 @@ static void sift_canvas_event_cb(lv_event_t *event)
         s.touch_start_y = y;
         s.touch_start_roll = s.target_roll;
         s.touch_start_pitch = s.target_pitch;
+        s.touch_orbit = s.view == VIEW_WATCH && inside_orbit_zone(x, y);
+        s.touch_start_yaw = s.orbit_yaw_target;
+        s.touch_start_elev = s.orbit_elev_target;
         s.touch_at = now;
         return;
     }
@@ -1768,14 +2404,23 @@ static void sift_canvas_event_cb(lv_event_t *event)
         int32_t maxd = ax > ay ? ax : ay;
         uint32_t elapsed = lv_tick_get() - s.touch_at;
         if(dx * dx + dy * dy > 36) s.touch_moved = true;
-        if(!s.touch_swiping && maxd >= SIFT_SWIPE_MIN &&
+        if(!s.touch_orbit && !s.touch_swiping && maxd >= SIFT_SWIPE_MIN &&
            (maxd >= SIFT_SWIPE_LONG || elapsed <= 280U)) {
             s.touch_swiping = true;
             s.target_roll = s.touch_start_roll;
             s.target_pitch = s.touch_start_pitch;
             s.manual_until = 0;
         }
-        if(!s.touch_suppress && s.view == VIEW_WATCH && !s.touch_swiping) {
+        if(!s.touch_suppress && s.view == VIEW_WATCH && s.touch_orbit && !s.touch_swiping) {
+            s.orbit_yaw_target = s.touch_start_yaw +
+                                 (float)dx * (2.0f * SIFT_PI) / (float)SIFT_W;
+            s.orbit_elev_target = clamp_f32(s.touch_start_elev -
+                                            (float)dy * 1.15f / (float)SIFT_H,
+                                            SIFT_ORBIT_MIN_ELEV, SIFT_ORBIT_MAX_ELEV);
+            s.manual_until = lv_tick_get() + 1800U;
+            s.last_input = lv_tick_get();
+        }
+        else if(!s.touch_suppress && s.view == VIEW_WATCH && !s.touch_swiping) {
             s.target_roll = clamp_i32(s.touch_start_roll + dx * 150 / SIFT_W, -45, 45);
             s.target_pitch = clamp_i32(s.touch_start_pitch + dy * 105 / SIFT_H, -32, 32);
             s.manual_until = lv_tick_get() + 1800U;
@@ -1793,10 +2438,12 @@ static void sift_canvas_event_cb(lv_event_t *event)
         bool suppress = s.touch_suppress;
         bool moved = s.touch_moved;
         bool swiping = s.touch_swiping;
+        bool orbit = s.touch_orbit;
         s.touch_active = false;
         s.touch_moved = false;
         s.touch_swiping = false;
         s.touch_suppress = false;
+        s.touch_orbit = false;
         s.last_input = lv_tick_get();
         if(suppress) return;
 
@@ -1804,10 +2451,10 @@ static void sift_canvas_event_cb(lv_event_t *event)
         int32_t ay = dy < 0 ? -dy : dy;
         int32_t maxd = ax > ay ? ax : ay;
         uint32_t elapsed = lv_tick_get() - s.touch_at;
-        bool swipe = swiping || (has_point && !suppress &&
+        bool swipe = !orbit && (swiping || (has_point && !suppress &&
                      (maxd >= SIFT_SWIPE_LONG ||
                       (maxd >= SIFT_SWIPE_MIN &&
-                       (s.view != VIEW_WATCH || elapsed <= 280U))));
+                       (s.view != VIEW_WATCH || elapsed <= 280U)))));
         if(swipe) {
             sift_handle_swipe(dx, dy);
             return;
@@ -1822,6 +2469,7 @@ static void sift_canvas_event_cb(lv_event_t *event)
         s.touch_moved = false;
         s.touch_swiping = false;
         s.touch_suppress = false;
+        s.touch_orbit = false;
     }
 }
 
@@ -1835,7 +2483,6 @@ static bool s_imu_filter_ready;
 static int32_t s_imu_fx;
 static int32_t s_imu_fy;
 static int32_t s_imu_fz;
-static uint32_t s_imu_log_at;
 static bool s_imu_flip_armed;
 static bool s_imu_face_down;
 static uint32_t s_imu_face_down_at;
@@ -1856,22 +2503,18 @@ static void imu_init(void)
         cfg.intf.user_data = (void *)LSM6DSL_ADDR_DEFAULT;
         cfg.irq_pin.pin = RT_PIN_NONE;
         if(rt_hw_lsm6dsl_init("sift", &cfg) != RT_EOK) {
-            printf("[sift_watch] imu init failed\n");
             return;
         }
         s_imu_acce = rt_device_find("acce_sift");
     }
     if(s_imu_acce == NULL) {
-        printf("[sift_watch] imu not found\n");
         return;
     }
     if(rt_device_open(s_imu_acce, RT_DEVICE_FLAG_RDONLY) != RT_EOK) {
-        printf("[sift_watch] imu open failed\n");
         s_imu_acce = NULL;
         return;
     }
     rt_device_control(s_imu_acce, RT_SENSOR_CTRL_SET_ODR, (void *)(rt_uint32_t)104);
-    printf("[sift_watch] imu ready\n");
 }
 
 static void sift_imu_zero(void)
@@ -1883,7 +2526,6 @@ static void sift_imu_zero(void)
     s_imu_face_down_at = 0;
     s.sensor_roll = 0;
     s.sensor_pitch = 0;
-    printf("[sift_watch] imu zero requested\n");
 }
 
 static void imu_update(void)
@@ -1931,20 +2573,11 @@ static void imu_update(void)
     s.sensor_live = true;
 
     uint32_t now = lv_tick_get();
-    if(now - s_imu_log_at >= 500U) {
-        s_imu_log_at = now;
-        printf("[sift_watch] imu raw=%ld,%ld,%ld f=%ld,%ld,%ld roll=%ld pitch=%ld live=%d\n",
-               (long)ax, (long)ay, (long)az,
-               (long)fx, (long)fy, (long)fz,
-               (long)s.sensor_roll, (long)s.sensor_pitch,
-               s.sensor_live ? 1 : 0);
-    }
 
     if(fz >= SIFT_IMU_FACE_DOWN_MG) {
         if(!s_imu_face_down) {
             s_imu_face_down = true;
             s_imu_face_down_at = now;
-            printf("[sift_watch] imu face down az=%ld\n", (long)fz);
         }
         if(s_imu_flip_armed && now - s_imu_face_down_at >= 160U &&
            now - s_imu_last_flip_at >= SIFT_IMU_FLIP_COOLDOWN_MS) {
@@ -1954,10 +2587,7 @@ static void imu_update(void)
         }
     }
     else if(fz <= SIFT_IMU_FACE_UP_MG) {
-        if(s_imu_face_down) {
-            s_imu_face_down = false;
-            printf("[sift_watch] imu face up az=%ld\n", (long)fz);
-        }
+        s_imu_face_down = false;
         if(!s_imu_flip_armed && now - s_imu_last_flip_at >= SIFT_IMU_FLIP_COOLDOWN_MS) {
             s_imu_flip_armed = true;
         }
@@ -2043,12 +2673,17 @@ static void vibe_init(void)
     printf("[sift_watch] vibe ready pin=%d\n", (int)SIFT_VIBE_PIN);
 }
 
-static void vibe_pulse(void)
+static void vibe_pulse_ms(uint32_t ms)
 {
     if(!s_vibe_ready) return;
     rt_pin_write(SIFT_VIBE_PIN, PIN_HIGH);
     s_vibe_on = true;
-    s_vibe_off_at = lv_tick_get() + 25U;
+    s_vibe_off_at = lv_tick_get() + (ms == 0U ? 1U : ms);
+}
+
+static void vibe_pulse(void)
+{
+    vibe_pulse_ms(25U);
 }
 
 static void vibe_update(uint32_t now)
@@ -2063,6 +2698,7 @@ static void vibe_update(uint32_t now)
 static void key_init(void) {}
 static void key_poll(void) {}
 static void vibe_init(void) {}
+static void vibe_pulse_ms(uint32_t ms) { (void)ms; }
 static void vibe_pulse(void) {}
 static void vibe_update(uint32_t now) { (void)now; }
 #endif
@@ -2074,18 +2710,39 @@ static void sift_tick_cb(lv_timer_t *timer)
     uint32_t elapsed = now - s.last_tick;
     if(elapsed > 100U) elapsed = 100U;
     s.last_tick = now;
+    if(s.view == VIEW_ZOMBIE) {
+        key_poll();
+        vibe_update(now);
+        zc_tick(now, elapsed);
+        zc_audio_set_muted(!zc_audio_on());
+        if(zc_wants_exit()) {
+            zc_clear_exit();
+            open_view(VIEW_APPS);
+        }
+        sift_render();
+        return;
+    }
 
     timer_update(now);
     imu_update();
     key_poll();
     vibe_update(now);
+    update_flip(now);
     update_tilt(now);
+    update_orbit(elapsed);
 
-    s.sim_accum += elapsed;
-    uint8_t guard = 0;
-    while(s.sim_accum >= SIFT_SIM_STEP_MS && guard++ < 4) {
-        sand_step();
-        s.sim_accum -= SIFT_SIM_STEP_MS;
+    if(s.flip_active) {
+        /* The grid is mirrored at the end of the squash; stepping it mid
+         * flip would let sand move in the wrong frame. */
+        s.sim_accum = 0;
+    }
+    else {
+        s.sim_accum += elapsed;
+        uint8_t guard = 0;
+        while(s.sim_accum >= SIFT_SIM_STEP_MS && guard++ < 4) {
+            sand_step();
+            s.sim_accum -= SIFT_SIM_STEP_MS;
+        }
     }
 
     if(s.stats.total > 0) {
@@ -2141,21 +2798,17 @@ void sift_watch_create(void)
     s.timer_remaining = 300000U;
     s.last_tick = lv_tick_get();
     s.last_input = s.last_tick;
+    s.orbit_yaw = 0.0f;
+    s.orbit_yaw_target = 0.0f;
+    s.orbit_elev = 0.30f;
+    s.orbit_elev_target = 0.30f;
+    s.flip_angle = 0.0f;
 
     time_t now_time = time(NULL);
     if(now_time > (time_t)1600000000) s.clock_epoch = (uint32_t)now_time;
     else s.clock_epoch = 1767225600U; /* deterministic fallback: 2026-01-01 */
     s.clock_base_tick = lv_tick_get();
 
-    /* Build the hourglass interior mask. */
-    memset(s_inside, 0, sizeof(s_inside));
-    for(int32_t y = 0; y < SIFT_ROWS; y++) {
-        int32_t half = hg_half_width(y < 40 ? y : 79 - y);
-        for(int32_t x = 0; x < SIFT_COLS; x++) {
-            int32_t center = x * SIFT_CELL + 1;
-            if(center >= 90 - half && center <= 90 + half) s_inside[y * SIFT_COLS + x] = 1;
-        }
-    }
     sand_init();
 
 #if defined(SIFT_HAS_APP_CANVAS_ALLOC)
@@ -2207,5 +2860,17 @@ void sift_watch_create(void)
     }
     printf("[sift_watch] created display=%ldx%ld\n", (long)screen_w, (long)screen_h);
 }
+
+#if defined(LVGL_AI_EZIP_ASSETS) && defined(RT_USING_FINSH)
+static int sift_zgame(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+    open_view(VIEW_ZOMBIE);
+    if(s_game_ready) zc_key(LV_KEY_ENTER);
+    return 0;
+}
+MSH_CMD_EXPORT_ALIAS(sift_zgame, zgame, open zombie game);
+#endif
 
 #endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4 */
