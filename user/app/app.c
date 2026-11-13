@@ -4,7 +4,7 @@
  *
  * LVGL 9.6 starts the AURELIA C9 coffee machine by default. LVGL_AI_DEMO selects
  * the app variant: coffee (default), xiaohongshu (alias xhs), spectrum,
- * hspi_watch or textarea_evidence. The CLI and
+ * hspi_watch, sift_watch or textarea_evidence. The CLI and
  * web set it from a scenario's "app" field, so the same value is recorded in
  * the session manifest. The original demo tree is always created but hidden,
  * because the tool's integration tests target its named button; older LVGL
@@ -24,6 +24,7 @@
 #include "spectrum/spectrum.h"
 #include "hspi_watch/hspi_watch.h"
 #include "textarea_evidence/textarea_evidence.h"
+#include "sift_watch/sift_watch.h"
 #endif
 
 #include <stdio.h>
@@ -44,6 +45,7 @@ static const app_entry_t apps[] = {
     {"spectrum", spectrum_create},
     {"hspi_watch", hspi_watch_create},
     {"textarea_evidence", textarea_evidence_create},
+    {"sift_watch", sift_watch_create},
 };
 
 #define APP_COUNT (sizeof(apps) / sizeof(apps[0]))

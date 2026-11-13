@@ -12,6 +12,7 @@ sessions/
 /chip-adapt/sdk/
 /chip-adapt/sifli/coffee/
 /chip-adapt/sifli/hspi_watch/
+/chip-adapt/sifli/sift_watch/
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
 /.test-tmp/

@@ -13,6 +13,7 @@
 | `xiaohongshu` / `xhs` | 小红书复刻，`xiaohongshu/` | LVGL 9.6 |
 | `spectrum` | ORBITAL 频谱播放器，`spectrum/` | LVGL 9.6 |
 | `hspi_watch` | 黄山派 390x450 表盘，`hspi_watch/` | LVGL 9.6 / 导出 9.4 |
+| `sift_watch` | 390x450 像素手表 OS，`sift_watch/` | LVGL 9.6 / 导出 9.4 |
 | 未设置 | `coffee` | LVGL 9.6 |
 | 任意值 | 旧版本忽略选择，显示 `demo/` 的 harness | 9.1 / 8.x |
 
@@ -26,6 +27,7 @@
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/coffee.json
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/xiaohongshu.json
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/spectrum.json
+python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch.json
 ```
 
 没有 scenario 时用 `--app`；`--idle` 保持会话直到 Ctrl+C（headless）：
@@ -34,6 +36,7 @@ python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/spectrum.json
 python -I core/cli.py --lvgl 9.6 --app coffee --idle
 python -I core/cli.py --lvgl 9.6 --app xiaohongshu --idle
 python -I core/cli.py --lvgl 9.6 --app spectrum --idle
+python -I core/cli.py --lvgl 9.6 --app sift_watch --idle
 ```
 
 网页端顶部「应用」下拉会列出 `user/scenarios/*.json` 中声明了 `app` 的选项；
