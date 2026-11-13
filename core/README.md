@@ -66,13 +66,14 @@ python -I core/web.py
 Windows 无控制台入口：
 
 ```text
-双击 core/web.pyw
+双击仓库根的 LVGL-AI-Viewer.exe
+或：双击 core/web.pyw
 或：pythonw -I core/web.pyw
 ```
 
-`web.pyw` 自动打开浏览器，并默认启用 `--exit-on-close`：最后一个网页关闭约 0.5 秒后停止服务并收尾 engine。不带参数启动（双击 `web.pyw` 或经 `open-web.vbs`）时，如果默认地址上已有服务在监听，它只打开页面并退出（暖启动），不会重复启动 server；带参数时保持普通启动路径。控制台入口需要显式加 `--exit-on-close` 才有相同行为。
+`web.pyw` 自动打开浏览器，并默认启用 `--exit-on-close`：最后一个网页关闭约 0.5 秒后停止服务并收尾 engine。不带参数启动（双击 `web.pyw`、`LVGL-AI-Viewer.exe` 或经 `pythonw`）时，如果默认地址上已有服务在监听，它只打开页面并退出（暖启动），不会重复启动 server；带参数时保持普通启动路径。控制台入口需要显式加 `--exit-on-close` 才有相同行为。
 
-仓库根的 `open-web.vbs` 是完全无黑框的启动入口：双击即可，只负责用 `pythonw` 启动 `core/web.pyw`；端口探测与打开的 URL 都在 Python 里。旧的 `open-web.cmd` 已移除。
+仓库根的 `LVGL-AI-Viewer.exe` 是带图标的完全无黑框启动入口：双击即可，只负责在 PATH 中找到 `pythonw.exe`（找不到时回退 `pyw.exe`）并启动 `core/web.pyw`；端口探测与打开的 URL 都在 Python 里。启动器源码、图标与构建脚本在 `core/tools/launchers/`，用 `python -I core/tools/launchers/build.py` 重新生成（需要 MinGW gcc 与 windres）。旧的 `.vbs` / `.cmd` 入口已移除。
 
 默认固定端口 `8765`，地址：
 
@@ -117,7 +118,7 @@ python -I core/web.py --app myapp --open
 ## 应用管理台
 
 网页端顶部的「应用管理」按钮打开管理对话框；需要启动时直接打开时，用
-`python -I core/web.py --manage --open`。双击仓库根 `open-web.vbs` 仍打开普通页面。
+`python -I core/web.py --manage --open`。双击仓库根 `LVGL-AI-Viewer.exe` 仍打开普通页面。
 管理台可以：
 
 - 选择/预览/测试/录制应用（复用顶部现有控件）；

@@ -1,3 +1,7 @@
 # git apply is sensitive to CRLF; keep patch inputs LF on every platform.
 patches/**/*.patch text eol=lf
 patches/**/series text eol=lf
+
+# Launcher executables and icons are binary build outputs kept in the tree.
+*.exe binary
+*.ico binary

@@ -28,12 +28,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/sifli/host/script
 # 启动 broker + 网页（自动打开浏览器）
 python -I chip-adapt/sifli/host/server.py --open
 
-# 或双击无黑框入口
-chip-adapt/sifli/host/open-host.vbs
+# 或双击无黑框入口（需要 pythonw.exe 或 pyw.exe 在 PATH）
+chip-adapt/sifli/tools/SiFli-Host.exe
 ```
 
-默认 `http://127.0.0.1:8766/`。依赖清单和手工恢复见 `ENVIRONMENT.md`；`bootstrap.ps1 -Check`
-只检查、不安装。
+`SiFli-Host.exe` 由 `python -I core/tools/launchers/build.py` 生成，启动器源码与图标在
+`core/tools/launchers/`。默认 `http://127.0.0.1:8766/`。依赖清单和手工恢复见
+`ENVIRONMENT.md`；`bootstrap.ps1 -Check` 只检查、不安装。
 
 构建链路是 `user/app/<app>/` → `export.py` → `chip-adapt/exports/<app>/project` →
 `scons`。`build --app <app>` 会自动完成前两步；不会把源码复制进 SDK，工程通过

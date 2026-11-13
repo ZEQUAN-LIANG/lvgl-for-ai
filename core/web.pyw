@@ -4,7 +4,7 @@
 Double-click this file (or run ``pythonw -I core/web.pyw``) to start the
 server without a console window, open the page in the default browser, and
 stop the server when the last browser page closes. A bare launch (no flags,
-as when ``open-web.vbs`` or a double-click starts it) reuses a viewer that is
+as when ``LVGL-AI-Viewer.exe`` or a double-click starts it) reuses a viewer that is
 already listening on the default address: the page is opened and this process
 exits. Explicit flags keep the normal startup path. ``web.py`` remains the
 console entry point for development and automation.

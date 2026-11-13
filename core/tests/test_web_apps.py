@@ -250,10 +250,12 @@ class WebAppsTest(unittest.TestCase):
         self.assertIn("style-src 'self' 'unsafe-inline'", policy)
         self.assertIn("script-src 'self' 'unsafe-inline'", policy)
 
-    def test_open_web_launcher_keeps_manage_opt_in(self) -> None:
-        text = (REPO_ROOT / "open-web.vbs").read_text(encoding="utf-8")
-        self.assertNotIn("?manage=1", text)
-        self.assertNotIn("--manage", text)
+    def test_viewer_launcher_keeps_manage_opt_in(self) -> None:
+        launcher_dir = TOOL_ROOT / "tools" / "launchers"
+        for name in ("build.py", "launcher.c"):
+            text = (launcher_dir / name).read_text(encoding="utf-8")
+            self.assertNotIn("?manage=1", text)
+            self.assertNotIn("--manage", text)
 
 
 if __name__ == "__main__":

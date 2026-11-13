@@ -1,6 +1,6 @@
 """Warm/cold launch decisions for the zero-console web viewer.
 
-``open-web.vbs`` only starts ``web.pyw`` hidden; the port probe, the page URL
+``LVGL-AI-Viewer.exe`` only starts ``web.pyw`` hidden; the port probe, the page URL
 and the choice between reusing a running viewer and starting the server live in
 Python. These tests cover that decision without a real browser, a spawned
 process or any Windows-only API: the probe is exercised against real sockets
@@ -18,9 +18,7 @@ from pathlib import Path
 from unittest import mock
 
 TOOL_ROOT = Path(__file__).resolve().parent.parent
-REPO_ROOT = TOOL_ROOT.parent
 PYW_LAUNCHER = TOOL_ROOT / "web.pyw"
-VBS_LAUNCHER = REPO_ROOT / "open-web.vbs"
 
 from lvgl_ai.web import DEFAULT_HOST, DEFAULT_PORT, create_server  # noqa: E402
 from lvgl_ai.web import launcher  # noqa: E402
@@ -183,18 +181,6 @@ class WebPywDecisionTest(unittest.TestCase):
                 start_server.assert_called_once_with(
                     ["--open", "--exit-on-close", *flags]
                 )
-
-
-class OpenWebVbsTest(unittest.TestCase):
-    def setUp(self) -> None:
-        self.text = VBS_LAUNCHER.read_text(encoding="utf-8")
-
-    def test_the_vbs_only_starts_the_python_launcher(self) -> None:
-        self.assertIn("pythonw.exe -I core\\web.pyw", self.text)
-        self.assertNotIn("http://", self.text)
-        lowered = self.text.lower()
-        for retired in ("netstat", "findstr", "cmd.exe"):
-            self.assertNotIn(retired, lowered)
 
 
 if __name__ == "__main__":
