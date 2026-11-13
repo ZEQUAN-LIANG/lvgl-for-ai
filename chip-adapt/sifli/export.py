@@ -14,13 +14,14 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-CORE_ROOT = REPO_ROOT / "core"
 ADAPTER_DIR = Path(__file__).resolve().parent
+REPO_ROOT = ADAPTER_DIR.parents[1]
+CORE_ROOT = REPO_ROOT / "core"
 for _path in (CORE_ROOT, ADAPTER_DIR):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
+import layout  # noqa: E402
 from lvgl_ai.apps import common, registry  # noqa: E402
 from asset_plan import AssetPlan, ExportError, plan_assets  # noqa: E402
 
@@ -82,7 +83,7 @@ def export_app(
     destination = (
         Path(output_dir).expanduser().resolve()
         if output_dir is not None
-        else adapter_dir / app
+        else layout.EXPORTS_DIR / app
     )
     if destination.exists() and any(destination.iterdir()) and not force:
         raise ExportError(
@@ -298,7 +299,7 @@ def _export_readme(app: str, app_symbol: str, lvgl_version: str) -> str:
         "## 运行时验证\n"
         "\n"
         "```bash\n"
-        f'LVGL_AI_USER_APP_DIR="chip-adapt/sifli/{app}/src/app" '
+        f'LVGL_AI_USER_APP_DIR="chip-adapt/exports/{app}/src/app" '
         f"python -I core/cli.py --lvgl {lvgl_version} "
         f"--scenario user/scenarios/{app}.json\n"
         "```\n"
@@ -356,12 +357,8 @@ def _export_manifest(
 
 
 def _adapter_warnings(adapter_dir: Path, adapter: dict[str, Any]) -> list[str]:
-    sdk_path = adapter.get("sdk_path")
-    if not sdk_path:
-        return []
-    sdk_dir = (adapter_dir / str(sdk_path)).resolve()
-    if not sdk_dir.is_dir():
-        return [f"SDK not found: {sdk_dir}"]
+    if not layout.SDK_DIR.is_dir():
+        return [f"SDK not found: {layout.SDK_DIR}"]
     return []
 
 

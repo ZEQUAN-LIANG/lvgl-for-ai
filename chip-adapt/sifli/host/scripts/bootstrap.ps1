@@ -5,7 +5,7 @@ Checks and bootstraps the Windows dependencies of the SiFli serial host.
 
 .DESCRIPTION
 Checks Python, the vendored pyserial package, the vendored xterm.js assets,
-uv, the SiFli SDK uv lock environment and sftool.
+uv, the SiFli SDK uv lock environment, the ARM toolchain and sftool.
 
 -Check only reports status; it never downloads or installs anything.
 Without -Check, missing pyserial (including its license), xterm.js assets and
@@ -29,17 +29,22 @@ $ProgressPreference = 'SilentlyContinue'
 $ScriptDir = $PSScriptRoot
 $HostDir = (Resolve-Path -LiteralPath (Join-Path $ScriptDir '..')).Path
 $SifliDir = (Resolve-Path -LiteralPath (Join-Path $HostDir '..')).Path
-$RepoRoot = (Resolve-Path -LiteralPath (Join-Path $SifliDir '..\..')).Path
+$ChipAdaptDir = Split-Path -Path $SifliDir -Parent
+$RepoRoot = Split-Path -Path $ChipAdaptDir -Parent
+$ToolsRoot = if ($env:SIFLI_SDK_TOOLS_PATH) {
+    $env:SIFLI_SDK_TOOLS_PATH
+} else {
+    Join-Path $HOME '.sifli'
+}
 
 $VendorDir = Join-Path $HostDir 'vendor'
 $PyserialLicense = Join-Path $VendorDir 'pyserial-3.5.LICENSE.txt'
 $PyserialLicenseUrl = 'https://raw.githubusercontent.com/pyserial/pyserial/v3.5/LICENSE.txt'
 $XtermDir = Join-Path $HostDir 'web\vendor\xterm'
-$SdkDir = Join-Path $SifliDir 'vendor\sifli-sdk'
+$SdkDir = Join-Path $ChipAdaptDir 'vendor\sifli-sdk'
 $LockDir = Join-Path $SdkDir 'tools\locks\default'
 $VenvDir = Join-Path $LockDir '.venv'
 $VenvScons = Join-Path $VenvDir 'Scripts\scons.exe'
-$Sftool = Join-Path $SifliDir 'vendor\toolchain\sftool\sftool.exe'
 
 $XtermFiles = @(
     @{
@@ -181,11 +186,36 @@ function Get-VenvSconsInfo {
     return 'unknown'
 }
 
+function Find-Sftool {
+    $candidates = @()
+    if ($env:SFTOOL_BIN) {
+        $candidates += $env:SFTOOL_BIN
+    }
+    $versioned = Join-Path $ToolsRoot 'tools\sftool'
+    if (Test-Path -LiteralPath $versioned) {
+        $candidates += Get-ChildItem -LiteralPath $versioned -Filter 'sftool.exe' -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending |
+            ForEach-Object { $_.FullName }
+    }
+    $candidates += Join-Path $ToolsRoot 'sftool\sftool.exe'
+    $onPath = Get-Command sftool -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -ne $onPath) {
+        $candidates += $onPath.Path
+    }
+    foreach ($candidate in $candidates) {
+        if ($candidate -and (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            return $candidate
+        }
+    }
+    return $null
+}
+
 function Get-SftoolInfo {
-    if (-not (Test-Path -LiteralPath $Sftool)) {
+    $sftool = Find-Sftool
+    if (-not $sftool) {
         return $null
     }
-    $out = & $Sftool --version 2>&1
+    $out = & $sftool --version 2>&1
     if ($LASTEXITCODE -ne 0) {
         return $null
     }
@@ -242,7 +272,7 @@ function Invoke-Checks {
     if ($sdkOk) {
         Add-Check $results 'SiFli SDK' 'OK' $SdkDir
     } else {
-        Add-Check $results 'SiFli SDK' 'MISSING' ("uv.lock not found under {0}; restore the vendor tree per chip-adapt/sifli/vendor/README.md" -f $SdkDir)
+        Add-Check $results 'SiFli SDK' 'MISSING' ("uv.lock not found under {0}; follow chip-adapt/vendor/README.md" -f $SdkDir)
     }
 
     if (-not $sdkOk) {
@@ -258,11 +288,20 @@ function Invoke-Checks {
         }
     }
 
+    $gcc = Get-ChildItem -LiteralPath (Join-Path $ToolsRoot 'tools\arm-none-eabi-gcc') -Filter 'arm-none-eabi-gcc.exe' -Recurse -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($null -eq $gcc) {
+        Add-Check $results 'ARM toolchain' 'MISSING' ("arm-none-eabi-gcc not found under {0}; run the SDK install.ps1 or set SIFLI_SDK_TOOLS_PATH (see chip-adapt/vendor/README.md)" -f $ToolsRoot)
+    } else {
+        Add-Check $results 'ARM toolchain' 'OK' $gcc.FullName
+    }
+
+    $sftool = Find-Sftool
     $sftoolInfo = Get-SftoolInfo
     if ($null -eq $sftoolInfo) {
-        Add-Check $results 'sftool' 'MISSING' ("not runnable at {0}; restore vendor/toolchain per chip-adapt/sifli/vendor/README.md" -f $Sftool)
+        Add-Check $results 'sftool' 'MISSING' ("not runnable under {0}; install sftool 0.2.5 with the SDK installer (see chip-adapt/vendor/README.md)" -f (Join-Path $ToolsRoot 'tools\sftool'))
     } else {
-        Add-Check $results 'sftool' 'OK' ("{0} ({1})" -f $sftoolInfo, $Sftool)
+        Add-Check $results 'sftool' 'OK' ("{0} ({1})" -f $sftoolInfo, $sftool)
     }
 
     return $results
@@ -272,9 +311,14 @@ function Invoke-PyserialRepair {
     param([string] $PythonPath)
     Write-Host ("fix: python -m pip install --target {0} --no-deps pyserial==3.5" -f $VendorDir)
     New-Item -ItemType Directory -Force -Path $VendorDir | Out-Null
-    & $PythonPath -m pip install --target $VendorDir --no-deps pyserial==3.5
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host ("fix: pyserial install failed (exit {0})" -f $LASTEXITCODE) -ForegroundColor Red
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    & $PythonPath -m pip install --target $VendorDir --no-deps pyserial==3.5 2>&1 |
+        ForEach-Object { Write-Host $_ }
+    $pipExit = $LASTEXITCODE
+    $ErrorActionPreference = $previousPreference
+    if ($pipExit -ne 0) {
+        Write-Host ("fix: pyserial install failed (exit {0})" -f $pipExit) -ForegroundColor Red
         return $false
     }
     foreach ($name in @('bin', 'pyserial-3.5.dist-info')) {
@@ -365,9 +409,14 @@ function Invoke-XtermRepair {
 function Invoke-VenvRepair {
     param([string] $UvPath)
     Write-Host ("fix: uv sync --project {0} --no-dev" -f $LockDir)
-    & $UvPath sync --project $LockDir --no-dev
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host ("fix: uv sync failed (exit {0})" -f $LASTEXITCODE) -ForegroundColor Red
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    & $UvPath sync --project $LockDir --no-dev 2>&1 |
+        ForEach-Object { Write-Host $_ }
+    $uvExit = $LASTEXITCODE
+    $ErrorActionPreference = $previousPreference
+    if ($uvExit -ne 0) {
+        Write-Host ("fix: uv sync failed (exit {0})" -f $uvExit) -ForegroundColor Red
         return $false
     }
     return (Test-Path -LiteralPath $VenvScons)

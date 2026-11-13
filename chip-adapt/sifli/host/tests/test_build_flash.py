@@ -252,6 +252,48 @@ class BuildFlashTest(unittest.TestCase):
                 build_flash.resolve_build_command(self.config, "demo")
         self.assertEqual(caught.exception.code, "scons_missing")
 
+    def test_find_sftool_in_official_tools_layout(self) -> None:
+        toolchain_root = self.root / ".sifli"
+        sftool = (
+            toolchain_root
+            / "tools"
+            / "sftool"
+            / "0.2.5"
+            / "sftool.exe"
+        )
+        sftool.parent.mkdir(parents=True)
+        sftool.write_bytes(b"")
+        config = dict(self.config, toolchain_root=str(toolchain_root), sftool="")
+        self.assertEqual(build_flash.find_sftool(config), sftool)
+
+    def test_find_sftool_honors_env_override(self) -> None:
+        explicit = self.root / "env-sftool.exe"
+        explicit.write_bytes(b"")
+        with mock.patch.dict(
+            os.environ, {"SFTOOL_BIN": str(explicit)}, clear=False
+        ):
+            config = dict(self.config, sftool="")
+            self.assertEqual(build_flash.find_sftool(config), explicit)
+
+    def test_toolchain_env_discovers_official_layout(self) -> None:
+        root = self.root / ".sifli"
+        gcc_bin = (
+            root
+            / "tools"
+            / "arm-none-eabi-gcc"
+            / "14.2.1"
+            / "bin"
+        )
+        gcc_bin.mkdir(parents=True)
+        config = dict(
+            self.config,
+            toolchain_root=str(root),
+            sdk_root=str(self.root / "sdk"),
+        )
+        env = build_flash.toolchain_env(config)
+        self.assertEqual(env["RTT_EXEC_PATH"], str(gcc_bin))
+        self.assertIn(str(gcc_bin), env["PATH"].split(os.pathsep))
+
     def test_toolchain_env_injects_build_paths(self) -> None:
         root = Path(self.config["toolchain_root"])
         (root / "arm-none-eabi" / "bin").mkdir(parents=True)

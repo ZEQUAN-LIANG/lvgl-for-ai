@@ -49,10 +49,28 @@ def _tail(lines: list[str], count: int = 20) -> str:
 # -- discovery ---------------------------------------------------------
 
 
+def _versioned_tool_files(root: Path, name: str, filename: str) -> list[Path]:
+    base = root / "tools" / name
+    if not base.is_dir():
+        return []
+    return sorted(
+        (path / filename for path in base.iterdir() if path.is_dir()),
+        reverse=True,
+    )
+
+
 def find_sftool(config: dict[str, Any]) -> Path:
+    toolchain_root = Path(config.get("toolchain_root", ""))
     candidates = [
+        Path(os.environ.get("SFTOOL_BIN", "")),
         Path(config.get("sftool", "")),
-        Path(config.get("toolchain_root", "")) / "sftool" / "sftool.exe",
+        toolchain_root / "sftool" / "sftool.exe",
+        *(_versioned_tool_files(toolchain_root, "sftool", "sftool.exe")),
+        *(
+            _versioned_tool_files(Path.home() / ".sifli", "sftool", "sftool.exe")
+            if toolchain_root != Path.home() / ".sifli"
+            else []
+        ),
         Path(config.get("sdk_root", "")) / "tools" / "sftool" / "sftool.exe",
     ]
     for candidate in candidates:
@@ -63,7 +81,8 @@ def find_sftool(config: dict[str, Any]) -> Path:
         return Path(found)
     raise BuildFlashError(
         "sftool.exe not found. Expected "
-        f"{config.get('sftool')} or the SDK toolchain.",
+        f"{config.get('sftool')} or the official SDK tools under "
+        f"{toolchain_root / 'tools' / 'sftool'}.",
         code="sftool_missing",
     )
 
@@ -254,7 +273,23 @@ def _toolchain_bin_dirs(root: Path | None) -> list[Path]:
         Path("sftool"),
         Path("sdk-py"),
     )
-    return [root / relative for relative in relatives if (root / relative).is_dir()]
+    dirs = [root / relative for relative in relatives if (root / relative).is_dir()]
+    tools_root = root / "tools"
+    for name, relative in (
+        ("arm-none-eabi-gcc", "bin"),
+        ("cmake", "bin"),
+        ("ninja", ""),
+        ("sftool", ""),
+        ("sdk-py", ""),
+    ):
+        base = tools_root / name
+        if not base.is_dir():
+            continue
+        for version_dir in sorted(base.iterdir()):
+            candidate = version_dir / relative if relative else version_dir
+            if candidate.is_dir():
+                dirs.append(candidate)
+    return dirs
 
 
 def _apply_sdk_env(env: dict[str, str], sdk: Path | None) -> None:
@@ -307,10 +342,11 @@ def toolchain_env(config: dict[str, Any]) -> dict[str, str]:
         env["PATH"] = os.pathsep.join(path_parts + [env.get("PATH", "")])
 
     _apply_sdk_env(env, sdk)
-    if root is not None:
-        exec_path = root / "arm-none-eabi" / "bin"
-        if exec_path.is_dir():
-            env["RTT_EXEC_PATH"] = str(exec_path)
+    for bin_dir in _toolchain_bin_dirs(root):
+        text = str(bin_dir).replace("\\", "/").lower()
+        if bin_dir.name == "bin" and "arm-none-eabi" in text:
+            env["RTT_EXEC_PATH"] = str(bin_dir)
+            break
     # GetLinkScript only searches for gcc/keil linker scripts when RTT_CC is
     # set; without it the SDK silently returns no linker script.
     env["RTT_CC"] = "gcc"
@@ -865,15 +901,17 @@ def flasher_page_url(
 
 
 def environment(config: dict[str, Any]) -> dict[str, Any]:
-    sftool = Path(config.get("sftool", ""))
+    sftool_setting = config.get("sftool") or os.environ.get("SFTOOL_BIN", "")
     try:
         sftool_found = str(find_sftool(config))
     except BuildFlashError:
         sftool_found = ""
     lock_dir = Path(config.get("sdk_root", "")) / "tools" / "locks" / "default"
     return {
-        "sftool": str(sftool),
+        "sftool": str(sftool_setting),
         "sftool_found": sftool_found,
+        "sdk_root": str(config.get("sdk_root", "")),
+        "toolchain_root": str(config.get("toolchain_root", "")),
         "scons": shutil.which("scons") or "",
         "uv": shutil.which("uv") or "",
         "uv_lock": str(lock_dir / "uv.lock"),

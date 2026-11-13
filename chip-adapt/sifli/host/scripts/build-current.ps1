@@ -10,7 +10,7 @@
     passed through.
 
     When the project directory is the exported copy
-    `chip-adapt/sifli/<app>/project`, the script passes `--app <app>` so the
+    `chip-adapt/exports/<app>/project`, the script passes `--app <app>` so the
     host re-exports `user/app/<app>` before building instead of compiling a
     stale exported tree.
 
@@ -25,7 +25,7 @@
     .\chip-adapt\sifli\host\scripts\build-current.ps1
 
 .EXAMPLE
-    .\chip-adapt\sifli\host\scripts\build-current.ps1 -ProjectDir chip-adapt/sifli/sift_watch/project
+    .\chip-adapt\sifli\host\scripts\build-current.ps1 -ProjectDir chip-adapt/exports/sift_watch/project
 
 .EXAMPLE
     .\chip-adapt\sifli\host\scripts\build-current.ps1 -DryRun
@@ -171,7 +171,7 @@ function Get-ExportedAppName {
     $appRoot = Split-Path -Path $full -Parent
     $appsRoot = Split-Path -Path $appRoot -Parent
     $expectedRoot = [System.IO.Path]::GetFullPath(
-        (Join-Path $RepoRoot 'chip-adapt\sifli')
+        (Join-Path $RepoRoot 'chip-adapt\exports')
     ).TrimEnd([char[]]@('\', '/'))
 
     if (-not [string]::Equals(
@@ -207,7 +207,7 @@ if ($ProjectDir) {
     $app = Get-ExportedAppName -ResolvedProjectDir $resolvedProject
     if ($app) {
         $cliArguments = @('build', '--app', $app, '--actor', 'ai', '--json')
-        $description = "app '$app' (re-export chip-adapt/sifli/$app, then scons)"
+        $description = "app '$app' (re-export chip-adapt/exports/$app, then scons)"
     }
     else {
         $cliArguments = @('build', '--project-dir', $resolvedProject, '--actor', 'ai', '--json')

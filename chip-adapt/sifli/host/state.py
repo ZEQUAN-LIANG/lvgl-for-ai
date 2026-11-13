@@ -72,12 +72,18 @@ def _valid_build(path: str | Path | None) -> Path | None:
     return None
 
 
-def _scan_builds(repo_root: Path) -> list[dict[str, Any]]:
-    root = repo_root / "chip-adapt" / "sifli"
+def _exports_root(config: dict[str, Any]) -> Path:
+    value = config.get("exports_root")
+    if value:
+        return Path(str(value))
+    return Path(config["repo_root"]) / "chip-adapt" / "exports"
+
+
+def _scan_builds(exports_root: Path) -> list[dict[str, Any]]:
     builds: list[dict[str, Any]] = []
-    if not root.is_dir():
+    if not exports_root.is_dir():
         return builds
-    for path in root.glob("*/project/build_*/sftool_param.json"):
+    for path in exports_root.glob("*/project/build_*/sftool_param.json"):
         if not path.is_file():
             continue
         build_dir = path.parent
@@ -99,13 +105,17 @@ def _scan_builds(repo_root: Path) -> list[dict[str, Any]]:
     return builds
 
 
-def _app_from_project(project_dir: str | Path | None) -> str:
+def _app_from_project(project_dir: str | Path | None, exports_root: Path) -> str:
     if not project_dir:
         return ""
-    parts = Path(str(project_dir)).parts
-    for index in range(len(parts) - 2):
-        if parts[index].lower() == "sifli" and parts[index + 2] == "project":
-            return parts[index + 1]
+    path = Path(str(project_dir)).resolve()
+    try:
+        relative = path.relative_to(exports_root.resolve())
+    except ValueError:
+        return ""
+    parts = relative.parts
+    if len(parts) >= 2 and parts[1] == "project":
+        return parts[0]
     return ""
 
 
@@ -137,8 +147,9 @@ def _pick_port(state_port: str, ports: list[dict[str, Any]]) -> str:
 
 def suggest(config: dict[str, Any], store: StateStore) -> dict[str, Any]:
     repo_root = Path(config["repo_root"])
+    exports_root = _exports_root(config)
     state = store.load()
-    builds = _scan_builds(repo_root)
+    builds = _scan_builds(exports_root)
     apps = _scan_apps(repo_root)
     ports = list_ports()
 
@@ -161,13 +172,15 @@ def suggest(config: dict[str, Any], store: StateStore) -> dict[str, Any]:
     if not app and apps:
         app = apps[0]
     if not project_dir and app:
-        candidate = repo_root / "chip-adapt" / "sifli" / app / "project"
+        candidate = exports_root / app / "project"
         if candidate.is_dir():
             project_dir = str(candidate)
 
     # Do not let a stale app name leak onto an SDK example or another
-    # project.  Only an exported chip-adapt/sifli/<app>/project keeps an app.
-    project_app = _app_from_project(project_dir) or _app_from_project(build_dir)
+    # project.  Only an exported <exports>/<app>/project keeps an app.
+    project_app = _app_from_project(project_dir, exports_root) or _app_from_project(
+        build_dir, exports_root
+    )
     if project_app:
         app = project_app
     elif project_dir or build_dir:

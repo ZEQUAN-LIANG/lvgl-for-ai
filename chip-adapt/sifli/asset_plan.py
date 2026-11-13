@@ -18,14 +18,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-CORE_ROOT = REPO_ROOT / "core"
-if str(CORE_ROOT) not in sys.path:
-    sys.path.insert(0, str(CORE_ROOT))
-
-from lvgl_ai.apps import common  # noqa: E402
-
 ADAPTER_DIR = Path(__file__).resolve().parent
+REPO_ROOT = ADAPTER_DIR.parents[1]
+CORE_ROOT = REPO_ROOT / "core"
+for _path in (CORE_ROOT, ADAPTER_DIR):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
+
+import layout  # noqa: E402
+from lvgl_ai.apps import common  # noqa: E402
 ASSET_SCHEMA = "lvgl-ai-assets-v1"
 ASSET_MODES = {"ezip", "raw"}
 ASSET_PLACEMENTS = {"flash", "psram", "sram"}
@@ -72,10 +73,7 @@ def plan_assets(
         )
 
     if ezip_tool is None:
-        tool_setting = adapter.get("ezip")
-        if not tool_setting:
-            raise ExportError("ezip_missing", "adapter has no ezip tool")
-        tool = (ADAPTER_DIR / str(tool_setting)).resolve()
+        tool = layout.SDK_DIR / "tools" / "png2ezip" / "ezip.exe"
         if not tool.is_file():
             raise ExportError("ezip_missing", f"ezip tool not found: {tool}")
         ezip_command = [str(tool)]

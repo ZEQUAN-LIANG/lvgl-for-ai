@@ -232,7 +232,7 @@ print(recording.manifest["app"], recording.manifest["frame_count"])
 
 ## 版本
 
-`LVGL_AI_LVGL_VERSION` 选择 `lvgl-src/<version>`，支持 `9.6` / `9.5` / `9.4` / `9.1` / `8.4` / `8.3`；`LVGL_AI_LVGL_SRC` 可覆盖源码路径。`LVGL_AI_USER_APP_DIR` 可指向导出的应用目录（例如 `chip-adapt/sifli/<app>/src/app`），用于运行时验证；非默认目录的构建输出在 `build/lvgl_<token>_export_<label>_<hash>`，与 `user/app` 的 `build/lvgl_<token>` 隔离。构建前会获取该目录的跨进程锁，并等待或终止 PID 文件记录的残留 engine。跨版本比较事件语义，不比较像素。
+`LVGL_AI_LVGL_VERSION` 选择 `lvgl-src/<version>`，支持 `9.6` / `9.5` / `9.4` / `9.1` / `8.4` / `8.3`；`LVGL_AI_LVGL_SRC` 可覆盖源码路径。`LVGL_AI_USER_APP_DIR` 可指向导出的应用目录（例如 `chip-adapt/exports/<app>/src/app`），用于运行时验证；非默认目录的构建输出在 `build/lvgl_<token>_export_<label>_<hash>`，与 `user/app` 的 `build/lvgl_<token>` 隔离。构建前会获取该目录的跨进程锁，并等待或终止 PID 文件记录的残留 engine。跨版本比较事件语义，不比较像素。
 
 ## 测试
 

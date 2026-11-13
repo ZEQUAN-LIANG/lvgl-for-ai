@@ -19,8 +19,8 @@ python -I chip-adapt/sifli/host/server.py --open
 ```
 
 `-Check` 退出码 0 表示全部就绪，1 表示仍有 `MISSING` 行。`WARN`（例如许可证文本缺失）
-不阻塞。默认模式只自动处理 pyserial（含许可证）、xterm.js 和 SDK lock venv；Python、uv、SDK 源码与
-sftool 属于环境级安装，缺失时脚本给出恢复位置，不擅自改动系统。
+不阻塞。默认模式只自动处理 pyserial（含许可证）、xterm.js 和 SDK lock venv；Python、uv、
+SDK 源码、ARM 工具链与 sftool 属于环境级安装，缺失时脚本给出恢复位置，不擅自改动系统。
 
 ## 依赖清单
 
@@ -30,11 +30,12 @@ sftool 属于环境级安装，缺失时脚本给出恢复位置，不擅自改�
 | pyserial | 3.5 | `host/vendor/serial/` | 离线 import；许可证 `host/vendor/pyserial-3.5.LICENSE.txt` 由 bootstrap 下载 |
 | xterm.js | 5.3.0 | `host/web/vendor/xterm/` | 浏览器从 `/vendor/xterm/` 加载，运行时不访问 CDN |
 | uv | 近期版本 | 系统安装 | 用来装 SDK lock 环境；bootstrap 不自动安装 |
-| SiFli SDK | v2.5.1 | `chip-adapt/sifli/vendor/sifli-sdk/`（不进 Git） | 含 `tools/locks/default/uv.lock` |
+| SiFli SDK | v2.5.1，commit `f4042d7e` | `chip-adapt/vendor/sifli-sdk/`（不进 Git） | 含 `tools/locks/default/uv.lock`；初始化 `tools/SiliconSchema` 与 `middleware/bluetooth` 子模块 |
 | SDK lock venv | `uv sync --project <lock> --no-dev` | `.../locks/default/.venv/` | 提供 scons 和构建依赖 |
-| sftool | 0.2.5 | `chip-adapt/sifli/vendor/toolchain/sftool/sftool.exe` | 官方烧录 CLI |
+| ARM 工具链 | SDK `install.ps1` | `%USERPROFILE%\.sifli\tools\arm-none-eabi-gcc\14.2.1\bin`（或 `SIFLI_SDK_TOOLS_PATH`） | 提供 gcc；不进 Git |
+| sftool | 0.2.5 | `%USERPROFILE%\.sifli\tools\sftool\0.2.5\sftool.exe`（或 `SFTOOL_BIN` / PATH） | 官方烧录 CLI；由 SDK `install.ps1` 安装 |
 
-SDK 源码、工具链和 sftool 的下载与放置见 `chip-adapt/sifli/vendor/README.md`。
+SDK、工具链和 sftool 的下载、版本与校验见 `chip-adapt/vendor/README.md`。
 
 ## 脚本之外的手工步骤
 
@@ -42,7 +43,7 @@ SDK 源码、工具链和 sftool 的下载与放置见 `chip-adapt/sifli/vendor/
 
 - **Python 3.9+**：安装后确保 `python --version` 可用。
 - **uv**：按 <https://docs.astral.sh/uv/getting-started/installation/> 安装。
-- **SiFli SDK / 工具链 / sftool**：按 `chip-adapt/sifli/vendor/README.md` 恢复，保持表中的相对路径不变。
+- **SiFli SDK / 工具链 / sftool**：按 `chip-adapt/vendor/README.md` 恢复；工具链和 sftool 由 SDK `install.ps1` 安装到 `~/.sifli`，不要复制进仓库。
 - **许可证文件**：bootstrap 会自动补齐 `host/vendor/pyserial-3.5.LICENSE.txt`
   （来源 <https://raw.githubusercontent.com/pyserial/pyserial/v3.5/LICENSE.txt>，校验大小和版权行）
   与 `host/web/vendor/xterm/LICENSE`。补不齐时只保留 `WARN`，不影响运行。
@@ -79,18 +80,33 @@ PATH 里的 `scons` → `uv run --project <lock> scons` → 官方 `export.ps1`�
 ### RTT_CC 等变量由 host 注入
 
 host 构建时设置 `RTT_CC=gcc`、`SIFLI_SDK`/`SIFLI_SDK_PATH`、`PYTHONPATH=<sdk>/tools/build`、
-`RTT_EXEC_PATH=<toolchain>/arm-none-eabi/bin`、`CONAN_HOME`、`PKGS_ROOT` 等。
-手工在 shell 里跑 `scons` 时至少要设 `RTT_CC=gcc`；否则 SDK 的 `GetLinkScript`
+`RTT_EXEC_PATH=<toolchain>/tools/arm-none-eabi-gcc/<version>/bin`、`CONAN_HOME`、`PKGS_ROOT` 等。
+工具链路径从 `%USERPROFILE%\.sifli` 或 `SIFLI_SDK_TOOLS_PATH` 发现；手工在 shell 里跑
+`scons` 时至少要设 `RTT_CC=gcc` 并 source 官方 `export.ps1`，否则 SDK 的 `GetLinkScript`
 不会搜索 gcc linker script，链接阶段会缺脚本。
 
-### 导出模板的两处修复
+### 导出模板的修复
 
-这两处不是依赖，但缺了会表现为构建失败；仓库中的模板已包含修复：
+这些不是依赖，但缺了会表现为构建失败；仓库中的模板已包含修复：
 
-- `chip-adapt/sifli/templates/project/Kconfig.proj`：补齐 image cache 的 Kconfig 符号。
+- `chip-adapt/sifli/templates/project/Kconfig.proj`：只保留 `CUSTOM_MEM_MAP`；image cache
+  符号由 SDK `middleware/lvgl/Kconfig_mem` 提供，重复定义会让 Kconfig 直接 abort。
 - `chip-adapt/sifli/templates/src/SConscript`：把 `src/main.c` 编进工程。
 
 ### sftool 只做 CLI
 
 host 解析 `sftool.exe` 的逐行 `NN%` 输出来更新进度条；`sftool-gui`、`Impeller` 等 GUI
-工具没有集成。`sftool --version` 应输出 `sftool 0.2.5`。
+工具没有集成。`sftool --version` 应输出 `sftool 0.2.5`。查找顺序是 `SFTOOL_BIN` →
+`config.json` 的 `sftool` → `~/.sifli/tools/sftool/<version>` → `<toolchain_root>/tools/sftool`
+→ PATH；不要在仓库里再放一份 sftool。
+
+## 许可证
+
+| 组件 | 版本 | 许可证 | 位置 |
+| --- | --- | --- | --- |
+| pyserial | 3.5 | BSD-3-Clause | `vendor/pyserial-3.5.LICENSE.txt` |
+| xterm.js | 5.3.0 | MIT | `web/vendor/xterm/LICENSE` |
+
+两者都是未修改的上游发布物。pyserial 由 bootstrap 用
+`python -m pip install --target host/vendor --no-deps pyserial==3.5` 安装，安装后删除
+`bin/` 与 dist-info；xterm.js 从 jsDelivr 的 `xterm@5.3.0` 下载。

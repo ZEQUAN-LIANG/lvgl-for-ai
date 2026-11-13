@@ -15,7 +15,7 @@
 
 .PARAMETER Build
     Build before flashing.  The suggested project directory is used; when it
-    is the exported `chip-adapt/sifli/<app>/project`, `--app <app>` is passed
+    is the exported `chip-adapt/exports/<app>/project`, `--app <app>` is passed
     so the host re-exports user/app first.
 
 .PARAMETER Port
@@ -176,7 +176,7 @@ function Get-ExportedAppName {
     $appRoot = Split-Path -Path $full -Parent
     $appsRoot = Split-Path -Path $appRoot -Parent
     $expectedRoot = [System.IO.Path]::GetFullPath(
-        (Join-Path $RepoRoot 'chip-adapt\sifli')
+        (Join-Path $RepoRoot 'chip-adapt\exports')
     ).TrimEnd([char[]]@('\', '/'))
 
     if (-not [string]::Equals(
@@ -220,7 +220,7 @@ if ($Build) {
                 'flash', '--build', '--app', $app,
                 '--port', $resolvedPort, '--actor', 'ai', '--json'
             )
-            $description = "re-export chip-adapt/sifli/$app, build it, then flash"
+            $description = "re-export chip-adapt/exports/$app, build it, then flash"
         }
         else {
             $cliArguments = @(

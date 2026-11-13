@@ -1,14 +1,16 @@
 """Configuration for the SiFli Huangshan Pi serial host.
 
-The host is deliberately chip-specific: paths point at the downloaded SDK,
-toolchain and official Web Flasher assets under ``chip-adapt/sifli/vendor``.
-Nothing here imports ``core``; the LVGL harness and this host are separate.
+The host is deliberately chip-specific: the SDK lives under
+``chip-adapt/vendor`` while official toolchain and sftool installs stay in
+``~/.sifli`` (or ``SIFLI_SDK_TOOLS_PATH``).  Nothing here imports ``core``;
+the LVGL harness and this host are separate.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +18,12 @@ HOST_DIR = Path(__file__).resolve().parent
 SIFLI_DIR = HOST_DIR.parent
 CHIP_ADAPT_DIR = SIFLI_DIR.parent
 REPO_ROOT = CHIP_ADAPT_DIR.parent
-VENDOR_DIR = SIFLI_DIR / "vendor"
+if str(SIFLI_DIR) not in sys.path:
+    sys.path.insert(0, str(SIFLI_DIR))
+
+import layout  # noqa: E402
+
+VENDOR_DIR = layout.VENDOR_DIR
 
 CONFIG_PATH = HOST_DIR / "config.json"
 
@@ -27,6 +34,7 @@ PATH_KEYS = (
     "export_script",
     "export_ps1",
     "web_flasher_dir",
+    "exports_root",
     "project_dir",
     "log_dir",
     "firmware_cache_dir",
@@ -48,14 +56,16 @@ DEFAULT_CONFIG: dict[str, Any] = {
         9_600,
     ],
     "board": "sf32lb52-lchspi-ulp",
-    "sdk_root": str(VENDOR_DIR / "sifli-sdk"),
-    "toolchain_root": str(VENDOR_DIR / "toolchain"),
-    "sftool": str(VENDOR_DIR / "toolchain" / "sftool" / "sftool.exe"),
+    "sdk_root": str(layout.SDK_DIR),
+    "toolchain_root": os.environ.get("SIFLI_SDK_TOOLS_PATH")
+    or str(Path.home() / ".sifli"),
+    "sftool": "",
     "export_script": str(SIFLI_DIR / "export.py"),
-    "export_ps1": str(VENDOR_DIR / "sifli-sdk" / "export.ps1"),
+    "export_ps1": str(layout.SDK_DIR / "export.ps1"),
     "web_flasher_dir": str(
-        VENDOR_DIR / "SiFli-Wiki" / "source" / "_static" / "sftool"
+        layout.VENDOR_DIR / "sifli-wiki" / "source" / "_static" / "sftool"
     ),
+    "exports_root": str(layout.EXPORTS_DIR),
     "project_dir": "",
     "app": "",
     "build_command": [],
@@ -101,7 +111,7 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
     """Load ``host/config.json`` and merge it over the defaults.
 
     Relative paths in the JSON file are resolved against the repository root,
-    so a config can say ``"project_dir": "chip-adapt/sifli/hspi_watch/project"``.
+    so a config can say ``"project_dir": "chip-adapt/exports/sift_watch/project"``.
     """
 
     config_path = Path(path) if path else CONFIG_PATH
