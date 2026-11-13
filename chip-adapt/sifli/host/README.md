@@ -26,6 +26,9 @@ CLI / AI ───────── HTTP JSON ───┼── broker（独�
 # 检查/补齐依赖（pyserial、xterm.js、SDK uv lock 环境）
 powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/sifli/host/scripts/bootstrap.ps1
 
+# 安装 SDK 工具链与 sftool（国内网络默认走 China mirror；已装可跳过）
+powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/sifli/host/scripts/install-toolchain.ps1
+
 # 启动 broker + 网页（自动打开浏览器）
 python -I chip-adapt/sifli/host/server.py --open
 
@@ -50,8 +53,8 @@ python -I chip-adapt/sifli/host/cli.py tail
 python -I chip-adapt/sifli/host/cli.py close --json
 ```
 
-PowerShell 包装脚本：`scripts/suggest.ps1`、`scripts/build-current.ps1`、
-`scripts/flash-current.ps1 [-Build] [-Port COM12]`。所有脚本支持 `Get-Help`；
+PowerShell 包装脚本：`scripts/install-toolchain.ps1 [-NoMirror]`、`scripts/suggest.ps1`、
+`scripts/build-current.ps1`、`scripts/flash-current.ps1 [-Build] [-Port COM12]`。所有脚本支持 `Get-Help`；
 `build-current.ps1` / `flash-current.ps1` 的 `-DryRun` 只打印命令，不构建/烧录；
 退出码 0/1/2 透传。
 
@@ -214,7 +217,7 @@ host/
   serial_backend.py   pyserial 封装（vendor/pyserial）
   config.py           路径与默认配置
   timeutil.py         统一 ISO 时间戳
-  scripts/            bootstrap.ps1、build-current.ps1、flash-current.ps1、suggest.ps1
+  scripts/            bootstrap.ps1、install-toolchain.ps1、build-current.ps1、flash-current.ps1、suggest.ps1
   web/                xterm 终端、烧录 dock、活动流；web/vendor/xterm/
   vendor/serial/      pyserial 3.5（BSD-3-Clause）
   tests/              单元测试

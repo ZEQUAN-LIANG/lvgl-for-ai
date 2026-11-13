@@ -30,6 +30,9 @@ _CREATE_NO_WINDOW = (
     getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
 )
 
+_CHINA_MIRROR_ENV = "SIFLI_SDK_MIRROR_CHINA"
+_CHINA_MIRROR_TRUTHY = {"1", "true", "yes", "on"}
+
 
 class BuildFlashError(RuntimeError):
     def __init__(self, message: str, *, code: str = "build_flash_error") -> None:
@@ -321,6 +324,24 @@ def _apply_host_caches(env: dict[str, str], host: Path | None) -> None:
         env[key] = str(target)
 
 
+def _apply_china_mirror(env: dict[str, str]) -> None:
+    """Point uv at the same China mirrors as the SDK install preset.
+
+    ``SIFLI_SDK_MIRROR_CHINA=1`` is the switch the SDK's install.ps1 reads,
+    so the host reuses it instead of inventing a second toggle.  Values the
+    caller set explicitly in ``UV_DEFAULT_INDEX`` /
+    ``UV_PYTHON_DOWNLOADS_JSON_URL`` win.
+    """
+    enabled = env.get(_CHINA_MIRROR_ENV, "").strip().lower()
+    if enabled not in _CHINA_MIRROR_TRUTHY:
+        return
+    env.setdefault("UV_DEFAULT_INDEX", "https://mirrors.ustc.edu.cn/pypi/simple")
+    env.setdefault(
+        "UV_PYTHON_DOWNLOADS_JSON_URL",
+        "https://uv.agentsmirror.com/metadata/python-downloads.json",
+    )
+
+
 def toolchain_env(config: dict[str, Any]) -> dict[str, str]:
     root_value = config.get("toolchain_root")
     sdk_value = config.get("sdk_root")
@@ -354,6 +375,7 @@ def toolchain_env(config: dict[str, Any]) -> dict[str, str]:
         env["ENV_ROOT"] = str(venv)
         env["SIFLI_SDK_PYTHON_ENV_PATH"] = str(venv)
     _apply_host_caches(env, host)
+    _apply_china_mirror(env)
     env.setdefault("PYTHONUNBUFFERED", "1")
     return env
 

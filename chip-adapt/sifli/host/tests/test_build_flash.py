@@ -318,6 +318,54 @@ class BuildFlashTest(unittest.TestCase):
         self.assertTrue(path_parts[0].endswith(venv_bin))
         self.assertIn(str(root / "ninja"), path_parts)
 
+    def test_toolchain_env_applies_china_mirror(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "SIFLI_SDK_MIRROR_CHINA": "1",
+                "PATH": os.environ.get("PATH", ""),
+            },
+            clear=True,
+        ):
+            env = build_flash.toolchain_env(self.config)
+
+        self.assertEqual(
+            env["UV_DEFAULT_INDEX"],
+            "https://mirrors.ustc.edu.cn/pypi/simple",
+        )
+        self.assertEqual(
+            env["UV_PYTHON_DOWNLOADS_JSON_URL"],
+            "https://uv.agentsmirror.com/metadata/python-downloads.json",
+        )
+
+    def test_toolchain_env_ignores_mirror_when_disabled(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "SIFLI_SDK_MIRROR_CHINA": "0",
+                "PATH": os.environ.get("PATH", ""),
+            },
+            clear=True,
+        ):
+            env = build_flash.toolchain_env(self.config)
+
+        self.assertNotIn("UV_DEFAULT_INDEX", env)
+        self.assertNotIn("UV_PYTHON_DOWNLOADS_JSON_URL", env)
+
+    def test_toolchain_env_keeps_explicit_uv_index(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "SIFLI_SDK_MIRROR_CHINA": "1",
+                "UV_DEFAULT_INDEX": "https://example.invalid/simple",
+                "PATH": os.environ.get("PATH", ""),
+            },
+            clear=True,
+        ):
+            env = build_flash.toolchain_env(self.config)
+
+        self.assertEqual(env["UV_DEFAULT_INDEX"], "https://example.invalid/simple")
+
     def test_flash_options(self) -> None:
         self.assertEqual(
             build_flash._flash_options(

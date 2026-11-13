@@ -47,6 +47,37 @@ cd chip-adapt/vendor/sifli-sdk
 如果机器上已经有工具链，设置 `SIFLI_SDK_TOOLS_PATH` 指向同一套目录结构，不要复制进仓库。
 宿主的 `bootstrap.ps1 -Check` 和 `host/cli.py status --json` 会报告实际找到的路径。
 
+### 国内网络：用 China mirror 安装
+
+`install.ps1` 默认从 GitHub Releases 下载工具链；国内直连经常只有几十 KB/s，
+`arm-none-eabi` 一个包就有 300 MB。SDK 自带镜像开关，设置后：
+
+- GitHub Release 资产改走 `https://downloads.sifli.com/github_assets`
+- PyPI 默认源改成 `https://mirrors.ustc.edu.cn/pypi/simple`
+- `uv` 的 Python 下载元数据改走 `https://uv.agentsmirror.com`
+
+仓库封装入口默认开启镜像，并会在结束后校验 gcc/sftool：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/sifli/host/scripts/install-toolchain.ps1
+```
+
+- 需要上游源：加 `-NoMirror`。
+- `-Offline`、`-Profile <name>`、`-Targets <names>` 转发给 SDK 安装器；`-DryRun` 只打印命令、不安装。
+- 不要直接改 `vendor/sifli-sdk/`；封装脚本只调用 SDK 安装器。
+
+等价的手工方式（PowerShell，环境变量只对当前会话生效）：
+
+```powershell
+cd chip-adapt/vendor/sifli-sdk
+$env:SIFLI_SDK_MIRROR_CHINA = "1"
+.\install.ps1
+```
+
+`SIFLI_SDK_MIRROR_CHINA` 的取值为 `1/true/yes/on`；`host/cli.py build` 也读取同一个变量，
+构建时 `uv` 会使用同一组镜像。`install.ps1` 还接受 `--mirror <url>` 指定自定义
+GitHub 资产镜像前缀。
+
 离线手装 sftool 0.2.5（Windows x64）时使用 SDK `tools.json` 里的固定资产：
 
 ```text

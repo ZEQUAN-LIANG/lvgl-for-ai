@@ -29,7 +29,7 @@ SiFli-SDK 工程，并提供串口、构建和烧录入口。
 | 直接点开上位机 / 重建启动器 | `sifli/tools/` | 双击 `SiFli-Host.exe`；`python -I core/tools/launchers/build.py` |
 | 改导出规则或模板 | `sifli/export.py`、`sifli/asset_plan.py`、`sifli/templates/` | `python -I chip-adapt/sifli/run_tests.py` |
 | 改上位机 | `sifli/host/` | `python -I chip-adapt/sifli/host/tests/run_tests.py` |
-| 下载/升级 SDK、工具链、sftool | `vendor/README.md` | 不在仓库内改 SDK |
+| 下载/升级 SDK、工具链、sftool | `vendor/README.md` | `host/scripts/install-toolchain.ps1`（国内网络默认镜像）；不在仓库内改 SDK |
 | 查 SDK 图形能力 | `docs/sifli.html` | 以链接的 SDK v2.5.1 真源为准 |
 | 改应用 | `../user/app/GUIDE.md` | 只改 `user/app/`，不改 `exports/` |
 
@@ -39,7 +39,7 @@ SiFli-SDK 工程，并提供串口、构建和烧录入口。
 
 - SDK 源码：`chip-adapt/vendor/sifli-sdk/`（commit `f4042d7e`，`version.txt` = `v2.5.1`）。
 - SDK 自带工具：留在 `vendor/sifli-sdk/tools/`（`png2ezip/ezip.exe`、`sdk.py`、`uart_download/`、`locks/`）。
-- ARM 工具链与 sftool：官方 `install.ps1` 安装到 `%USERPROFILE%\.sifli\tools\`，不进仓库。
+- ARM 工具链与 sftool：官方 `install.ps1` 安装到 `%USERPROFILE%\.sifli\tools\`，不进仓库。国内网络用 `sifli/host/scripts/install-toolchain.ps1`（默认 `SIFLI_SDK_MIRROR_CHINA=1`，走 downloads.sifli.com 与 USTC PyPI），细节见 `vendor/README.md`。
 - Web Flasher 静态资源：可选，`vendor/sifli-wiki/source/_static/sftool/`。
 - pyserial / xterm.js：`bootstrap.ps1` 安装到 `sifli/host/vendor/` 和 `sifli/host/web/vendor/`。
 

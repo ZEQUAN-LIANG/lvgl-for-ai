@@ -44,6 +44,8 @@ SDK、工具链和 sftool 的下载、版本与校验见 `chip-adapt/vendor/READ
 - **Python 3.9+**：安装后确保 `python --version` 可用。
 - **uv**：按 <https://docs.astral.sh/uv/getting-started/installation/> 安装。
 - **SiFli SDK / 工具链 / sftool**：按 `chip-adapt/vendor/README.md` 恢复；工具链和 sftool 由 SDK `install.ps1` 安装到 `~/.sifli`，不要复制进仓库。
+  国内网络先设置 `$env:SIFLI_SDK_MIRROR_CHINA = "1"`，或直接跑
+  `scripts/install-toolchain.ps1`（默认开镜像，`-NoMirror` 关闭）；`host/cli.py build` 也读取该变量。
 - **许可证文件**：bootstrap 会自动补齐 `host/vendor/pyserial-3.5.LICENSE.txt`
   （来源 <https://raw.githubusercontent.com/pyserial/pyserial/v3.5/LICENSE.txt>，校验大小和版权行）
   与 `host/web/vendor/xterm/LICENSE`。补不齐时只保留 `WARN`，不影响运行。
