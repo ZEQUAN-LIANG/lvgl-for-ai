@@ -18,6 +18,7 @@ from typing import Any, Callable, Mapping, Optional, Sequence
 
 from .engine_guard import clear_engine_pid, write_engine_pid
 from .errors import ToolError, ProtocolError, RuntimeCrash
+from .session_schema import display_problem
 
 PROTOCOL_VERSION = "lvgl-ai-engine-v1"
 QUIT_TIMEOUT_S = 2.0
@@ -412,17 +413,7 @@ class EngineLink:
             raise invalid(
                 f"ready.inputs must be ['real', 'virtual'], got {message['inputs']!r}"
             )
-        display = message["display"]
-        width = display.get("width") if isinstance(display, dict) else None
-        height = display.get("height") if isinstance(display, dict) else None
-        if (
-            isinstance(width, bool)
-            or not isinstance(width, int)
-            or width < 1
-            or isinstance(height, bool)
-            or not isinstance(height, int)
-            or height < 1
-        ):
+        if display_problem(message["display"], label="ready.display") is not None:
             raise invalid("ready.display must carry positive width and height")
         if not isinstance(message["inputs"], list) or not isinstance(
             message["capabilities"], list

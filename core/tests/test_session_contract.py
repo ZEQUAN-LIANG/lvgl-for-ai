@@ -13,6 +13,7 @@ import unittest
 from pathlib import Path
 
 from lvgl_ai import Recording, summarize_session
+from lvgl_ai.control import session_schema
 from lvgl_ai.control.retention import prune_sessions
 from session_fixtures import (
     FRAME_1,
@@ -131,6 +132,55 @@ class SessionContractTest(unittest.TestCase):
         self.assertEqual(
             sorted(path.name for path in self.root.iterdir()),
             [SESSION_NAME],
+        )
+
+
+class DisplayValidatorTest(unittest.TestCase):
+    """B2: ``session_schema.validate_display`` is the one display rule."""
+
+    def test_accepts_positive_dimensions_and_ignores_extra_fields(self) -> None:
+        self.assertEqual(
+            session_schema.validate_display(
+                {"width": 390, "height": 450, "format": "XRGB8888"}
+            ),
+            {"width": 390, "height": 450},
+        )
+
+    def test_rejects_non_positive_or_non_integer_sizes(self) -> None:
+        cases = [
+            {"width": 0, "height": 450},
+            {"width": -1, "height": 450},
+            {"width": 390, "height": 0},
+            {"width": 390, "height": -1},
+            {"width": True, "height": 450},
+            {"width": 390, "height": 1.5},
+            {"width": 390},
+            {"height": 450},
+            "390x450",
+        ]
+        for display in cases:
+            with self.subTest(display=display):
+                with self.assertRaises(ValueError):
+                    session_schema.validate_display(display)
+
+    def test_none_is_only_valid_when_the_caller_allows_it(self) -> None:
+        self.assertIsNone(
+            session_schema.validate_display(None, allow_none=True)
+        )
+        with self.assertRaises(ValueError):
+            session_schema.validate_display(None)
+
+    def test_problem_text_names_the_first_bad_dimension(self) -> None:
+        self.assertEqual(
+            session_schema.display_problem({"width": 0, "height": 450}),
+            "display.width must be >= 1; got 0",
+        )
+        self.assertEqual(
+            session_schema.display_problem({"width": 640, "height": -1}),
+            "display.height must be >= 1; got -1",
+        )
+        self.assertIsNone(
+            session_schema.display_problem({"width": 390, "height": 450})
         )
 
 

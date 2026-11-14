@@ -63,6 +63,10 @@ MANIFEST_REQUIRED_FIELDS = tuple(
 )
 TIMELINE_ROW_TYPES = frozenset({"frame", "input", "wait", "mark", "snapshot", "end"})
 
+# The scenario, the ready announcement and the manifest share one dimension
+# rule: a positive integer, capped for scenario display requests.
+MAX_DISPLAY_DIMENSION = 4096
+
 # Optional evidence file -> manifest artifacts key, in listing order.
 ARTIFACT_FILES = (
     (BUILD_LOG_FILE, "build_log"),
@@ -72,6 +76,87 @@ ARTIFACT_FILES = (
     (REFERENCE_DIFFS_FILE, "reference_diffs"),
     (ANNOTATIONS_FILE, "annotations"),
 )
+
+
+def dimension_problem(
+    value: Any,
+    name: str,
+    *,
+    minimum: int = 1,
+    maximum: int | None = None,
+) -> str | None:
+    """Diagnostic for one display dimension, or ``None`` when it is valid.
+
+    ``bool`` is rejected even though it subclasses ``int``. The message text is
+    shared by the scenario, ready-announcement and manifest callers.
+    """
+    if isinstance(value, bool) or not isinstance(value, int):
+        return f"{name} must be an integer"
+    if value < minimum:
+        return f"{name} must be >= {minimum}; got {value}"
+    if maximum is not None and value > maximum:
+        return f"{name} must be <= {maximum}; got {value}"
+    return None
+
+
+def display_problem(
+    value: Any,
+    *,
+    label: str = "display",
+    allow_none: bool = False,
+    maximum: int | None = None,
+    reject_unknown: bool = False,
+) -> str | None:
+    """Diagnostic for a ``{width, height}`` object, or ``None`` when valid."""
+    if value is None:
+        if allow_none:
+            return None
+        return f"{label} must be an object with width and height"
+    if not isinstance(value, dict):
+        return f"{label} must be an object with width and height"
+    if reject_unknown:
+        unknown = sorted(set(value) - {"width", "height"})
+        if unknown:
+            return f"{label} has unexpected field(s) {', '.join(unknown)}"
+    for name in ("width", "height"):
+        if name not in value:
+            return f"{label}.{name} is required"
+        problem = dimension_problem(
+            value[name], f"{label}.{name}", maximum=maximum
+        )
+        if problem is not None:
+            return problem
+    return None
+
+
+def validate_display(
+    value: Any,
+    *,
+    path: Path | None = None,
+    label: str = "display",
+    allow_none: bool = False,
+    maximum: int | None = None,
+    reject_unknown: bool = False,
+) -> dict[str, int] | None:
+    """Validate a display object and return its width and height.
+
+    ``None`` is only accepted with ``allow_none`` (an optional manifest
+    display). The returned mapping drops unrelated fields such as the ready
+    announcement's pixel format.
+    """
+    problem = display_problem(
+        value,
+        label=label,
+        allow_none=allow_none,
+        maximum=maximum,
+        reject_unknown=reject_unknown,
+    )
+    if problem is not None:
+        prefix = "" if path is None else f"{path}: "
+        raise ValueError(prefix + problem)
+    if value is None:
+        return None
+    return {"width": value["width"], "height": value["height"]}
 
 
 def build_manifest(**values: Any) -> dict[str, Any]:
@@ -114,23 +199,7 @@ def validate_manifest(data: dict[str, Any], path: Path) -> dict[str, Any]:
     if status not in SESSION_STATUSES:
         allowed = ", ".join(sorted(SESSION_STATUSES))
         raise ValueError(f"{path}: status must be one of {allowed}; got {status!r}")
-    display = data.get("display")
-    if display is not None:
-        if not isinstance(display, dict):
-            raise ValueError(f"{path}: display must be null or an object")
-        width = display.get("width")
-        height = display.get("height")
-        if (
-            isinstance(width, bool)
-            or not isinstance(width, int)
-            or width < 1
-            or isinstance(height, bool)
-            or not isinstance(height, int)
-            or height < 1
-        ):
-            raise ValueError(
-                f"{path}: display must carry positive width and height"
-            )
+    validate_display(data.get("display"), path=path, allow_none=True)
     _require_int(data, "frame_count", path)
     if not isinstance(data["checks"], list):
         raise ValueError(f"{path}: checks must be a list")

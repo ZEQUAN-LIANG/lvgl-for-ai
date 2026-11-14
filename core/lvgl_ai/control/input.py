@@ -41,6 +41,11 @@ from .keys import (
     char_key,
     resolve_key,
 )
+from .session_schema import (
+    MAX_DISPLAY_DIMENSION,
+    display_problem as _shared_display_problem,
+    dimension_problem as _shared_dimension_problem,
+)
 
 POINTER_ACTIONS = ("down", "move", "up")
 KEY_ACTIONS = ("press", "release")
@@ -55,8 +60,6 @@ TOKEN_PATTERN = "[A-Za-z0-9_-]+"
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{1,64}\Z")
 INT16_MIN = -32768
 INT16_MAX = 32767
-MAX_DISPLAY_DIMENSION = 4096
-
 _COMMON_FIELDS = {"at_ms", "device", "action"}
 _DEVICE_FIELDS = {
     "pointer": _COMMON_FIELDS | {"x", "y"},
@@ -99,25 +102,19 @@ def integer_problem(
 
 def dimension_problem(value: Any, name: str) -> str | None:
     """Return the display-dimension diagnostic, or ``None`` when valid."""
-    return integer_problem(
-        value, name, minimum=1, maximum=MAX_DISPLAY_DIMENSION
+    return _shared_dimension_problem(
+        value, name, maximum=MAX_DISPLAY_DIMENSION
     )
 
 
 def display_problem(value: Any) -> str | None:
     """Return the scenario ``display`` object diagnostic, or ``None``."""
-    if not isinstance(value, dict):
-        return "display must be an object with width and height"
-    unknown = sorted(set(value) - {"width", "height"})
-    if unknown:
-        return f"display has unexpected field(s) {', '.join(unknown)}"
-    for name in ("width", "height"):
-        if name not in value:
-            return f"display.{name} is required"
-        problem = dimension_problem(value[name], f"display.{name}")
-        if problem is not None:
-            return problem
-    return None
+    return _shared_display_problem(
+        value,
+        label="display",
+        maximum=MAX_DISPLAY_DIMENSION,
+        reject_unknown=True,
+    )
 
 
 def text_problem(value: Any) -> str | None:

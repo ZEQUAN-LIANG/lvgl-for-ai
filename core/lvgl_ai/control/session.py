@@ -31,6 +31,7 @@ from .session_schema import (
     PREVIEW_FILE,
     SNAPSHOTS_DIR,
     build_manifest,
+    display_problem,
     list_pngs,
 )
 
@@ -443,17 +444,6 @@ class SessionStore:
 def _display_metadata(ready: Mapping[str, Any]) -> dict[str, int] | None:
     """The actual display size from ``ready``; ``None`` before startup."""
     display = ready.get("display")
-    if not isinstance(display, Mapping):
+    if not isinstance(display, Mapping) or display_problem(display) is not None:
         return None
-    width = display.get("width")
-    height = display.get("height")
-    if (
-        isinstance(width, bool)
-        or not isinstance(width, int)
-        or width < 1
-        or isinstance(height, bool)
-        or not isinstance(height, int)
-        or height < 1
-    ):
-        return None
-    return {"width": width, "height": height}
+    return {"width": display["width"], "height": display["height"]}
