@@ -93,9 +93,8 @@ FreeType 2.13.2 还作为 LVGL 运行时 TTF 加载库链接进 host engine（`L
 
 ## Python（宿主依赖）
 
-- 发布包**不自带** Python；宿主机必须安装 Python 3.9+ 并加入 PATH。
-- 许可证：Python Software Foundation License；参考文本见
-  `licenses/Python-3.11.txt`，不表示运行时随包分发。
+- 发布包**不自带** Python，也不附带 Python 许可证文本；宿主机必须安装
+  Python 3.9+ 并加入 PATH，其许可证以宿主安装为准。
 - 资源转换用的 freetype-py / FreeType / pypng 见上文。
 
 ## SiFli 工具资产

@@ -293,36 +293,32 @@ def _stage_full_package(
         _copy_engine(package, repo, version)
     release_tool.clean_build_dir(package, "9.6")
 
-    for version in LEGACY_VERSIONS:
-        smoke_dir = package / "smoke" / version
-        smoke_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(
-            repo / "user" / "scenarios" / "settings.json",
-            smoke_dir / "legacy_smoke.json",
-        )
-
     shared = release_tool.share_sdk_payload(package, VERSIONS)
     release_tool.strip_build_runtime_dlls(package)
 
-    smoke_report: list[dict[str, Any]] = []
     if smoke:
-        for version in VERSIONS:
-            if version in INTRO_VERSIONS:
-                scenario = package / "user" / "scenarios" / "intro.json"
-                markers = (
-                    "[app] app=intro",
-                    "[index] ui created",
-                )
-            else:
-                scenario = package / "smoke" / version / "legacy_smoke.json"
-                markers = ("[app] demo_button clicked",)
-            smoke_report.append(
+        with tempfile.TemporaryDirectory(prefix="lvgl-release-smoke-") as raw:
+            smoke_root = Path(raw)
+            for version in VERSIONS:
+                if version in INTRO_VERSIONS:
+                    scenario = package / "user" / "scenarios" / "intro.json"
+                    markers = (
+                        "[app] app=intro",
+                        "[index] ui created",
+                    )
+                else:
+                    # Keep the legacy smoke fixture out of the shipped package.
+                    scenario = smoke_root / f"legacy_{version}.json"
+                    shutil.copy2(
+                        repo / "user" / "scenarios" / "settings.json",
+                        scenario,
+                    )
+                    markers = ("[app] demo_button clicked",)
                 _smoke(package, version, scenario, markers=markers)
-            )
 
     release_tool.purge_caches(package)
     release_tool.check_hygiene(package, repo)
-    return {"engine": staged["engine"], "smoke": smoke_report, "shared": shared}
+    return {"engine": staged["engine"], "shared": shared}
 
 
 def _overlay_sifli(package: Path, repo: Path, tool_version: str) -> None:
@@ -510,7 +506,6 @@ def build_release(
             "sha256": sifli_sha,
             "bytes": sifli_zip.stat().st_size,
         },
-        "smoke": staged["smoke"],
     }
 
 

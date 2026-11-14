@@ -191,6 +191,8 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 "user/scenarios/template.json",
                 "user/scenarios/settings.json",
                 "runtime/",
+                "smoke/",
+                "licenses/Python-3.11.txt",
                 "__pycache__/",
                 "/.git/",
             ):

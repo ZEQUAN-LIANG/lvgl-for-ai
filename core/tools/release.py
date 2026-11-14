@@ -851,9 +851,8 @@ def release(
             compiler_version=compiler_version,
             host_sdks=host_sdks,
         )
-        smoke_report = (
-            smoke_package(staging_package, lvgl_version) if smoke else None
-        )
+        if smoke:
+            smoke_package(staging_package, lvgl_version)
         purge_caches(staging_package)
         clean_build_dir(staging_package, lvgl_version)
         check_hygiene(staging_package, repo_root)
@@ -908,7 +907,6 @@ def release(
         },
         "sha256": zip_hash,
         "files": hashes,
-        "smoke": smoke_report,
     }
     manifest_path = out_dir / f"{zip_path.stem}.release.json"
     manifest_path.write_text(
@@ -921,7 +919,6 @@ def release(
         "sha256": zip_hash,
         "sha256_file": str(sha_path),
         "manifest": str(manifest_path),
-        "smoke": smoke_report,
     }
 
 
@@ -1009,13 +1006,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[release] zip: {summary['zip']}")
         print(f"[release] sha256: {summary['sha256']}")
         print(f"[release] manifest: {summary['manifest']}")
-        if summary["smoke"]:
-            print(
-                "[release] smoke: "
-                f"no-build={summary['smoke']['no_build_session']} "
-                f"prebuilt={summary['smoke']['prebuilt_session']} "
-                f"serve={summary['smoke']['serve_url']}"
-            )
     return 0
 
 
