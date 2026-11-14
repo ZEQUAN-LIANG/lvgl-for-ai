@@ -80,6 +80,7 @@ CORE_RELEASE_EXCLUDE_FILES = (
     "tools/release_tools_README.md",
     "tools/release.py",
     "tools/release_all.py",
+    "tools/release_bundle.py",
     "tools/release_app.c",
     "tools/upload_release.py",
     "tools/sync_github.py",
