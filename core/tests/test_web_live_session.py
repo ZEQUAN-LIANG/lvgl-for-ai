@@ -194,6 +194,55 @@ class LiveSessionTest(unittest.TestCase):
             session.start("record", "coffee")
         self.assertEqual(conflict.exception.code, "live_running")
 
+    def test_second_start_keeps_the_running_ticker(self) -> None:
+        runtime = FakeRuntime()
+        session = self._session(lambda: runtime)
+        session.start("record")
+
+        ticker = session._ticker
+        self.assertIsNotNone(ticker)
+        self.assertTrue(ticker.is_alive())
+
+        before = runtime.t_ms
+        with self.assertRaises(LiveError) as raised:
+            session.start("record")
+        self.assertEqual(raised.exception.code, "live_running")
+
+        self.assertIs(session._ticker, ticker)
+        self.assertTrue(ticker.is_alive())
+        deadline = time.monotonic() + 2.0
+        while runtime.t_ms == before and time.monotonic() < deadline:
+            time.sleep(0.01)
+        self.assertGreater(runtime.t_ms, before)
+
+    def test_concurrent_start_has_one_winner(self) -> None:
+        runtime = FakeRuntime()
+        session = self._session(lambda: runtime)
+        barrier = threading.Barrier(2)
+        outcomes: list[str] = []
+        outcomes_lock = threading.Lock()
+
+        def worker() -> None:
+            barrier.wait()
+            try:
+                session.start("record")
+                result = "started"
+            except LiveError as exc:
+                result = exc.code
+            with outcomes_lock:
+                outcomes.append(result)
+
+        threads = [threading.Thread(target=worker) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(5.0)
+
+        self.assertFalse(any(thread.is_alive() for thread in threads))
+        self.assertEqual(sorted(outcomes), ["live_running", "started"])
+        self.assertIsNotNone(session._ticker)
+        self.assertTrue(session._ticker.is_alive())
+
     def test_selected_app_does_not_wait_for_a_ticker_tick(self) -> None:
         class SlowTickRuntime(FakeRuntime):
             def __init__(self) -> None:
@@ -404,6 +453,49 @@ class LiveSessionTest(unittest.TestCase):
         )
         self.assertIs(captured["record"], False)
         self.assertEqual((captured["width"], captured["height"]), (640, 480))
+
+    def test_live_options_reach_the_session_store_unchanged(self) -> None:
+        instances: list[Runtime] = []
+
+        class StoreRuntime(Runtime):
+            """Real Runtime + SessionStore, without spawning an engine."""
+
+            def __init__(self, **kwargs: object) -> None:
+                super().__init__(**kwargs)
+                instances.append(self)
+
+            def start(self) -> StoreRuntime:
+                self._session_used = True
+                return self
+
+            def stop(self) -> None:
+                self._store.close_log()
+                self._store.discard_preview()
+
+        with mock.patch("lvgl_ai.web.live_session.Runtime", StoreRuntime):
+            session = LiveSession(self.root / "sessions", lvgl="9.4", build=False)
+            self.addCleanup(_quiet_stop_session, session)
+            session.start("test", "coffee", display=(640, 480))
+
+        self.assertEqual(len(instances), 1)
+        runtime = instances[0]
+        self.assertEqual((runtime.width, runtime.height), (640, 480))
+        store = runtime._store
+        self.assertEqual(store.app, "coffee")
+        self.assertIs(store.build, False)
+        self.assertIs(store.record, False)
+        self.assertIs(store.live_frame, True)
+        self.assertIs(store.record_changed_only, True)
+        self.assertEqual(store.mode, "headless")
+        self.assertEqual(store.max_log_bytes, 16 * 1024 * 1024)
+        self.assertEqual(store.retention, 10)
+        self.assertEqual(
+            store.sessions_root.parent, (self.root / "sessions").resolve()
+        )
+        self.assertEqual(store.lvgl_src.name, "9.4")
+
+        session.stop()
+        self.assertFalse(store.sessions_root.exists())
 
     def test_start_requires_a_runtime_tick(self) -> None:
         class NoTickRuntime(FakeRuntime):

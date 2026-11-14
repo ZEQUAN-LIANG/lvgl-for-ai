@@ -614,7 +614,7 @@ class MaxFramesIntegrationTest(unittest.TestCase):
             lvgl="9.6", build=False, sessions_root=self.sessions_root
         )
         self.assertEqual(runtime.max_frames, 600)
-        self.assertEqual(runtime.max_log_bytes, 16 * 1024 * 1024)
+        self.assertEqual(runtime._store.max_log_bytes, 16 * 1024 * 1024)
 
         with mock.patch.dict(
             os.environ, {"LVGL_AI_MAX_FRAMES": "7", "LVGL_AI_MAX_LOG_BYTES": "12345"}
@@ -623,7 +623,7 @@ class MaxFramesIntegrationTest(unittest.TestCase):
                 lvgl="9.6", build=False, sessions_root=self.sessions_root
             )
         self.assertEqual(configured.max_frames, 7)
-        self.assertEqual(configured.max_log_bytes, 12345)
+        self.assertEqual(configured._store.max_log_bytes, 12345)
 
         for kwargs in (
             {"max_frames": 0},

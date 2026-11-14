@@ -257,11 +257,6 @@ class SessionStore:
         """The LVGL source tree as recorded, or ``None`` for the default."""
         return None if self._lvgl_src is None else Path(self._lvgl_src)
 
-    @property
-    def session_retention(self) -> int | None:
-        """Public name for the retention limit owned by the store."""
-        return self.retention
-
     def create(self) -> Path:
         """Reserve a unique session directory and open its engine log."""
         self.sessions_root.mkdir(parents=True, exist_ok=True)

@@ -273,7 +273,7 @@ class MultiVersionMatrixTest(unittest.TestCase):
                     )
                     rt.start()
                     try:
-                        self.assertEqual(rt.lvgl_src, override)
+                        self.assertEqual(rt._store.lvgl_src, override)
                         self.assertEqual(
                             rt.build_dir, paths.build_dir_for(label)
                         )

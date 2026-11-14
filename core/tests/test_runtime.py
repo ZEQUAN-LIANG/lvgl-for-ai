@@ -15,24 +15,19 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from lvgl_ai import EngineNotFound, ProtocolError, Recording, Runtime, RuntimeCrash
+from lvgl_ai import (
+    EngineNotFound,
+    ProtocolError,
+    Recording,
+    Runtime,
+    RuntimeCrash,
+    ScenarioError,
+)
+from lvgl_ai.control.engine_link import EngineLink
 from support import distinct_rgb, read_png_rgb
 
 SESSION_ID_RE = re.compile(r"^\d{8}-\d{6}-[0-9a-f]{4}$")
 FAKE_ENGINE = Path(__file__).with_name("fake_engine.py")
-SESSION_OPTION_NAMES = (
-    "app",
-    "build",
-    "record",
-    "live_frame",
-    "record_changed_only",
-    "mode",
-    "lvgl_src",
-    "sessions_root",
-    "max_log_bytes",
-    "session_retention",
-    "ready",
-)
 
 
 class RuntimeIntegrationTest(unittest.TestCase):
@@ -52,7 +47,7 @@ class RuntimeIntegrationTest(unittest.TestCase):
         self.assertEqual(ready["seq"], 0)
         self.assertEqual(ready["protocol"], "lvgl-ai-engine-v1")
         self.assertEqual(ready["lvgl"], "9.6.0")
-        self.assertEqual(Path(ready["lvgl_src"]), rt.lvgl_src)
+        self.assertEqual(Path(ready["lvgl_src"]), rt._store.lvgl_src)
         self.assertEqual(ready["display"]["width"], 800)
         self.assertEqual(ready["display"]["height"], 600)
         self.assertEqual(ready["mode"], "headless")
@@ -168,7 +163,7 @@ class RuntimeIntegrationTest(unittest.TestCase):
     def test_context_manager_start_stop_are_idempotent(self) -> None:
         rt = Runtime(lvgl="9.6", build=True, sessions_root=self.sessions_root)
         self.assertFalse(rt.is_running)
-        self.assertTrue(rt.record)
+        self.assertTrue(rt._store.record)
         self.assertEqual(rt.mode, "headless")
         rt.stop()  # stop before start is a no-op
 
@@ -192,7 +187,7 @@ class RuntimeIntegrationTest(unittest.TestCase):
             self.addCleanup(rt.stop)
             rt.start()
             self.assertEqual(rt.session_dir.parent, env_root.resolve())
-            self.assertEqual(rt.session_dir.parent, rt.sessions_root)
+            self.assertEqual(rt.session_dir.parent, rt._store.sessions_root)
             self.assertTrue(rt.session_dir.is_dir())
             rt.stop()
 
@@ -218,14 +213,14 @@ class RuntimeIntegrationTest(unittest.TestCase):
 
 
 class RuntimeSessionOptionTest(unittest.TestCase):
-    """Session options are stored once, by SessionStore; Runtime forwards them."""
+    """Session options are stored once, by SessionStore; Runtime is constructor-only."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.sessions_root = Path(self._tmp.name) / "sessions"
 
-    def test_session_options_are_read_from_the_store(self) -> None:
+    def test_session_options_are_stored_once(self) -> None:
         rt = Runtime(
             lvgl="9.6",
             app="coffee",
@@ -237,27 +232,47 @@ class RuntimeSessionOptionTest(unittest.TestCase):
             max_log_bytes=12345,
             session_retention=None,
         )
+        self.addCleanup(rt.stop)
+        store = rt._store
 
-        for name in SESSION_OPTION_NAMES:
-            with self.subTest(option=name):
-                self.assertNotIn(name, vars(rt), f"{name} must live in the store")
-                self.assertEqual(
-                    getattr(rt, name), getattr(rt._store, name)
-                )
+        self.assertEqual(store.app, "coffee")
+        self.assertIs(store.build, False)
+        self.assertIs(store.record, False)
+        self.assertIs(store.live_frame, True)
+        self.assertIs(store.record_changed_only, True)
+        self.assertEqual(store.mode, "headless")
+        self.assertEqual(store.sessions_root, self.sessions_root.resolve())
+        self.assertEqual(store.max_log_bytes, 12345)
+        self.assertIsNone(store.retention)
+        self.assertIsInstance(store.lvgl_src, Path)
+
+    def test_runtime_like_readouts_are_read_only(self) -> None:
+        rt = Runtime(
+            lvgl="9.6",
+            app="coffee",
+            build=False,
+            sessions_root=self.sessions_root,
+        )
+        self.addCleanup(rt.stop)
 
         self.assertEqual(rt.app, "coffee")
-        self.assertIs(rt.build, False)
-        self.assertIs(rt.record, False)
-        self.assertIs(rt.live_frame, True)
-        self.assertIs(rt.record_changed_only, True)
         self.assertEqual(rt.mode, "headless")
-        self.assertEqual(rt.sessions_root, self.sessions_root.resolve())
-        self.assertEqual(rt.max_log_bytes, 12345)
-        self.assertIsNone(rt.session_retention)
         self.assertIsNone(rt.ready)
-        self.assertIsInstance(rt.lvgl_src, Path)
+        for name in ("app", "mode", "ready"):
+            with self.subTest(option=name):
+                with self.assertRaises(AttributeError):
+                    setattr(rt, name, "overridden")
 
-    def test_session_options_reject_outside_assignment(self) -> None:
+
+class RuntimeSessionSurfaceTest(unittest.TestCase):
+    """Session options live in SessionStore; Runtime keeps the RuntimeLike surface."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.sessions_root = Path(self._tmp.name) / "sessions"
+
+    def test_pure_store_options_are_not_re_exposed(self) -> None:
         rt = Runtime(
             lvgl="9.6",
             app="coffee",
@@ -269,15 +284,50 @@ class RuntimeSessionOptionTest(unittest.TestCase):
             max_log_bytes=12345,
             session_retention=None,
         )
+        self.addCleanup(rt.stop)
 
-        for name in SESSION_OPTION_NAMES:
+        for name in (
+            "build",
+            "record",
+            "live_frame",
+            "record_changed_only",
+            "lvgl_src",
+            "sessions_root",
+            "max_log_bytes",
+            "session_retention",
+        ):
             with self.subTest(option=name):
-                before = getattr(rt, name)
-                store_before = getattr(rt._store, name)
-                with self.assertRaises(AttributeError):
-                    setattr(rt, name, "overridden")
-                self.assertEqual(getattr(rt, name), before)
-                self.assertEqual(getattr(rt._store, name), store_before)
+                self.assertFalse(hasattr(rt, name))
+
+        self.assertEqual(rt._store.app, "coffee")
+        self.assertIs(rt._store.build, False)
+        self.assertIs(rt._store.record, False)
+        self.assertIs(rt._store.live_frame, True)
+        self.assertIs(rt._store.record_changed_only, True)
+        self.assertEqual(rt._store.max_log_bytes, 12345)
+        self.assertIsNone(rt._store.retention)
+        self.assertIsInstance(rt._store.lvgl_src, Path)
+        self.assertEqual(rt._store.sessions_root, self.sessions_root.resolve())
+
+    def test_runtime_like_readouts_survive(self) -> None:
+        rt = Runtime(lvgl="9.6", build=False, sessions_root=self.sessions_root)
+        self.addCleanup(rt.stop)
+
+        self.assertIsNone(rt.app)
+        self.assertEqual(rt.mode, "headless")
+        self.assertIsNone(rt.ready)
+
+    def test_store_retention_has_one_public_name(self) -> None:
+        rt = Runtime(
+            lvgl="9.6",
+            build=False,
+            sessions_root=self.sessions_root,
+            session_retention=None,
+        )
+        self.addCleanup(rt.stop)
+
+        self.assertIsNone(rt._store.retention)
+        self.assertFalse(hasattr(rt._store, "session_retention"))
 
 
 class RuntimeProcessSeamTest(unittest.TestCase):
@@ -510,6 +560,58 @@ class RuntimeProcessSeamTest(unittest.TestCase):
             )
         )
         rt.stop()
+
+    def test_stop_writes_a_crash_manifest_when_shutdown_raises(self) -> None:
+        rt = self._runtime()
+        rt.start()
+        link = rt._link
+        self.assertIsNotNone(link)
+
+        def boom(*args: object, **kwargs: object) -> int | None:
+            proc = link._proc
+            if proc is not None and proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            raise RuntimeCrash("shutdown boom")
+
+        with mock.patch.object(EngineLink, "shutdown", side_effect=boom):
+            with self.assertRaises(RuntimeCrash):
+                rt.stop()
+
+        manifest = json.loads(
+            (rt.session_dir / "manifest.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["status"], "crash")
+        self.assertEqual(manifest["error"]["code"], "crash")
+        self.assertIn("engine did not exit cleanly", manifest["error"]["message"])
+        self.assertIn("shutdown boom", manifest["error"]["message"])
+        self.addCleanup(rt.stop)
+
+    def test_shutdown_failure_does_not_replace_an_existing_failure(self) -> None:
+        rt = self._runtime()
+        rt.start()
+        link = rt._link
+        self.assertIsNotNone(link)
+        rt.record_error(ScenarioError("scenario boom"))
+
+        def boom(*args: object, **kwargs: object) -> int | None:
+            proc = link._proc
+            if proc is not None and proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            raise RuntimeCrash("shutdown boom")
+
+        with mock.patch.object(EngineLink, "shutdown", side_effect=boom):
+            with self.assertRaises(RuntimeCrash):
+                rt.stop()
+
+        manifest = json.loads(
+            (rt.session_dir / "manifest.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["status"], "harness_error")
+        self.assertEqual(manifest["error"]["code"], "scenario_error")
+        self.assertIn("scenario boom", manifest["error"]["message"])
+        self.addCleanup(rt.stop)
 
 
 if __name__ == "__main__":

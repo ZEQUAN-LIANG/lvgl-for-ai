@@ -432,7 +432,7 @@ class SessionStoreTest(unittest.TestCase):
         store = self.make_store(
             retention=3, lvgl_src=self.root / "lvgl-src" / "9.6"
         )
-        self.assertEqual(store.session_retention, 3)
+        self.assertEqual(store.retention, 3)
         self.assertEqual(store.lvgl_src, self.root / "lvgl-src" / "9.6")
 
 
