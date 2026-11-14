@@ -6,6 +6,7 @@ import base64
 import json
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from lvgl_ai.web.whiteboards import (
@@ -225,6 +226,102 @@ class WhiteboardTransactionTest(unittest.TestCase):
         self.assertEqual(caught.exception.code, "whiteboards_write_error")
         self.assertFalse((self.session / "whiteboards.json").exists())
         self.assertEqual(list((self.session / "whiteboards").glob("*.png")), [])
+
+
+class WhiteboardDocumentSeamTest(unittest.TestCase):
+    """B6: whiteboards share the document transaction behind Recording."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.session = make_web_session(Path(self._tmp.name))
+        self.recording = Recording.open(self.session)
+        frames = sorted((self.session / "frames").glob("*.png"))
+        self.first_png = frames[0].read_bytes()
+        self.second_png = frames[1].read_bytes()
+
+    def data_url(self, data: bytes) -> str:
+        return "data:image/png;base64," + base64.b64encode(data).decode(
+            "ascii"
+        )
+
+    def payload(self, **overrides):
+        payload = {
+            "scope": GLOBAL,
+            "text": "整体风格保持深色",
+            "labels": [],
+            "objects": {},
+            "image": self.data_url(self.first_png),
+            "confirmed": True,
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_save_and_read_use_only_the_recording_document_seam(self) -> None:
+        class SeamRecording:
+            """Expose the document seam and nothing else."""
+
+            def __init__(self, recording: Recording) -> None:
+                self._recording = recording
+
+            @property
+            def whiteboards_store(self):
+                return self._recording.whiteboards_store
+
+            @property
+            def whiteboards(self):
+                return self._recording.whiteboards
+
+            @whiteboards.setter
+            def whiteboards(self, value) -> None:
+                self._recording.whiteboards = value
+
+            def __getattr__(self, name: str):
+                raise AssertionError(f"unexpected recording attribute: {name}")
+
+        seam = SeamRecording(self.recording)
+        document, item = save_whiteboard(seam, self.payload(id="seam"))
+
+        self.assertEqual([entry["id"] for entry in document["whiteboards"]], ["seam"])
+        self.assertEqual(read_whiteboards(seam), document)
+        self.assertTrue((self.session / item["image"]).is_file())
+
+    def test_upsert_prunes_the_previous_content_addressed_image(self) -> None:
+        _document, first = save_whiteboard(
+            self.recording, self.payload(id="wb-fixed")
+        )
+        _document, second = save_whiteboard(
+            self.recording,
+            self.payload(id="wb-fixed", image=self.data_url(self.second_png)),
+        )
+
+        self.assertNotEqual(first["image"], second["image"])
+        self.assertFalse((self.session / first["image"]).exists())
+        self.assertTrue((self.session / second["image"]).is_file())
+
+    def test_concurrent_saves_keep_every_whiteboard(self) -> None:
+        def save(index: int):
+            return save_whiteboard(
+                self.recording,
+                self.payload(
+                    id=f"wb{index}",
+                    text=f"board {index}",
+                    image=self.data_url(self.first_png),
+                ),
+            )[1]
+
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            items = list(pool.map(save, range(5)))
+
+        self.assertEqual(
+            sorted(item["id"] for item in items), ["wb0", "wb1", "wb2", "wb3", "wb4"]
+        )
+        saved = json.loads(
+            (self.session / "whiteboards.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(len(saved["whiteboards"]), 5)
+        for item in items:
+            self.assertTrue((self.session / item["image"]).is_file())
 
 
 if __name__ == "__main__":

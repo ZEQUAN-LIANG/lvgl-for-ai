@@ -19,9 +19,14 @@ import json
 import re
 import secrets
 import threading
-from pathlib import Path
 from typing import Any
 
+from ..control import session_schema
+from ..control.documents import (
+    DocumentError,
+    DocumentTransaction,
+    image_references,
+)
 from ..control.recording import ANNOTATIONS_SCHEMA, Recording
 from ..png_codec import PngError, Region, crop_png
 from .png_data import DATA_URL_PREFIX, PngDataError, decode_png_data_url
@@ -31,7 +36,11 @@ NOTE_OPTIONAL_FIELDS = ("frame_start", "frame_end", "anchors", "kind", "hints")
 ANCHOR_FIELDS = ("frame_no", "t_ms", "regions", "annotated")
 DOCUMENT_FIELDS = ("schema", "notes")
 REGION_FIELDS = ("x", "y", "w", "h", "image", "annotated")
-IMAGE_PATH_RE = re.compile(r"^regions/[A-Za-z0-9][A-Za-z0-9._-]*\.png$")
+IMAGE_PATH_RE = re.compile(
+    r"^"
+    + session_schema.REGIONS_DIR
+    + r"/[A-Za-z0-9][A-Za-z0-9._-]*\.png$"
+)
 
 MAX_ID_LENGTH = 128
 MAX_TEXT_LENGTH = 4000
@@ -468,30 +477,27 @@ def write_note(
     (``internal_error``) response.
     """
     with _WRITE_LOCK:
-        written: list[Any] = []
+        store = recording.annotations_store
         try:
-            document = _read_existing(recording)
-            note = validate_note(payload, allow_images=False)
-            document, saved = append_note(document, note)
-            written = _save_annotated_images(recording, saved)
-            written.extend(_save_region_crops(recording, saved))
-            document = validate_document(document)
+            with store.transaction() as transaction:
+                document = _read_existing(recording)
+                note = validate_note(payload, allow_images=False)
+                document, saved = append_note(document, note)
+                _save_annotated_images(transaction, saved)
+                _save_region_crops(transaction, recording, saved)
+                document = validate_document(document)
+                recording.annotations = document
         except AnnotationError:
-            _remove_files(written)
             raise
-        except OSError as exc:
-            _remove_files(written)
-            raise AnnotationError(
-                str(exc), code="internal_error"
-            ) from exc
-
-        try:
-            recording.annotations = document
-        except OSError as exc:
-            _remove_files(written)
+        except DocumentError as exc:
             raise AnnotationError(
                 str(exc), code="annotations_write_error"
             ) from exc
+        except OSError as exc:
+            raise AnnotationError(
+                str(exc), code="internal_error"
+            ) from exc
+        _prune_images(store, document)
         return document, saved
 
 
@@ -507,22 +513,20 @@ def _safe_note_stem(note_id: str) -> str:
     return safe
 
 
-def _remove_files(paths: list[Any]) -> None:
-    for path in paths:
-        try:
-            path.unlink(missing_ok=True)
-        except OSError:
-            pass
+def _prune_images(store: Any, document: dict[str, Any]) -> None:
+    """Remove region crops no note references any more."""
+    store.remove_unreferenced(
+        session_schema.REGIONS_DIR, image_references(document, "notes")
+    )
 
 
 def _save_annotated_images(
-    recording: Recording, note: dict[str, Any]
-) -> list[Any]:
+    transaction: DocumentTransaction, note: dict[str, Any]
+) -> None:
     anchors = note.get("anchors")
     if not isinstance(anchors, list) or not anchors:
-        return []
+        return
     stem = _safe_note_stem(str(note.get("id") or "note"))
-    written: list[Any] = []
     for index, anchor in enumerate(anchors):
         if not isinstance(anchor, dict):
             continue
@@ -535,20 +539,18 @@ def _save_annotated_images(
             raise AnnotationError(
                 f"anchors[{index}].annotated: {exc}"
             ) from exc
-        folder = recording.path / "regions"
-        folder.mkdir(parents=True, exist_ok=True)
-        relative = f"regions/{stem}-a{index}-annotated.png"
-        path = recording.path / relative
-        path.write_bytes(data)
-        written.append(path)
+        relative = (
+            f"{session_schema.REGIONS_DIR}/"
+            f"{stem}-a{index}-annotated.png"
+        )
+        transaction.write_image(relative, data)
         anchor["annotated"] = relative
-    return written
 
 
 def _frame_bytes(recording: Recording, frame_no: Any) -> bytes | None:
     if isinstance(frame_no, bool) or not isinstance(frame_no, int):
         return None
-    for path in (recording.path / "frames").glob("*.png"):
+    for path in recording.frames:
         if path.stem.isdigit() and int(path.stem) == frame_no:
             try:
                 return path.read_bytes()
@@ -578,10 +580,11 @@ def _crop_png_bytes(
 
 
 def _save_region_crops(
-    recording: Recording, note: dict[str, Any]
-) -> list[Any]:
+    transaction: DocumentTransaction,
+    recording: Recording,
+    note: dict[str, Any],
+) -> None:
     stem = _safe_note_stem(str(note.get("id") or "note"))
-    written: list[Any] = []
     anchors = note.get("anchors")
     if isinstance(anchors, list) and anchors:
         for ai, anchor in enumerate(anchors):
@@ -596,101 +599,69 @@ def _save_region_crops(
             ):
                 continue
             if isinstance(annotated_path, str):
-                try:
-                    annotated_data = (
-                        recording.path / annotated_path
-                    ).read_bytes()
-                except OSError:
-                    annotated_data = None
+                annotated_data = transaction.read_image(annotated_path)
             if frame_data is None and annotated_data is None:
                 continue
             for ri, region in enumerate(anchor.get("regions") or []):
                 if not isinstance(region, dict):
                     continue
-                folder = recording.path / "regions"
-                folder.mkdir(parents=True, exist_ok=True)
                 if frame_data is not None:
-                    relative = f"regions/{stem}-a{ai}-r{ri}.png"
-                    path = recording.path / relative
-                    path.write_bytes(
+                    relative = (
+                        f"{session_schema.REGIONS_DIR}/"
+                        f"{stem}-a{ai}-r{ri}.png"
+                    )
+                    transaction.write_image(
+                        relative,
                         _crop_png_bytes(
                             frame_data, region,
                             f"anchors[{ai}].regions[{ri}]",
-                        )
+                        ),
                     )
-                    written.append(path)
                     region["image"] = relative
                 if annotated_data is not None:
-                    relative = f"regions/{stem}-a{ai}-r{ri}-annotated.png"
-                    path = recording.path / relative
-                    path.write_bytes(
+                    relative = (
+                        f"{session_schema.REGIONS_DIR}/"
+                        f"{stem}-a{ai}-r{ri}-annotated.png"
+                    )
+                    transaction.write_image(
+                        relative,
                         _crop_png_bytes(
                             annotated_data, region,
                             f"anchors[{ai}].regions[{ri}].annotated",
-                        )
+                        ),
                     )
-                    written.append(path)
                     region["annotated"] = relative
         note["regions"] = [dict(region) for region in anchors[0]["regions"]]
-        return written
+        return
 
     regions = note.get("regions")
     if not isinstance(regions, list) or not regions:
-        return written
+        return
     frame_data = _frame_bytes(recording, note.get("frame_no"))
     if frame_data is None:
-        return written
-    folder = recording.path / "regions"
-    folder.mkdir(parents=True, exist_ok=True)
+        return
     for index, region in enumerate(regions):
         if not isinstance(region, dict):
             continue
-        relative = f"regions/{stem}-{index}.png"
-        path = recording.path / relative
-        path.write_bytes(
-            _crop_png_bytes(frame_data, region, f"regions[{index}]")
+        relative = f"{session_schema.REGIONS_DIR}/{stem}-{index}.png"
+        transaction.write_image(
+            relative,
+            _crop_png_bytes(frame_data, region, f"regions[{index}]"),
         )
-        written.append(path)
         region["image"] = relative
-    return written
-
-
-def _note_images(note: dict[str, Any]) -> list[str]:
-    images: list[str] = []
-
-    def collect(regions: Any) -> None:
-        if not isinstance(regions, list):
-            return
-        for region in regions:
-            if not isinstance(region, dict):
-                continue
-            for field in ("image", "annotated"):
-                image = region.get(field)
-                if isinstance(image, str) and IMAGE_PATH_RE.fullmatch(image):
-                    images.append(image)
-
-    collect(note.get("regions"))
-    anchors = note.get("anchors")
-    if isinstance(anchors, list):
-        for anchor in anchors:
-            if not isinstance(anchor, dict):
-                continue
-            collect(anchor.get("regions"))
-            annotated = anchor.get("annotated")
-            if isinstance(annotated, str) and IMAGE_PATH_RE.fullmatch(annotated):
-                images.append(annotated)
-    return images
 
 
 def delete_note(recording: Recording, note_id: str) -> dict[str, Any]:
     """Remove one note and return the new document.
 
-    Legacy crop files referenced by the note are removed after the document is
-    written; a failed crop unlink never blocks the deletion.
+    Crop files the deleted note referenced are unreferenced after the write,
+    so the shared document transaction removes them. A failed unlink never
+    blocks the deletion.
     """
     if not isinstance(note_id, str) or not note_id:
         raise AnnotationNotFound("note id is required")
     with _WRITE_LOCK:
+        store = recording.annotations_store
         try:
             document = _read_existing(recording)
         except OSError as exc:
@@ -698,26 +669,23 @@ def delete_note(recording: Recording, note_id: str) -> dict[str, Any]:
                 str(exc), code="internal_error"
             ) from exc
         remaining: list[dict[str, Any]] = []
-        images: list[str] = []
         found = False
         for note in document["notes"]:
             if note.get("id") == note_id:
                 found = True
-                images.extend(_note_images(note))
                 continue
             remaining.append(note)
         if not found:
             raise AnnotationNotFound(f"unknown note id: {note_id}")
-        document = {"schema": ANNOTATIONS_SCHEMA, "notes": remaining}
+        document = {
+            "schema": session_schema.ANNOTATIONS_SCHEMA,
+            "notes": remaining,
+        }
         try:
             recording.annotations = document
-        except OSError as exc:
+        except DocumentError as exc:
             raise AnnotationError(
                 str(exc), code="annotations_write_error"
             ) from exc
-    for image in images:
-        try:
-            (recording.path / image).unlink(missing_ok=True)
-        except OSError:
-            pass
+        _prune_images(store, document)
     return document

@@ -15,24 +15,9 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 _SNAPSHOT_NUMBER_PREFIX = re.compile(r"^\d+_")
-
-
-def manifest_is_recorded(manifest: Mapping[str, Any]) -> bool:
-    """True when the manifest describes a session with timeline evidence.
-
-    This is the single rule shared by :class:`Recording` validation and
-    :func:`~lvgl_ai.control.evidence.summarize_session`, so both entry points
-    agree on what ``recorded`` means.
-    """
-    artifacts = manifest.get("artifacts")
-    if not isinstance(artifacts, Mapping):
-        return False
-    return manifest.get("frame_count", 0) > 0 or any(
-        key in artifacts for key in ("timeline", "frame_diffs")
-    )
 
 
 def snapshot_label(path: Path) -> str:
@@ -47,26 +32,31 @@ def tail_lines(text: str, n: int) -> list[str]:
     return text.splitlines()[-n:]
 
 # The schema, file names and validation are shared with SessionStore, the
-# write side. Re-exported here so existing imports keep working.
-from .session_schema import (
-    ANNOTATIONS_FILE,
-    ANNOTATIONS_SCHEMA,
-    BUILD_LOG_FILE,
-    ENGINE_LOG_FILE,
-    FRAME_DIFFS_FILE,
-    FRAME_DIFFS_SCHEMA,
-    FRAMES_DIR,
-    MANIFEST_FILE,
-    MANIFEST_REQUIRED_FIELDS,
-    MANIFEST_SCHEMA,
-    REFERENCE_DIFFS_FILE,
-    SNAPSHOTS_DIR,
-    TIMELINE_FILE,
-    TIMELINE_ROW_TYPES,
-    TIMELINE_SCHEMA,
-    list_pngs as _list_pngs,
-    validate_manifest as _validate_manifest,
-)
+# write side. This module reads the module attributes at call time, so the
+# layout has exactly one owner; the names below stay re-exported for callers
+# that import them from here.
+from . import session_schema
+from .documents import DocumentStore
+
+ANNOTATIONS_FILE = session_schema.ANNOTATIONS_FILE
+ANNOTATIONS_SCHEMA = session_schema.ANNOTATIONS_SCHEMA
+BUILD_LOG_FILE = session_schema.BUILD_LOG_FILE
+ENGINE_LOG_FILE = session_schema.ENGINE_LOG_FILE
+FRAME_DIFFS_FILE = session_schema.FRAME_DIFFS_FILE
+FRAME_DIFFS_SCHEMA = session_schema.FRAME_DIFFS_SCHEMA
+FRAMES_DIR = session_schema.FRAMES_DIR
+MANIFEST_FILE = session_schema.MANIFEST_FILE
+MANIFEST_REQUIRED_FIELDS = session_schema.MANIFEST_REQUIRED_FIELDS
+MANIFEST_SCHEMA = session_schema.MANIFEST_SCHEMA
+REFERENCE_DIFFS_FILE = session_schema.REFERENCE_DIFFS_FILE
+SNAPSHOTS_DIR = session_schema.SNAPSHOTS_DIR
+TIMELINE_FILE = session_schema.TIMELINE_FILE
+TIMELINE_ROW_TYPES = session_schema.TIMELINE_ROW_TYPES
+TIMELINE_SCHEMA = session_schema.TIMELINE_SCHEMA
+_list_pngs = session_schema.list_pngs
+_validate_manifest = session_schema.validate_manifest
+# Re-exported: the manifest rule now lives with the rest of the contract.
+manifest_is_recorded = session_schema.manifest_describes_recording
 
 
 def _read_json_object(path: Path) -> dict[str, Any]:
@@ -93,7 +83,7 @@ class Recording:
 
     def __init__(self, path: str | Path) -> None:
         raw = Path(path)
-        if raw.is_file() and raw.name == "manifest.json":
+        if raw.is_file() and raw.name == session_schema.MANIFEST_FILE:
             raw = raw.parent
         self.path = raw
         # Rows cached for frame_views()/snapshot_views(); None means unread.
@@ -112,11 +102,11 @@ class Recording:
         if not self.path.is_dir():
             raise FileNotFoundError(f"session directory not found: {self.path}")
         manifest = self.manifest
-        self._require_file(self.path / ENGINE_LOG_FILE)
+        self._require_file(self.path / session_schema.ENGINE_LOG_FILE)
 
-        if manifest_is_recorded(manifest):
-            self._require_file(self.path / TIMELINE_FILE)
-            self._require_file(self.path / FRAME_DIFFS_FILE)
+        if session_schema.manifest_describes_recording(manifest):
+            self._require_file(self.path / session_schema.TIMELINE_FILE)
+            self._require_file(self.path / session_schema.FRAME_DIFFS_FILE)
 
     @staticmethod
     def _require_file(path: Path) -> None:
@@ -128,13 +118,20 @@ class Recording:
     @property
     def manifest(self) -> dict[str, Any]:
         """The session manifest, re-read on every access."""
-        path = self.path / MANIFEST_FILE
-        return _validate_manifest(_read_json_object(path), path)
+        path = self.path / session_schema.MANIFEST_FILE
+        return session_schema.validate_manifest(_read_json_object(path), path)
+
+    @property
+    def recorded(self) -> bool:
+        """Manifest intent plus both recording files, the shared rule."""
+        return session_schema.session_is_recorded(self.manifest, self.path)
 
     def timeline(self) -> list[dict[str, Any]]:
         """Parsed ``timeline.ndjson`` rows."""
         rows = _read_ndjson(
-            self.path / TIMELINE_FILE, TIMELINE_SCHEMA, TIMELINE_ROW_TYPES
+            self.path / session_schema.TIMELINE_FILE,
+            session_schema.TIMELINE_SCHEMA,
+            session_schema.TIMELINE_ROW_TYPES,
         )
         # Seed the cache shared by frame_views()/snapshot_views(), so a caller
         # that already parsed the timeline does not make them read it again.
@@ -143,24 +140,29 @@ class Recording:
 
     def frame_diffs(self) -> list[dict[str, Any]]:
         """Parsed ``frame_diffs.ndjson`` rows."""
-        return _read_ndjson(self.path / FRAME_DIFFS_FILE, FRAME_DIFFS_SCHEMA)
+        return _read_ndjson(
+            self.path / session_schema.FRAME_DIFFS_FILE,
+            session_schema.FRAME_DIFFS_SCHEMA,
+        )
 
     def reference_diffs(self) -> list[dict[str, Any]] | None:
         """Parsed ``reference_diffs.ndjson``, or None when no reference was used."""
-        path = self.path / REFERENCE_DIFFS_FILE
+        path = self.path / session_schema.REFERENCE_DIFFS_FILE
         if not path.is_file():
             return None
-        return _read_ndjson(path, FRAME_DIFFS_SCHEMA)
+        return _read_ndjson(path, session_schema.FRAME_DIFFS_SCHEMA)
 
     @property
     def frames(self) -> list[Path]:
         """Every full-frame PNG, sorted by frame number."""
-        return _list_pngs(self.path / FRAMES_DIR)
+        return session_schema.list_pngs(self.path / session_schema.FRAMES_DIR)
 
     @property
     def snapshots(self) -> list[Path]:
         """Every named snapshot PNG, sorted by snapshot number."""
-        return _list_pngs(self.path / SNAPSHOTS_DIR)
+        return session_schema.list_pngs(
+            self.path / session_schema.SNAPSHOTS_DIR
+        )
 
     def frame_views(self) -> list[dict[str, Any]]:
         """Retained frames as ``file``, ``frame_no`` and ``t_ms`` entries.
@@ -225,7 +227,9 @@ class Recording:
         return {
             "file": relative,
             "frame_no": int(stem) if stem.isdigit() else None,
-            "t_ms": _latest_frame_t_ms(self.path / TIMELINE_FILE, relative),
+            "t_ms": _latest_frame_t_ms(
+                self.path / session_schema.TIMELINE_FILE, relative
+            ),
         }
 
     def _shared_timeline_rows(self) -> list[dict[str, Any]]:
@@ -238,7 +242,7 @@ class Recording:
 
     def log(self) -> str:
         """Full ``engine.log`` text (stdout and stderr)."""
-        return _read_text(self.path / ENGINE_LOG_FILE)
+        return _read_text(self.path / session_schema.ENGINE_LOG_FILE)
 
     def log_tail(self, n: int = 40) -> list[str]:
         """Last ``n`` lines of ``engine.log``; ``n <= 0`` returns ``[]``."""
@@ -246,50 +250,56 @@ class Recording:
 
     def build_log(self) -> str:
         """Full ``build.log`` text."""
-        return _read_text(self.path / BUILD_LOG_FILE)
+        return _read_text(self.path / session_schema.BUILD_LOG_FILE)
 
     # ---- annotations (writable) ---------------------------------------
 
     @property
+    def annotations_store(self) -> DocumentStore:
+        """The shared JSON + image transaction for ``annotations.json``."""
+        return DocumentStore(
+            self.path,
+            filename=session_schema.ANNOTATIONS_FILE,
+            schema=session_schema.ANNOTATIONS_SCHEMA,
+            collection="notes",
+            unreadable_code="annotations_unreadable",
+            write_code="annotations_write_error",
+        )
+
+    @property
     def annotations(self) -> dict[str, Any]:
-        path = self.path / ANNOTATIONS_FILE
-        if not path.is_file():
-            return {"schema": ANNOTATIONS_SCHEMA, "notes": []}
-        data = _read_json_object(path)
-        return _validate_annotations(data, path)
+        return self.annotations_store.read()
 
     @annotations.setter
     def annotations(self, value: Any) -> None:
         if not self.path.is_dir():
             raise FileNotFoundError(f"session directory not found: {self.path}")
-        data = _validate_annotations(value, self.path / ANNOTATIONS_FILE)
-        path = self.path / ANNOTATIONS_FILE
-        tmp = path.with_name(f"{ANNOTATIONS_FILE}.tmp")
-        tmp.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
-        tmp.replace(path)
+        self.annotations_store.write(value)
 
+    # ---- whiteboards (writable) ---------------------------------------
 
-def _validate_annotations(value: Any, path: Path) -> dict[str, Any]:
-    if not isinstance(value, dict):
-        raise ValueError(f"{path}: annotations must be a JSON object")
-    schema = value.get("schema", ANNOTATIONS_SCHEMA)
-    if schema != ANNOTATIONS_SCHEMA:
-        raise ValueError(
-            f"{path}: schema must be {ANNOTATIONS_SCHEMA!r}, got {schema!r}"
+    @property
+    def whiteboards_store(self) -> DocumentStore:
+        """The shared JSON + image transaction for ``whiteboards.json``."""
+        return DocumentStore(
+            self.path,
+            filename=session_schema.WHITEBOARDS_FILE,
+            schema=session_schema.WHITEBOARDS_SCHEMA,
+            collection="whiteboards",
+            unreadable_code="whiteboards_unreadable",
+            write_code="whiteboards_write_error",
+            keep_extra_fields=False,
         )
-    notes = value.get("notes")
-    if not isinstance(notes, list):
-        raise ValueError(f"{path}: notes must be a list")
-    for index, note in enumerate(notes):
-        if not isinstance(note, dict):
-            raise ValueError(f"{path}: notes[{index}] must be a JSON object")
-    data = dict(value)
-    data["schema"] = ANNOTATIONS_SCHEMA
-    data["notes"] = notes
-    return data
+
+    @property
+    def whiteboards(self) -> dict[str, Any]:
+        return self.whiteboards_store.read()
+
+    @whiteboards.setter
+    def whiteboards(self, value: Any) -> None:
+        if not self.path.is_dir():
+            raise FileNotFoundError(f"session directory not found: {self.path}")
+        self.whiteboards_store.write(value)
 
 
 _TIMELINE_TAIL_BYTES = 262144
