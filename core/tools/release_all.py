@@ -307,9 +307,8 @@ def _stage_full_package(
             if version in INTRO_VERSIONS:
                 scenario = package / "user" / "scenarios" / "intro.json"
                 markers = (
-                    "[intro] step=1",
-                    "[intro] step=4",
-                    "[intro] evidence ready",
+                    "[app] app=intro",
+                    "[index] ui created",
                 )
             else:
                 scenario = package / "smoke" / version / "legacy_smoke.json"
