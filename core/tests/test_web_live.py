@@ -849,6 +849,8 @@ class LiveHttpTest(unittest.TestCase):
     def test_shutdown_without_live_is_a_noop(self) -> None:
         harness = self._harness(Factory(lambda index: FakeRuntime()))
         harness.server.app.shutdown()  # must not raise
+        self.assertEqual(harness.server.app.live.state, "idle")
+        self.assertFalse(harness.server.app.live.is_active())
 
 
 class LiveIndependentEngineTest(unittest.TestCase):

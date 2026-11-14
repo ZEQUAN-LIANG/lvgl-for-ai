@@ -484,7 +484,7 @@ class ScenarioFileTest(unittest.TestCase):
                     {"width": width, "height": height},
                 )
 
-    def test_invalid_display_is_rejected(self) -> None:
+    def test_invalid_scenario_display_is_rejected(self) -> None:
         cases = [
             ("640x480", "display must be an object"),
             ({"width": 640}, "display.height is required"),

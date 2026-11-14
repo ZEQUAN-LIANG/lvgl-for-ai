@@ -495,7 +495,7 @@ class SessionSchemaTest(unittest.TestCase):
         self.assertNotIn("display", recording.manifest)
         self.assertNotIn("record_changed_only", recording.manifest)
 
-    def test_invalid_display_is_rejected(self) -> None:
+    def test_invalid_manifest_display_is_rejected(self) -> None:
         cases = [
             "640x480",
             {"width": 0, "height": 480},

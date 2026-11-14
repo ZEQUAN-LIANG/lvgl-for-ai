@@ -173,12 +173,20 @@ class PreflightTest(BuildPlanCase):
         self.assertEqual(caught.exception.command, plan.configure_command)
 
     def test_an_injected_build_command_skips_preflight(self) -> None:
+        checked: list[str] = []
+
+        def missing_tools() -> list[str]:
+            checked.append("called")
+            return ["cmake"]
+
         plan = self.plan(
             lvgl_src=self.root / "missing-lvgl",
             build=["gcc", "app.c"],
-            missing_tools=lambda: ["cmake"],
+            missing_tools=missing_tools,
         )
-        plan.preflight()  # an embedding/test toolchain needs no CMake
+        # An embedding/test toolchain needs no CMake.
+        self.assertIsNone(plan.preflight())
+        self.assertEqual(checked, [], "the default tool check must not run")
 
     def test_no_build_execution_does_not_run_preflight(self) -> None:
         plan = self.plan(
@@ -498,11 +506,13 @@ class BuildLockTest(unittest.TestCase):
             self.assertIn("build lock timeout", str(raised.exception))
 
     def test_lock_is_reusable_after_release(self) -> None:
+        acquired: list[str] = []
         with tempfile.TemporaryDirectory() as tmp:
             with BuildLock(tmp):
-                pass
+                acquired.append("first")
             with BuildLock(tmp, timeout=0.2):
-                pass
+                acquired.append("second")
+        self.assertEqual(acquired, ["first", "second"])
 
 
 if __name__ == "__main__":
