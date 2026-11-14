@@ -280,7 +280,7 @@ def _stage_full_package(
                     scenario = package / "user" / "scenarios" / "intro.json"
                     markers = (
                         "[app] app=intro",
-                        "[index] ui created",
+                        "[intro] ui created",
                     )
                 _smoke(package, version, scenario, markers=markers)
 

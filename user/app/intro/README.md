@@ -19,7 +19,7 @@ python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/intro.json --json
 - `intro_ui.c`：壳层（app bar、tab bar、status bar、workspace）、FreeType 字体、文本/矩形构建器、六个屏幕的交互。
 - `intro_layout.c`：按 800×600 浏览器布局生成的静态矩形、图片和逐行文本数据。
 - `assets/`：从 `docs/img/` 缩放出的 PNG 源，以及 `intro-*.png` / `watch-*.png` 动画帧。
-- `idx_img_*.h`：`core/assets.py image` 生成的 LVGL 图片数组；`assets.json` 记录来源与颜色格式。
+- `intro_img_*.h`：`core/assets.py image` 生成的 LVGL 图片数组；`assets.json` 记录来源与颜色格式。
 - `user/scenarios/intro.json`：演示场景。
 
 ## 交互与动画

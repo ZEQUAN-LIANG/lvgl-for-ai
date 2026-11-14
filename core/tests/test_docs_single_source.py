@@ -5,8 +5,9 @@ README instead of restating the app list, HTTP routes, server constants or
 scenario step vocabulary.  These tests pin that static invariant: every link
 resolves, every symbol pointer names something in the linked file, and facts
 owned by code do not reappear in the pages.
-``chip-adapt/docs/sifli.html`` is link-checked only, so its SDK download links may
-be absent.
+``docs/index.html`` is the entry page and ``chip-adapt/docs/sifli.html`` is a
+capability page; both are link-checked only, so they may mention app names,
+routes and constants as illustrative facts.
 """
 
 from __future__ import annotations
@@ -30,9 +31,9 @@ from lvgl_ai.web import live_session, routes, webapp, wire  # noqa: E402
 DOCS_DIR = paths.REPO_ROOT / "docs"
 SIFLI_PAGE = paths.REPO_ROOT / "chip-adapt" / "docs" / "sifli.html"
 PAGE_NAMES = ("app.html", "scenario-server.html")
-# sifli.html is link-checked but is not an index page: it may mention app
-# names, routes and constants as capability facts.
-LINK_PAGES = PAGE_NAMES + ("sifli.html",)
+# index.html is the entry page and sifli.html is a capability page; neither is
+# a fact index, so both are link-checked only.
+LINK_PAGES = PAGE_NAMES + ("index.html", "sifli.html")
 
 
 def _link_page(name: str) -> Path:
@@ -230,6 +231,18 @@ class DocsLinkPolicyTest(unittest.TestCase):
         self.assertEqual(
             self._check("../chip-adapt/vendor/sifli-sdk/version.txt"), []
         )
+
+class DocsEntryPageTest(unittest.TestCase):
+    def test_index_page_is_link_checked(self) -> None:
+        self.assertIn("index.html", LINK_PAGES)
+        self.assertTrue((DOCS_DIR / "index.html").is_file())
+
+    def test_index_page_links_to_the_index_pages(self) -> None:
+        hrefs = set(_parse_page(DOCS_DIR / "index.html").hrefs)
+        for name in PAGE_NAMES:
+            self.assertIn(name, hrefs)
+        self.assertIn("../core/SKILL.md", hrefs)
+
 
 class DocsSingleSourceTest(unittest.TestCase):
     @classmethod

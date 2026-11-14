@@ -1,10 +1,10 @@
 {
   "assets": {
-    "idx_img_frame_grid": {
+    "intro_img_frame_grid": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 408,
       "kind": "image",
-      "name": "idx_img_frame_grid",
+      "name": "intro_img_frame_grid",
       "options": {
         "background": "0x000000",
         "dither": false,
@@ -12,18 +12,18 @@
         "requested_cf": "RGB888",
         "storage_cf": "RGB888"
       },
-      "output": "idx_img_frame_grid.h",
+      "output": "intro_img_frame_grid.h",
       "source": "frame-grid.png",
       "source_sha256": "9a13728210663a898f581cea27e5f12845761220bd8fd224d37c918442adbf50",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 710
     },
-    "idx_img_intro_01": {
+    "intro_img_intro_01": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 483,
       "kind": "image",
-      "name": "idx_img_intro_01",
+      "name": "intro_img_intro_01",
       "options": {
         "background": "0x000000",
         "dither": true,
@@ -31,18 +31,18 @@
         "requested_cf": "RGB565",
         "storage_cf": "RGB565"
       },
-      "output": "idx_img_intro_01.h",
+      "output": "intro_img_intro_01.h",
       "source": "intro-01.png",
       "source_sha256": "1b539fc322698f7d2a452107cf81b9018a0b704ba8a5048fd1b3cab3c824132f",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 644
     },
-    "idx_img_intro_02": {
+    "intro_img_intro_02": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 483,
       "kind": "image",
-      "name": "idx_img_intro_02",
+      "name": "intro_img_intro_02",
       "options": {
         "background": "0x000000",
         "dither": true,
@@ -50,18 +50,18 @@
         "requested_cf": "RGB565",
         "storage_cf": "RGB565"
       },
-      "output": "idx_img_intro_02.h",
+      "output": "intro_img_intro_02.h",
       "source": "intro-02.png",
       "source_sha256": "e72d60731e364e80723fc2dc64bb653775a8b71fb983a0ae4bbbae1c8c115369",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 644
     },
-    "idx_img_intro_03": {
+    "intro_img_intro_03": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 483,
       "kind": "image",
-      "name": "idx_img_intro_03",
+      "name": "intro_img_intro_03",
       "options": {
         "background": "0x000000",
         "dither": true,
@@ -69,18 +69,18 @@
         "requested_cf": "RGB565",
         "storage_cf": "RGB565"
       },
-      "output": "idx_img_intro_03.h",
+      "output": "intro_img_intro_03.h",
       "source": "intro-03.png",
       "source_sha256": "498abfae14a424709e958d6d44343be66bc5471c8e39eecd69a1f05f3fa7c982",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 644
     },
-    "idx_img_intro_04": {
+    "intro_img_intro_04": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 483,
       "kind": "image",
-      "name": "idx_img_intro_04",
+      "name": "intro_img_intro_04",
       "options": {
         "background": "0x000000",
         "dither": true,
@@ -88,18 +88,18 @@
         "requested_cf": "RGB565",
         "storage_cf": "RGB565"
       },
-      "output": "idx_img_intro_04.h",
+      "output": "intro_img_intro_04.h",
       "source": "intro-04.png",
       "source_sha256": "defbcf22faf52e1577296f1564e882be7bd1e9374f3575f7d5daa5d205c2fcb8",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 644
     },
-    "idx_img_intro_05": {
+    "intro_img_intro_05": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 483,
       "kind": "image",
-      "name": "idx_img_intro_05",
+      "name": "intro_img_intro_05",
       "options": {
         "background": "0x000000",
         "dither": true,
@@ -107,18 +107,18 @@
         "requested_cf": "RGB565",
         "storage_cf": "RGB565"
       },
-      "output": "idx_img_intro_05.h",
+      "output": "intro_img_intro_05.h",
       "source": "intro-05.png",
       "source_sha256": "d215c63301e02ea811c0c2684d95d8bdb4f0babc426a667064701c84e2d182ce",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 644
     },
-    "idx_img_poster": {
+    "intro_img_poster": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 361,
       "kind": "image",
-      "name": "idx_img_poster",
+      "name": "intro_img_poster",
       "options": {
         "background": "0x000000",
         "dither": false,
@@ -126,18 +126,18 @@
         "requested_cf": "RGB888",
         "storage_cf": "RGB888"
       },
-      "output": "idx_img_poster.h",
+      "output": "intro_img_poster.h",
       "source": "poster.png",
       "source_sha256": "15a33f7474a309e5d263cc0d1c9f7a4f7b9a5cf0ff6335ca219b817b26e0b7d4",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 203
     },
-    "idx_img_watch_01": {
+    "intro_img_watch_01": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 36,
       "kind": "image",
-      "name": "idx_img_watch_01",
+      "name": "intro_img_watch_01",
       "options": {
         "background": "0x000000",
         "dither": false,
@@ -145,18 +145,18 @@
         "requested_cf": "RGB565",
         "storage_cf": "RGB565"
       },
-      "output": "idx_img_watch_01.h",
+      "output": "intro_img_watch_01.h",
       "source": "watch-01.png",
       "source_sha256": "00965d8687e1237ae287fc13ac4621bc2190213d0f32c49aa677d6eb46a17cca",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 30
     },
-    "idx_img_watch_02": {
+    "intro_img_watch_02": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 36,
       "kind": "image",
-      "name": "idx_img_watch_02",
+      "name": "intro_img_watch_02",
       "options": {
         "background": "0x000000",
         "dither": false,
@@ -164,18 +164,18 @@
         "requested_cf": "RGB565",
         "storage_cf": "RGB565"
       },
-      "output": "idx_img_watch_02.h",
+      "output": "intro_img_watch_02.h",
       "source": "watch-02.png",
       "source_sha256": "2c1e33624037dfe7187e13ee945611c5633bd556675860ca515ab889679e2ef3",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 30
     },
-    "idx_img_watch_03": {
+    "intro_img_watch_03": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 36,
       "kind": "image",
-      "name": "idx_img_watch_03",
+      "name": "intro_img_watch_03",
       "options": {
         "background": "0x000000",
         "dither": false,
@@ -183,18 +183,18 @@
         "requested_cf": "RGB565",
         "storage_cf": "RGB565"
       },
-      "output": "idx_img_watch_03.h",
+      "output": "intro_img_watch_03.h",
       "source": "watch-03.png",
       "source_sha256": "a661c68284b2530e76a256b7bcd9dfb3241f71ad0074ad2506f217670fc77f54",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 30
     },
-    "idx_img_watch_04": {
+    "intro_img_watch_04": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 36,
       "kind": "image",
-      "name": "idx_img_watch_04",
+      "name": "intro_img_watch_04",
       "options": {
         "background": "0x000000",
         "dither": false,
@@ -202,18 +202,18 @@
         "requested_cf": "RGB565",
         "storage_cf": "RGB565"
       },
-      "output": "idx_img_watch_04.h",
+      "output": "intro_img_watch_04.h",
       "source": "watch-04.png",
       "source_sha256": "0cf666e7e69ebfeecb1d935305bdb949aeaee9b3a58a871a1253092768aeae62",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 30
     },
-    "idx_img_watch_05": {
+    "intro_img_watch_05": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 36,
       "kind": "image",
-      "name": "idx_img_watch_05",
+      "name": "intro_img_watch_05",
       "options": {
         "background": "0x000000",
         "dither": false,
@@ -221,18 +221,18 @@
         "requested_cf": "RGB565",
         "storage_cf": "RGB565"
       },
-      "output": "idx_img_watch_05.h",
+      "output": "intro_img_watch_05.h",
       "source": "watch-05.png",
       "source_sha256": "0cf666e7e69ebfeecb1d935305bdb949aeaee9b3a58a871a1253092768aeae62",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 30
     },
-    "idx_img_watch_06": {
+    "intro_img_watch_06": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 36,
       "kind": "image",
-      "name": "idx_img_watch_06",
+      "name": "intro_img_watch_06",
       "options": {
         "background": "0x000000",
         "dither": false,
@@ -240,18 +240,18 @@
         "requested_cf": "RGB565",
         "storage_cf": "RGB565"
       },
-      "output": "idx_img_watch_06.h",
+      "output": "intro_img_watch_06.h",
       "source": "watch-06.png",
       "source_sha256": "6595a2499009f106b9a6a69048c60393835e2a0325fbed6a02d1184ab94312b3",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 30
     },
-    "idx_img_watch_07": {
+    "intro_img_watch_07": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 36,
       "kind": "image",
-      "name": "idx_img_watch_07",
+      "name": "intro_img_watch_07",
       "options": {
         "background": "0x000000",
         "dither": false,
@@ -259,18 +259,18 @@
         "requested_cf": "RGB565",
         "storage_cf": "RGB565"
       },
-      "output": "idx_img_watch_07.h",
+      "output": "intro_img_watch_07.h",
       "source": "watch-07.png",
       "source_sha256": "3ca9bd6d58311c585c258b5d5ba7b7b992ca1dfac01772aa946958b4fd6d3c1b",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 30
     },
-    "idx_img_watch_08": {
+    "intro_img_watch_08": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 36,
       "kind": "image",
-      "name": "idx_img_watch_08",
+      "name": "intro_img_watch_08",
       "options": {
         "background": "0x000000",
         "dither": false,
@@ -278,18 +278,18 @@
         "requested_cf": "RGB565",
         "storage_cf": "RGB565"
       },
-      "output": "idx_img_watch_08.h",
+      "output": "intro_img_watch_08.h",
       "source": "watch-08.png",
       "source_sha256": "3ca9bd6d58311c585c258b5d5ba7b7b992ca1dfac01772aa946958b4fd6d3c1b",
       "status": "generated",
       "target_lvgl": "9.6",
       "width": 30
     },
-    "idx_img_web_inspector": {
+    "intro_img_web_inspector": {
       "generator": "lvgl-verify-loop 0.2.0",
       "height": 206,
       "kind": "image",
-      "name": "idx_img_web_inspector",
+      "name": "intro_img_web_inspector",
       "options": {
         "background": "0x000000",
         "dither": false,
@@ -297,7 +297,7 @@
         "requested_cf": "RGB888",
         "storage_cf": "RGB888"
       },
-      "output": "idx_img_web_inspector.h",
+      "output": "intro_img_web_inspector.h",
       "source": "web-inspector.png",
       "source_sha256": "c1ea5b10c833edb25ecf3c0bebd94c7af51ac1658697f157847eb607e888f39c",
       "status": "generated",

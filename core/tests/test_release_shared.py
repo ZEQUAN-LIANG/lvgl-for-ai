@@ -97,7 +97,7 @@ class ScenarioSmokeTest(unittest.TestCase):
                 session = Path(env["LVGL_AI_SESSIONS_ROOT"]) / "session"
                 session.mkdir(parents=True)
                 (session / "engine.log").write_text(
-                    "[app] app=intro\n[index] ui created\n", encoding="utf-8"
+                    "[app] app=intro\n[intro] ui created\n", encoding="utf-8"
                 )
                 return completed(
                     json.dumps(

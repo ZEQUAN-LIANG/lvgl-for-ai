@@ -5,8 +5,8 @@
  * Do not edit by hand.
  */
 
-#ifndef IDX_IMG_WATCH_02_H_INCLUDED
-#define IDX_IMG_WATCH_02_H_INCLUDED
+#ifndef INTRO_IMG_WATCH_02_H_INCLUDED
+#define INTRO_IMG_WATCH_02_H_INCLUDED
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
 #include "lvgl.h"
@@ -14,12 +14,12 @@
 #include "lvgl/lvgl.h"
 #endif
 
-#define IDX_IMG_WATCH_02_W 30
-#define IDX_IMG_WATCH_02_H 36
+#define INTRO_IMG_WATCH_02_W 30
+#define INTRO_IMG_WATCH_02_H 36
 
 #if LVGL_VERSION_MAJOR >= 9
 
-static const uint8_t idx_img_watch_02_map[] = {
+static const uint8_t intro_img_watch_02_map[] = {
     0x41, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x41, 0x00, 0x41, 0x00, 0x20, 0x00, 0x20, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x20, 0x00, 0x61, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x41, 0x00, 0x41, 0x00, 0x41, 0x00, 0x41, 0x00, 0x41, 0x00, 0x41, 0x00, 0x41, 0x00,
@@ -157,7 +157,7 @@ static const uint8_t idx_img_watch_02_map[] = {
     0x41, 0x00, 0x41, 0x00, 0x41, 0x00, 0x41, 0x00, 0x41, 0x00, 0x41, 0x00, 0x41, 0x00, 0x41, 0x00,
 };
 
-static const lv_image_dsc_t idx_img_watch_02 = {
+static const lv_image_dsc_t intro_img_watch_02 = {
     .header = {
         .magic = LV_IMAGE_HEADER_MAGIC,
         .cf = LV_COLOR_FORMAT_RGB565,
@@ -167,12 +167,12 @@ static const lv_image_dsc_t idx_img_watch_02 = {
         .stride = 60,
         .reserved_2 = 0,
     },
-    .data_size = sizeof(idx_img_watch_02_map),
-    .data = idx_img_watch_02_map,
+    .data_size = sizeof(intro_img_watch_02_map),
+    .data = intro_img_watch_02_map,
 };
 
 #else
 #error "This image header targets LVGL 9.x; regenerate it with --lvgl 9.6 (or 9.4) for this build."
 #endif
 
-#endif /* IDX_IMG_WATCH_02_H_INCLUDED */
+#endif /* INTRO_IMG_WATCH_02_H_INCLUDED */
