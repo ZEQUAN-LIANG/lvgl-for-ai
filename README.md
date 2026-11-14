@@ -28,11 +28,11 @@ It suits teams that write LVGL UIs with AI and need replayable evidence; it is n
 
 ## What it does
 
-### Default intro: run the verification loop
+### Default intro: the LVGL AI console
 
-`user/app/intro/` is the skill's default app and default template. The GIF below comes from a real session (`user/scenarios/intro.json`):
+`user/app/intro/` is the skill's default app and default template: an 800×600 port of `docs/index.html`. The GIF below is assembled from real session snapshots (`user/scenarios/intro.json`):
 
-<p align="center"><img src="docs/img/intro-demo.gif" width="800" alt="LVGL Verify Loop default intro"></p>
+<p align="center"><img src="docs/img/intro-demo.gif" width="800" alt="LVGL AI default intro"></p>
 
 ### The AI loop: edit C → run a scenario → read evidence → judge
 

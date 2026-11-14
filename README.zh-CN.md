@@ -28,11 +28,11 @@ AI 时代，code is cheap。写 C 不再是瓶颈，缺的是让 AI 看见真实
 
 ## 它能做什么
 
-### 默认介绍页：把验证回路跑一遍
+### 默认介绍页：LVGL AI 控制台
 
-`user/app/intro/` 是 skill 的默认应用，也是默认模板。下面的 GIF 来自一次真实会话（`user/scenarios/intro.json`）：
+`user/app/intro/` 是 skill 的默认应用，也是默认模板：`docs/index.html` 的 800×600 LVGL 移植。下面的 GIF 由真实会话快照拼成（`user/scenarios/intro.json`）：
 
-<p align="center"><img src="docs/img/intro-demo.gif" width="800" alt="LVGL Verify Loop 默认介绍页"></p>
+<p align="center"><img src="docs/img/intro-demo.gif" width="800" alt="LVGL AI 默认介绍页"></p>
 
 ### AI 闭环：改 C → 跑场景 → 读证据 → 自己判定
 

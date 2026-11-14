@@ -1,6 +1,6 @@
-#include "index_layout.h"
+#include "intro_layout.h"
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #include "idx_img_frame_grid.h"
 #include "idx_img_intro_01.h"
@@ -1618,4 +1618,4 @@ const lv_image_dsc_t * const idx_watch_frames[8] = {
     &idx_img_watch_07, &idx_img_watch_08,
 };
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4 */

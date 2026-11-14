@@ -79,6 +79,27 @@ static inline void app_obj_set_clickable(lv_obj_t * obj, bool en)
 #endif
 }
 
+static inline void app_obj_set_hidden(lv_obj_t * obj, bool en)
+{
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+    lv_obj_set_hidden(obj, en);
+#elif LVGL_VERSION_MAJOR >= 9
+    if(en) {
+        lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    }
+    else {
+        lv_obj_remove_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    }
+#else
+    if(en) {
+        lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    }
+    else {
+        lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    }
+#endif
+}
+
 /* Internal to user/app: app.c builds the screen and delegates the panel. */
 void app_panel_create(void);
 lv_obj_t * app_panel_get(void);

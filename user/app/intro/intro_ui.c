@@ -1,9 +1,9 @@
-#include "index_ui.h"
+#include "intro_ui.h"
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #include "app.h"
-#include "index_layout.h"
+#include "intro_layout.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -86,7 +86,11 @@ static lv_font_t * idx_make_font(const char * path, uint32_t size,
     info.render_mode = LV_FREETYPE_FONT_RENDER_MODE_BITMAP;
     info.style = bold_face ? LV_FREETYPE_FONT_STYLE_BOLD
                            : LV_FREETYPE_FONT_STYLE_NORMAL;
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
     info.weight = weight;
+#else
+    LV_UNUSED(weight);
+#endif
     info.kerning = LV_FONT_KERNING_NONE;
     return lv_freetype_font_create_with_info(&info);
 }
@@ -139,10 +143,18 @@ static void idx_fonts_init(void)
     };
     size_t i;
     for(i = 0; i < sizeof(spec) / sizeof(spec[0]); i++) {
-        idx_fonts[spec[i].id] = idx_make_font(spec[i].path, spec[i].size,
+        const char * path = spec[i].path;
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR < 6
+        /* 9.4/9.5 do not expose the variable-weight axis; use a static bold
+         * display face so headings still read as headings. */
+        if(spec[i].id <= IDX_F_DISP_42) {
+            path = "C:\\Windows\\Fonts\\segoeuib.ttf";
+        }
+#endif
+        idx_fonts[spec[i].id] = idx_make_font(path, spec[i].size,
                                               spec[i].weight, spec[i].bold);
         if(idx_fonts[spec[i].id] == NULL) {
-            printf("[index] font failed: %s %u\n", spec[i].path,
+            printf("[index] font failed: %s %u\n", path,
                    (unsigned)spec[i].size);
         }
     }
@@ -165,7 +177,7 @@ static lv_obj_t * idx_new_obj(lv_obj_t * parent, int32_t x, int32_t y,
 {
     lv_obj_t * obj = lv_obj_create(parent);
     lv_obj_remove_style_all(obj);
-    lv_obj_set_scrollable(obj, false);
+    app_obj_set_scrollable(obj, false);
     lv_obj_set_pos(obj, x, y);
     lv_obj_set_size(obj, w, h);
     return obj;
@@ -284,7 +296,7 @@ lv_obj_t * idx_text_line(lv_obj_t * parent, int32_t x, int32_t y,
     if((flags & 1) != 0) {
         /* ellipsis: fixed width, natural size */
         lv_obj_t * label = lv_label_create(parent);
-        lv_obj_set_scrollable(label, false);
+        app_obj_set_scrollable(label, false);
         lv_label_set_text(label, segs[0].text);
         lv_obj_set_style_text_font(label, font, 0);
         lv_obj_set_style_text_color(label, lv_color_hex(color), 0);
@@ -299,7 +311,7 @@ lv_obj_t * idx_text_line(lv_obj_t * parent, int32_t x, int32_t y,
     if((flags & 2) != 0 && clip_w > 0) {
         /* horizontally clipped by an ancestor */
         lv_obj_t * label = lv_label_create(parent);
-        lv_obj_set_scrollable(label, false);
+        app_obj_set_scrollable(label, false);
         lv_label_set_text(label, segs[0].text);
         lv_obj_set_style_text_font(label, font, 0);
         lv_obj_set_style_text_color(label, lv_color_hex(color), 0);
@@ -395,7 +407,7 @@ lv_obj_t * idx_text_line(lv_obj_t * parent, int32_t x, int32_t y,
     lv_obj_t * first = NULL;
     for(j = 0; j < seg_count; j++) {
         lv_obj_t * label = lv_label_create(parent);
-        lv_obj_set_scrollable(label, false);
+        app_obj_set_scrollable(label, false);
         lv_label_set_text(label, draw[j]);
         lv_obj_set_style_text_font(label,
                                    idx_font((idx_font_id_t)segs[j].font), 0);
@@ -423,7 +435,7 @@ static void idx_bg_build(lv_obj_t * parent, const idx_bg_t * b)
 {
     if(b->type == 1) {
         lv_obj_t * img = lv_image_create(parent);
-        lv_obj_set_scrollable(img, false);
+        app_obj_set_scrollable(img, false);
         lv_image_set_src(img, b->src);
         lv_obj_set_pos(img, b->x, b->y);
         if(b->opa < 255) lv_obj_set_style_opa(img, (lv_opa_t)b->opa, 0);
@@ -692,13 +704,13 @@ static void idx_loop_render(uint8_t index, bool animate)
         if(idx_loop_code[i] == NULL) continue;
         if(i < step->code_count) {
             const char * line = step->code[i];
-            lv_obj_set_hidden(idx_loop_code[i], line[0] == '\0');
+            app_obj_set_hidden(idx_loop_code[i], line[0] == '\0');
             lv_label_set_text(idx_loop_code[i], line);
             lv_obj_set_style_text_color(idx_loop_code[i],
                                         lv_color_hex(idx_code_color(line)), 0);
         }
         else {
-            lv_obj_set_hidden(idx_loop_code[i], true);
+            app_obj_set_hidden(idx_loop_code[i], true);
         }
     }
 }
@@ -734,7 +746,7 @@ static void idx_loop_chip(lv_obj_t * parent, lv_obj_t ** label_out,
 {
     lv_obj_t * chip = lv_obj_create(parent);
     lv_obj_remove_style_all(chip);
-    lv_obj_set_scrollable(chip, false);
+    app_obj_set_scrollable(chip, false);
     lv_obj_set_style_bg_opa(chip, 0, 0);
     lv_obj_set_style_border_width(chip, 1, 0);
     lv_obj_set_style_border_color(chip, lv_color_hex(COL_LINE_2), 0);
@@ -782,7 +794,7 @@ static void idx_loop_build(lv_obj_t * content)
         lv_obj_t * row = idx_new_obj(content, 29, y, 248, h);
         lv_obj_set_style_bg_color(row, lv_color_hex(COL_CYAN), 0);
         lv_obj_set_style_bg_opa(row, 0, 0);
-        lv_obj_set_clickable(row, true);
+        app_obj_set_clickable(row, true);
         lv_obj_add_event_cb(row, idx_loop_step_cb, LV_EVENT_CLICKED,
                             (void *)(uintptr_t)(i + 1));
         idx_loop_rows[i] = row;
@@ -816,8 +828,8 @@ static void idx_loop_build(lv_obj_t * content)
     /* Gauge. */
     idx_loop_gauge = lv_arc_create(content);
     lv_obj_remove_style_all(idx_loop_gauge);
-    lv_obj_set_scrollable(idx_loop_gauge, false);
-    lv_obj_set_clickable(idx_loop_gauge, false);
+    app_obj_set_scrollable(idx_loop_gauge, false);
+    app_obj_set_clickable(idx_loop_gauge, false);
     lv_obj_set_pos(idx_loop_gauge, 323, 195);
     lv_obj_set_size(idx_loop_gauge, 125, 125);
     lv_obj_set_style_bg_opa(idx_loop_gauge, 0, LV_PART_MAIN);
@@ -903,14 +915,14 @@ static void idx_loop_build(lv_obj_t * content)
             COL_LINE, 255, 1, 7, 255);
     for(i = 0; i < 8; i++) {
         idx_loop_code[i] = lv_label_create(content);
-        lv_obj_set_scrollable(idx_loop_code[i], false);
+        app_obj_set_scrollable(idx_loop_code[i], false);
         lv_label_set_text(idx_loop_code[i], "");
         lv_obj_set_style_text_font(idx_loop_code[i], idx_font(IDX_F_MONO_10), 0);
         lv_obj_set_style_text_color(idx_loop_code[i], lv_color_hex(0xcfe0ec), 0);
         lv_label_set_long_mode(idx_loop_code[i], LV_LABEL_LONG_CLIP);
         lv_obj_set_pos(idx_loop_code[i], 339, 373 + i * 16);
         lv_obj_set_size(idx_loop_code[i], 400, LV_SIZE_CONTENT);
-        lv_obj_set_hidden(idx_loop_code[i], true);
+        app_obj_set_hidden(idx_loop_code[i], true);
     }
 
     /* Console footer + play button. */
@@ -919,7 +931,7 @@ static void idx_loop_build(lv_obj_t * content)
     idx_loop_play = idx_box(content, 680, 515, 75, 27, COL_CYAN, 13,
                             COL_LINE_3, 255, 1, 5, 255);
     app_obj_set_name(idx_loop_play, "loop_play");
-    lv_obj_set_clickable(idx_loop_play, true);
+    app_obj_set_clickable(idx_loop_play, true);
     lv_obj_add_event_cb(idx_loop_play, idx_loop_play_cb, LV_EVENT_CLICKED, NULL);
     idx_loop_play_icon = idx_simple_text(content, "\xe2\x96\xb6", IDX_F_SYMBOL_8,
                                          COL_CYAN, 255, 690, 522, 8, 0);
@@ -927,7 +939,7 @@ static void idx_loop_build(lv_obj_t * content)
                                           COL_CYAN, 255, 704, 522, 42, 0);
     lv_obj_t * play_hit = idx_new_obj(content, 680, 515, 75, 27);
     app_obj_set_name(play_hit, "loop_play_hit");
-    lv_obj_set_clickable(play_hit, true);
+    app_obj_set_clickable(play_hit, true);
     lv_obj_add_event_cb(play_hit, idx_loop_play_cb, LV_EVENT_CLICKED, NULL);
 
     idx_loop_timer = lv_timer_create(idx_loop_timer_cb, 2600, NULL);
@@ -1054,7 +1066,7 @@ static void idx_versions_build(lv_obj_t * content)
         lv_obj_t * cell = idx_new_obj(rail, x, y, 236, h);
         lv_obj_set_style_bg_color(cell, lv_color_hex(COL_CYAN), 0);
         lv_obj_set_style_bg_opa(cell, 0, 0);
-        lv_obj_set_clickable(cell, true);
+        app_obj_set_clickable(cell, true);
         lv_obj_add_event_cb(cell, idx_version_click_cb, LV_EVENT_CLICKED,
                             (void *)(uintptr_t)i);
         idx_ver_cells[i] = cell;
@@ -1110,7 +1122,7 @@ static void idx_inspector_build(lv_obj_t * content)
     uint8_t i;
     for(i = 0; i < 5; i++) idx_intro_frame_ptrs[i] = idx_intro_frames[i];
     lv_obj_t * anim = lv_animimg_create(content);
-    lv_obj_set_scrollable(anim, false);
+    app_obj_set_scrollable(anim, false);
     lv_obj_set_pos(anim, 78, 192);
     lv_obj_set_size(anim, 644, 483);
     lv_animimg_set_src(anim, idx_intro_frame_ptrs, 5);
@@ -1126,7 +1138,7 @@ static void idx_watch_build(lv_obj_t * content)
     idx_box(content, 258, 781, 32, 38, 0x000000, 0,
             COL_LINE_2, 255, 1, 2, 255);
     lv_obj_t * anim = lv_animimg_create(content);
-    lv_obj_set_scrollable(anim, false);
+    app_obj_set_scrollable(anim, false);
     lv_obj_set_pos(anim, 259, 782);
     lv_obj_set_size(anim, 30, 36);
     lv_animimg_set_src(anim, idx_watch_frame_ptrs, 8);
@@ -1161,7 +1173,7 @@ static void idx_action_cb(lv_event_t * event)
 void idx_action_attach(lv_obj_t * obj, uint8_t action)
 {
     if(action == IDX_ACT_NONE) return;
-    lv_obj_set_clickable(obj, true);
+    app_obj_set_clickable(obj, true);
     lv_obj_add_event_cb(obj, idx_action_cb, LV_EVENT_CLICKED,
                         (void *)(uintptr_t)action);
 }
@@ -1201,14 +1213,14 @@ void idx_show_screen(uint8_t screen, bool animate)
     idx_current = screen;
 
     if(previous < 6) {
-        lv_obj_set_hidden(idx_contents[previous], true);
+        app_obj_set_hidden(idx_contents[previous], true);
         lv_obj_set_size(idx_contents[previous], 0, 0);
         idx_tab_style(previous, false);
     }
 
     lv_obj_t * content = idx_contents[screen];
     lv_obj_set_size(content, IDX_W, idx_screens[screen]->content_h);
-    lv_obj_set_hidden(content, false);
+    app_obj_set_hidden(content, false);
     lv_obj_set_pos(content, animate ? 8 : 0, 0);
     lv_obj_set_style_opa(content, animate ? 0 : 255, 0);
     if(idx_workspace) lv_obj_scroll_to_y(idx_workspace, 0, LV_ANIM_OFF);
@@ -1340,7 +1352,7 @@ static void idx_shell_tabbar(lv_obj_t * screen)
         lv_obj_t * tab = idx_box(screen, s->x, IDX_APPBAR, s->w,
                                  IDX_TABBAR - 1, 0x000000, 0, 0, 0, 0, 0, 255);
         lv_obj_set_user_data(tab, (void *)(uintptr_t)i);
-        lv_obj_set_clickable(tab, true);
+        app_obj_set_clickable(tab, true);
         lv_obj_add_event_cb(tab, idx_tab_click_cb, LV_EVENT_CLICKED, NULL);
         lv_obj_add_event_cb(tab, idx_tab_key_cb, LV_EVENT_KEY, NULL);
         lv_obj_set_style_outline_width(tab, 2, LV_STATE_FOCUS_KEY);
@@ -1395,7 +1407,7 @@ static void idx_stop_loop_playback(void)
 void idx_ui_create(void)
 {
     lv_obj_t * screen = lv_screen_active();
-    app_set_name("index");
+    app_set_name("intro");
 
     lv_obj_set_style_bg_color(screen, lv_color_hex(COL_BG_TOP), 0);
     lv_obj_set_style_bg_grad_color(screen, lv_color_hex(COL_BG_BOT), 0);
@@ -1415,7 +1427,7 @@ void idx_ui_create(void)
     idx_workspace = idx_new_obj(screen, 0, IDX_WORKSPACE_Y,
                                 IDX_W, IDX_WORKSPACE_H);
     app_obj_set_name(idx_workspace, "workspace");
-    lv_obj_set_scrollable(idx_workspace, true);
+    app_obj_set_scrollable(idx_workspace, true);
     lv_obj_set_scroll_dir(idx_workspace, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(idx_workspace, LV_SCROLLBAR_MODE_OFF);
 
@@ -1428,7 +1440,7 @@ void idx_ui_create(void)
             "screen_inspector", "screen_versions", "screen_start"
         };
         app_obj_set_name(content, content_names[i]);
-        lv_obj_set_hidden(content, true);
+        app_obj_set_hidden(content, true);
         lv_obj_set_size(content, 0, 0);
         idx_build_screen_content(content, idx_screens[i]);
         idx_contents[i] = content;
@@ -1455,4 +1467,4 @@ void idx_ui_create(void)
     printf("[index] ui created, %u fonts\n", (unsigned)IDX_F_COUNT);
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4 */

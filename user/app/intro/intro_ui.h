@@ -1,9 +1,9 @@
-#ifndef INDEX_UI_H
-#define INDEX_UI_H
+#ifndef INTRO_UI_H
+#define INTRO_UI_H
 
 #include "lvgl.h"
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 typedef enum {
     IDX_F_DISP_14 = 0,
@@ -131,6 +131,6 @@ void idx_show_screen(uint8_t screen, bool animate);
 void idx_set_tab_focus(uint8_t screen);
 void idx_action_attach(lv_obj_t * obj, uint8_t action);
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4 */
 
-#endif /* INDEX_UI_H */
+#endif /* INTRO_UI_H */
