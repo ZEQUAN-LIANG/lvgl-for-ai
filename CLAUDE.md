@@ -36,6 +36,10 @@ python -I core/tools/install_version.py --lvgl 9.4 --source gitee
 python -I core/tools/lvgl.py run --scenario user/scenarios/settings.json --json
 python -I core/tools/release.py --out release --json
 
+# Gitee → GitHub 强制镜像（分支 + 标签）
+python -I core/tools/sync_github.py --dry-run
+python -I core/tools/sync_github.py
+
 # 只读会话证据（不启动 engine / 网页）
 python -I core/session_report.py --latest --log-tail 3
 python -I core/session_report.py sessions/<id> --json

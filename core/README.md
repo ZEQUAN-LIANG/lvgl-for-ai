@@ -21,6 +21,7 @@
 - `tools/export_sdk.py`：从 `lvgl-src/<version>` 导出宿主预编译 SDK 到 `sdk/<version>`。
 - `tools/install_version.py`：安装其他 LVGL 版本（源码或预编译版本包），读取根目录 `versions.json`。
 - `tools/release.py`：生成可分发的 skill zip、`.sha256` 与 release manifest。
+- `tools/sync_github.py`：把 Gitee（`origin`）的分支与标签强制镜像到 GitHub（`github`）。
 - `tools/lvgl.py`：统一入口，分发 `run` / `report` / `serve`。
 - `tools/contract_snapshot.py`：记录/对比六类外部契约快照，用于重构行为冻结；用法见
   [CONTRACT_SNAPSHOT.md](CONTRACT_SNAPSHOT.md)。
