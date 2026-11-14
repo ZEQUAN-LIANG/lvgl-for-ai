@@ -47,6 +47,7 @@ class DocumentStore:
         unreadable_code: str = "document_unreadable",
         write_code: str = "document_write_error",
         error_type: type[DocumentError] = DocumentError,
+        keep_extra_fields: bool = True,
     ) -> None:
         self.session_dir = Path(session_dir)
         self.filename = filename
@@ -55,6 +56,7 @@ class DocumentStore:
         self.unreadable_code = unreadable_code
         self.write_code = write_code
         self.error_type = error_type
+        self.keep_extra_fields = keep_extra_fields
 
     @property
     def path(self) -> Path:
@@ -197,7 +199,10 @@ class DocumentStore:
                 f"{self.path}: {self.collection} entries must be objects",
                 code=code,
             )
-        return {"schema": self.schema, self.collection: items}
+        data = dict(value) if self.keep_extra_fields else {}
+        data["schema"] = self.schema
+        data[self.collection] = items
+        return data
 
 
 class DocumentTransaction:

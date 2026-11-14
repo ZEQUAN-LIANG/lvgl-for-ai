@@ -36,11 +36,6 @@ SCOPE_FIELDS = {
     "frame": ("kind", "frame_no"),
     "range": ("kind", "frame_start", "frame_end"),
 }
-IMAGE_PATH_RE = re.compile(
-    r"^"
-    + session_schema.WHITEBOARDS_DIR
-    + r"/[A-Za-z0-9][A-Za-z0-9._-]*\.png$"
-)
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 DATA_URL_PREFIX = "data:image/png;base64,"

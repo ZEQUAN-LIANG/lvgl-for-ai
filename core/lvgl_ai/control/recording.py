@@ -288,6 +288,7 @@ class Recording:
             collection="whiteboards",
             unreadable_code="whiteboards_unreadable",
             write_code="whiteboards_write_error",
+            keep_extra_fields=False,
         )
 
     @property

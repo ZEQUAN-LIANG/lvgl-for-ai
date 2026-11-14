@@ -51,6 +51,27 @@ class DocumentStoreTest(unittest.TestCase):
         self.assertEqual(self.store.read(), document)
         self.assertFalse((self.root / "doc.json.tmp").exists())
 
+    def test_extra_top_level_fields_follow_the_store_option(self) -> None:
+        document = {
+            "schema": "test-document-v1",
+            "items": [],
+            "extra": "kept",
+        }
+        self.assertEqual(self.store.write(document), document)
+        self.assertEqual(self.store.read(), document)
+
+        dropping = DocumentStore(
+            self.root,
+            filename="dropped.json",
+            schema="test-document-v1",
+            collection="items",
+            keep_extra_fields=False,
+        )
+        self.assertEqual(
+            dropping.write(document),
+            {"schema": "test-document-v1", "items": []},
+        )
+
     def test_corrupt_document_raises_the_configured_code(self) -> None:
         self.path.write_bytes(b"{broken\n")
 
