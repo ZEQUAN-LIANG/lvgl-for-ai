@@ -8,11 +8,13 @@ still carries a hard-coded list fails here.
 
 from __future__ import annotations
 
+import argparse
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
+import assets as assets_cli
 from lvgl_ai import versions
 from lvgl_ai.assets import version as asset_version
 from tools import check_api_nav, fetch_lvgl, release_all
@@ -90,8 +92,35 @@ class AssetVersionTest(unittest.TestCase):
             self.assertEqual(
                 asset_version.resolve_lvgl_version(root, "9.7"), "9.7"
             )
-            with self.assertRaises(ValueError):
+            with self.assertRaises(ValueError) as caught:
                 asset_version.resolve_lvgl_version(root, "9.6")
+            self.assertIn(
+                "choose one of 7.0, 9.7", str(caught.exception)
+            )
+
+    def test_supported_constant_keeps_numeric_order(self) -> None:
+        self.assertEqual(
+            asset_version.SUPPORTED_VERSIONS,
+            ("8.3", "8.4", "9.1", "9.4", "9.5", "9.6"),
+        )
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            write_index(root)
+            self.assertEqual(
+                asset_version.supported_versions(root), ("7.0", "9.7")
+            )
+
+    def test_assets_cli_metavar_keeps_numeric_order(self) -> None:
+        parser = assets_cli.build_parser()
+        subparsers = next(
+            action
+            for action in parser._actions
+            if isinstance(action, argparse._SubParsersAction)
+        )
+        font_help = subparsers.choices["font"].format_help()
+        self.assertIn(
+            "--lvgl auto|8.3|8.4|9.1|9.4|9.5|9.6", font_help
+        )
 
 
 class ToolListTest(unittest.TestCase):
