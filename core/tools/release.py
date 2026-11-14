@@ -65,6 +65,15 @@ RELEASE_INTRO_APP = "intro"
 RELEASE_SCENARIOS = ("intro.json",)
 RELEASE_APP_FILES = ("app.h", "lvgl_compat.h", "README.md", "GUIDE.md")
 RELEASE_APP_DIRS = (RELEASE_INTRO_APP,)
+RELEASE_USER_README = TOOLS_DIR / "release_user_app_README.md"
+CORE_RELEASE_EXCLUDE_FILES = (
+    "README.md",
+    "CONTRACT_SNAPSHOT.md",
+    "SKILL.md",
+    "engine/freetype/README.md",
+    "lvgl_ai/assets/vendor/README.md",
+    "tools/release_user_app_README.md",
+)
 RELEASE_VIEWER = "LVGL-AI-Viewer.exe"
 RELEASE_DEMO_GIF = "intro-demo.gif"
 RELEASE_DEMO_SOURCE = Path("docs") / "img" / RELEASE_DEMO_GIF
@@ -274,6 +283,9 @@ def stage_user_tree(repo_root: Path, package: Path) -> None:
         if not source_file.is_file():
             raise BuildError(f"release: user/app/{name} is missing")
         shutil.copy2(source_file, app_target / name)
+    if not RELEASE_USER_README.is_file():
+        raise BuildError("release: core/tools/release_user_app_README.md is missing")
+    shutil.copy2(RELEASE_USER_README, app_target / "README.md")
     for name in RELEASE_APP_DIRS:
         source_dir = app_source / name
         if not source_dir.is_dir():
@@ -284,6 +296,9 @@ def stage_user_tree(repo_root: Path, package: Path) -> None:
             exclude_dirs=USER_EXCLUDE_DIRS,
             exclude_suffixes=EXCLUDE_SUFFIXES,
         )
+    intro_readme = app_target / RELEASE_INTRO_APP / "README.md"
+    if intro_readme.is_file():
+        intro_readme.unlink()
     release_app = TOOLS_DIR / "release_app.c"
     if not release_app.is_file():
         raise BuildError("release: core/tools/release_app.c is missing")
@@ -327,6 +342,10 @@ def stage_package(
         exclude_dirs=CORE_EXCLUDE_DIRS,
         exclude_suffixes=EXCLUDE_SUFFIXES,
     )
+    for name in CORE_RELEASE_EXCLUDE_FILES:
+        path = package / "core" / name
+        if path.is_file():
+            path.unlink()
     stage_user_tree(repo_root, package)
     copy_tree(repo_root / "licenses", package / "licenses")
     copy_tree(repo_root / "bin", package / "bin")

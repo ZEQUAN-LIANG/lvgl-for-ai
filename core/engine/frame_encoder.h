@@ -33,8 +33,6 @@ void frame_encoder_stop(frame_encoder_t * encoder);
 
 bool frame_encoder_failed(frame_encoder_t * encoder);
 
-long frame_encoder_pending(frame_encoder_t * encoder);
-
 #ifdef __cplusplus
 }
 #endif

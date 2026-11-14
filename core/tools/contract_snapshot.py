@@ -424,14 +424,6 @@ def _shape(value: Any) -> Any:
     return {"unknown": type(value).__name__}
 
 
-def _json_lines(path: Path) -> list[Any]:
-    rows: list[Any] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.strip():
-            rows.append(json.loads(line))
-    return rows
-
-
 def snapshot_bytes(snapshot: dict[str, Any]) -> bytes:
     return (_canonical_json(snapshot) + "\n").encode("utf-8")
 

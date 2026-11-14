@@ -8,7 +8,7 @@ import os
 import re
 import tempfile
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Iterable
 
 from lvgl_ai.paths import TOOL_VERSION
 
@@ -131,10 +131,6 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def sha256_text(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-
 def atomic_write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(
@@ -227,14 +223,3 @@ def relative_posix(path: Path, base: Path) -> str:
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise AssetError(message)
-
-
-def check_int_range(name: str, value: int, low: int, high: int) -> None:
-    require(
-        low <= value <= high,
-        f"{name}={value} is outside the representable range [{low}, {high}]",
-    )
-
-
-def join_lines(lines: Sequence[str]) -> str:
-    return "\n".join(lines)

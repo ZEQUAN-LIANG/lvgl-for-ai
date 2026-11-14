@@ -152,9 +152,6 @@ long session_frame_count(const session_t * session);
 uint32_t session_t_ms(const session_t * session);
 bool session_truncated(const session_t * session);
 
-/** First evidence write error of this session, or SESSION_ERROR_NONE. */
-session_error_t session_error(const session_t * session);
-
 #ifdef __cplusplus
 }
 #endif

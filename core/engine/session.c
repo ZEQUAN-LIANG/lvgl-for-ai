@@ -311,8 +311,3 @@ bool session_truncated(const session_t * session)
 {
     return session != NULL && capture_truncated(&session->capture);
 }
-
-session_error_t session_error(const session_t * session)
-{
-    return session == NULL ? SESSION_ERROR_NONE : session->error;
-}

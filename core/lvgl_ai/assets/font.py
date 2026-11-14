@@ -97,10 +97,6 @@ class FontData:
     missing: list[int] = field(default_factory=list)
     total_bitmap_bytes: int = 0
 
-    @property
-    def id_by_code(self) -> dict[int, int]:
-        return {glyph.code: index + 1 for index, glyph in enumerate(self.glyphs)}
-
 
 def _face_text(value: object) -> str:
     if isinstance(value, bytes):
