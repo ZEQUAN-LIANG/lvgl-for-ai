@@ -235,6 +235,25 @@ def _update_index(repo: Path, manifests: list[dict[str, Any]], tool_version: str
     )
 
 
+def _ensure_launchers(repo: Path) -> None:
+    """Build the untracked double-click launchers before staging the core."""
+    viewer = repo / "LVGL-AI-Viewer.exe"
+    host = repo / "chip-adapt" / "sifli" / "tools" / "SiFli-Host.exe"
+    if viewer.is_file() and host.is_file():
+        return
+    result = _run(
+        [sys.executable, "-I", str(repo / "core" / "tools" / "launchers" / "build.py")],
+        cwd=repo,
+        timeout=180.0,
+    )
+    if result.returncode != 0:
+        raise BuildError(
+            "release_all: cannot build the Windows launchers; "
+            f"stdout={result.stdout.strip()[:500]!r}; "
+            f"stderr={result.stderr.strip()[:500]!r}"
+        )
+
+
 def _build_core(
     repo: Path,
     out_dir: Path,
@@ -474,6 +493,7 @@ def release_all(
     repo = repo_root.resolve()
     out = out_dir.resolve()
     out.mkdir(parents=True, exist_ok=True)
+    _ensure_launchers(repo)
     versions = [version for version in VERSIONS if only is None or version in only]
     if "9.6" not in versions:
         raise BuildError("release_all: 9.6 is required for the core package")
