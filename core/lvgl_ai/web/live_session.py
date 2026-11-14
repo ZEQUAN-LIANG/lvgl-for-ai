@@ -228,12 +228,15 @@ class LiveSession:
         display: tuple[int, int] | None = None,
     ) -> dict[str, Any]:
         validate_live_kind(kind)
-        self._stop_ticker()
         with self._lock:
             if self._is_active_locked():
                 raise LiveError(
                     "live_running", "a live session is already running"
                 )
+            # Only reclaim a ticker after proving no session is active. Doing
+            # this before the lock let a rejected concurrent start stop the
+            # winner's ticker and freeze its virtual time.
+            self._stop_ticker()
             self._state = STARTING
             runtime: RuntimeLike | None = None
             try:
@@ -276,7 +279,6 @@ class LiveSession:
         return self.status()
 
     def stop(self) -> dict[str, Any]:
-        self._stop_ticker()
         with self._lock:
             runtime = self._runtime
             if runtime is None:
@@ -285,6 +287,10 @@ class LiveSession:
                 raise LiveError(
                     "live_starting", "the live session is still starting"
                 )
+            # tick() runs under this lock, so a ticker that owns the lock
+            # cannot be running while we hold it; one waiting outside exits
+            # as soon as the event is set.
+            self._stop_ticker()
             self._state = STOPPING
             # Wake stream handlers before the runtime stops; a test session's
             # private root is deleted after this and handlers only hold bytes.
@@ -534,6 +540,13 @@ class LiveSession:
         thread.start()
 
     def _stop_ticker(self) -> None:
+        """Stop and join the ticker; safe to call while holding ``_lock``.
+
+        The ticker's tick section uses the same lock, so a caller holding it
+        cannot race a tick. A ticker waiting for the lock exits as soon as
+        the event is set after it acquires the lock; ``join`` is capped at
+        one second.
+        """
         stop = self._ticker_stop
         thread = self._ticker
         self._ticker_stop = None

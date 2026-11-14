@@ -194,6 +194,55 @@ class LiveSessionTest(unittest.TestCase):
             session.start("record", "coffee")
         self.assertEqual(conflict.exception.code, "live_running")
 
+    def test_second_start_keeps_the_running_ticker(self) -> None:
+        runtime = FakeRuntime()
+        session = self._session(lambda: runtime)
+        session.start("record")
+
+        ticker = session._ticker
+        self.assertIsNotNone(ticker)
+        self.assertTrue(ticker.is_alive())
+
+        before = runtime.t_ms
+        with self.assertRaises(LiveError) as raised:
+            session.start("record")
+        self.assertEqual(raised.exception.code, "live_running")
+
+        self.assertIs(session._ticker, ticker)
+        self.assertTrue(ticker.is_alive())
+        deadline = time.monotonic() + 2.0
+        while runtime.t_ms == before and time.monotonic() < deadline:
+            time.sleep(0.01)
+        self.assertGreater(runtime.t_ms, before)
+
+    def test_concurrent_start_has_one_winner(self) -> None:
+        runtime = FakeRuntime()
+        session = self._session(lambda: runtime)
+        barrier = threading.Barrier(2)
+        outcomes: list[str] = []
+        outcomes_lock = threading.Lock()
+
+        def worker() -> None:
+            barrier.wait()
+            try:
+                session.start("record")
+                result = "started"
+            except LiveError as exc:
+                result = exc.code
+            with outcomes_lock:
+                outcomes.append(result)
+
+        threads = [threading.Thread(target=worker) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(5.0)
+
+        self.assertFalse(any(thread.is_alive() for thread in threads))
+        self.assertEqual(sorted(outcomes), ["live_running", "started"])
+        self.assertIsNotNone(session._ticker)
+        self.assertTrue(session._ticker.is_alive())
+
     def test_selected_app_does_not_wait_for_a_ticker_tick(self) -> None:
         class SlowTickRuntime(FakeRuntime):
             def __init__(self) -> None:
