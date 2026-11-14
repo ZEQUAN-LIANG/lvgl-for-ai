@@ -6,7 +6,7 @@
 
 本文件位于工具根 `core/`；下面列出的路径相对本目录，命令示例在**仓库根**执行。
 
-## 目录
+## 工具目录
 
 - `lvgl_ai/`：Python 控制层。`Runtime`（一个实例 = 一个 LVGL 进程 = 一次会话）、`Recording`（只读证据视图，annotations 可写）、`play_scenario`、`apps/`（应用管理 package：common / policy / registry / scaffold / trash / views）、错误类型、`web/`（HTTP/UI 适配）。
 - `engine/`：C engine，负责协议、虚拟 indev、录帧、时间轴、窗口。
@@ -24,6 +24,25 @@
 - `tools/contract_snapshot.py`：记录/对比六类外部契约快照，用于重构行为冻结；用法见
   [CONTRACT_SNAPSHOT.md](CONTRACT_SNAPSHOT.md)。
 
+## 仓库目录
+
+| 路径 | 内容 |
+| --- | --- |
+| `core/` | 工具根：`lvgl_ai/` Python 控制层、`engine/` C engine、`cli.py`、`web.py`、`tests/`、`tools/`、`api-nav/` |
+| `user/app/` | 应用变体源码；`app.c` 的 `apps[]` 是注册表 |
+| `user/scenarios/` | 场景 JSON |
+| `lvgl-src/` | 只跟踪 README；各版本源码按需下载 |
+| `third_party/` | zlib / libpng 源码（按需下载，Git 忽略） |
+| `build/` | engine 构建产物（Git 忽略） |
+| `sdk/` | 预编译宿主 SDK（Git 忽略；由 `export_sdk.py` 生成） |
+| `release/` | 解包后的 skill 目录、发布 zip、sha256 与 release manifest（Git 忽略） |
+| `bin/` | `lvgl.cmd` 统一入口包装脚本 |
+| `sessions/` | 会话证据（Git 忽略） |
+| `docs/` | 应用变体与场景/服务端常量的索引指针页；SiFli 能力索引见 `chip-adapt/docs/sifli.html` |
+| `licenses/` | 第三方许可全文 |
+| `patches/` | LVGL patch 组织说明与可选 patch |
+| `core/SKILL.md` | 可分发 skill 的入口契约与 agent 工作流 |
+
 ## 环境准备
 
 需要 Python 3.9+（仅标准库）、CMake 3.20+、Ninja、GCC（Windows 为 MinGW-w64）和 curl；
@@ -31,8 +50,81 @@ ccache 可选，git 用于拉取 `third_party/` 的 PNG 编码器源码以及应
 只用预编译宿主 SDK 时，运行时只需要 Python 与 GCC；CMake、Ninja、LVGL 源码和
 `third_party/` 都不是必需项。
 
-Windows 安装、PATH 配置、首次运行与常见错误见仓库根 [README.md](../README.md)。
-本文件只保留工具用法。
+### Windows：MSYS2 UCRT64
+
+安装 [MSYS2](https://www.msys2.org/) 后，在 **MSYS2 UCRT64** 终端执行：
+
+```bash
+pacman -Syu
+# 终端重启后
+pacman -S --needed \
+  mingw-w64-ucrt-x86_64-gcc \
+  mingw-w64-ucrt-x86_64-cmake \
+  mingw-w64-ucrt-x86_64-ninja \
+  mingw-w64-ucrt-x86_64-curl \
+  mingw-w64-ucrt-x86_64-ccache
+```
+
+把 `C:\msys64\ucrt64\bin` 加入 Windows `PATH`，并放在会遮蔽它的路径之前。然后在
+Git Bash / PowerShell / cmd 中验证：
+
+```bash
+python --version
+cmake --version
+ninja --version
+gcc --version
+curl --version
+
+# Git Bash
+which -a cmake ninja gcc
+# PowerShell / cmd
+where.exe cmake
+where.exe ninja
+where.exe gcc
+```
+
+注意：
+
+- `python` 建议使用 [python.org](https://www.python.org/) 安装的版本；若打开的是 Microsoft Store，请关闭 App Execution Alias，或改用 `py -3`。
+- 必须使用 MinGW-w64 GCC；MSVC 不在支持路径内。
+- winget 也可安装部分工具（如 `Kitware.CMake`、`Ninja-build.Ninja`），但 GCC 仍建议通过 MSYS2 获取；本仓库未在 winget 路线上复测。
+
+## 首次运行
+
+```bash
+# 1. 检查环境
+python --version
+cmake --version
+ninja --version
+gcc --version
+
+# 2. 下载并安装 LVGL 9.6 源码
+python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root .
+
+# 3. 下载 PNG 编码器源码（zlib / libpng，安装到 third_party/）
+python -I core/tools/fetch_png.py --repo-root .
+
+# 4. 跑一个场景（首次会构建 engine）
+python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json
+
+# 5. 或启动网页端
+python -I core/web.py --open
+```
+
+国内网络访问 `codeload.github.com` 不稳定时，第 2 步改用 Gitee 镜像：
+
+```bash
+python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --source gitee
+```
+
+说明：
+
+- `fetch_lvgl.py` 成功后会输出 `installed LVGL 9.6.0 -> .../lvgl-src/9.6`，并写入 `.lvgl-ai-source.json`。
+- `fetch_png.py` 会把 zlib 1.3.1 与 libpng 1.6.44 安装到 `third_party/zlib/`、`third_party/libpng/`；构建前若缺失会直接报错并提示重跑该命令。
+- 首次构建会编译整个 LVGL，通常需要数分钟；工具对 configure / build 每个阶段设置 600 秒硬超时。
+- CLI 成功退出码为 `0`，stdout 最后一行是会话目录；会话 `manifest.json` 的 `status` 应为 `ok`。
+- 网页端默认地址 `http://127.0.0.1:8765/`；端口冲突时用 `--port 0` 或 `--port 8766`，Ctrl+C 停止。
+- Windows 无控制台启动可双击仓库根的 `LVGL-AI-Viewer.exe`（需要 `pythonw.exe` 或 `pyw.exe` 在 PATH 中；用 `python -I core/tools/launchers/build.py` 重新生成）。
 
 ## 准备 LVGL 源码
 
@@ -319,3 +411,20 @@ python -I core/tools/contract_snapshot.py compare
 ```
 
 测试套件同时包含单元测试和真实 engine 的集成测试：`*IntegrationTest` 类会按仓库既有方式构建 LVGL（当前主要是 9.6，多版本测试覆盖全部支持版本），由同一次 `run_tests.py` 执行；它们不是 skip 或未执行断言。预编译与 release 集成测试在 `sdk/9.6` 缺失时会自动调用 `tools/export_sdk.py`，因此同样需要 `lvgl-src/9.6` 与 GCC。单元测试使用 fake engine / 纯函数，不构建 LVGL。
+
+## 常见错误
+
+| 现象 | 原因 | 处理 |
+| --- | --- | --- |
+| `LVGL source not found: ...` | 没有下载对应版本的 LVGL 源码 | 运行 `python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root .`，或设置 `LVGL_AI_LVGL_SRC` |
+| `PNG encoder source not found: ...` | 没有下载 zlib / libpng 源码 | 运行 `python -I core/tools/fetch_png.py --repo-root .`，或设置 `LVGL_AI_ZLIB_SRC` / `LVGL_AI_LIBPNG_SRC` |
+| `build tools not found on PATH: cmake, ninja, gcc` | 工具缺失，或 PATH 未生效 | 按上文 MSYS2 步骤安装，重开终端，用 `which -a` / `where.exe` 检查 |
+| `CMake 3.20 or higher is required` | CMake 版本过低 | 升级 CMake |
+| `engine binary not found: ...` | 使用了 `--no-build`，但 `build/` 中没有 engine | 去掉 `--no-build` 先构建 |
+| `configure timed out after 600s` / `build timed out after 600s` | 单阶段超过 600 秒 | 关闭负载或杀毒扫描后重跑；已完成的阶段会保留，可增量构建 |
+| `all download URLs failed:` | 网络、DNS 或代理问题 | 加 `--source gitee`；检查 `curl` 与代理环境变量 |
+| `version header mismatch:` | 镜像 tag 漂移 | 删除 `.scratch/tmp/archives` 后重下，或加 `--force` |
+| `[web] cannot listen on 127.0.0.1:8765:` | 端口被占用 | 用 `--port 0` 或换一个端口 |
+| `cannot read scenario ...` | 场景路径写错 | 检查 `user/scenarios/` 下的文件名 |
+| `python` 打开 Microsoft Store | Store 别名 | 使用 python.org 版本、`py -3`，或关闭 App Execution Alias |
+| `git is required to apply LVGL patches` | 有 patch 但未安装 git | 安装 Git，或加 `--no-patch`（当前仓库默认没有 patch） |
