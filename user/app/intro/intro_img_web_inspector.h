@@ -5,8 +5,8 @@
  * Do not edit by hand.
  */
 
-#ifndef IDX_IMG_WEB_INSPECTOR_H_INCLUDED
-#define IDX_IMG_WEB_INSPECTOR_H_INCLUDED
+#ifndef INTRO_IMG_WEB_INSPECTOR_H_INCLUDED
+#define INTRO_IMG_WEB_INSPECTOR_H_INCLUDED
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
 #include "lvgl.h"
@@ -14,12 +14,12 @@
 #include "lvgl/lvgl.h"
 #endif
 
-#define IDX_IMG_WEB_INSPECTOR_W 329
-#define IDX_IMG_WEB_INSPECTOR_H 206
+#define INTRO_IMG_WEB_INSPECTOR_W 329
+#define INTRO_IMG_WEB_INSPECTOR_H 206
 
 #if LVGL_VERSION_MAJOR >= 9
 
-static const uint8_t idx_img_web_inspector_map[] = {
+static const uint8_t intro_img_web_inspector_map[] = {
     0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
     0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
     0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
@@ -12730,7 +12730,7 @@ static const uint8_t idx_img_web_inspector_map[] = {
     0x22, 0x1A, 0x1A, 0x1A, 0x1B, 0x1B, 0x1B, 0x1B, 0x1B, 0x1B,
 };
 
-static const lv_image_dsc_t idx_img_web_inspector = {
+static const lv_image_dsc_t intro_img_web_inspector = {
     .header = {
         .magic = LV_IMAGE_HEADER_MAGIC,
         .cf = LV_COLOR_FORMAT_RGB888,
@@ -12740,12 +12740,12 @@ static const lv_image_dsc_t idx_img_web_inspector = {
         .stride = 987,
         .reserved_2 = 0,
     },
-    .data_size = sizeof(idx_img_web_inspector_map),
-    .data = idx_img_web_inspector_map,
+    .data_size = sizeof(intro_img_web_inspector_map),
+    .data = intro_img_web_inspector_map,
 };
 
 #else
 #error "This image header targets LVGL 9.x; regenerate it with --lvgl 9.6 (or 9.4) for this build."
 #endif
 
-#endif /* IDX_IMG_WEB_INSPECTOR_H_INCLUDED */
+#endif /* INTRO_IMG_WEB_INSPECTOR_H_INCLUDED */

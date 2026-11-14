@@ -5,8 +5,8 @@
  * Do not edit by hand.
  */
 
-#ifndef IDX_IMG_INTRO_04_H_INCLUDED
-#define IDX_IMG_INTRO_04_H_INCLUDED
+#ifndef INTRO_IMG_INTRO_04_H_INCLUDED
+#define INTRO_IMG_INTRO_04_H_INCLUDED
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
 #include "lvgl.h"
@@ -14,12 +14,12 @@
 #include "lvgl/lvgl.h"
 #endif
 
-#define IDX_IMG_INTRO_04_W 644
-#define IDX_IMG_INTRO_04_H 483
+#define INTRO_IMG_INTRO_04_W 644
+#define INTRO_IMG_INTRO_04_H 483
 
 #if LVGL_VERSION_MAJOR >= 9
 
-static const uint8_t idx_img_intro_04_map[] = {
+static const uint8_t intro_img_intro_04_map[] = {
     0x62, 0x08, 0x83, 0x08, 0x82, 0x08, 0x63, 0x08, 0x82, 0x08, 0x83, 0x08, 0x62, 0x08, 0x83, 0x08,
     0x82, 0x08, 0x83, 0x08, 0x62, 0x08, 0x83, 0x08, 0x82, 0x08, 0x63, 0x08, 0x82, 0x08, 0x83, 0x08,
     0x62, 0x08, 0x83, 0x08, 0x82, 0x08, 0x63, 0x08, 0x82, 0x08, 0x83, 0x08, 0x62, 0x08, 0x83, 0x08,
@@ -38904,7 +38904,7 @@ static const uint8_t idx_img_intro_04_map[] = {
     0x42, 0x08, 0x62, 0x08, 0x42, 0x08, 0x42, 0x00,
 };
 
-static const lv_image_dsc_t idx_img_intro_04 = {
+static const lv_image_dsc_t intro_img_intro_04 = {
     .header = {
         .magic = LV_IMAGE_HEADER_MAGIC,
         .cf = LV_COLOR_FORMAT_RGB565,
@@ -38914,12 +38914,12 @@ static const lv_image_dsc_t idx_img_intro_04 = {
         .stride = 1288,
         .reserved_2 = 0,
     },
-    .data_size = sizeof(idx_img_intro_04_map),
-    .data = idx_img_intro_04_map,
+    .data_size = sizeof(intro_img_intro_04_map),
+    .data = intro_img_intro_04_map,
 };
 
 #else
 #error "This image header targets LVGL 9.x; regenerate it with --lvgl 9.6 (or 9.4) for this build."
 #endif
 
-#endif /* IDX_IMG_INTRO_04_H_INCLUDED */
+#endif /* INTRO_IMG_INTRO_04_H_INCLUDED */

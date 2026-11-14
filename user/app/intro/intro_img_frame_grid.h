@@ -5,8 +5,8 @@
  * Do not edit by hand.
  */
 
-#ifndef IDX_IMG_FRAME_GRID_H_INCLUDED
-#define IDX_IMG_FRAME_GRID_H_INCLUDED
+#ifndef INTRO_IMG_FRAME_GRID_H_INCLUDED
+#define INTRO_IMG_FRAME_GRID_H_INCLUDED
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
 #include "lvgl.h"
@@ -14,12 +14,12 @@
 #include "lvgl/lvgl.h"
 #endif
 
-#define IDX_IMG_FRAME_GRID_W 710
-#define IDX_IMG_FRAME_GRID_H 408
+#define INTRO_IMG_FRAME_GRID_W 710
+#define INTRO_IMG_FRAME_GRID_H 408
 
 #if LVGL_VERSION_MAJOR >= 9
 
-static const uint8_t idx_img_frame_grid_map[] = {
+static const uint8_t intro_img_frame_grid_map[] = {
     0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16,
     0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16,
     0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16,
@@ -54337,7 +54337,7 @@ static const uint8_t idx_img_frame_grid_map[] = {
     0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16,
 };
 
-static const lv_image_dsc_t idx_img_frame_grid = {
+static const lv_image_dsc_t intro_img_frame_grid = {
     .header = {
         .magic = LV_IMAGE_HEADER_MAGIC,
         .cf = LV_COLOR_FORMAT_RGB888,
@@ -54347,12 +54347,12 @@ static const lv_image_dsc_t idx_img_frame_grid = {
         .stride = 2130,
         .reserved_2 = 0,
     },
-    .data_size = sizeof(idx_img_frame_grid_map),
-    .data = idx_img_frame_grid_map,
+    .data_size = sizeof(intro_img_frame_grid_map),
+    .data = intro_img_frame_grid_map,
 };
 
 #else
 #error "This image header targets LVGL 9.x; regenerate it with --lvgl 9.6 (or 9.4) for this build."
 #endif
 
-#endif /* IDX_IMG_FRAME_GRID_H_INCLUDED */
+#endif /* INTRO_IMG_FRAME_GRID_H_INCLUDED */

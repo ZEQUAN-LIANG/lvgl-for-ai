@@ -5,8 +5,8 @@
  * Do not edit by hand.
  */
 
-#ifndef IDX_IMG_POSTER_H_INCLUDED
-#define IDX_IMG_POSTER_H_INCLUDED
+#ifndef INTRO_IMG_POSTER_H_INCLUDED
+#define INTRO_IMG_POSTER_H_INCLUDED
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
 #include "lvgl.h"
@@ -14,12 +14,12 @@
 #include "lvgl/lvgl.h"
 #endif
 
-#define IDX_IMG_POSTER_W 203
-#define IDX_IMG_POSTER_H 361
+#define INTRO_IMG_POSTER_W 203
+#define INTRO_IMG_POSTER_H 361
 
 #if LVGL_VERSION_MAJOR >= 9
 
-static const uint8_t idx_img_poster_map[] = {
+static const uint8_t intro_img_poster_map[] = {
     0x07, 0x0B, 0x06, 0x07, 0x0B, 0x06, 0x07, 0x0B, 0x06, 0x07, 0x0B, 0x06, 0x08, 0x0C, 0x07, 0x09,
     0x0D, 0x08, 0x0B, 0x0F, 0x0A, 0x0B, 0x0F, 0x0A, 0x0B, 0x0F, 0x0A, 0x0A, 0x0E, 0x09, 0x0A, 0x0E,
     0x09, 0x0A, 0x0E, 0x09, 0x09, 0x0D, 0x08, 0x09, 0x0D, 0x08, 0x09, 0x0D, 0x08, 0x09, 0x0D, 0x08,
@@ -13763,7 +13763,7 @@ static const uint8_t idx_img_poster_map[] = {
     0x3A, 0x53, 0x5D, 0x3A, 0x52, 0x5C, 0x39, 0x52, 0x5C,
 };
 
-static const lv_image_dsc_t idx_img_poster = {
+static const lv_image_dsc_t intro_img_poster = {
     .header = {
         .magic = LV_IMAGE_HEADER_MAGIC,
         .cf = LV_COLOR_FORMAT_RGB888,
@@ -13773,12 +13773,12 @@ static const lv_image_dsc_t idx_img_poster = {
         .stride = 609,
         .reserved_2 = 0,
     },
-    .data_size = sizeof(idx_img_poster_map),
-    .data = idx_img_poster_map,
+    .data_size = sizeof(intro_img_poster_map),
+    .data = intro_img_poster_map,
 };
 
 #else
 #error "This image header targets LVGL 9.x; regenerate it with --lvgl 9.6 (or 9.4) for this build."
 #endif
 
-#endif /* IDX_IMG_POSTER_H_INCLUDED */
+#endif /* INTRO_IMG_POSTER_H_INCLUDED */

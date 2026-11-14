@@ -2,22 +2,22 @@
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
-#include "idx_img_frame_grid.h"
-#include "idx_img_intro_01.h"
-#include "idx_img_intro_02.h"
-#include "idx_img_intro_03.h"
-#include "idx_img_intro_04.h"
-#include "idx_img_intro_05.h"
-#include "idx_img_poster.h"
-#include "idx_img_watch_01.h"
-#include "idx_img_watch_02.h"
-#include "idx_img_watch_03.h"
-#include "idx_img_watch_04.h"
-#include "idx_img_watch_05.h"
-#include "idx_img_watch_06.h"
-#include "idx_img_watch_07.h"
-#include "idx_img_watch_08.h"
-#include "idx_img_web_inspector.h"
+#include "intro_img_frame_grid.h"
+#include "intro_img_intro_01.h"
+#include "intro_img_intro_02.h"
+#include "intro_img_intro_03.h"
+#include "intro_img_intro_04.h"
+#include "intro_img_intro_05.h"
+#include "intro_img_poster.h"
+#include "intro_img_watch_01.h"
+#include "intro_img_watch_02.h"
+#include "intro_img_watch_03.h"
+#include "intro_img_watch_04.h"
+#include "intro_img_watch_05.h"
+#include "intro_img_watch_06.h"
+#include "intro_img_watch_07.h"
+#include "intro_img_watch_08.h"
+#include "intro_img_web_inspector.h"
 
 /* Generated from the browser layout at 800x600. Do not edit by hand. */
 static const intro_bg_t intro_bg_overview[] = {
@@ -41,7 +41,7 @@ static const intro_bg_t intro_bg_overview[] = {
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 724, 65, 37, 18, 0x0a141e, 0x000000, 0xfb7185, 0x000000, 178, 0, 97, 1, 4, 0, 0, 0, 0, NULL},
     {0, INTRO_ACT_NONE, INTRO_TAG_LED_RED, 245, 731, 72, 5, 5, 0xfb7185, 0x000000, 0x000000, 0xfb7185, 255, 0, 0, 0, 32767, 255, 6, 0, 0, NULL},
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 432, 92, 331, 208, 0x000000, 0x000000, 0x20394c, 0x000000, 255, 0, 255, 1, 7, 0, 0, 0, 0, NULL},
-    {1, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 433, 93, 329, 206, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (const void *)&idx_img_web_inspector},
+    {1, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 433, 93, 329, 206, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (const void *)&intro_img_web_inspector},
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 441, 101, 79, 19, 0x040c12, 0x000000, 0x38bdf8, 0x000000, 209, 0, 76, 1, 3, 0, 0, 0, 0, NULL},
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 663, 271, 91, 19, 0x040c12, 0x000000, 0x38bdf8, 0x000000, 209, 0, 76, 1, 3, 0, 0, 0, 0, NULL},
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 476, 136, 174, 33, 0x000000, 0x000000, 0x38bdf8, 0x000000, 0, 0, 255, 1, 3, 0, 0, 0, 0, NULL},
@@ -320,7 +320,7 @@ static const intro_bg_t intro_bg_evidence[] = {
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 690, 159, 68, 18, 0x0a141e, 0x000000, 0x38bdf8, 0x000000, 178, 0, 87, 1, 4, 0, 0, 0, 0, NULL},
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 29, 187, 742, 440, 0x060b10, 0x000000, 0x000000, 0x000000, 255, 0, 0, 0, 0, 0, 0, 0, 0, NULL},
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 38, 196, 724, 422, 0x04080c, 0x000000, 0x182734, 0x000000, 255, 0, 255, 1, 6, 0, 0, 0, 0, NULL},
-    {1, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 46, 204, 708, 406, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (const void *)&idx_img_frame_grid},
+    {1, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 46, 204, 708, 406, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (const void *)&intro_img_frame_grid},
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 45, 203, 710, 1, 0x1d3446, 0x000000, 0x000000, 0x000000, 255, 0, 0, 0, 0, 0, 0, 0, 0, NULL},
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 45, 610, 710, 1, 0x1d3446, 0x000000, 0x000000, 0x000000, 255, 0, 0, 0, 0, 0, 0, 0, 0, NULL},
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 45, 203, 1, 408, 0x1d3446, 0x000000, 0x000000, 0x000000, 255, 0, 0, 0, 0, 0, 0, 0, 0, NULL},
@@ -832,7 +832,7 @@ static const intro_bg_t intro_bg_versions[] = {
     {0, INTRO_ACT_NONE, INTRO_TAG_LED_GREEN, 255, 701, 622, 5, 5, 0x34d399, 0x000000, 0x000000, 0x34d399, 255, 0, 0, 0, 32767, 255, 6, 0, 0, NULL},
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 29, 644, 742, 385, 0x060c11, 0x000000, 0x000000, 0x000000, 255, 0, 0, 0, 0, 0, 0, 0, 0, NULL},
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 40, 655, 205, 363, 0x000000, 0x000000, 0x223746, 0x000000, 255, 0, 255, 1, 6, 0, 0, 0, 0, NULL},
-    {1, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 41, 656, 203, 361, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (const void *)&idx_img_poster},
+    {1, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 41, 656, 203, 361, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (const void *)&intro_img_poster},
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 47, 997, 46, 13, 0x040c12, 0x000000, 0x000000, 0x000000, 209, 0, 0, 0, 2, 0, 0, 0, 0, NULL},
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 258, 706, 502, 57, 0x000000, 0x000000, 0x000000, 0x000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, NULL},
     {0, INTRO_ACT_NONE, INTRO_TAG_NONE, 255, 258, 706, 502, 1, 0x182734, 0x000000, 0x000000, 0x000000, 255, 0, 0, 0, 0, 0, 0, 0, 0, NULL},
@@ -1608,14 +1608,14 @@ const intro_screen_t intro_screen_start = {
 };
 
 const lv_image_dsc_t * const intro_frames[5] = {
-    &idx_img_intro_01, &idx_img_intro_02, &idx_img_intro_03,
-    &idx_img_intro_04, &idx_img_intro_05,
+    &intro_img_intro_01, &intro_img_intro_02, &intro_img_intro_03,
+    &intro_img_intro_04, &intro_img_intro_05,
 };
 
 const lv_image_dsc_t * const intro_watch_frames[8] = {
-    &idx_img_watch_01, &idx_img_watch_02, &idx_img_watch_03,
-    &idx_img_watch_04, &idx_img_watch_05, &idx_img_watch_06,
-    &idx_img_watch_07, &idx_img_watch_08,
+    &intro_img_watch_01, &intro_img_watch_02, &intro_img_watch_03,
+    &intro_img_watch_04, &intro_img_watch_05, &intro_img_watch_06,
+    &intro_img_watch_07, &intro_img_watch_08,
 };
 
 #endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4 */
