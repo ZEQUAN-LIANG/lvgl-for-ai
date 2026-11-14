@@ -19,10 +19,10 @@ import json
 import re
 import secrets
 import threading
-from pathlib import Path
 from typing import Any
 
 from ..control import session_schema
+from ..control.documents import DocumentError, image_references
 from ..control.recording import Recording
 
 # Re-exported for callers that imported the layout from this module.
@@ -37,7 +37,9 @@ SCOPE_FIELDS = {
     "range": ("kind", "frame_start", "frame_end"),
 }
 IMAGE_PATH_RE = re.compile(
-    r"^whiteboards/[A-Za-z0-9][A-Za-z0-9._-]*\.png$"
+    r"^"
+    + session_schema.WHITEBOARDS_DIR
+    + r"/[A-Za-z0-9][A-Za-z0-9._-]*\.png$"
 )
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -224,34 +226,12 @@ def validate_whiteboard(payload: Any) -> tuple[dict[str, Any], bytes]:
 
 
 def _read_document(recording: Recording) -> dict[str, Any]:
-    path = recording.path / session_schema.WHITEBOARDS_FILE
-    if not path.is_file():
-        return empty_document()
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return recording.whiteboards
+    except DocumentError as exc:
         raise WhiteboardError(
-            f"cannot read {path}: {exc}", code="whiteboards_unreadable"
+            str(exc), code="whiteboards_unreadable"
         ) from exc
-    if not isinstance(data, dict):
-        raise WhiteboardError(
-            f"{path}: whiteboards must be a JSON object",
-            code="whiteboards_unreadable",
-        )
-    if data.get("schema", session_schema.WHITEBOARDS_SCHEMA) != session_schema.WHITEBOARDS_SCHEMA:
-        raise WhiteboardError(
-            f"{path}: schema must be {session_schema.WHITEBOARDS_SCHEMA!r}",
-            code="whiteboards_unreadable",
-        )
-    items = data.get("whiteboards")
-    if not isinstance(items, list) or not all(
-        isinstance(item, dict) for item in items
-    ):
-        raise WhiteboardError(
-            f"{path}: whiteboards must be a list of objects",
-            code="whiteboards_unreadable",
-        )
-    return {"schema": session_schema.WHITEBOARDS_SCHEMA, "whiteboards": items}
 
 
 def read_whiteboards(recording: Recording) -> dict[str, Any]:
@@ -269,13 +249,12 @@ def _image_name(item_id: str, data: bytes) -> str:
     return f"{stem}-{digest}.png"
 
 
-def _write_document(recording: Recording, document: dict[str, Any]) -> None:
-    tmp = recording.path / f"{session_schema.WHITEBOARDS_FILE}.tmp"
-    tmp.write_text(
-        json.dumps(document, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
+def _prune_images(store: Any, document: dict[str, Any]) -> None:
+    """Remove whiteboard PNGs the saved document no longer references."""
+    store.remove_unreferenced(
+        session_schema.WHITEBOARDS_DIR,
+        image_references(document, "whiteboards"),
     )
-    tmp.replace(recording.path / session_schema.WHITEBOARDS_FILE)
 
 
 def save_whiteboard(
@@ -283,44 +262,52 @@ def save_whiteboard(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Upsert one whiteboard and return ``(document, saved item)``.
 
-    The image is written before the document. If the document cannot be
-    replaced, the new image is removed; an image that already existed with the
-    same content is left alone.
+    The image is written before the document inside the shared transaction.
+    If the document cannot be replaced, the new image is removed; an image
+    that already existed with the same content is left alone.
     """
     with _WRITE_LOCK:
+        store = recording.whiteboards_store
         try:
-            document = _read_document(recording)
-            item, image = validate_whiteboard(payload)
-            filename = _image_name(item["id"], image)
-            relative = f"{session_schema.WHITEBOARDS_DIR}/{filename}"
-            image_path = recording.path / relative
-            created_image = not image_path.exists()
-            if created_image:
-                image_path.parent.mkdir(parents=True, exist_ok=True)
-                image_path.write_bytes(image)
-            saved = dict(item)
-            saved["image"] = relative
-            items = [dict(existing) for existing in document["whiteboards"]]
-            replaced = False
-            for position, existing in enumerate(items):
-                if existing.get("id") == saved["id"]:
-                    items[position] = saved
-                    replaced = True
-                    break
-            if not replaced:
-                items.append(saved)
-            document = {"schema": session_schema.WHITEBOARDS_SCHEMA, "whiteboards": items}
-            _write_document(recording, document)
-            return document, saved
-        except OSError as exc:
-            if "created_image" in locals() and created_image:
-                try:
-                    (recording.path / relative).unlink(missing_ok=True)
-                except OSError:
-                    pass
+            with store.transaction() as transaction:
+                document = _read_document(recording)
+                item, image = validate_whiteboard(payload)
+                filename = _image_name(item["id"], image)
+                relative = (
+                    f"{session_schema.WHITEBOARDS_DIR}/{filename}"
+                )
+                transaction.write_image(relative, image)
+                saved = dict(item)
+                saved["image"] = relative
+                items = [
+                    dict(existing)
+                    for existing in document["whiteboards"]
+                ]
+                replaced = False
+                for position, existing in enumerate(items):
+                    if existing.get("id") == saved["id"]:
+                        items[position] = saved
+                        replaced = True
+                        break
+                if not replaced:
+                    items.append(saved)
+                document = {
+                    "schema": session_schema.WHITEBOARDS_SCHEMA,
+                    "whiteboards": items,
+                }
+                store.write(document)
+        except WhiteboardError:
+            raise
+        except DocumentError as exc:
             raise WhiteboardError(
                 str(exc), code="whiteboards_write_error"
             ) from exc
+        except OSError as exc:
+            raise WhiteboardError(
+                str(exc), code="whiteboards_write_error"
+            ) from exc
+        _prune_images(store, document)
+        return document, saved
 
 
 def delete_whiteboard(
@@ -330,37 +317,26 @@ def delete_whiteboard(
     if not isinstance(whiteboard_id, str) or not whiteboard_id:
         raise WhiteboardNotFound("whiteboard id is required")
     with _WRITE_LOCK:
-        try:
-            document = _read_document(recording)
-        except WhiteboardError:
-            raise
-        except OSError as exc:
-            raise WhiteboardError(
-                str(exc), code="whiteboards_write_error"
-            ) from exc
+        store = recording.whiteboards_store
+        document = _read_document(recording)
         remaining: list[dict[str, Any]] = []
-        image: str | None = None
         found = False
         for item in document["whiteboards"]:
             if item.get("id") == whiteboard_id:
                 found = True
-                candidate = item.get("image")
-                if isinstance(candidate, str) and IMAGE_PATH_RE.fullmatch(candidate):
-                    image = candidate
                 continue
             remaining.append(item)
         if not found:
             raise WhiteboardNotFound(f"unknown whiteboard id: {whiteboard_id}")
-        document = {"schema": session_schema.WHITEBOARDS_SCHEMA, "whiteboards": remaining}
+        document = {
+            "schema": session_schema.WHITEBOARDS_SCHEMA,
+            "whiteboards": remaining,
+        }
         try:
-            _write_document(recording, document)
-        except OSError as exc:
+            store.write(document)
+        except DocumentError as exc:
             raise WhiteboardError(
                 str(exc), code="whiteboards_write_error"
             ) from exc
-    if image is not None:
-        try:
-            (recording.path / image).unlink(missing_ok=True)
-        except OSError:
-            pass
+        _prune_images(store, document)
     return document

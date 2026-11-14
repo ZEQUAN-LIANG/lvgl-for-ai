@@ -276,6 +276,30 @@ class Recording:
             raise FileNotFoundError(f"session directory not found: {self.path}")
         self.annotations_store.write(value)
 
+    # ---- whiteboards (writable) ---------------------------------------
+
+    @property
+    def whiteboards_store(self) -> DocumentStore:
+        """The shared JSON + image transaction for ``whiteboards.json``."""
+        return DocumentStore(
+            self.path,
+            filename=session_schema.WHITEBOARDS_FILE,
+            schema=session_schema.WHITEBOARDS_SCHEMA,
+            collection="whiteboards",
+            unreadable_code="whiteboards_unreadable",
+            write_code="whiteboards_write_error",
+        )
+
+    @property
+    def whiteboards(self) -> dict[str, Any]:
+        return self.whiteboards_store.read()
+
+    @whiteboards.setter
+    def whiteboards(self, value: Any) -> None:
+        if not self.path.is_dir():
+            raise FileNotFoundError(f"session directory not found: {self.path}")
+        self.whiteboards_store.write(value)
+
 
 _TIMELINE_TAIL_BYTES = 262144
 
