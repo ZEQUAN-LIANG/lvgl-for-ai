@@ -14,13 +14,15 @@ until the shared orchestration layer is in place.
 
 from __future__ import annotations
 
-import hashlib
 import json
+import os
 import subprocess
+import sys
 import zipfile
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
+from lvgl_ai.control.errors import BuildError
 from lvgl_ai.digest import sha256_file
 
 PACKAGE_DIR_NAME = "lvgl-verify-loop"
@@ -180,3 +182,131 @@ def write_manifest(
 def write_summary(out_dir: Path, payload: dict[str, Any]) -> Path:
     """Write the double-bundle ``release.json`` summary."""
     return write_json(out_dir / "release.json", payload)
+
+
+def run_command(
+    command: Iterable[str],
+    *,
+    cwd: Path,
+    env: dict[str, str] | None = None,
+    timeout: float = 300.0,
+) -> subprocess.CompletedProcess[str]:
+    """Run one release subprocess with captured UTF-8 output."""
+    return subprocess.run(
+        list(command),
+        cwd=str(cwd),
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+    )
+
+
+def json_line(
+    result: subprocess.CompletedProcess[str], *, label: str = "release smoke"
+) -> dict[str, Any]:
+    """Parse the single JSON line a CLI smoke command prints."""
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
+    if len(lines) != 1:
+        raise BuildError(
+            f"{label}: expected one JSON line, got {lines!r}; "
+            f"stderr={result.stderr.strip()[:500]!r}"
+        )
+    try:
+        payload = json.loads(lines[0])
+    except ValueError as exc:
+        raise BuildError(f"{label}: invalid JSON: {lines[0][:200]}") from exc
+    if not isinstance(payload, dict):
+        raise BuildError(f"{label}: JSON summary is not an object")
+    return payload
+
+
+def smoke_environment(workspace: Path) -> dict[str, str]:
+    """Return a clean CLI environment rooted at ``workspace``."""
+    env = os.environ.copy()
+    env["LVGL_AI_SESSIONS_ROOT"] = str(workspace / "sessions")
+    env.pop("LVGL_AI_LVGL_SRC", None)
+    env.pop("LVGL_AI_DEMO", None)
+    return env
+
+
+def cli_command(
+    package: Path, lvgl_version: str, *args: str
+) -> list[str]:
+    return [
+        sys.executable,
+        "-I", "-B",
+        str(package / "core" / "cli.py"),
+        "--lvgl", lvgl_version,
+        *args,
+    ]
+
+
+def cmd_wrapper(package: Path, *args: str) -> list[str]:
+    command = [str(package / "bin" / "lvgl.cmd"), *args]
+    if os.name == "nt":
+        return [os.environ.get("COMSPEC", "cmd.exe"), "/c", *command]
+    return command
+
+
+def smoke_scenario(
+    package: Path,
+    lvgl_version: str,
+    scenario: Path,
+    workspace: Path,
+    *,
+    via_wrapper: bool = False,
+    extra: Iterable[str] = (),
+    markers: Iterable[str] = (),
+    require_evidence: bool = False,
+    label: str = "release smoke",
+    timeout: float = 180.0,
+    run: Callable[..., subprocess.CompletedProcess[str]] | None = None,
+) -> dict[str, Any]:
+    """Run one packaged scenario and verify its status, evidence and markers."""
+    common = (*extra, "--scenario", str(scenario), "--json")
+    if via_wrapper:
+        command = cmd_wrapper(package, "run", "--lvgl", lvgl_version, *common)
+    else:
+        command = cli_command(package, lvgl_version, *common)
+    runner = run or run_command
+    result = runner(
+        command,
+        cwd=workspace,
+        env=smoke_environment(workspace),
+        timeout=timeout,
+    )
+    if result.returncode != 0:
+        raise BuildError(
+            f"{label}: scenario failed; "
+            f"stdout={result.stdout.strip()[:500]!r}; "
+            f"stderr={result.stderr.strip()[:500]!r}"
+        )
+    payload = json_line(result, label=label)
+    if payload.get("status") != "ok":
+        raise BuildError(
+            f"{label}: scenario finished with status={payload.get('status')!r}: "
+            f"{payload.get('error')!r}"
+        )
+    session_dir = Path(str(payload.get("session_dir")))
+    if require_evidence:
+        for name in ("manifest.json", "timeline.ndjson", "engine.log", "build.log"):
+            if not (session_dir / name).is_file():
+                raise BuildError(f"{label}: session evidence missing {name}")
+    marker_list = list(markers)
+    if marker_list:
+        log_path = session_dir / "engine.log"
+        log = (
+            log_path.read_text(encoding="utf-8", errors="replace")
+            if log_path.is_file()
+            else ""
+        )
+        missing = [marker for marker in marker_list if marker not in log]
+        if missing:
+            raise BuildError(
+                f"{label}: engine.log is missing {missing!r}; "
+                f"log tail={log[-800:]!r}"
+            )
+    return payload

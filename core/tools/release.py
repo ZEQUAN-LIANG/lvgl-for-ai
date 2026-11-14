@@ -108,18 +108,7 @@ USER_EXCLUDE_DIRS = {".trash", "__pycache__"}
 EXCLUDE_SUFFIXES = {".pyc", ".pyo", ".dump"}
 
 
-def _run(command: Iterable[str], *, cwd: Path, env: dict[str, str] | None = None,
-         timeout: float = 300.0) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        list(command),
-        cwd=str(cwd),
-        env=env,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=timeout,
-    )
+_run = release_bundle.run_command
 
 
 def copy_tree(
@@ -740,38 +729,12 @@ def strip_build_runtime_dlls(package: Path) -> None:
             path.unlink()
 
 
-def _cli_command(package: Path, lvgl_version: str, *args: str) -> list[str]:
-    return [
-        sys.executable,
-        "-I", "-B",
-        str(package / "core" / "cli.py"),
-        "--lvgl", lvgl_version,
-        *args,
-    ]
-
-
-def _smoke_env(workspace: Path) -> dict[str, str]:
-    env = os.environ.copy()
-    env["LVGL_AI_SESSIONS_ROOT"] = str(workspace / "sessions")
-    env.pop("LVGL_AI_LVGL_SRC", None)
-    env.pop("LVGL_AI_DEMO", None)
-    return env
+_cli_command = release_bundle.cli_command
+_smoke_env = release_bundle.smoke_environment
 
 
 def _json_line(result: subprocess.CompletedProcess[str]) -> dict[str, Any]:
-    lines = [line for line in result.stdout.splitlines() if line.strip()]
-    if len(lines) != 1:
-        raise BuildError(
-            "release smoke: expected one JSON line, got "
-            f"{lines!r}; stderr={result.stderr.strip()[:500]!r}"
-        )
-    try:
-        payload = json.loads(lines[0])
-    except ValueError as exc:
-        raise BuildError(f"release smoke: invalid JSON: {lines[0][:200]}") from exc
-    if not isinstance(payload, dict):
-        raise BuildError("release smoke: JSON summary is not an object")
-    return payload
+    return release_bundle.json_line(result, label="release smoke")
 
 
 def _smoke_run(
@@ -792,32 +755,19 @@ def _smoke_run(
 
 
 def _smoke_scenario(package: Path, lvgl_version: str, workspace: Path, *extra: str) -> dict[str, Any]:
-    scenario = package / SMOKE_SCENARIO
-    payload = _smoke_run(
+    return release_bundle.smoke_scenario(
         package,
         lvgl_version,
+        package / SMOKE_SCENARIO,
         workspace,
-        *extra,
-        "--scenario", str(scenario),
-        "--json",
+        extra=extra,
+        require_evidence=True,
+        label="release smoke",
+        timeout=300.0,
     )
-    if payload.get("status") != "ok":
-        raise BuildError(
-            "release smoke: scenario finished with "
-            f"status={payload.get('status')!r}: {payload.get('error')!r}"
-        )
-    session_dir = Path(str(payload.get("session_dir")))
-    for name in ("manifest.json", "timeline.ndjson", "engine.log", "build.log"):
-        if not (session_dir / name).is_file():
-            raise BuildError(f"release smoke: session evidence missing {name}")
-    return payload
 
 
-def _cmd_wrapper(package: Path, *args: str) -> list[str]:
-    command = [str(package / "bin" / "lvgl.cmd"), *args]
-    if os.name == "nt":
-        return [os.environ.get("COMSPEC", "cmd.exe"), "/c", *command]
-    return command
+_cmd_wrapper = release_bundle.cmd_wrapper
 
 
 def _smoke_wrapper_run(

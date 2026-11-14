@@ -16,9 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -54,38 +52,6 @@ def version_plan(repo_root: Path) -> dict[str, Any]:
     }
 
 
-def _run(
-    command: list[str],
-    *,
-    cwd: Path,
-    env: dict[str, str] | None = None,
-    timeout: float = 300.0,
-) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        command,
-        cwd=str(cwd),
-        env=env,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=timeout,
-    )
-
-
-def _json_line(result: subprocess.CompletedProcess[str]) -> dict[str, Any]:
-    lines = [line for line in result.stdout.splitlines() if line.strip()]
-    if len(lines) != 1:
-        raise BuildError(
-            f"expected one JSON line, got {lines!r}; "
-            f"stderr={result.stderr.strip()[:500]!r}"
-        )
-    payload = json.loads(lines[0])
-    if not isinstance(payload, dict):
-        raise BuildError("JSON summary is not an object")
-    return payload
-
-
 LAUNCHER_SUFFIXES = frozenset({".c", ".rc", ".ico", ".py"})
 
 
@@ -108,7 +74,7 @@ def _ensure_launchers(repo: Path, *, force: bool = False) -> dict[str, Any]:
             and meta.get("exe_sha256") == release_tool.sha256_file(exe)
         ):
             return {"status": "reused", "digest": digest}
-    result = _run(
+    result = release_bundle.run_command(
         [
             sys.executable,
             "-I",
@@ -205,47 +171,17 @@ def _smoke(
     markers: tuple[str, ...],
 ) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix=f"lvgl-release-{version}-") as raw:
-        workspace = Path(raw)
-        env = os.environ.copy()
-        env["LVGL_AI_SESSIONS_ROOT"] = str(workspace / "sessions")
-        env.pop("LVGL_AI_LVGL_SRC", None)
-        env.pop("LVGL_AI_DEMO", None)
-        result = _run(
-            [
-                os.environ.get("COMSPEC", "cmd.exe"),
-                "/c",
-                str(package / "bin" / "lvgl.cmd"),
-                "run",
-                "--lvgl", version,
-                "--no-build",
-                "--scenario", str(scenario),
-                "--json",
-            ],
-            cwd=workspace,
-            env=env,
+        payload = release_bundle.smoke_scenario(
+            package,
+            version,
+            scenario,
+            Path(raw),
+            via_wrapper=True,
+            extra=("--no-build",),
+            markers=markers,
+            label=version,
             timeout=180.0,
         )
-        if result.returncode != 0:
-            raise BuildError(
-                f"{version} smoke failed: stdout={result.stdout.strip()[:500]!r}; "
-                f"stderr={result.stderr.strip()[:500]!r}"
-            )
-        payload = _json_line(result)
-        if payload.get("status") != "ok":
-            raise BuildError(
-                f"{version} smoke status={payload.get('status')!r}: "
-                f"{payload.get('error')!r}"
-            )
-        session = Path(str(payload["session_dir"]))
-        log = (session / "engine.log").read_text(
-            encoding="utf-8", errors="replace"
-        )
-        missing = [marker for marker in markers if marker not in log]
-        if missing:
-            raise BuildError(
-                f"{version} smoke log is missing {missing!r}; "
-                f"log tail={log[-800:]!r}"
-            )
         return {
             "version": version,
             "session_id": payload.get("session_id"),
@@ -415,7 +351,7 @@ def _overlay_sifli(package: Path, repo: Path, tool_version: str) -> None:
     example_target = package / "chip-adapt" / "examples" / "export" / "sift_watch"
     with tempfile.TemporaryDirectory(prefix="lvgl-sifli-example-") as raw:
         generated = Path(raw) / "sift_watch"
-        result = _run(
+        result = release_bundle.run_command(
             [
                 sys.executable,
                 "-I",
