@@ -22,11 +22,13 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from ..control import session_schema
 from ..control.recording import Recording
 
-WHITEBOARDS_FILE = "whiteboards.json"
-WHITEBOARDS_DIR = "whiteboards"
-WHITEBOARDS_SCHEMA = "lvgl-ai-whiteboards-v1"
+# Re-exported for callers that imported the layout from this module.
+WHITEBOARDS_FILE = session_schema.WHITEBOARDS_FILE
+WHITEBOARDS_DIR = session_schema.WHITEBOARDS_DIR
+WHITEBOARDS_SCHEMA = session_schema.WHITEBOARDS_SCHEMA
 SCOPE_KINDS = ("global", "frame", "range")
 ITEM_FIELDS = ("id", "scope", "text", "labels", "image", "objects", "confirmed")
 SCOPE_FIELDS = {
@@ -67,7 +69,7 @@ class WhiteboardNotFound(WhiteboardError):
 
 
 def empty_document() -> dict[str, Any]:
-    return {"schema": WHITEBOARDS_SCHEMA, "whiteboards": []}
+    return {"schema": session_schema.WHITEBOARDS_SCHEMA, "whiteboards": []}
 
 
 def _is_int(value: Any) -> bool:
@@ -222,7 +224,7 @@ def validate_whiteboard(payload: Any) -> tuple[dict[str, Any], bytes]:
 
 
 def _read_document(recording: Recording) -> dict[str, Any]:
-    path = recording.path / WHITEBOARDS_FILE
+    path = recording.path / session_schema.WHITEBOARDS_FILE
     if not path.is_file():
         return empty_document()
     try:
@@ -236,9 +238,9 @@ def _read_document(recording: Recording) -> dict[str, Any]:
             f"{path}: whiteboards must be a JSON object",
             code="whiteboards_unreadable",
         )
-    if data.get("schema", WHITEBOARDS_SCHEMA) != WHITEBOARDS_SCHEMA:
+    if data.get("schema", session_schema.WHITEBOARDS_SCHEMA) != session_schema.WHITEBOARDS_SCHEMA:
         raise WhiteboardError(
-            f"{path}: schema must be {WHITEBOARDS_SCHEMA!r}",
+            f"{path}: schema must be {session_schema.WHITEBOARDS_SCHEMA!r}",
             code="whiteboards_unreadable",
         )
     items = data.get("whiteboards")
@@ -249,7 +251,7 @@ def _read_document(recording: Recording) -> dict[str, Any]:
             f"{path}: whiteboards must be a list of objects",
             code="whiteboards_unreadable",
         )
-    return {"schema": WHITEBOARDS_SCHEMA, "whiteboards": items}
+    return {"schema": session_schema.WHITEBOARDS_SCHEMA, "whiteboards": items}
 
 
 def read_whiteboards(recording: Recording) -> dict[str, Any]:
@@ -268,12 +270,12 @@ def _image_name(item_id: str, data: bytes) -> str:
 
 
 def _write_document(recording: Recording, document: dict[str, Any]) -> None:
-    tmp = recording.path / f"{WHITEBOARDS_FILE}.tmp"
+    tmp = recording.path / f"{session_schema.WHITEBOARDS_FILE}.tmp"
     tmp.write_text(
         json.dumps(document, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-    tmp.replace(recording.path / WHITEBOARDS_FILE)
+    tmp.replace(recording.path / session_schema.WHITEBOARDS_FILE)
 
 
 def save_whiteboard(
@@ -290,7 +292,7 @@ def save_whiteboard(
             document = _read_document(recording)
             item, image = validate_whiteboard(payload)
             filename = _image_name(item["id"], image)
-            relative = f"{WHITEBOARDS_DIR}/{filename}"
+            relative = f"{session_schema.WHITEBOARDS_DIR}/{filename}"
             image_path = recording.path / relative
             created_image = not image_path.exists()
             if created_image:
@@ -307,7 +309,7 @@ def save_whiteboard(
                     break
             if not replaced:
                 items.append(saved)
-            document = {"schema": WHITEBOARDS_SCHEMA, "whiteboards": items}
+            document = {"schema": session_schema.WHITEBOARDS_SCHEMA, "whiteboards": items}
             _write_document(recording, document)
             return document, saved
         except OSError as exc:
@@ -349,7 +351,7 @@ def delete_whiteboard(
             remaining.append(item)
         if not found:
             raise WhiteboardNotFound(f"unknown whiteboard id: {whiteboard_id}")
-        document = {"schema": WHITEBOARDS_SCHEMA, "whiteboards": remaining}
+        document = {"schema": session_schema.WHITEBOARDS_SCHEMA, "whiteboards": remaining}
         try:
             _write_document(recording, document)
         except OSError as exc:

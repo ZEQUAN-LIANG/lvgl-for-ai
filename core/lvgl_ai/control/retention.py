@@ -17,6 +17,8 @@ import re
 import shutil
 from pathlib import Path
 
+from . import session_schema
+
 DEFAULT_SESSION_LIMIT = 10
 SESSION_DIR_RE = re.compile(r"^\d{8}-\d{6}-[0-9a-f]{4}$")
 # Only a finalized build failure is safe to drop: it has no frames and its
@@ -86,7 +88,7 @@ def prune_sessions(
 def _manifest_status(path: Path) -> str | None:
     try:
         data = json.loads(
-            (path / "manifest.json").read_text(encoding="utf-8")
+            (path / session_schema.MANIFEST_FILE).read_text(encoding="utf-8")
         )
     except (OSError, ValueError):
         return None

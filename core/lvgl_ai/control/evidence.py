@@ -19,13 +19,13 @@ import re
 from pathlib import Path
 from typing import Any
 
+from . import session_schema
 from .recording import (
     Recording,
     manifest_is_recorded,
     snapshot_label,
     tail_lines,
 )
-from .session_schema import FRAME_DIFFS_FILE, TIMELINE_FILE
 
 _APP_LINE = re.compile(r"^\[app\]\s+app=(\S+)")
 
@@ -85,9 +85,13 @@ def summarize_session(
     manifest = recording.manifest
     log_text = recording.log()
 
-    timeline_available = (session_dir / TIMELINE_FILE).is_file()
+    timeline_available = (
+        session_dir / session_schema.TIMELINE_FILE
+    ).is_file()
     timeline = recording.timeline() if timeline_available else []
-    diffs_available = (session_dir / FRAME_DIFFS_FILE).is_file()
+    diffs_available = (
+        session_dir / session_schema.FRAME_DIFFS_FILE
+    ).is_file()
     frame_diffs = recording.frame_diffs() if diffs_available else []
 
     values = {
@@ -170,7 +174,7 @@ def _region_boxes(regions: Any, frame_no: Any) -> list[dict[str, Any]]:
 
 def _frame_images(session_dir: Path, frames: list[Any]) -> list[str]:
     """Whole-frame PNG paths; an agent crops the boxes itself."""
-    directory = session_dir / "frames"
+    directory = session_dir / session_schema.FRAMES_DIR
     if not directory.is_dir():
         return []
     by_number: dict[int, str] = {}
@@ -186,7 +190,7 @@ def _frame_images(session_dir: Path, frames: list[Any]) -> list[str]:
 
 def _annotations_summary(session_dir: Path) -> dict[str, Any]:
     """Notes as an index an agent can read before opening the crop PNGs."""
-    path = session_dir / "annotations.json"
+    path = session_dir / session_schema.ANNOTATIONS_FILE
     if not path.is_file():
         return {"count": 0, "notes": []}
     data = _read_json_object(path)
@@ -247,7 +251,7 @@ def _annotations_summary(session_dir: Path) -> dict[str, Any]:
 
 def _whiteboards_summary(session_dir: Path) -> dict[str, Any]:
     """Whiteboards with the text and labels an agent can execute against."""
-    path = session_dir / "whiteboards.json"
+    path = session_dir / session_schema.WHITEBOARDS_FILE
     if not path.is_file():
         return {"count": 0, "pending": 0, "items": []}
     data = _read_json_object(path)

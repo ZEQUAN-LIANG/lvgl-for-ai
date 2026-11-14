@@ -28,8 +28,12 @@ TIMELINE_FILE = "timeline.ndjson"
 FRAME_DIFFS_FILE = "frame_diffs.ndjson"
 REFERENCE_DIFFS_FILE = "reference_diffs.ndjson"
 ANNOTATIONS_FILE = "annotations.json"
+WHITEBOARDS_FILE = "whiteboards.json"
 FRAMES_DIR = "frames"
 SNAPSHOTS_DIR = "snapshots"
+REGIONS_DIR = "regions"
+WHITEBOARDS_DIR = "whiteboards"
+WHITEBOARDS_SCHEMA = "lvgl-ai-whiteboards-v1"
 # Transient raw preview for the web live stream; never an evidence artifact.
 PREVIEW_FILE = "live.rgba"
 

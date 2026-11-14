@@ -22,6 +22,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from ..control import session_schema
 from ..control.recording import ANNOTATIONS_SCHEMA, Recording
 from ..png_codec import PngError, Region, crop_png
 from .png_data import DATA_URL_PREFIX, PngDataError, decode_png_data_url
@@ -535,7 +536,7 @@ def _save_annotated_images(
             raise AnnotationError(
                 f"anchors[{index}].annotated: {exc}"
             ) from exc
-        folder = recording.path / "regions"
+        folder = recording.path / session_schema.REGIONS_DIR
         folder.mkdir(parents=True, exist_ok=True)
         relative = f"regions/{stem}-a{index}-annotated.png"
         path = recording.path / relative
@@ -548,7 +549,9 @@ def _save_annotated_images(
 def _frame_bytes(recording: Recording, frame_no: Any) -> bytes | None:
     if isinstance(frame_no, bool) or not isinstance(frame_no, int):
         return None
-    for path in (recording.path / "frames").glob("*.png"):
+    for path in (
+        recording.path / session_schema.FRAMES_DIR
+    ).glob("*.png"):
         if path.stem.isdigit() and int(path.stem) == frame_no:
             try:
                 return path.read_bytes()
@@ -607,7 +610,7 @@ def _save_region_crops(
             for ri, region in enumerate(anchor.get("regions") or []):
                 if not isinstance(region, dict):
                     continue
-                folder = recording.path / "regions"
+                folder = recording.path / session_schema.REGIONS_DIR
                 folder.mkdir(parents=True, exist_ok=True)
                 if frame_data is not None:
                     relative = f"regions/{stem}-a{ai}-r{ri}.png"

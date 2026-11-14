@@ -8,9 +8,11 @@ the display, file names or status one entry point sees.
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from lvgl_ai import Recording, summarize_session
 from lvgl_ai.control import session_schema
@@ -133,6 +135,133 @@ class SessionContractTest(unittest.TestCase):
             sorted(path.name for path in self.root.iterdir()),
             [SESSION_NAME],
         )
+
+
+class FileLayoutConstantsTest(unittest.TestCase):
+    """B3: one module owns the session file layout."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        self.session = make_summary_session(
+            self.root,
+            display=DISPLAY,
+            with_annotations=True,
+        )
+
+    def test_recording_and_summary_follow_the_shared_names(self) -> None:
+        frames = self.session / "frames"
+        annotations = self.session / "annotations.json"
+        with mock.patch.object(
+            session_schema, "FRAMES_DIR", "frames-b3"
+        ), mock.patch.object(
+            session_schema, "ANNOTATIONS_FILE", "notes-b3.json"
+        ):
+            frames.rename(self.session / "frames-b3")
+            annotations.rename(self.session / "notes-b3.json")
+
+            recording = Recording.open(self.session)
+            self.assertEqual(
+                [path.parent.name for path in recording.frames],
+                ["frames-b3", "frames-b3"],
+            )
+            self.assertEqual(
+                [path.name for path in recording.frames],
+                ["000001.png", "000002.png"],
+            )
+            self.assertEqual(
+                [note["id"] for note in recording.annotations["notes"]],
+                ["n1"],
+            )
+
+            summary = summarize_session(self.session)
+            self.assertEqual(
+                [Path(path).parent.name for path in summary["frames"]],
+                ["frames-b3", "frames-b3"],
+            )
+            self.assertEqual(summary["annotations"]["count"], 1)
+            self.assertEqual(
+                summary["annotations"]["notes"][0]["id"], "n1"
+            )
+
+    def test_retention_follows_the_shared_manifest_name(self) -> None:
+        old = make_summary_session(
+            self.root,
+            name=OLD_SESSION,
+            display=DISPLAY,
+            with_annotations=False,
+            with_snapshot=False,
+        )
+        with mock.patch.object(
+            session_schema, "MANIFEST_FILE", "session-b3.json"
+        ):
+            for path in (old, self.session):
+                (path / "manifest.json").rename(path / "session-b3.json")
+
+            removed = prune_sessions(self.root, limit=1)
+
+        self.assertEqual(removed, [old])
+        self.assertEqual(
+            sorted(path.name for path in self.root.iterdir()),
+            [SESSION_NAME],
+        )
+
+    def test_web_reads_follow_the_shared_names(self) -> None:
+        whiteboards = {
+            "schema": "lvgl-ai-whiteboards-v1",
+            "whiteboards": [
+                {
+                    "id": "wb1",
+                    "scope": {"kind": "global"},
+                    "text": "keep the dark theme",
+                    "labels": [],
+                    "objects": {},
+                    "confirmed": True,
+                }
+            ],
+        }
+        with mock.patch.object(
+            session_schema, "FRAMES_DIR", "frames-b3"
+        ), mock.patch.object(
+            session_schema, "ANNOTATIONS_FILE", "notes-b3.json"
+        ), mock.patch.object(
+            session_schema, "WHITEBOARDS_FILE", "boards-b3.json"
+        ):
+            (self.session / "frames").rename(self.session / "frames-b3")
+            (self.session / "annotations.json").rename(
+                self.session / "notes-b3.json"
+            )
+            (self.session / "boards-b3.json").write_text(
+                json.dumps(whiteboards), encoding="utf-8"
+            )
+
+            harness = WebHarness(self.root)
+            self.addCleanup(harness.close)
+
+            status, _, detail = harness.json(
+                "GET", f"/api/sessions/{SESSION_NAME}"
+            )
+            self.assertEqual(status, 200)
+            self.assertEqual(detail["frames_available"], 2)
+
+            status, _, payload = harness.json(
+                "GET", f"/api/sessions/{SESSION_NAME}/annotations"
+            )
+            self.assertEqual(status, 200)
+            self.assertEqual(
+                [note["id"] for note in payload["annotations"]["notes"]],
+                ["n1"],
+            )
+
+            status, _, payload = harness.json(
+                "GET", f"/api/sessions/{SESSION_NAME}/whiteboards"
+            )
+            self.assertEqual(status, 200)
+            self.assertEqual(
+                [item["id"] for item in payload["whiteboards"]["whiteboards"]],
+                ["wb1"],
+            )
 
 
 class DisplayValidatorTest(unittest.TestCase):
