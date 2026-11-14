@@ -33,7 +33,7 @@ class LauncherConfigTest(unittest.TestCase):
         self.assertEqual(entry["target"], r"..\core\web.pyw")
         self.assertEqual(entry["cwd"], r"..")
         self.assertEqual(entry["args"], ())
-        self.assertEqual(entry["python"], r"..\runtime\python\pythonw.exe")
+        self.assertNotIn("python", entry)
         self.assertEqual(entry["output"], REPO_ROOT / "bin" / "LVGL-AI-Viewer.exe")
 
     def test_host_launcher_lives_in_the_sifli_tools_directory(self) -> None:
@@ -41,12 +41,21 @@ class LauncherConfigTest(unittest.TestCase):
         self.assertEqual(entry["target"], r"..\host\server.py")
         self.assertEqual(entry["cwd"], r"..\host")
         self.assertEqual(entry["args"], ("--open",))
-        self.assertEqual(
-            entry["python"], r"..\..\..\runtime\python\pythonw.exe"
-        )
+        self.assertNotIn("python", entry)
         self.assertEqual(
             entry["output"], REPO_ROOT / "chip-adapt" / "sifli" / "tools" / "SiFli-Host.exe"
         )
+
+    def test_launchers_use_python_from_path(self) -> None:
+        source = (LAUNCHERS_DIR / "launcher.c").read_text(encoding="utf-8")
+        self.assertIn('find_in_path(L"pythonw.exe"', source)
+        self.assertIn('find_in_path(L"pyw.exe"', source)
+        for retired in (
+            "LAUNCHER_PYTHON",
+            "runtime\\python",
+            "package runtime",
+        ):
+            self.assertNotIn(retired, source)
 
     def test_launchers_do_not_embed_viewer_logic(self) -> None:
         source = (LAUNCHERS_DIR / "launcher.c").read_text(encoding="utf-8")

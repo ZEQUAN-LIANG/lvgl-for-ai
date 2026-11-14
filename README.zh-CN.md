@@ -90,7 +90,52 @@ python -I chip-adapt/sifli/host/cli.py flash --app sift_watch --actor ai --json
 
 另外两点：预编译宿主 SDK 让本地只有 GCC 也能跑（`--prebuilt`）；工具与 Claude Code、Cursor 等 harness 无关，本身不绑定模型。
 
-## 快速开始
+## 安装 skill
+
+发布包本身就是 skill。从 [GitHub Releases](https://github.com/ZEQUAN-LIANG/lvgl-for-ai/releases)
+或 [Gitee Releases](https://gitee.com/liang-zequan/lvgl-for-ai/releases) 下载 0.2.0 的两个包之一：
+
+- `lvgl-verify-loop-0.2.0-full-win64.zip`：六个 LVGL 版本和 viewer。
+- `lvgl-verify-loop-0.2.0-full-sifli-win64.zip`：上面的完整包再加 SiFli 工具。
+
+宿主机必须提供 Python 3.9+（`python`/`pythonw`，或 `py`/`pyw`）并在 PATH 上；发布包
+不自带 Python。运行包内应用不需要 CMake 或 GCC。
+
+用一条命令把它装成 Claude Code 的个人 skill（Windows PowerShell）：
+
+```powershell
+Expand-Archive .\lvgl-verify-loop-0.2.0-full-win64.zip "$env:USERPROFILE\.claude\skills"
+```
+
+zip 里只有一层 `lvgl-verify-loop\`，所以解压后就是
+`%USERPROFILE%\.claude\skills\lvgl-verify-loop\SKILL.md`。只给一个项目用，就解压到
+该项目的 `.claude\skills\`。也可以右键 zip → **全部解压缩**，目标目录填同一个路径。
+
+重启 Claude Code，然后输入：
+
+```text
+/lvgl-verify-loop
+```
+
+或者直接描述你要的 LVGL 界面。skill 会改 `user/app/**/*.c`、跑场景、读会话证据。
+包内自带 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3 六个版本的 SDK 与预编译 engine，以及
+viewer；运行它们只需要 Python 3.9+，不需要 CMake、管理员权限或版本下载。AI 改完 C
+后重新构建需要 GCC 15.2.0（MinGW-w64 64 位），必须与随包 SDK 记录的编译器版本一致。
+CMake 和 Ninja 只在从 LVGL 源码构建时需要，发布包不走这条路。
+
+不用 AI 时，打开解压后的 `lvgl-verify-loop` 文件夹，双击
+`bin\LVGL-AI-Viewer.exe`（或运行 `bin\lvgl.cmd serve`）；Python 在 PATH 上时，
+浏览器会打开 `http://127.0.0.1:8765`。
+
+用 Claude Code 打开解压后的 `lvgl-verify-loop` 文件夹作为工作区（或先 `cd` 进去）；
+skill 的命令都相对这个包根。如果安装在 skills 目录：
+
+```bat
+cd "%USERPROFILE%\.claude\skills\lvgl-verify-loop"
+bin\lvgl.cmd run --scenario user\scenarios\intro.json --json
+```
+
+## 从源码开始
 
 ```bash
 git clone https://gitee.com/liang-zequan/lvgl-for-ai.git lvgl-for-agent
@@ -111,14 +156,8 @@ python -I core/web.py --open
 
 成功时退出码为 `0`，stdout 最后一行是会话目录，`manifest.json` 的 `status` 为 `ok`。默认 `--source auto` 会先试 GitHub codeload，再试 Gitee 镜像；Gitee 的 LVGL 镜像可能返回 HTML/400，失败时请使用默认值或预编译版本包。
 
-预编译 0.2.0 发布包只有两个：
-
-- `lvgl-verify-loop-0.2.0-full-win64.zip`：六个 LVGL 版本、内嵌 Python 3.11 和 viewer。
-- `lvgl-verify-loop-0.2.0-full-sifli-win64.zip`：上面的完整包再加 SiFli 工具。
-
-解压后双击 `bin\LVGL-AI-Viewer.exe`，不需要 Python、GCC 或 CMake；所有支持版本都已经在包里，没有下载步骤。
-
-要让 AI 接手，把这个仓库交给 Claude Code、Cursor 等 harness，它会读取 `core/SKILL.md` 与 `CLAUDE.md`，从 `user/app/**/*.c` 开始写。Claude Code 里的 skill 名是 `lvgl-verify-loop`。
+从源码开发？用 Claude Code 打开这个仓库即可；`CLAUDE.md` 说明仓库工作方式，
+`core/SKILL.md` 是 skill 入口，不需要另外安装 skill。
 
 ## 看懂证据
 
@@ -152,7 +191,9 @@ AI 的结论必须指向这些文件。`status: ok` 表示会话正常结束；�
 
 - 宿主默认 LVGL 9.6，用于日常预览与取证；发布包里的 `intro` 应用按 9.4+ 编写。
 - 0.2.0 只发布两个 zip：`full` 带全部六个 LVGL 版本和 engine；`full-sifli` 再加
-  SiFli 工具。两者都内置 Python 3.11，没有逐版本下载步骤。
+  SiFli 工具。两者都要求宿主机安装 Python 3.9+，不自带运行时；没有逐版本下载步骤。
+- 随包 SDK 用 GCC 15.2.0 导出；走预编译路径重新编译用户 C 时需要同一个 GCC 版本。
+  CMake/Ninja 只在从 LVGL 源码构建时需要。
 - 设备应用按 LVGL 9.4 基线编写；导出只做兼容性检查，不自动改写源码。
 - 查看版本，或只在自定义构建时使用源码安装：
 
@@ -171,10 +212,10 @@ AI 的结论必须指向这些文件。`status: ok` 表示会话正常结束；�
 
 | 依赖 | 要求 | 说明 |
 | --- | --- | --- |
-| Python | 发布包内置 3.11.9；源码仓库 ≥ 3.9 | 只用标准库，不需要 `pip install`；engine 在所有版本默认 `LV_USE_FREETYPE=1` 并链接随包 FreeType 2.13.2；命令统一用 `python -I` |
-| GCC | MinGW-w64 64 位 | 只有重新编译用户 C 时需要；发布包预编译 engine 不需要 |
-| CMake | ≥ 3.20 | 仅源码构建需要 |
-| Ninja | 任意近版 | 仅源码构建需要 |
+| Python | 3.9+ 且在 PATH 上；发布包不自带 | 只用标准库，不需要 `pip install`；engine 在所有版本默认 `LV_USE_FREETYPE=1` 并链接随包 FreeType 2.13.2；命令统一用 `python -I` |
+| GCC | MinGW-w64 64 位，15.2.0 | 只有重新编译用户 C 时需要，且必须与随包 SDK 的 manifest 一致；预编译 engine 不需要 |
+| CMake | ≥ 3.20 | 仅从 LVGL 源码构建需要；发布包不需要 |
+| Ninja | 任意近版 | 仅从 LVGL 源码构建需要；发布包不需要 |
 | curl | 任意近版 | 仅下载 LVGL / PNG 源码时使用 |
 | 磁盘 | 约 1 GB 可用 | LVGL 源码与构建产物 |
 
@@ -188,7 +229,7 @@ Windows 推荐 MSYS2 UCRT64。完整安装步骤、PATH 配置、首次运行说
 - `chip-adapt/README.md` / `chip-adapt/docs/sifli.html`：SiFli 适配层与能力边界。
 - `CONTEXT.md`：领域术语表。
 - `CLAUDE.md`：AI 编码代理的仓库工作说明。
-- `core/SKILL.md`：可分发 skill 的 AI 入口契约与 agent 工作流。
+- 发布包根目录的 `SKILL.md`（源码仓库里是 `core/SKILL.md`）：已安装 skill 的 AI 入口契约与 agent 工作流。
 
 ## 许可
 

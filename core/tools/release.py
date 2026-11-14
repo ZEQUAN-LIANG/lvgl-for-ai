@@ -26,7 +26,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import platform
 import re
 import shutil
 import subprocess
@@ -60,8 +59,6 @@ PACKAGE_DIR_NAME = "lvgl-verify-loop"
 RELEASE_SCHEMA = "lvgl-ai-release-v1"
 VERSION_SCHEMA = "lvgl-ai-version-v1"
 DEFAULT_LVGL = paths.DEFAULT_LVGL_VERSION
-PYTHON_RUNTIME = Path("runtime") / "python"
-PYTHON_REQUIRED_FILES = ("python.exe", "pythonw.exe", "python311.zip")
 SMOKE_SCENARIO = Path("user") / "scenarios" / "intro.json"
 RELEASE_INTRO_APP = "intro"
 RELEASE_SCENARIOS = ("intro.json",)
@@ -148,44 +145,6 @@ def _git_commit(repo_root: Path) -> str:
     return text if result.returncode == 0 and text else "unknown"
 
 
-def stage_python_runtime(package: Path, source_dir: Path) -> str:
-    """Copy the embedded Windows Python runtime and return its version."""
-    source = Path(source_dir).expanduser().resolve()
-    missing = [name for name in PYTHON_REQUIRED_FILES if not (source / name).is_file()]
-    if missing:
-        raise BuildError(
-            f"release: Python runtime is missing {', '.join(missing)} in {source}"
-        )
-    target = package / PYTHON_RUNTIME
-    copy_tree(
-        source,
-        target,
-        exclude_dirs={"__pycache__", "Lib", "Scripts", "Doc", "include", "libs"},
-        exclude_suffixes={".pyc", ".pyo"},
-    )
-    version = _read_python_version(target)
-    return version
-
-
-def _read_python_version(runtime: Path) -> str:
-    python = runtime / "python.exe"
-    result = subprocess.run(
-        [str(python), "-I", "-c", "import sys; print(sys.version.split()[0])"],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=30,
-    )
-    version = result.stdout.strip()
-    if result.returncode != 0 or not version:
-        raise BuildError(
-            f"release: cannot read bundled Python version from {python}: "
-            f"{result.stderr.strip()[:300]}"
-        )
-    return version
-
-
 def write_version_file(
     package: Path,
     *,
@@ -195,8 +154,6 @@ def write_version_file(
     git_commit: str,
     adapters: list[str] | None = None,
     host_sdks: list[str] | None = None,
-    python_version: str | None = None,
-    python_source: str = "system",
 ) -> dict[str, Any]:
     payload = {
         "schema": VERSION_SCHEMA,
@@ -204,10 +161,6 @@ def write_version_file(
         "lvgl": {
             "host_default": lvgl_version,
             "host_sdk": list(host_sdks or [lvgl_version]),
-        },
-        "python": {
-            "version": python_version or platform.python_version(),
-            "source": python_source,
         },
         "gcc": {"version": gcc_version, "source": "system"},
         "git_commit": git_commit,
@@ -335,7 +288,6 @@ def stage_package(
     tool_version: str,
     compiler: str | None = None,
     compiler_version: str | None = None,
-    python_dir: Path | None = None,
     host_sdks: list[str] | None = None,
 ) -> dict[str, Any]:
     """Copy the allowlisted tree and build the package's engine."""
@@ -366,11 +318,6 @@ def stage_package(
     stage_user_tree(repo_root, package)
     copy_tree(repo_root / "licenses", package / "licenses")
     copy_tree(repo_root / "bin", package / "bin")
-    python_version = None
-    python_source = "none"
-    if python_dir is not None:
-        python_version = stage_python_runtime(package, python_dir)
-        python_source = "bundled"
     if not (repo_root / "bin" / "lvgl.cmd").is_file():
         raise BuildError("release: bin/lvgl.cmd is missing")
     viewer = repo_root / RELEASE_VIEWER_PATH
@@ -425,8 +372,6 @@ def stage_package(
         git_commit=_git_commit(repo_root),
         adapters=[],
         host_sdks=host_sdks,
-        python_version=python_version,
-        python_source=python_source,
     )
     return {
         "engine": engine,
@@ -692,13 +637,10 @@ def _cmd_wrapper(package: Path, *args: str) -> list[str]:
 
 
 def _smoke_wrapper_run(
-    package: Path, lvgl_version: str, workspace: Path, *, no_tools: bool = False
+    package: Path, lvgl_version: str, workspace: Path
 ) -> dict[str, Any]:
     scenario = package / SMOKE_SCENARIO
     env = _smoke_env(workspace)
-    if no_tools:
-        root = os.environ.get("SystemRoot", r"C:\Windows")
-        env["PATH"] = f"{root}\\System32;{root}"
     result = _run(
         _cmd_wrapper(
             package,
@@ -825,22 +767,12 @@ def smoke_package(package: Path, lvgl_version: str) -> dict[str, Any]:
                 "release smoke: prebuilt session build.log has no mode line"
             )
         wrapper = _smoke_wrapper_run(package, lvgl_version, workspace)
-        no_tools = (
-            _smoke_wrapper_run(
-                package, lvgl_version, workspace, no_tools=True
-            )
-            if (package / PYTHON_RUNTIME / "python.exe").is_file()
-            else None
-        )
         assets = _smoke_assets(package, workspace)
         serve = _smoke_serve(package, workspace)
         return {
             "no_build_session": no_build.get("session_id"),
             "prebuilt_session": prebuilt.get("session_id"),
             "wrapper_session": wrapper.get("session_id"),
-            "no_tools_session": (
-                None if no_tools is None else no_tools.get("session_id")
-            ),
             "assets_doctor": assets,
             "serve_url": serve["url"],
         }
@@ -888,7 +820,6 @@ def release(
     smoke: bool = True,
     compiler: str | None = None,
     compiler_version: str | None = None,
-    python_dir: Path | None = None,
     host_sdks: list[str] | None = None,
     asset_name: str | None = None,
 ) -> dict[str, Any]:
@@ -916,7 +847,6 @@ def release(
             tool_version=tool_version,
             compiler=compiler,
             compiler_version=compiler_version,
-            python_dir=python_dir,
             host_sdks=host_sdks,
         )
         smoke_report = (
@@ -965,10 +895,6 @@ def release(
             "compiler": sdk_manifest.get("compiler"),
             "libs": sdk_manifest.get("libs"),
             "sha256": sdk_manifest.get("sha256"),
-        },
-        "python": {
-            "version": staged["version"]["python"]["version"],
-            "source": staged["version"]["python"]["source"],
         },
         "gcc": {"version": staged["version"]["gcc"]["version"]},
         "adapters": [],
@@ -1042,20 +968,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="override the zip file name (default: <package>-<version>-<lvgl>.zip)",
     )
     parser.add_argument(
-        "--python-dir",
-        type=Path,
-        default=None,
-        help=(
-            "embeddable Python directory to bundle "
-            "(default: <repo>/runtime/python when present)"
-        ),
-    )
-    parser.add_argument(
-        "--no-python",
-        action="store_true",
-        help="do not bundle Python; the package uses system Python",
-    )
-    parser.add_argument(
         "--repo-root",
         type=Path,
         default=None,
@@ -1074,13 +986,6 @@ def main(argv: list[str] | None = None) -> int:
     repo = (args.repo_root or REPO_ROOT).resolve()
     sdk_dir = args.sdk or (repo / "sdk" / args.lvgl)
     out_dir = args.out or (repo / "release")
-    if args.no_python:
-        python_dir = None
-    elif args.python_dir is not None:
-        python_dir = args.python_dir
-    else:
-        candidate = repo / PYTHON_RUNTIME
-        python_dir = candidate if candidate.is_dir() else None
     try:
         summary = release(
             repo_root=repo,
@@ -1090,7 +995,6 @@ def main(argv: list[str] | None = None) -> int:
             sdk_dir=sdk_dir,
             export_sdk_if_missing=not args.no_export_sdk,
             smoke=not args.skip_smoke,
-            python_dir=python_dir,
             asset_name=args.asset_name,
         )
     except BuildError as exc:

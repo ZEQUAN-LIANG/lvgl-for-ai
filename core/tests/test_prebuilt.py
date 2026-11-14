@@ -299,26 +299,8 @@ class ManifestTest(PrebuiltCase):
 
 
 class CompilerResolutionTest(unittest.TestCase):
-    def test_bundled_compiler_wins_over_env_and_path(self) -> None:
-        with tempfile.TemporaryDirectory() as raw:
-            bundled = Path(raw) / "gcc.exe"
-            bundled.write_bytes(b"")
-            with mock.patch.object(
-                prebuilt, "_bundled_compiler", return_value=bundled
-            ), mock.patch.object(
-                prebuilt.shutil, "which", return_value="/path/gcc"
-            ), mock.patch.dict(
-                os.environ, {"LVGL_AI_GCC": "/env/gcc"}
-            ):
-                compiler, version = prebuilt.resolve_compiler(version="15.2.0")
-        self.assertEqual(compiler, str(bundled))
-        self.assertEqual(version, "15.2.0")
-
-    def test_environment_wins_when_no_bundled_compiler_exists(self) -> None:
-        missing = Path("missing-bundled-gcc")
+    def test_environment_wins_over_path(self) -> None:
         with mock.patch.object(
-            prebuilt, "_bundled_compiler", return_value=missing
-        ), mock.patch.object(
             prebuilt.shutil, "which", return_value="/path/gcc"
         ), mock.patch.dict(
             os.environ, {"LVGL_AI_GCC": "/env/gcc"}
@@ -327,10 +309,7 @@ class CompilerResolutionTest(unittest.TestCase):
         self.assertEqual(compiler, "/env/gcc")
 
     def test_path_is_the_last_resort(self) -> None:
-        missing = Path("missing-bundled-gcc")
         with mock.patch.object(
-            prebuilt, "_bundled_compiler", return_value=missing
-        ), mock.patch.object(
             prebuilt.shutil, "which", return_value="/path/gcc"
         ), mock.patch.dict(os.environ, {"LVGL_AI_GCC": ""}):
             compiler, _ = prebuilt.resolve_compiler(version="15.2.0")
@@ -338,8 +317,6 @@ class CompilerResolutionTest(unittest.TestCase):
 
     def test_no_compiler_is_a_build_error(self) -> None:
         with mock.patch.object(
-            prebuilt, "_bundled_compiler", return_value=Path("missing")
-        ), mock.patch.object(
             prebuilt.shutil, "which", return_value=None
         ), mock.patch.dict(os.environ, {"LVGL_AI_GCC": ""}):
             with self.assertRaises(BuildError) as caught:

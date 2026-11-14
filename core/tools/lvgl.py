@@ -12,7 +12,6 @@ subcommand to the existing entry point; there is no second CLI:
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -50,14 +49,16 @@ def _usage() -> str:
 
 
 def _packaged_bundle() -> bool:
-    """Return true when this is the release package with embedded Python."""
-    version_path = paths.metadata_file("VERSION.json")
-    try:
-        payload = json.loads(version_path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return False
-    python = payload.get("python") if isinstance(payload, dict) else None
-    return isinstance(python, dict) and python.get("source") == "bundled"
+    """Return true when this is the release package layout.
+
+    The release zip keeps ``SKILL.md`` at the package root and metadata under
+    ``meta/``.  The development checkout keeps ``core/SKILL.md`` and a root
+    ``versions.json`` instead.
+    """
+    return (
+        (paths.REPO_ROOT / "SKILL.md").is_file()
+        and paths.metadata_file("VERSION.json").is_file()
+    )
 
 
 def main(argv: list[str] | None = None) -> int:

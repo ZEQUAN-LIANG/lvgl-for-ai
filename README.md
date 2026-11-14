@@ -90,7 +90,57 @@ Huangshan Pai (SiFli SF32LB52x, board `sf32lb52-lchspi-ulp`) in real use; the de
 
 Two more points: a prebuilt host SDK lets you run with just GCC installed (`--prebuilt`); the tools are independent of harnesses like Claude Code and Cursor and are not tied to any model.
 
-## Quick start
+## Install the skill
+
+The release zip **is** the skill. Download one of the two 0.2.0 bundles from
+[GitHub Releases](https://github.com/ZEQUAN-LIANG/lvgl-for-ai/releases) or
+[Gitee Releases](https://gitee.com/liang-zequan/lvgl-for-ai/releases):
+
+- `lvgl-verify-loop-0.2.0-full-win64.zip`: all six LVGL versions and the viewer.
+- `lvgl-verify-loop-0.2.0-full-sifli-win64.zip`: the same bundle plus the SiFli tools.
+
+Python 3.9+ must be on PATH (`python`/`pythonw`, or `py`/`pyw`); the package
+does not bundle Python. Running the bundled apps needs no CMake or GCC.
+
+Install it as a personal Claude Code skill with one command (Windows PowerShell):
+
+```powershell
+Expand-Archive .\lvgl-verify-loop-0.2.0-full-win64.zip "$env:USERPROFILE\.claude\skills"
+```
+
+The zip contains a single top-level `lvgl-verify-loop\` folder, so this creates
+`%USERPROFILE%\.claude\skills\lvgl-verify-loop\SKILL.md`. For a single project,
+extract into that project's `.claude\skills\` folder instead. You can also
+right-click the zip, choose **Extract All**, and use the same destination.
+
+Restart Claude Code, then run:
+
+```text
+/lvgl-verify-loop
+```
+
+Or simply describe the LVGL UI you want. The skill edits `user/app/**/*.c`, runs
+scenarios and reads the session evidence. The bundle carries the SDKs and
+prebuilt engines for 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3, and the viewer. Running
+them needs only Python 3.9+; no CMake, administrator rights or version
+downloads. Rebuilding after the AI edits C needs GCC 15.2.0 (MinGW-w64 64-bit),
+matching the compiler recorded in the bundled SDKs. CMake and Ninja are only
+needed to build LVGL itself from source, which the release bundle does not do.
+
+Without an AI, open the extracted `lvgl-verify-loop` folder and double-click
+`bin\LVGL-AI-Viewer.exe` (or run `bin\lvgl.cmd serve`); with Python on PATH the
+browser opens `http://127.0.0.1:8765`.
+
+Open the extracted `lvgl-verify-loop` folder as the Claude Code workspace (or
+`cd` there first); the skill's commands are relative to that folder. If you
+installed into the skills directory:
+
+```bat
+cd "%USERPROFILE%\.claude\skills\lvgl-verify-loop"
+bin\lvgl.cmd run --scenario user\scenarios\intro.json --json
+```
+
+## From source
 
 ```bash
 git clone https://gitee.com/liang-zequan/lvgl-for-ai.git lvgl-for-agent
@@ -111,14 +161,9 @@ python -I core/web.py --open
 
 On success the exit code is `0`, the last stdout line is the session directory, and `manifest.json` has `status: ok`. The default `--source auto` tries GitHub codeload first and the Gitee mirror second; the Gitee LVGL mirror can return HTML/400, so use the default or a version pack when that happens.
 
-For the prebuilt 0.2.0 release, download one of two bundles:
-
-- `lvgl-verify-loop-0.2.0-full-win64.zip`: all six LVGL versions, embedded Python 3.11 and the viewer.
-- `lvgl-verify-loop-0.2.0-full-sifli-win64.zip`: the same full bundle plus the SiFli tools.
-
-Extract the zip and double-click `bin\LVGL-AI-Viewer.exe`; no Python, GCC or CMake is required. There is no version download step: every supported version is already in the bundle.
-
-To hand the work to AI, give this repository to a harness such as Claude Code or Cursor; it reads `core/SKILL.md` and `CLAUDE.md` and starts writing from `user/app/**/*.c`. The Claude Code skill is named `lvgl-verify-loop`.
+Working from source? Open this repository in Claude Code; `CLAUDE.md` covers the
+repo workflow and `core/SKILL.md` is the skill entry. No separate skill install
+is needed.
 
 ## Reading the evidence
 
@@ -151,7 +196,8 @@ AI conclusions must point at these files. `status: ok` means the session ended n
 ## Versions and real hardware
 
 - Host default is LVGL 9.6, for daily preview and evidence collection; the package's `intro` app targets 9.4+.
-- The 0.2.0 release publishes exactly two zips: `full` contains all six LVGL versions and their engines; `full-sifli` adds the SiFli tools. Both include Python 3.11; there is no per-version download step.
+- The 0.2.0 release publishes exactly two zips: `full` contains all six LVGL versions and their engines; `full-sifli` adds the SiFli tools. Both require Python 3.9+ on the host and do not bundle it; there is no per-version download step.
+- The bundled SDKs were exported with GCC 15.2.0. Rebuilding user C through the prebuilt path requires the same GCC version; CMake/Ninja are only for LVGL source builds.
 - Device apps are written against the LVGL 9.4 baseline; export only checks compatibility and never rewrites sources.
 - Inspect versions or use source installation only for a custom build:
 
@@ -171,10 +217,10 @@ AI conclusions must point at these files. `status: ok` means the session ended n
 
 | Dependency | Requirement | Notes |
 | --- | --- | --- |
-| Python | 3.11.9 bundled in the release; ≥ 3.9 in the source repo | Tool layer uses the standard library; asset conversion uses bundled FreeType/pypng, no `pip install` or Node.js; the engine also links the bundled FreeType 2.13.2 with `LV_USE_FREETYPE=1` on every version; always run with `python -I` |
-| GCC | MinGW-w64 64-bit | Only when rebuilding user C; the release's prebuilt engine does not need it |
-| CMake | ≥ 3.20 | Source builds only |
-| Ninja | any recent version | Source builds only |
+| Python | 3.9+ on PATH; not bundled | Tool layer uses the standard library; asset conversion uses bundled FreeType/pypng, no `pip install` or Node.js; the engine also links the bundled FreeType 2.13.2 with `LV_USE_FREETYPE=1` on every version; always run with `python -I` |
+| GCC | MinGW-w64 64-bit, 15.2.0 | Only when rebuilding user C; must match the bundled SDK manifest. The prebuilt engine does not need it |
+| CMake | ≥ 3.20 | LVGL source builds only; not needed for the release bundles |
+| Ninja | any recent version | LVGL source builds only; not needed for the release bundles |
 | curl | any recent version | Only for downloading LVGL / PNG sources |
 | Disk | ~1 GB free | LVGL sources and build artifacts |
 
@@ -188,7 +234,7 @@ On Windows, MSYS2 UCRT64 is recommended. Full installation steps, PATH setup, fi
 - `chip-adapt/README.md` / `chip-adapt/docs/sifli.html`: SiFli adaptation layer and capabilities.
 - `CONTEXT.md`: domain glossary.
 - `CLAUDE.md`: repository working notes for AI coding agents.
-- `core/SKILL.md`: the AI entry contract and agent workflow for the distributable skill.
+- `SKILL.md` at the release package root (source: `core/SKILL.md`): the AI entry contract and agent workflow for the installed skill.
 
 ## License
 

@@ -114,7 +114,7 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 - `chip-adapt/`：SiFli 导出适配层与上位机，与 `core/` 工具层分开。`chip-adapt/sifli/` 是自研代码；`chip-adapt/vendor/` 是外部下载物（只读，清单见其 README）；`chip-adapt/exports/` 是导出生成物。`chip-adapt/sifli/export.py` 把 `user/app` 按 LVGL 9.4 基线导出到 `chip-adapt/exports/<app>/`；共享源码仍以 `user/app` 为唯一真源。`chip-adapt/sifli/host/` 是黄山派串口 + 烧录上位机，用法见其 README；`chip-adapt/sifli/tools/` 放双击入口 `SiFli-Host.exe`。
 - `lvgl-src/<version>/`：LVGL 源码，不进 Git；用 `fetch_lvgl.py` 下载。要改 LVGL 时把 unified diff 放进 `patches/<version>/`，由 `fetch_lvgl.py` 应用；不要直接修改已安装的源码树。
 - `sdk/<version>/`：预编译宿主 SDK（静态库、公共头、`lv_conf.h`、`lvgl-ai-host-sdk-v1` manifest），由 `core/tools/export_sdk.py` 生成；不进 Git。
-- `release/`：解包后的 skill 目录 `lvgl-verify-loop/`（根目录只有 `SKILL.md`；其余在 `core/`、`user/`、`sdk/`、`build/`、`bin/`、`docs/`、`meta/`、`licenses/`、`runtime/` 下）、release zip、`.sha256` 与 release manifest，由 `core/tools/release.py` / `release_all.py` 生成；不进 Git。发布包只带 `user/app/intro/` 一个应用（默认介绍页与模板）。多版本包的公共 SDK 库与头文件在 `sdk/common/`。
+- `release/`：解包后的 skill 目录 `lvgl-verify-loop/`（根目录只有 `SKILL.md`；其余在 `core/`、`user/`、`sdk/`、`build/`、`bin/`、`docs/`、`meta/`、`licenses/` 下）、release zip、`.sha256` 与 release manifest，由 `core/tools/release.py` / `release_all.py` 生成；不进 Git。发布包只带 `user/app/intro/` 一个应用（默认介绍页与模板）。多版本包的公共 SDK 库与头文件在 `sdk/common/`。
 - `bin/lvgl.cmd`：统一入口包装脚本，调用 `core/tools/lvgl.py` 的 `run` / `report` / `serve`；`bin/LVGL-AI-Viewer.exe` 是双击启动器；`core/SKILL.md` 是可分发 skill 的入口契约。
 - `sessions/`：会话产物；每次新建会话后删除 `build_error` 会话，并只保留最新的 10 条。
 
@@ -128,6 +128,7 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 - 不改已安装的 `lvgl-src/<version>/`；要改 LVGL 就把 unified diff 放进 `patches/<version>/`，由 `fetch_lvgl.py` 应用。
 - 不引入第二套协议客户端；CLI、网页与 `session_report.py` 都走 `Runtime` / `Recording` / `summarize_session`。
 - 发布包布局是 `<package>/lvgl-verify-loop/`；开发仓库工具根是 `core/`，两者由 `paths.py` 区分。
+- 发布包不自带 Python：宿主机必须提供 Python 3.9+ 并在 PATH 上。改 `user/app/**/*.c` 后重新编译需要 GCC（MinGW-w64 64 位，版本与 `sdk/*/manifest.json` 一致，当前 15.2.0）；从 LVGL 源码构建需要 CMake 3.20+、Ninja 和 GCC。
 - Windows 双击启动器只负责拉起 `pythonw` / `pyw`；端口、URL、HTTP 与串口逻辑留在 Python。
 
 ## 工作规则

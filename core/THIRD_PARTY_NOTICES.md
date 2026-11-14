@@ -91,15 +91,11 @@ FreeType 2.13.2 还作为 LVGL 运行时 TTF 加载库链接进 host engine（`L
   本身不随本包分发，也不需要 Node.js。
 - 完整文本：`licenses/lv_font_conv-MIT.txt`
 
-## Python 运行时
+## Python（宿主依赖）
 
-- 发布包在 `runtime/python/` 内置 Python 3.11.9 embeddable x64 运行时；源码仓库
-  不提交该目录。
-- 许可证：Python Software Foundation License；完整文本见
-  `licenses/Python-3.11.txt`，发布包同时保留 `runtime/python/LICENSE.txt`。
-- 该 embeddable 包自带 `vcruntime140.dll` / `vcruntime140_1.dll`，属于 Microsoft
-  Visual C++ Redistributable，按 Microsoft 再分发条款随 Python 官方包分发；本仓库
-  不单独提供其文本。
+- 发布包**不自带** Python；宿主机必须安装 Python 3.9+ 并加入 PATH。
+- 许可证：Python Software Foundation License；参考文本见
+  `licenses/Python-3.11.txt`，不表示运行时随包分发。
 - 资源转换用的 freetype-py / FreeType / pypng 见上文。
 
 ## SiFli 工具资产

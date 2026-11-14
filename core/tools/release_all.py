@@ -79,10 +79,8 @@ def _json_line(result: subprocess.CompletedProcess[str]) -> dict[str, Any]:
 
 
 def _ensure_launchers(repo: Path) -> None:
-    viewer = repo / release_tool.RELEASE_VIEWER_PATH
-    host = repo / "chip-adapt" / "sifli" / "tools" / "SiFli-Host.exe"
-    if viewer.is_file() and host.is_file():
-        return
+    # Always rebuild: the launcher source or the host Python lookup may have
+    # changed since the last release.
     result = _run(
         [
             sys.executable,
@@ -280,7 +278,6 @@ def _stage_full_package(
         sdk_dir=repo / "sdk" / "9.6",
         lvgl_version="9.6",
         tool_version=tool_version,
-        python_dir=repo / "runtime" / "python",
         host_sdks=list(VERSIONS),
     )
     for version in VERSIONS:
@@ -413,8 +410,10 @@ def _sifli_readme(tool_version: str) -> str:
             "",
             "```bat",
             "bin\\sifli.cmd",
-            "runtime\\python\\python.exe -I chip-adapt\\sifli\\export.py sift_watch --dry-run --force",
+            "python -I chip-adapt\\sifli\\export.py sift_watch --dry-run --force",
             "```",
+            "",
+            "Python 3.9+ must be on PATH; the package does not bundle a runtime.",
             "",
             "It does not include the SiFli SDK, ARM toolchain, sftool, serial",
             "driver or firmware. Install those from the official sources described",
@@ -432,12 +431,18 @@ def _sifli_cmd() -> str:
             "@echo off",
             "setlocal",
             'set "LVGL_AI_ROOT=%~dp0.."',
-            'if exist "%LVGL_AI_ROOT%\\runtime\\python\\python.exe" (',
-            '  set "LVGL_AI_PY=%LVGL_AI_ROOT%\\runtime\\python\\python.exe"',
-            ") else (",
-            '  set "LVGL_AI_PY=python"',
+            'set "LVGL_AI_PY="',
+            "where python >nul 2>nul",
+            "if not errorlevel 1 set \"LVGL_AI_PY=python\"",
+            "if not defined LVGL_AI_PY (",
+            "  where py >nul 2>nul",
+            "  if not errorlevel 1 set \"LVGL_AI_PY=py -3\"",
             ")",
-            '"%LVGL_AI_PY%" -I -B "%LVGL_AI_ROOT%\\chip-adapt\\sifli\\host\\server.py" --open %*',
+            "if not defined LVGL_AI_PY (",
+            "  echo [sifli] Python 3.9+ was not found on PATH. 1>&2",
+            "  exit /b 2",
+            ")",
+            "%LVGL_AI_PY% -I -B \"%LVGL_AI_ROOT%\\chip-adapt\\sifli\\host\\server.py\" --open %*",
             "exit /b %ERRORLEVEL%",
             "",
         )

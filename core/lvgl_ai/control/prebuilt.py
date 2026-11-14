@@ -320,11 +320,6 @@ class HostSdk:
         return paths
 
 
-def _bundled_compiler() -> Path:
-    name = "gcc.exe" if os.name == "nt" else "gcc"
-    return paths.REPO_ROOT / "runtime" / "mingw64" / "bin" / name
-
-
 def resolve_compiler(
     *,
     override: str | Path | None = None,
@@ -332,24 +327,17 @@ def resolve_compiler(
 ) -> tuple[str, str]:
     """Return ``(compiler_path, version)`` in the documented order.
 
-    Package runtime -> ``LVGL_AI_GCC`` -> ``PATH``.  ``version`` is a test seam
-    that skips running ``--version``.
+    ``LVGL_AI_GCC`` -> ``PATH``.  ``version`` is a test seam that skips running
+    ``--version``.
     """
     if override is not None:
         compiler = str(override)
     else:
-        bundled = _bundled_compiler()
-        env_value = os.environ.get("LVGL_AI_GCC")
-        found = shutil.which("gcc")
-        compiler = (
-            str(bundled)
-            if bundled.is_file()
-            else (env_value or (found or ""))
-        )
+        compiler = os.environ.get("LVGL_AI_GCC") or (shutil.which("gcc") or "")
     if not compiler:
         raise BuildError(
-            "C compiler not found: expected runtime/mingw64, LVGL_AI_GCC, "
-            "or gcc on PATH"
+            "C compiler not found: set LVGL_AI_GCC or put gcc on PATH "
+            "(MinGW-w64 64-bit, version 15.2.0)"
         )
     if version is not None:
         return compiler, version

@@ -42,7 +42,6 @@
 | `build/` | engine 构建产物（Git 忽略） |
 | `sdk/` | 预编译宿主 SDK（Git 忽略；由 `export_sdk.py` 生成） |
 | `release/` | 解包后的 skill 目录、发布 zip、sha256 与 release manifest（Git 忽略） |
-| `runtime/python/` | 发布包内置的 Python 3.11.9 embeddable x64（Git 忽略） |
 | `bin/` | `lvgl.cmd` 统一入口包装脚本 |
 | `sessions/` | 会话证据（Git 忽略） |
 | `docs/` | 应用变体与场景/服务端常量的索引指针页；SiFli 能力索引见 `chip-adapt/docs/sifli.html` |
@@ -52,13 +51,14 @@
 
 ## 环境准备
 
-发布包在 `runtime/python/` 内置 Python 3.11.9 embeddable x64，`bin\lvgl.cmd` 和
-`bin\LVGL-AI-Viewer.exe` 优先使用它；解压后运行不需要另装 Python。源码仓库需要 Python
-3.9+（工具层只使用标准库）。
+发布包不自带 Python；宿主机必须提供 Python 3.9+ 并在 PATH 上（工具层只使用标准库）。
+`bin\lvgl.cmd` 使用 PATH 上的 `python`（缺失时回退 `py -3`），`bin\LVGL-AI-Viewer.exe`
+使用 `pythonw`（缺失时回退 `pyw`）。解压后运行仍然不需要 CMake；改
+`user/app/**/*.c` 后重新编译需要 GCC 15.2.0（与随包 SDK 的 manifest 一致）。
 
 运行预编译 engine 不需要 GCC、CMake、Ninja、LVGL 源码或 `third_party/`。只有重新
-编译 `user/app/**/*.c` 时需要 GCC（Windows 为 MinGW-w64）；源码构建模式还需要
-CMake 3.20+、Ninja 和 curl。ccache 可选，git 用于拉取 `third_party/` 的 PNG 编码器
+编译 `user/app/**/*.c` 时需要 GCC（Windows 为 MinGW-w64 64 位，15.2.0，与 SDK
+manifest 一致）；源码构建模式还需要 CMake 3.20+、Ninja 和 curl。ccache 可选，git 用于拉取 `third_party/` 的 PNG 编码器
 源码以及应用 `patches/`。
 
 资源转换器额外使用随包内置的 freetype-py（含 FreeType DLL）与 pypng，位于
@@ -215,7 +215,8 @@ python -I core/cli.py --lvgl 9.6 --source   --scenario user/scenarios/settings.j
 
 ## 安装其他 LVGL 版本
 
-默认包只带 `sdk/9.6`。`meta/versions.json` 列出支持的版本与是否支持 `intro`；安装其他版本：
+开发仓库默认只导出 `sdk/9.6`；发布包带齐六个版本。`meta/versions.json` 列出支持的
+版本与是否支持 `intro`；需要自定义安装时：
 
 ```bash
 python -I core/tools/install_version.py --list
@@ -226,7 +227,8 @@ python -I core/tools/install_version.py --lvgl 9.4 --mode pack --pack version-pa
 
 源码模式封装 `fetch_lvgl.py`、`fetch_png.py` 与 `export_sdk.py`，然后按 `meta/versions.json`
 的 `sdk` 标记选择预编译或 CMake 源码构建 engine。pack 模式只解包
-`sdk/<version>` 与 `build/lvgl_<token>`，不需要 CMake/Ninja；修改用户 C 代码仍需 GCC。
+`sdk/<version>` 与 `build/lvgl_<token>`，不需要 CMake/Ninja；修改用户 C 代码仍需
+GCC 15.2.0（与 SDK manifest 一致）。
 场景可选 `"lvgl": "9.4"`，优先级是 `--lvgl` > 场景 `lvgl` > `LVGL_AI_LVGL_VERSION` > 9.6。
 
 ## 统一入口
@@ -264,7 +266,7 @@ python -I core/tools/release.py --out release --json
 单版本 `release.py` 还会在 `release/` 保留解包后的 skill 目录
 `release/lvgl-verify-loop/`：根目录只有
 `SKILL.md`，其余内容在 `core/`、`user/`、`sdk/`、`build/`、`bin/`、`docs/`、
-`meta/`、`licenses/` 与 `runtime/` 下。该目录与同名 zip、`.sha256`、release
+`meta/` 与 `licenses/` 下。该目录与同名 zip、`.sha256`、release
 manifest 并列，可以直接在 `release/lvgl-verify-loop/` 里运行，不必先解压。
 
 发布包只带 `user/app/intro/` 一个应用（默认介绍页与模板），其他示例应用留在开发

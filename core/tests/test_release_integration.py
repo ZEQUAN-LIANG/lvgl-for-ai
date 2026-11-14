@@ -190,6 +190,7 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 "user/scenarios/coffee.json",
                 "user/scenarios/template.json",
                 "user/scenarios/settings.json",
+                "runtime/",
                 "__pycache__/",
                 "/.git/",
             ):
@@ -204,9 +205,6 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 "lvgl-verify-loop/licenses/LICENSE",
                 "lvgl-verify-loop/bin/LVGL-AI-Viewer.exe",
                 "lvgl-verify-loop/bin/lvgl.cmd",
-                "lvgl-verify-loop/runtime/python/python.exe",
-                "lvgl-verify-loop/runtime/python/pythonw.exe",
-                "lvgl-verify-loop/runtime/python/python311.zip",
                 "lvgl-verify-loop/core/cli.py",
                 "lvgl-verify-loop/core/assets.py",
                 "lvgl-verify-loop/core/lvgl_ai/assets/__init__.py",
@@ -285,8 +283,8 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             )
             self.assertEqual(version["schema"], "lvgl-ai-version-v1")
             self.assertEqual(version["lvgl"]["host_sdk"], ["9.6"])
-            self.assertEqual(version["python"]["source"], "bundled")
-            self.assertTrue(version["python"]["version"].startswith("3.11."))
+            self.assertNotIn("python", version)
+            self.assertNotIn("python", release_manifest)
             self.assertEqual(
                 version["git_commit"], release_manifest["git_commit"]
             )

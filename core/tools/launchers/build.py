@@ -28,7 +28,6 @@ LAUNCHERS = (
         "target": r"..\core\web.pyw",
         "cwd": r"..",
         "args": (),
-        "python": r"..\runtime\python\pythonw.exe",
         "output": REPO_ROOT / "bin" / "LVGL-AI-Viewer.exe",
     },
     {
@@ -37,7 +36,6 @@ LAUNCHERS = (
         "target": r"..\host\server.py",
         "cwd": r"..\host",
         "args": ("--open",),
-        "python": r"..\..\..\runtime\python\pythonw.exe",
         "output": REPO_ROOT / "chip-adapt" / "sifli" / "tools" / "SiFli-Host.exe",
     },
 )
@@ -62,7 +60,6 @@ def _write_config(entry: dict) -> Path:
         f"#define LAUNCHER_TARGET {_wide_literal(entry['target'])}",
         f"#define LAUNCHER_CWD {_wide_literal(entry['cwd'])}",
         f"#define LAUNCHER_ARGS {args_literal}",
-        f"#define LAUNCHER_PYTHON {_wide_literal(entry.get('python', ''))}",
     )
     (config_dir / "config.h").write_text("\n".join(lines) + "\n", encoding="ascii")
     return config_dir

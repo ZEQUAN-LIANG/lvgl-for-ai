@@ -218,19 +218,15 @@ def export_sdk(
             "build tools not found on PATH: " + ", ".join(missing),
             command=["cmake"],
         )
-    bundled = paths.REPO_ROOT / "runtime" / "mingw64" / "bin" / (
-        "gcc.exe" if os.name == "nt" else "gcc"
-    )
     chosen = (
         compiler
-        or (str(bundled) if bundled.is_file() else None)
         or os.environ.get("LVGL_AI_GCC")
         or shutil.which("gcc")
     )
     if not chosen:
         raise BuildError(
-            "C compiler not found: expected runtime/mingw64, LVGL_AI_GCC, "
-            "or gcc on PATH"
+            "C compiler not found: set LVGL_AI_GCC or put gcc on PATH "
+            "(MinGW-w64 64-bit, version 15.2.0)"
         )
     compiler_version, compiler_id = _latest_compiler_version(chosen)
 
