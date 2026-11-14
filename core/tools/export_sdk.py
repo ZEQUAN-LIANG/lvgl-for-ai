@@ -51,6 +51,14 @@ DEFINES = ["LV_CONF_INCLUDE_SIMPLE", "LV_KCONFIG_IGNORE", "LV_LVGL_H_INCLUDE_SIM
 CFLAGS = ["-std=gnu11", "-O2", "-Wall", "-Wextra"]
 LINK_FLAGS = ["-lgdi32", "-luser32", "-static-libgcc"]
 
+FREETYPE_DIR = paths.ENGINE_DIR / "freetype"
+FREETYPE_INCLUDE_DIR = FREETYPE_DIR / "include"
+FREETYPE_IMPORT_LIB = FREETYPE_DIR / "lib" / "libfreetype.dll.a"
+FREETYPE_RUNTIME_DLL = (
+    paths.REPO_ROOT / "core" / "lvgl_ai" / "assets" / "vendor" / "freetype"
+    / "libfreetype.dll"
+)
+
 EXPORT_TIMEOUT_S = 900.0
 
 
@@ -114,19 +122,52 @@ def _read_source_tag(source_dir: Path) -> str:
     return "unknown"
 
 
-def _copy_headers(source: Path, out: Path) -> list[str]:
-    """Copy public LVGL, zlib and libpng headers; return include order."""
+def _copy_header_tree(source: Path, target: Path) -> None:
+    """Copy only ``*.h`` files, preserving the relative directory tree."""
+
+    def ignore(directory: str, names: list[str]) -> set[str]:
+        current = Path(directory)
+        return {
+            name
+            for name in names
+            if not (current / name).is_dir() and not name.endswith(".h")
+        }
+
+    shutil.copytree(source, target, ignore=ignore)
+
+
+def _copy_headers(source: Path, out: Path, version: str) -> list[str]:
+    """Copy public LVGL, zlib and libpng headers; return include order.
+
+    LVGL 9.6 keeps public headers in ``include/lvgl``.  Older 9.x and 8.x
+    releases keep ``lvgl.h`` at the source root and the rest under ``src/``.
+    The exported SDK mirrors whichever layout the source uses and records the
+    matching include path in the manifest.
+    """
     include_dir = out / "include"
     include_dir.mkdir(parents=True, exist_ok=True)
 
     public = source / "include" / "lvgl"
-    if not public.is_dir():
-        raise BuildError(
-            f"LVGL source does not use the 9.6 include/lvgl layout: {source}. "
-            "This ticket exports LVGL 9.6 host SDKs only."
-        )
-    shutil.copytree(public, include_dir / "lvgl")
-    include_dirs = [".", "include", "include/lvgl"]
+    if public.is_dir():
+        shutil.copytree(public, include_dir / "lvgl")
+        include_dirs = [".", "include", "include/lvgl"]
+    else:
+        root_header = source / "lvgl.h"
+        if not root_header.is_file():
+            raise BuildError(
+                f"LVGL source has neither include/lvgl nor root lvgl.h: {source}"
+            )
+        shutil.copy2(root_header, include_dir / "lvgl.h")
+        version_header = source / "lv_version.h"
+        if version_header.is_file():
+            shutil.copy2(version_header, include_dir / "lv_version.h")
+        src_headers = source / "src"
+        if not src_headers.is_dir():
+            raise BuildError(f"LVGL source has no src/ header tree: {source}")
+        _copy_header_tree(src_headers, include_dir / "src")
+        # "." is the SDK root: LVGL's lv_conf_internal.h includes "lv_conf.h",
+        # which export_sdk writes next to the manifest, not under include/.
+        include_dirs = [".", "include"]
 
     zlib_src = paths.zlib_src()
     for path in sorted(zlib_src.glob("*.h")):
@@ -142,6 +183,11 @@ def _copy_headers(source: Path, out: Path) -> list[str]:
     if not generated.is_file():
         raise BuildError(f"libpng prebuilt config not found: {generated}")
     shutil.copy2(generated, include_dir / "pnglibconf.h")
+
+    if not (FREETYPE_INCLUDE_DIR / "ft2build.h").is_file():
+        raise BuildError(f"FreeType headers not found: {FREETYPE_INCLUDE_DIR}")
+    shutil.copytree(FREETYPE_INCLUDE_DIR, include_dir / "freetype2")
+    include_dirs.append("include/freetype2")
     return include_dirs
 
 
@@ -225,15 +271,27 @@ def export_sdk(
         "build",
     )
 
+    for src, name in (
+        (FREETYPE_IMPORT_LIB, "libfreetype.dll.a"),
+        (FREETYPE_RUNTIME_DLL, "libfreetype.dll"),
+    ):
+        if not src.is_file():
+            raise BuildError(f"FreeType SDK file not found: {src}")
+        shutil.copy2(src, lib_dir / name)
+
     missing_libs = [name for name in REQUIRED_LIBS if not (lib_dir / name).is_file()]
     if missing_libs:
         raise BuildError(
             "SDK export did not produce " + ", ".join(missing_libs)
         )
 
-    include_dirs = _copy_headers(source, out)
+    include_dirs = _copy_headers(source, out, version)
     lv_conf = paths.ENGINE_DIR / "lv_conf.h"
     shutil.copy2(lv_conf, out / "lv_conf.h")
+
+    defines = list(DEFINES)
+    if version.split(".", 1)[0] == "8":
+        defines.append("LVGL_MAJOR_8")
 
     manifest = {
         "schema": SDK_SCHEMA,
@@ -245,10 +303,11 @@ def export_sdk(
             "id": compiler_id,
             "version": compiler_version,
         },
-        "defines": list(DEFINES),
+        "defines": defines,
         "cflags": list(CFLAGS),
         "include_dirs": include_dirs,
         "libs": list(REQUIRED_LIBS),
+        "runtime_dlls": ["libfreetype.dll"],
         "link_flags": list(LINK_FLAGS),
         "source_label": f"prebuilt-{version}",
         "lv_conf_sha256": sha256_file(out / "lv_conf.h"),

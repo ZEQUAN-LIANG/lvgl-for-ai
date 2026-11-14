@@ -1,0 +1,133 @@
+{
+  "assets": {
+    "spectrum_covers": {
+      "kind": "image",
+      "name": "spectrum_covers",
+      "options": {
+        "formats": [
+          "ARGB8888"
+        ]
+      },
+      "output": "spectrum_covers.h",
+      "source": "covers_src/*.png",
+      "status": "legacy"
+    },
+    "spectrum_glow": {
+      "kind": "image",
+      "name": "spectrum_glow",
+      "options": {
+        "formats": [
+          "ARGB8888"
+        ]
+      },
+      "output": "spectrum_glow.h",
+      "source": "procedural",
+      "status": "legacy"
+    },
+    "spectrum_icons": {
+      "kind": "image",
+      "name": "spectrum_icons",
+      "options": {
+        "formats": [
+          "ARGB8888"
+        ]
+      },
+      "output": "spectrum_icons.h",
+      "source": "procedural",
+      "status": "legacy"
+    },
+    "spectrum_mono_32": {
+      "kind": "font",
+      "name": "spectrum_mono_32",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 32
+      },
+      "output": "spectrum_mono_32.h",
+      "source": "consolab.ttf",
+      "status": "legacy"
+    },
+    "spectrum_mono_7": {
+      "kind": "font",
+      "name": "spectrum_mono_7",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 7
+      },
+      "output": "spectrum_mono_7.h",
+      "source": "consola.ttf",
+      "status": "legacy"
+    },
+    "spectrum_mono_8": {
+      "kind": "font",
+      "name": "spectrum_mono_8",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 8
+      },
+      "output": "spectrum_mono_8.h",
+      "source": "consola.ttf",
+      "status": "legacy"
+    },
+    "spectrum_mono_9": {
+      "kind": "font",
+      "name": "spectrum_mono_9",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 9
+      },
+      "output": "spectrum_mono_9.h",
+      "source": "consola.ttf",
+      "status": "legacy"
+    },
+    "spectrum_mono_9b": {
+      "kind": "font",
+      "name": "spectrum_mono_9b",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 9
+      },
+      "output": "spectrum_mono_9b.h",
+      "source": "consolab.ttf",
+      "status": "legacy"
+    },
+    "spectrum_sans_14": {
+      "kind": "font",
+      "name": "spectrum_sans_14",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 14
+      },
+      "output": "spectrum_sans_14.h",
+      "source": "segoeuib.ttf",
+      "status": "legacy"
+    }
+  },
+  "generator": "legacy (gen_spectrum_assets.py, removed)",
+  "schema": "lvgl-ai-assets-v1",
+  "target_lvgl": "9.6"
+}

@@ -46,7 +46,7 @@ USER_SCENARIOS_DIR = USER_DIR / "scenarios"
 DEFAULT_SESSIONS_ROOT = REPO_ROOT / "sessions"
 
 DEFAULT_LVGL_VERSION = "9.6"
-TOOL_VERSION = "0.1.0"
+TOOL_VERSION = "0.2.0"
 
 
 def lvgl_version_from_env() -> str:

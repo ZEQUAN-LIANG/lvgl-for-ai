@@ -41,7 +41,10 @@ def _run() -> int:
         # Explicit flags keep the existing startup path and its error dialogs.
         if not sys.argv[1:] and launcher.reuse_running_viewer():
             return 0
-        code = main(["--open", "--exit-on-close", *sys.argv[1:]])
+        # The package ships a prebuilt engine but no compiler.  A bare launch
+        # opens the viewer without rebuilding; an explicit --build still wins
+        # because argparse applies the later flag.
+        code = main(["--open", "--exit-on-close", "--no-build", *sys.argv[1:]])
     except Exception as exc:  # noqa: BLE001 - no console to print to
         _show_error(f"网页端启动失败：{exc}")
         return 1

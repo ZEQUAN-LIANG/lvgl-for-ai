@@ -382,6 +382,7 @@ class BuildPlan:
                         continue
                     parts.append(self._run_command(step.command, "compile"))
                 parts.append(self._run_command(plan.link_command, "link"))
+                plan.install_runtime_dlls()
             except (BuildError, LinkError) as exc:
                 exc.log_text = "\n".join([*parts, exc.log_text or ""])
                 raise

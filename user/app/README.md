@@ -7,6 +7,18 @@
 > xiaohongshu、spectrum、sift_watch、zombie_cannon、textarea_evidence 仅存在于
 > 开发仓库。
 
+## 应用分类
+
+开发仓库里的应用分三类，改代码前先确认目标：
+
+| 类别 | 应用 | 用途 |
+|---|---|---|
+| 示例应用 | `coffee`、`xiaohongshu`、`spectrum`、`sift_watch`、`zombie_cannon` | 演示完整界面与交互；优先从这里学写法 |
+| 工具自测应用 | `asset_probe`、`textarea_evidence`、`demo/` | 资源转换探针、文本输入证据与旧版本 harness；集成测试依赖，不要随意改 |
+| 发布应用 | `intro` | 发布包唯一应用，同时是默认介绍页与模板 |
+
+`demo/` 不在 `apps[]` 表里：它由 `app_create` 在 LVGL 9.1 / 8.x 或集成测试路径下直接挂载。
+
 ## 应用变体（app）
 
 同一个入口可以承载多个应用变体。`LVGL_AI_DEMO` 环境变量是用户代码与工具之间的契约：
@@ -18,6 +30,8 @@
 | `spectrum` | ORBITAL 频谱播放器，`spectrum/` | LVGL 9.6 |
 | `sift_watch` | 390x450 像素手表 OS，含 ZOMBIE 无尽尸潮应用，`sift_watch/` | LVGL 9.6 / 导出 9.4 |
 | `zombie_cannon` | 390x460 无尽尸潮独立预览，`zombie_cannon/` | LVGL 9.6 |
+| `asset_probe` | 资源转换探针（工具自测），`asset_probe/` | 9.6 / 9.1 / 8.x |
+| `textarea_evidence` | 文本输入证据应用（工具自测），`textarea_evidence/` | LVGL 9.6 |
 | `intro` | 项目介绍页，发布包唯一应用与默认模板，`intro/` | 发布包 9.4+ / 开发仓库 9.6 |
 | 未设置 | `coffee`（开发仓库） / `intro`（发布包） | LVGL 9.6 |
 | 任意值 | 旧版本忽略选择，显示 `demo/` 的 harness | 9.1 / 8.x |

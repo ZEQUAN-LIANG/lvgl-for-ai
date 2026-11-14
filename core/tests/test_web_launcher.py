@@ -138,7 +138,9 @@ class WebPywDecisionTest(unittest.TestCase):
         ) as start_server:
             self.assertEqual(self.module._run(), 0)
         open_page.assert_not_called()
-        start_server.assert_called_once_with(["--open", "--exit-on-close"])
+        start_server.assert_called_once_with(
+            ["--open", "--exit-on-close", "--no-build"]
+        )
 
     def test_a_browser_error_shows_the_launcher_error(self) -> None:
         with mock.patch.object(sys, "argv", [str(PYW_LAUNCHER)]), mock.patch.object(
@@ -179,7 +181,7 @@ class WebPywDecisionTest(unittest.TestCase):
                 probe.assert_not_called()
                 open_page.assert_not_called()
                 start_server.assert_called_once_with(
-                    ["--open", "--exit-on-close", *flags]
+                    ["--open", "--exit-on-close", "--no-build", *flags]
                 )
 
 

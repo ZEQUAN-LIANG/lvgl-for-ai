@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Sequence
@@ -183,6 +184,17 @@ def _registered_symbol(root: Path, app: str) -> str:
     for name, symbol in registry.parse_app_entries(text):
         if name == app:
             return symbol
+    # The release core registers only ``intro`` in app.c.  A standalone app
+    # drop-in (for example the sift_watch demo shipped with sifli-tools) is
+    # still exportable when its header declares the conventional symbol.
+    header = root / "user" / "app" / app / f"{app}.h"
+    try:
+        header_text = header.read_text(encoding="utf-8-sig")
+    except OSError:
+        header_text = ""
+    symbol = f"{app}_create"
+    if re.search(rf"\bvoid\s+{re.escape(symbol)}\s*\(", header_text):
+        return symbol
     raise ExportError(
         "app_not_registered",
         f'app "{app}" is not registered in {app_c}',

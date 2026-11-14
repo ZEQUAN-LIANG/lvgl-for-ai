@@ -10,12 +10,16 @@
  *
  * Every app exposes the same ``void create(void)`` entry. Adding an app means
  * one row in ``apps`` plus its implementation; the tool layer never learns app
- * names.
+ * names. The development-only asset_probe is the one cross-version exception:
+ * it is dispatched on 8.x/9.1 too, so generated font/image data can be checked
+ * on every supported target.
  */
 
 #include "lvgl.h"
 
 #include "app.h"
+#include "asset_probe/asset_probe.h"
+
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
 #include "coffee/coffee_ui.h"
 #include "xiaohongshu/xhs_page.h"
@@ -46,6 +50,7 @@ static const app_entry_t apps[] = {
     {"sift_watch", sift_watch_create},
     {"zombie_cannon", zombie_cannon_create},
     {"intro", intro_create},
+    {"asset_probe", asset_probe_create},
 };
 
 #define APP_COUNT (sizeof(apps) / sizeof(apps[0]))
@@ -101,8 +106,16 @@ void app_create(void)
     printf("[app] app=%s\n", app->name);
     app->create();
 #else
-    printf("[app] app=harness (LVGL < 9.6)\n");
-    demo_harness_create(true);
+    const char * requested = getenv("LVGL_AI_DEMO");
+    if(requested != NULL && strcmp(requested, "asset_probe") == 0) {
+        demo_harness_create(false);
+        printf("[app] app=asset_probe (LVGL < 9.6)\n");
+        asset_probe_create();
+    }
+    else {
+        printf("[app] app=harness (LVGL < 9.6)\n");
+        demo_harness_create(true);
+    }
 #endif
 
     printf("[demo_asset] font=demo_asset_font_8 image=demo_asset_logo\n");

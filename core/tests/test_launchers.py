@@ -33,6 +33,7 @@ class LauncherConfigTest(unittest.TestCase):
         self.assertEqual(entry["target"], r"core\web.pyw")
         self.assertEqual(entry["cwd"], ".")
         self.assertEqual(entry["args"], ())
+        self.assertEqual(entry["python"], r"runtime\python\pythonw.exe")
         self.assertEqual(entry["output"], REPO_ROOT / "LVGL-AI-Viewer.exe")
 
     def test_host_launcher_lives_in_the_sifli_tools_directory(self) -> None:
@@ -41,6 +42,9 @@ class LauncherConfigTest(unittest.TestCase):
         self.assertEqual(entry["cwd"], r"..\host")
         self.assertEqual(entry["args"], ("--open",))
         self.assertEqual(
+            entry["python"], r"..\..\..\runtime\python\pythonw.exe"
+        )
+        self.assertEqual(
             entry["output"], REPO_ROOT / "chip-adapt" / "sifli" / "tools" / "SiFli-Host.exe"
         )
 
@@ -48,6 +52,10 @@ class LauncherConfigTest(unittest.TestCase):
         source = (LAUNCHERS_DIR / "launcher.c").read_text(encoding="utf-8")
         for retired in ("http://", "--manage", "?manage=1", "cmd.exe", "netstat"):
             self.assertNotIn(retired, source)
+
+    def test_viewer_defaults_to_no_build(self) -> None:
+        source = (TOOL_ROOT / "web.pyw").read_text(encoding="utf-8")
+        self.assertIn('"--no-build"', source)
 
     def test_build_uses_a_gui_subsystem_and_resource_files(self) -> None:
         source = (LAUNCHERS_DIR / "build.py").read_text(encoding="utf-8")

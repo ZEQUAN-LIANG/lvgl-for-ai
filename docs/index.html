@@ -1,0 +1,3183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#05080c">
+<title>LVGL AI — Verification Loop</title>
+<meta name="description" content="An AI-first LVGL development and verification platform: a real headless LVGL host, virtual input and virtual time, frame-by-frame session evidence, a web inspector, and an export path to SiFli hardware. The tool provides evidence; humans set acceptance criteria.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2305080c'/%3E%3Crect x='6' y='6' width='20' height='20' rx='4' fill='none' stroke='%2338bdf8' stroke-width='1.5'/%3E%3Cpath d='M16 6v20M6 16h20' stroke='%2338bdf8' stroke-width='.7' opacity='.45'/%3E%3Crect x='12' y='12' width='8' height='8' rx='1.5' fill='%2338bdf8'/%3E%3C/svg%3E">
+<script>document.documentElement.classList.add("js");</script>
+<style>
+  /* ==========================================================================
+     LVGL AI — Verification Loop
+     An English console prototype designed for an LVGL port.
+     Only portable primitives: solid/linear fills, rounded rectangles, borders,
+     labels, buttons, images, bars and an arc. Motion is limited to opacity,
+     small translations, color and arc/bar values.
+     ========================================================================== */
+
+  :root {
+    --bg: #05080c;
+    --bg-2: #081018;
+    --panel: #0a121a;
+    --panel-2: #0d1822;
+    --panel-3: #11202c;
+    --line: #182734;
+    --line-2: #223746;
+    --line-3: #2c4658;
+    --text: #e8f1f8;
+    --text-soft: #b4c5d2;
+    --muted: #8ea3b3;
+    --dim: #6b8091;
+    --cyan: #38bdf8;
+    --cyan-2: #0ea5e9;
+    --cyan-soft: #7dd3fc;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #fb7185;
+    --ink: #041019;
+    --appbar: 60px;
+    --tabbar: 48px;
+    --statusbar: 26px;
+    --radius: 12px;
+    --font-display: "Bahnschrift", "Noto Sans", "Segoe UI", sans-serif;
+    --font-body: "Candara", "Noto Sans", "Segoe UI", sans-serif;
+    --font-mono: "Consolas", "DejaVu Sans Mono", monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    height: 100%;
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    height: 100%;
+    margin: 0;
+    background: linear-gradient(180deg, #08111a 0%, #05080c 100%);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow: hidden;
+  }
+
+  ::selection { background: var(--cyan); color: var(--ink); }
+
+  img { max-width: 100%; }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; }
+  code, pre { font-family: var(--font-mono); }
+
+  code {
+    padding: .06em .3em;
+    border-radius: 3px;
+    background: rgba(56, 189, 248, .08);
+    color: var(--cyan-soft);
+    font-size: .92em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+  }
+
+  .visually-hidden {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .skip-link {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 4000;
+    transform: translateY(-160%);
+    padding: 9px 12px;
+    border-radius: 5px;
+    background: var(--cyan);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform .18s ease;
+  }
+  .skip-link:focus { transform: none; }
+
+  .led {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 6px currentColor;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 6px;
+    border: 1px solid var(--line-2);
+    border-radius: 4px;
+    background: rgba(10, 20, 30, .7);
+    font-family: var(--font-mono);
+    font-size: 7px;
+    line-height: 1.5;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .chip.cyan { color: var(--cyan); border-color: rgba(56, 189, 248, .34); }
+  .chip.green { color: var(--green); border-color: rgba(52, 211, 153, .34); }
+  .chip.amber { color: var(--amber); border-color: rgba(251, 191, 36, .38); }
+  .chip.red { color: var(--red); border-color: rgba(251, 113, 133, .38); }
+
+  .chip.red .led { animation: pulse 1.8s ease-in-out infinite; }
+
+  .panel {
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: 0 14px 32px -24px #000;
+  }
+
+  .panel-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 13px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 7px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  .panel-bar .bar-left,
+  .panel-bar .bar-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .panel-bar .bar-right { justify-content: flex-end; }
+
+  /* --------------------------------------------------------------------------
+     App shell
+     -------------------------------------------------------------------------- */
+
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100svh;
+    min-height: 0;
+    overflow: hidden;
+    background:
+      linear-gradient(180deg, #08111a 0%, #05080c 62%, #060a0f 100%);
+  }
+
+  .app-bar {
+    flex: 0 0 var(--appbar);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 clamp(14px, 3vw, 40px);
+    border-bottom: 1px solid var(--line);
+    background: #070d13;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    flex: 0 0 auto;
+    text-decoration: none;
+  }
+
+  .brand-mark {
+    display: block;
+    width: 23px;
+    height: 23px;
+    padding: 2px;
+    border: 1px solid #24475d;
+    border-radius: 5px;
+    background: linear-gradient(180deg, #0d2330, #08121a);
+    color: var(--cyan);
+  }
+
+  .brand-name {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .brand-name .slash { color: var(--cyan); }
+
+  .brand-sub {
+    padding-left: 10px;
+    border-left: 1px solid var(--line-2);
+    font-family: var(--font-mono);
+    font-size: 7px;
+    letter-spacing: .16em;
+    color: var(--dim);
+    text-transform: uppercase;
+    line-height: 1.4;
+  }
+
+  .bar-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+
+  .toplink {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 8px;
+    border: 1px solid var(--line-2);
+    border-radius: 4px;
+    color: var(--text-soft);
+    font-family: var(--font-mono);
+    font-size: 7.5px;
+    letter-spacing: .08em;
+    text-decoration: none;
+    transition: border-color .18s ease, color .18s ease, background .18s ease;
+  }
+
+  .toplink:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: rgba(56, 189, 248, .06);
+  }
+
+  .tabbar {
+    flex: 0 0 var(--tabbar);
+    display: flex;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 clamp(14px, 3vw, 40px);
+    border-bottom: 1px solid var(--line);
+    background: #060b11;
+    scrollbar-width: none;
+  }
+
+  .tabbar::-webkit-scrollbar { display: none; }
+
+  .tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    padding: 0 16px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--dim);
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color .18s ease, border-color .18s ease, background .18s ease;
+  }
+
+  .tab .n { color: var(--cyan); opacity: .6; }
+
+  .tab:hover { color: var(--text); background: rgba(56, 189, 248, .03); }
+
+  .tab[aria-selected="true"] {
+    color: var(--text);
+    border-bottom-color: var(--cyan);
+    background: rgba(56, 189, 248, .045);
+  }
+
+  .tab[aria-selected="true"] .n { opacity: 1; }
+
+  .workspace {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-3) transparent;
+  }
+
+  .workspace::-webkit-scrollbar { width: 10px; }
+  .workspace::-webkit-scrollbar-track { background: transparent; }
+  .workspace::-webkit-scrollbar-thumb {
+    border: 3px solid var(--bg);
+    border-radius: 6px;
+    background: var(--line-3);
+  }
+
+  .statusbar {
+    flex: 0 0 var(--statusbar);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 14px;
+    border-top: 1px solid var(--line);
+    background: #050a0f;
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+
+  .statusbar .sb-group { display: inline-flex; align-items: center; gap: 6px; }
+  .statusbar .sb-right { margin-left: auto; }
+  .statusbar .sb-human { color: var(--amber); }
+
+  /* --------------------------------------------------------------------------
+     Screens and shared layout
+     -------------------------------------------------------------------------- */
+
+  .screen { display: block; min-height: 100%; }
+
+  .js .screen { display: none; }
+
+  .js .screen.is-active {
+    display: block;
+    animation: screenIn .22s cubic-bezier(.2, .7, .2, 1) both;
+  }
+
+  .screen-inner {
+    width: 100%;
+    max-width: 1320px;
+    min-height: calc(100svh - var(--appbar) - var(--tabbar) - var(--statusbar));
+    margin: 0 auto;
+    padding: clamp(20px, 3vw, 38px) clamp(16px, 3.5vw, 44px) clamp(28px, 3.5vw, 44px);
+  }
+
+  .screen-inner.overview {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .screen-head {
+    position: relative;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1.35fr) minmax(0, .82fr);
+    align-items: end;
+    gap: clamp(14px, 2.4vw, 34px);
+    padding-bottom: 16px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .screen-head::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    width: 62px;
+    height: 2px;
+    background: var(--cyan);
+  }
+
+  .screen-index {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--line-2);
+    border-radius: 7px;
+    background: rgba(56, 189, 248, .05);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--cyan);
+  }
+
+  .screen-kicker {
+    margin: 0 0 7px;
+    font-family: var(--font-mono);
+    font-size: 7.5px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  .screen-head h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(27px, 3.1vw, 45px);
+    font-weight: 700;
+    font-stretch: 95%;
+    line-height: 1.08;
+    letter-spacing: -.035em;
+  }
+
+  .screen-lede {
+    max-width: 42ch;
+    margin: 0;
+    padding-left: 14px;
+    border-left: 1px solid var(--line-2);
+    font-size: 11.5px;
+    line-height: 1.8;
+    color: var(--muted);
+  }
+
+  .mini-kicker {
+    margin: 0 0 10px;
+    font-family: var(--font-mono);
+    font-size: 7.5px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--cyan);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 9px 14px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background .18s ease, border-color .18s ease, color .18s ease, transform .12s ease;
+  }
+
+  .btn:active { transform: translateY(1px); }
+
+  .btn-primary {
+    background: var(--cyan);
+    border-color: var(--cyan);
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  .btn-primary:hover { background: var(--cyan-soft); border-color: var(--cyan-soft); }
+
+  .btn-ghost {
+    background: rgba(10, 20, 30, .55);
+    border-color: var(--line-3);
+    color: var(--text-soft);
+  }
+
+  .btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+
+  .text-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding-bottom: 2px;
+    border-bottom: 1px solid rgba(56, 189, 248, .4);
+    color: var(--cyan);
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: .05em;
+    text-decoration: none;
+  }
+
+  .text-link:hover { color: var(--cyan-soft); border-color: var(--cyan-soft); }
+
+  /* --------------------------------------------------------------------------
+     Overview
+     -------------------------------------------------------------------------- */
+
+  .overview-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr);
+    align-items: center;
+    gap: clamp(28px, 4vw, 60px);
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--cyan-soft);
+  }
+
+  .eyebrow-dot {
+    width: 5px;
+    height: 5px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 7px var(--green);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+
+  .overview h1 {
+    margin: 14px 0 12px;
+    font-family: var(--font-display);
+    font-size: clamp(42px, 5.1vw, 76px);
+    font-weight: 700;
+    font-stretch: 95%;
+    line-height: 1.02;
+    letter-spacing: -.045em;
+    color: var(--text);
+  }
+
+  .overview h1 .accent { color: var(--cyan); }
+
+  .overview-lede {
+    max-width: 50ch;
+    margin: 0 0 14px;
+    font-size: clamp(13.5px, 1vw, 16px);
+    line-height: 1.8;
+    color: var(--text-soft);
+  }
+
+  .overview-note {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    max-width: 52ch;
+    margin: 0;
+    font-size: 10.5px;
+    line-height: 1.65;
+    color: var(--muted);
+  }
+
+  .overview-note .chip { flex: 0 0 auto; }
+
+  .overview-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin-top: 20px;
+  }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    max-width: 560px;
+    margin-top: 24px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: rgba(8, 16, 24, .6);
+    overflow: hidden;
+  }
+
+  .stat {
+    position: relative;
+    padding: 10px 12px 11px;
+    border-right: 1px solid var(--line);
+  }
+
+  .stat:last-child { border-right: 0; }
+
+  .stat-num {
+    display: block;
+    font-family: var(--font-display);
+    font-size: clamp(22px, 2vw, 29px);
+    font-weight: 700;
+    font-stretch: 92%;
+    line-height: 1;
+    letter-spacing: -.04em;
+  }
+
+  .stat:last-child .stat-num { color: var(--amber); }
+
+  .stat-label {
+    display: block;
+    margin-top: 4px;
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    letter-spacing: .1em;
+    color: var(--dim);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .stat-sub {
+    display: block;
+    margin-top: 2px;
+    font-size: 9.5px;
+    color: var(--muted);
+  }
+
+  .stat-bar {
+    position: absolute;
+    left: 12px;
+    bottom: 0;
+    width: 22px;
+    height: 2px;
+    background: var(--cyan);
+  }
+
+  .stat:last-child .stat-bar { background: var(--amber); }
+
+  .overview-stage {
+    width: 100%;
+    max-width: 630px;
+    justify-self: end;
+  }
+
+  .screen-card {
+    padding: 8px;
+    border: 1px solid var(--line-2);
+    border-radius: 12px;
+    background: linear-gradient(180deg, #0b1721, #070d13);
+    box-shadow: 0 22px 46px -30px #000;
+  }
+
+  .screen-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 1px 2px 8px;
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  .screen-bar .bar-title { margin-right: auto; }
+
+  .led-row { display: flex; gap: 4px; flex: 0 0 auto; }
+
+  .led-row i {
+    display: block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--line-3);
+  }
+
+  .led-row i:nth-child(1) { background: var(--red); }
+  .led-row i:nth-child(2) { background: var(--amber); }
+  .led-row i:nth-child(3) { background: var(--green); }
+
+  .screen-body {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #20394c;
+    border-radius: 7px;
+    background: #000;
+  }
+
+  .screen-body img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .hud {
+    position: absolute;
+    z-index: 2;
+    padding: 3px 5px;
+    border: 1px solid rgba(56, 189, 248, .3);
+    border-radius: 3px;
+    background: rgba(4, 12, 18, .82);
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    letter-spacing: .06em;
+    color: var(--cyan-soft);
+    white-space: nowrap;
+  }
+
+  .hud-tl { top: 8px; left: 8px; }
+  .hud-br { right: 8px; bottom: 8px; }
+
+  .region-marker {
+    position: absolute;
+    left: 13%;
+    top: 21%;
+    width: 53%;
+    height: 16%;
+    z-index: 2;
+    border: 1.5px solid var(--cyan);
+    border-radius: 3px;
+    pointer-events: none;
+  }
+
+  .region-marker span {
+    position: absolute;
+    top: -9px;
+    left: -1px;
+    padding: 1px 4px;
+    border-radius: 2px;
+    background: var(--cyan);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 6px;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .frame-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 2px 2px;
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    color: var(--dim);
+  }
+
+  .frame-bar .bar {
+    position: relative;
+    flex: 1;
+    height: 4px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: var(--line);
+  }
+
+  .frame-bar .bar i {
+    display: block;
+    width: 3%;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--cyan);
+  }
+
+  .annotation-line {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 6px;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: rgba(56, 189, 248, .04);
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    color: var(--dim);
+  }
+
+  .annotation-line .a-tag {
+    flex: 0 0 auto;
+    color: var(--cyan);
+    letter-spacing: .1em;
+  }
+
+  .annotation-line .a-text {
+    overflow: hidden;
+    color: var(--text-soft);
+    font-family: var(--font-body);
+    font-size: 9.5px;
+    letter-spacing: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .session-strip {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 9px;
+    padding: 8px 9px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: rgba(8, 16, 24, .65);
+    font-family: var(--font-mono);
+    font-size: 7px;
+    color: var(--dim);
+  }
+
+  .session-strip .meta { color: var(--text-soft); }
+
+  .session-strip .spacer { flex: 1; }
+
+  .session-strip .human {
+    color: var(--amber);
+    letter-spacing: .08em;
+  }
+
+  /* --------------------------------------------------------------------------
+     Loop
+     -------------------------------------------------------------------------- */
+
+  .loop-layout {
+    display: grid;
+    grid-template-columns: minmax(250px, .68fr) minmax(0, 1.32fr);
+    align-items: start;
+    gap: 14px;
+  }
+
+  .stepper { overflow: hidden; }
+
+  .step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) 10px;
+    gap: 9px;
+    align-items: start;
+    width: 100%;
+    padding: 10px 12px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    background: transparent;
+    text-align: left;
+    color: var(--text);
+    cursor: pointer;
+    transition: background .18s ease;
+  }
+
+  .step:last-child { border-bottom: 0; }
+  .step:hover { background: rgba(56, 189, 248, .04); }
+
+  .step::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 2px;
+    background: transparent;
+    transition: background .18s ease;
+  }
+
+  .step.is-active { background: rgba(56, 189, 248, .075); }
+  .step.is-active::before { background: var(--cyan); }
+
+  .step-no {
+    padding-top: 3px;
+    font-family: var(--font-mono);
+    font-size: 7px;
+    color: var(--dim);
+  }
+
+  .step.is-active .step-no { color: var(--cyan); }
+
+  .step-text b {
+    display: block;
+    margin-bottom: 1px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -.005em;
+  }
+
+  .step-text small {
+    display: block;
+    font-size: 9.5px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  .step-led {
+    justify-self: end;
+    width: 5px;
+    height: 5px;
+    margin-top: 6px;
+    border: 1px solid var(--line-3);
+    border-radius: 50%;
+    transition: background .18s ease, border-color .18s ease;
+  }
+
+  .step.is-active .step-led {
+    background: var(--cyan);
+    border-color: var(--cyan);
+  }
+
+  .console {
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  }
+
+  .console-body { padding: 14px 16px 0; }
+
+  .console-top {
+    display: grid;
+    grid-template-columns: 152px minmax(0, 1fr);
+    align-items: center;
+    gap: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .gauge {
+    position: relative;
+    width: 152px;
+    height: 152px;
+    justify-self: center;
+  }
+
+  .gauge svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .gauge-track {
+    fill: none;
+    stroke: #142634;
+    stroke-width: 8;
+    stroke-dasharray: 75 25;
+    stroke-linecap: round;
+  }
+
+  .gauge-fill {
+    fill: none;
+    stroke: var(--cyan);
+    stroke-width: 8;
+    stroke-dasharray: 12.5 100;
+    stroke-linecap: round;
+    transition: stroke-dasharray .3s cubic-bezier(.2, .7, .2, 1);
+  }
+
+  .gauge-node {
+    fill: #09131c;
+    stroke: var(--line-3);
+    stroke-width: 1;
+    transition: fill .18s ease, stroke .18s ease;
+  }
+
+  .gauge-node.on { fill: var(--cyan); stroke: var(--cyan); }
+
+  .gauge-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .gauge-num {
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 700;
+    font-stretch: 92%;
+    line-height: 1;
+    letter-spacing: -.045em;
+  }
+
+  .gauge-label {
+    margin-top: 4px;
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    letter-spacing: .16em;
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+
+  .gauge-pct {
+    margin-top: 6px;
+    font-family: var(--font-mono);
+    font-size: 7px;
+    color: var(--dim);
+  }
+
+  .console-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 6px;
+  }
+
+  .console-tags span {
+    padding: 2px 5px;
+    border: 1px solid var(--line-2);
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  .console-tags span:first-child {
+    color: var(--cyan);
+    border-color: rgba(56, 189, 248, .34);
+  }
+
+  .console-copy h3 {
+    margin: 0 0 6px;
+    font-family: var(--font-display);
+    font-size: clamp(22px, 2.2vw, 30px);
+    font-weight: 700;
+    font-stretch: 95%;
+    line-height: 1;
+    letter-spacing: -.03em;
+  }
+
+  .console-copy p {
+    max-width: 44ch;
+    margin: 0;
+    font-size: 10.5px;
+    line-height: 1.65;
+    color: var(--muted);
+  }
+
+  .console-progress {
+    display: flex;
+    gap: 3px;
+    margin-top: 12px;
+  }
+
+  .console-progress i {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--line);
+    transition: background .18s ease;
+  }
+
+  .console-progress i.on { background: var(--cyan); }
+
+  .code-block {
+    min-height: 148px;
+    margin: 12px 16px 0;
+    padding: 11px 13px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: #050a0f;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    line-height: 1.7;
+    color: #cfe0ec;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  .code-block .tk-c { color: #5c7284; }
+  .code-block .tk-k { color: var(--cyan-soft); }
+  .code-block .tk-s { color: var(--green); }
+  .code-block .tk-n { color: var(--amber); }
+  .code-block .tk-a { color: #a78bfa; }
+
+  .code-block.swap { animation: contentIn .18s ease both; }
+
+  .console-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 16px 11px;
+  }
+
+  .console-hint {
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    color: var(--dim);
+  }
+
+  .btn-play {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 9px;
+    border: 1px solid var(--line-3);
+    border-radius: 5px;
+    background: rgba(56, 189, 248, .05);
+    color: var(--cyan);
+    font-family: var(--font-mono);
+    font-size: 7.5px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .18s ease, color .18s ease, border-color .18s ease;
+  }
+
+  .btn-play:hover { background: var(--cyan); border-color: var(--cyan); color: var(--ink); }
+  .btn-play.is-playing { border-color: var(--green); color: var(--green); }
+
+  .play-icon { font-size: 7px; }
+
+  /* --------------------------------------------------------------------------
+     Evidence
+     -------------------------------------------------------------------------- */
+
+  .session-deck {
+    overflow: hidden;
+    border-radius: 11px;
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  }
+
+  .deck-body {
+    padding: 9px;
+    background: #060b10;
+  }
+
+  .deck-scroll {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-color: var(--line-3) #050a0f;
+  }
+
+  .deck-mount {
+    min-width: 720px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #04080c;
+  }
+
+  .deck-mount img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid #1d3446;
+    border-radius: 3px;
+  }
+
+  .deck-foot {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 9px;
+    padding: 8px 13px;
+    border-top: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    color: var(--dim);
+  }
+
+  .deck-foot .bar {
+    position: relative;
+    flex: 1;
+    min-width: 60px;
+    height: 4px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: var(--line);
+  }
+
+  .deck-foot .bar i {
+    display: block;
+    width: 1%;
+    height: 100%;
+    background: var(--cyan);
+  }
+
+  .scroll-hint {
+    display: none;
+    margin: 0 0 8px;
+    font-family: var(--font-mono);
+    font-size: 7px;
+    letter-spacing: .06em;
+    color: var(--dim);
+  }
+
+  .evidence-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.06fr) minmax(0, .94fr);
+    align-items: start;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .tree-card { overflow: hidden; }
+
+  .tree {
+    margin: 0;
+    padding: 13px;
+    overflow-x: auto;
+    background: #050a0f;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    line-height: 1.75;
+    color: #c6d8e5;
+    white-space: pre;
+  }
+
+  .tree .c { color: #5c7284; }
+  .tree .d { color: var(--cyan-soft); }
+
+  .json-strip {
+    padding: 10px 13px;
+    border-top: 1px solid var(--line);
+    background: #070e14;
+    overflow-x: auto;
+  }
+
+  .json-label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--cyan);
+  }
+
+  .json-strip code {
+    display: block;
+    padding: 0;
+    background: none;
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    color: #a9c0d0;
+    white-space: pre;
+  }
+
+  .reading-card { padding: 15px 16px; }
+
+  .reading-card h3 {
+    margin: 0 0 12px;
+    font-family: var(--font-display);
+    font-size: clamp(21px, 2.2vw, 30px);
+    font-weight: 700;
+    font-stretch: 95%;
+    line-height: 1.1;
+    letter-spacing: -.03em;
+  }
+
+  .read-steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--line);
+  }
+
+  .read-steps li {
+    display: grid;
+    grid-template-columns: 25px minmax(0, 1fr);
+    gap: 8px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .read-steps li > span {
+    padding-top: 2px;
+    font-family: var(--font-mono);
+    font-size: 7px;
+    color: var(--cyan);
+  }
+
+  .read-steps strong {
+    display: block;
+    margin-bottom: 1px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .read-steps p {
+    margin: 0;
+    font-size: 9.5px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .notice {
+    display: flex;
+    gap: 8px;
+    margin-top: 9px;
+    padding: 8px 9px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: rgba(56, 189, 248, .03);
+  }
+
+  .notice > span {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--cyan);
+  }
+
+  .notice p {
+    margin: 0;
+    font-size: 9.5px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .notice.policy-note {
+    border-color: rgba(251, 191, 36, .3);
+    background: rgba(251, 191, 36, .04);
+  }
+
+  .notice.policy-note > span { color: var(--amber); }
+
+  /* --------------------------------------------------------------------------
+     Inspector
+     -------------------------------------------------------------------------- */
+
+  .inspector-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.04fr) minmax(0, .96fr);
+    align-items: center;
+    gap: clamp(20px, 3vw, 42px);
+  }
+
+  .device-panel { overflow: hidden; }
+
+  .device-body {
+    padding: 8px;
+    background: #050a0f;
+  }
+
+  .device-screen {
+    overflow: hidden;
+    border: 1px solid #20394c;
+    border-radius: 6px;
+    background: #000;
+  }
+
+  .device-screen img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .device-foot {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 13px;
+    border-top: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    color: var(--dim);
+  }
+
+  .device-foot .spacer { flex: 1; }
+
+  .inspector-copy h3 {
+    margin: 0 0 10px;
+    font-family: var(--font-display);
+    font-size: clamp(23px, 2.6vw, 36px);
+    font-weight: 700;
+    font-stretch: 95%;
+    line-height: 1.08;
+    letter-spacing: -.035em;
+  }
+
+  .inspector-copy > p {
+    max-width: 44ch;
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.75;
+    color: var(--muted);
+  }
+
+  .feature-list {
+    margin-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+
+  .feature-list article {
+    display: grid;
+    grid-template-columns: 25px minmax(0, 1fr);
+    gap: 8px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .f-no {
+    padding-top: 2px;
+    font-family: var(--font-mono);
+    font-size: 7px;
+    color: var(--cyan);
+  }
+
+  .feature-list h4 {
+    margin: 0 0 1px;
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -.01em;
+  }
+
+  .feature-list p {
+    margin: 0;
+    font-size: 9.5px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .file-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 12px;
+  }
+
+  .file-chips span {
+    padding: 3px 6px;
+    border: 1px solid var(--line-2);
+    border-radius: 3px;
+    background: rgba(10, 20, 30, .6);
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    color: var(--text-soft);
+  }
+
+  .aside-note {
+    max-width: 48ch;
+    margin: 11px 0 0;
+    padding-left: 10px;
+    border-left: 2px solid var(--cyan);
+    font-size: 9px;
+    line-height: 1.65;
+    color: var(--dim);
+  }
+
+  /* --------------------------------------------------------------------------
+     Versions and hardware
+     -------------------------------------------------------------------------- */
+
+  .versions-grid {
+    display: grid;
+    grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr);
+    align-items: start;
+    gap: 12px;
+  }
+
+  .version-panel { padding: 15px 15px 14px; }
+
+  .version-panel h3,
+  .hw-panel h3 {
+    margin: 0 0 12px;
+    font-family: var(--font-display);
+    font-size: clamp(22px, 2.3vw, 31px);
+    font-weight: 700;
+    font-stretch: 95%;
+    line-height: 1.1;
+    letter-spacing: -.035em;
+  }
+
+  .version-rail {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .version {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 7px 7px;
+    border: 0;
+    border-right: 1px solid var(--line-2);
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    transition: background .16s ease, color .16s ease;
+  }
+
+  .version:last-child { border-right: 0; }
+  .version:hover { background: rgba(56, 189, 248, .05); }
+
+  .version b {
+    font-family: var(--font-display);
+    font-size: clamp(16px, 1.6vw, 21px);
+    font-weight: 700;
+    font-stretch: 92%;
+    line-height: 1;
+    letter-spacing: -.03em;
+  }
+
+  .version small {
+    font-family: var(--font-mono);
+    font-size: 5.5px;
+    letter-spacing: .06em;
+    color: var(--dim);
+    text-transform: uppercase;
+  }
+
+  .version.is-active { background: var(--cyan); color: var(--ink); }
+  .version.is-active small { color: rgba(4, 16, 25, .7); }
+
+  .version-detail {
+    min-height: 112px;
+    margin-top: 8px;
+    padding: 12px 13px;
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--cyan);
+    border-radius: 0 6px 6px 0;
+    background: rgba(8, 16, 24, .55);
+  }
+
+  .version-detail.swap { animation: contentIn .18s ease both; }
+
+  .vd-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .vd-tag {
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    letter-spacing: .12em;
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+
+  .vd-ver {
+    font-family: var(--font-mono);
+    font-size: 7px;
+    color: var(--dim);
+  }
+
+  .version-detail h4 {
+    margin: 6px 0 3px;
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -.015em;
+  }
+
+  .version-detail p {
+    margin: 0;
+    font-size: 9.5px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .version-note {
+    margin: 9px 0 0;
+    font-size: 9px;
+    line-height: 1.6;
+    color: var(--dim);
+  }
+
+  .prebuilt {
+    margin-top: 12px;
+    padding: 10px 11px;
+    border: 1px dashed var(--line-2);
+    border-radius: 6px;
+    background: rgba(56, 189, 248, .025);
+  }
+
+  .pb-label {
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    letter-spacing: .14em;
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+
+  .prebuilt p {
+    margin: 4px 0 0;
+    font-size: 9px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .hw-panel { overflow: hidden; }
+
+  .hw-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+    padding: 11px;
+    background: #060c11;
+  }
+
+  .hw-media {
+    position: relative;
+    flex: 0 0 38%;
+    max-width: 205px;
+    overflow: hidden;
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    background: #000;
+  }
+
+  .hw-media img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 540 / 960;
+    object-fit: cover;
+  }
+
+  .hw-media .media-tag {
+    position: absolute;
+    left: 6px;
+    bottom: 6px;
+    padding: 2px 4px;
+    border-radius: 2px;
+    background: rgba(4, 12, 18, .82);
+    font-family: var(--font-mono);
+    font-size: 5.5px;
+    letter-spacing: .08em;
+    color: var(--cyan-soft);
+    text-transform: uppercase;
+  }
+
+  .hw-info { flex: 1; min-width: 0; }
+
+  .hw-kicker {
+    margin: 0 0 4px;
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    letter-spacing: .14em;
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+
+  .hw-big {
+    margin: 0 0 9px;
+    font-family: var(--font-display);
+    font-size: clamp(27px, 2.8vw, 38px);
+    font-weight: 700;
+    font-stretch: 92%;
+    line-height: 1;
+    letter-spacing: -.05em;
+  }
+
+  .hw-big span {
+    padding: 0 .07em;
+    font-size: .5em;
+    vertical-align: .14em;
+    color: var(--cyan);
+  }
+
+  .hw-specs {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+  }
+
+  .hw-specs div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .hw-specs dt {
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  .hw-specs dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 7.5px;
+    color: var(--text-soft);
+    text-align: right;
+    word-break: break-all;
+  }
+
+  .hw-watch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 9px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+  }
+
+  .hw-watch img {
+    width: 32px;
+    height: 38px;
+    object-fit: cover;
+    border: 1px solid var(--line-2);
+    border-radius: 2px;
+  }
+
+  .hw-watch p {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    line-height: 1.5;
+    color: var(--dim);
+  }
+
+  .hw-watch b { color: var(--text-soft); font-weight: 500; }
+
+  .hw-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .hw-cmds {
+    margin: 0 11px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #050a0f;
+  }
+
+  .hw-cmd {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 8px;
+    padding: 7px 9px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .hw-cmd:last-child { border-bottom: 0; }
+
+  .hw-cmd > span {
+    font-family: var(--font-mono);
+    font-size: 6px;
+    letter-spacing: .09em;
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+
+  .hw-cmd code {
+    padding: 0;
+    background: none;
+    font-family: var(--font-mono);
+    font-size: 7.5px;
+    line-height: 1.5;
+    color: #a9c0d0;
+    word-break: break-word;
+  }
+
+  .hw-warning {
+    display: flex;
+    gap: 7px;
+    margin: 8px 11px 11px;
+    padding: 8px 9px;
+    border: 1px solid rgba(251, 191, 36, .3);
+    border-radius: 5px;
+    background: rgba(251, 191, 36, .04);
+    font-size: 9px;
+    line-height: 1.6;
+    color: #e8c990;
+  }
+
+  .hw-warning > span:first-child {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    color: var(--amber);
+  }
+
+  .hw-warning > span:last-child { flex: 1 1 auto; min-width: 0; }
+  .hw-warning strong { color: var(--amber); }
+
+  /* --------------------------------------------------------------------------
+     Start + port notes
+     -------------------------------------------------------------------------- */
+
+  .start-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.18fr) minmax(0, .82fr);
+    align-items: start;
+    gap: 12px;
+  }
+
+  .term {
+    overflow: hidden;
+    border: 1px solid var(--line-2);
+    border-radius: 10px;
+    background: #050a0f;
+  }
+
+  .term-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 11px;
+    border-bottom: 1px solid var(--line);
+    background: #0a121a;
+  }
+
+  .term-dots { display: flex; gap: 4px; }
+
+  .term-dots i {
+    display: block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--line-3);
+  }
+
+  .term-dots i:first-child { background: var(--red); }
+  .term-dots i:nth-child(2) { background: var(--amber); }
+  .term-dots i:last-child { background: var(--green); }
+
+  .term-title {
+    margin-right: auto;
+    font-family: var(--font-mono);
+    font-size: 7px;
+    letter-spacing: .06em;
+    color: var(--dim);
+  }
+
+  .term-hint {
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    letter-spacing: .05em;
+    color: var(--dim);
+    text-transform: uppercase;
+  }
+
+  .term-body {
+    margin: 0;
+    padding: 3px 0;
+    list-style: none;
+  }
+
+  .term-line {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px 11px;
+    border-bottom: 1px solid rgba(24, 39, 52, .6);
+  }
+
+  .term-line:last-child { border-bottom: 0; }
+
+  .ln {
+    padding-top: 2px;
+    font-family: var(--font-mono);
+    font-size: 7px;
+    color: var(--dim);
+  }
+
+  .cmt {
+    display: block;
+    margin-bottom: 1px;
+    font-family: var(--font-mono);
+    font-size: 7px;
+    line-height: 1.55;
+    color: #6e8b9e;
+  }
+
+  .cmd-block code {
+    display: block;
+    padding: 0;
+    background: none;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    line-height: 1.65;
+    color: #cfe0ec;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  .term-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 7px 11px;
+    border-top: 1px solid var(--line);
+    background: #070e14;
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    color: var(--dim);
+  }
+
+  .start-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .req { padding: 14px 15px; }
+
+  .req h3 {
+    margin: 0 0 10px;
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -.025em;
+  }
+
+  .req-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+
+  .req-item {
+    padding: 6px 7px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: rgba(8, 16, 24, .5);
+  }
+
+  .req-item span {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 6px;
+    letter-spacing: .08em;
+    color: var(--dim);
+    text-transform: uppercase;
+  }
+
+  .req-item b {
+    display: block;
+    margin-top: 2px;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--text-soft);
+  }
+
+  .req-note {
+    margin: 8px 0 0;
+    font-size: 9px;
+    line-height: 1.6;
+    color: var(--dim);
+  }
+
+  .hand-ai {
+    position: relative;
+    overflow: hidden;
+    padding: 14px 15px;
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  }
+
+  .hand-ai::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    border-top: 38px solid var(--cyan);
+    border-left: 38px solid transparent;
+    opacity: .55;
+  }
+
+  .hand-ai h3 {
+    margin: 0 0 7px;
+    font-family: var(--font-display);
+    font-size: 23px;
+    font-weight: 700;
+    letter-spacing: -.03em;
+  }
+
+  .hand-ai p {
+    margin: 0 0 6px;
+    font-size: 9.5px;
+    line-height: 1.65;
+    color: var(--muted);
+  }
+
+  .hand-ai-skill {
+    padding-top: 7px;
+    border-top: 1px dashed var(--line-2);
+    font-family: var(--font-mono);
+    font-size: 7px;
+    color: var(--dim);
+  }
+
+  .hand-ai .text-link { margin-top: 4px; }
+
+  .port-notes {
+    margin-top: 12px;
+    padding: 0 0 14px;
+    overflow: hidden;
+  }
+
+  .port-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    padding: 2px 15px 0;
+  }
+
+  .port-item {
+    padding: 10px 12px 8px 0;
+    border-right: 1px solid var(--line);
+  }
+
+  .port-item:nth-child(3n) { border-right: 0; padding-right: 0; padding-left: 12px; }
+  .port-item:nth-child(3n + 1) { padding-left: 0; }
+  .port-item:nth-child(n + 4) { border-top: 1px solid var(--line); }
+
+  .port-item .p-no {
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    color: var(--cyan);
+  }
+
+  .port-item h4 {
+    margin: 3px 0 3px;
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -.01em;
+  }
+
+  .port-item p {
+    margin: 0;
+    font-size: 9px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .site-footer {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+
+  .site-footer .tagline {
+    margin: 0 0 10px;
+    font-family: var(--font-display);
+    font-size: clamp(22px, 2.3vw, 30px);
+    font-weight: 700;
+    font-stretch: 95%;
+    line-height: 1;
+    letter-spacing: -.035em;
+    color: var(--text);
+  }
+
+  .site-footer .tagline em {
+    font-style: normal;
+    color: var(--cyan);
+  }
+
+  .foot-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 18px;
+    font-family: var(--font-mono);
+    font-size: 7.5px;
+    letter-spacing: .04em;
+  }
+
+  .foot-links a {
+    color: var(--muted);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 1px;
+  }
+
+  .foot-links a:hover { color: var(--cyan); border-color: var(--cyan); }
+
+  .foot-legal {
+    margin: 10px 0 0;
+    font-family: var(--font-mono);
+    font-size: 6.5px;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+
+  /* --------------------------------------------------------------------------
+     Motion — all values map to lv_anim / lv_arc / lv_style transitions
+     -------------------------------------------------------------------------- */
+
+  @keyframes screenIn {
+    from { opacity: 0; transform: translateX(8px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes contentIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .3; }
+  }
+
+  /* --------------------------------------------------------------------------
+     Responsive
+     -------------------------------------------------------------------------- */
+
+  @media (max-width: 1100px) {
+    .evidence-grid,
+    .inspector-grid,
+    .versions-grid,
+    .start-grid { grid-template-columns: 1fr; }
+
+    .start-aside { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+
+    .port-grid { grid-template-columns: 1fr 1fr; }
+    .port-item:nth-child(3n) { border-right: 1px solid var(--line); padding-right: 12px; padding-left: 0; }
+    .port-item:nth-child(2n) { border-right: 0; padding-left: 12px; padding-right: 0; }
+    .port-item:nth-child(n + 3) { border-top: 1px solid var(--line); }
+  }
+
+  @media (max-width: 900px) {
+    .screen-inner {
+      padding-top: 16px;
+      padding-bottom: 16px;
+    }
+
+    .scroll-hint { display: block; }
+    .deck-mount { min-width: 680px; }
+
+    .version-rail { grid-template-columns: repeat(3, 1fr); }
+    .version:nth-child(3n) { border-right: 0; }
+    .version:nth-child(-n + 3) { border-bottom: 1px solid var(--line-2); }
+
+    .start-aside { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 780px) {
+    .overview-grid {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    .overview-stage {
+      justify-self: start;
+      max-width: 720px;
+    }
+
+    .loop-layout { grid-template-columns: 1fr; }
+
+    .screen-head {
+      grid-template-columns: 40px minmax(0, 1fr);
+      gap: 12px 14px;
+    }
+
+    .screen-lede {
+      grid-column: 2;
+      max-width: none;
+      padding: 9px 0 0;
+      border-left: 0;
+      border-top: 1px solid var(--line);
+    }
+  }
+
+  @media (max-width: 700px) {
+    :root { --appbar: 54px; --tabbar: 44px; --statusbar: 24px; }
+
+    body { font-size: 14px; }
+
+    .app-bar { gap: 10px; padding: 0 13px; }
+    .brand-sub { display: none; }
+    .bar-status { gap: 5px; }
+    .bar-status .chip.optional { display: none; }
+    .toplink { display: none; }
+
+    .tabbar { padding: 0 8px; }
+    .tab { padding: 0 11px; font-size: 7.5px; gap: 4px; }
+
+    .statusbar { gap: 9px; padding: 0 10px; font-size: 6px; }
+    .statusbar .sb-hide-m { display: none; }
+
+    .screen-inner { padding: 18px 13px 28px; }
+
+    .overview h1 { font-size: clamp(37px, 11.1vw, 54px); }
+    .overview-lede { font-size: 13.5px; }
+
+    .overview-actions { gap: 7px; }
+    .btn { min-height: 40px; padding: 8px 11px; font-size: 7.5px; }
+
+    .stat-row { max-width: none; }
+    .stat { padding: 9px 9px 10px; }
+    .stat-num { font-size: 22px; }
+    .stat-label { font-size: 5.5px; letter-spacing: .05em; }
+    .stat-sub { display: none; }
+
+    .screen-bar { font-size: 5.5px; }
+    .screen-bar .bar-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hud { font-size: 5.5px; }
+    .annotation-line .a-text { font-size: 8.5px; }
+    .session-strip { font-size: 6px; }
+
+    .screen-head {
+      grid-template-columns: 1fr;
+      gap: 10px;
+      padding-bottom: 13px;
+      margin-bottom: 13px;
+    }
+
+    .screen-index { width: 36px; height: 36px; font-size: 9px; }
+    .screen-lede { grid-column: 1; }
+    .screen-head h2 { font-size: clamp(25px, 7.7vw, 36px); }
+
+    .console-body { padding: 11px 11px 0; }
+    .console-top { grid-template-columns: 1fr; gap: 12px; padding-bottom: 11px; }
+    .gauge { width: 132px; height: 132px; }
+    .gauge-num { font-size: 30px; }
+    .console-copy h3 { font-size: 22px; }
+    .code-block {
+      margin: 10px 11px 0;
+      min-height: 130px;
+      padding: 9px 10px;
+      font-size: 8px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .console-foot { padding: 8px 11px 10px; }
+    .console-hint { display: none; }
+
+    .deck-body { padding: 6px; }
+    .deck-mount { min-width: 620px; }
+    .reading-card { padding: 12px; }
+
+    .inspector-grid { gap: 18px; }
+    .versions-grid { gap: 10px; }
+    .version-panel { padding: 12px; }
+    .version { padding: 6px; }
+    .version b { font-size: 16px; }
+
+    .hw-body { flex-direction: column; }
+    .hw-media { width: 100%; max-width: 240px; flex: none; }
+    .hw-info { width: 100%; }
+
+    .term-line { grid-template-columns: 20px minmax(0, 1fr); gap: 6px; padding: 7px 9px; }
+    .cmd-block code { font-size: 8.5px; white-space: pre-wrap; word-break: break-word; }
+    .term-hint { display: none; }
+
+    .req-grid { grid-template-columns: 1fr 1fr; }
+    .port-grid { grid-template-columns: 1fr; padding: 0 12px; }
+    .port-item,
+    .port-item:nth-child(3n),
+    .port-item:nth-child(2n) {
+      padding: 9px 0;
+      border-right: 0;
+      border-top: 1px solid var(--line);
+    }
+    .port-item:first-child { border-top: 0; }
+    .site-footer .tagline { font-size: 24px; }
+  }
+
+  @media (max-width: 420px) {
+    .stat-label { font-size: 5px; }
+    .tab { padding: 0 9px; font-size: 7px; }
+    .req-grid { grid-template-columns: 1fr; }
+    .screen-anno-row { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+
+    *, *::before, *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .001ms !important;
+    }
+
+    .js .screen.is-active { animation: none; }
+    .eyebrow-dot { animation: none; }
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#workspace">Skip to content</a>
+
+<div class="app-shell">
+  <header class="app-bar">
+    <a class="brand" href="#overview" data-screen-link="overview" aria-label="LVGL AI — back to overview">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="2.5" y="2.5" width="19" height="19" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <path d="M12 0v24M0 12h24" stroke="currentColor" stroke-width=".7" opacity=".35"/>
+        <rect x="8.5" y="8.5" width="7" height="7" rx="1.4" fill="currentColor"/>
+      </svg>
+      <span class="brand-name">LVGL<span class="slash">/</span>AI</span>
+      <span class="brand-sub">Verify loop</span>
+    </a>
+
+    <div class="bar-status">
+      <span class="chip green optional"><i class="led"></i>Headless</span>
+      <span class="chip cyan optional">LVGL 9.6</span>
+      <span class="chip red"><i class="led"></i>REC</span>
+      <a class="toplink" href="https://gitee.com/liang-zequan/lvgl-for-ai" target="_blank" rel="noreferrer">Gitee ↗</a>
+    </div>
+  </header>
+
+  <nav class="tabbar" role="tablist" aria-label="Screens">
+    <button class="tab" id="tab-overview" type="button" role="tab" aria-selected="true" aria-controls="overview" tabindex="0" data-screen="overview"><span class="n">01</span>Overview</button>
+    <button class="tab" id="tab-loop" type="button" role="tab" aria-selected="false" aria-controls="loop" tabindex="-1" data-screen="loop"><span class="n">02</span>Loop</button>
+    <button class="tab" id="tab-evidence" type="button" role="tab" aria-selected="false" aria-controls="evidence" tabindex="-1" data-screen="evidence"><span class="n">03</span>Evidence</button>
+    <button class="tab" id="tab-inspector" type="button" role="tab" aria-selected="false" aria-controls="inspector" tabindex="-1" data-screen="inspector"><span class="n">04</span>Inspector</button>
+    <button class="tab" id="tab-versions" type="button" role="tab" aria-selected="false" aria-controls="versions" tabindex="-1" data-screen="versions"><span class="n">05</span>Versions</button>
+    <button class="tab" id="tab-start" type="button" role="tab" aria-selected="false" aria-controls="start" tabindex="-1" data-screen="start"><span class="n">06</span>Start</button>
+  </nav>
+
+  <main class="workspace" id="workspace" tabindex="-1">
+
+    <!-- 01 · OVERVIEW -->
+    <section class="screen is-active" id="overview" role="tabpanel" aria-labelledby="tab-overview">
+      <div class="screen-inner overview">
+        <div class="overview-grid">
+          <div class="overview-copy">
+            <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>AI-first LVGL · Development &amp; verification</p>
+            <h1>AI writes LVGL.<br>AI <span class="accent">verifies</span> it.</h1>
+            <p class="overview-lede">A real headless LVGL host with virtual input and virtual time, frame-by-frame session evidence, a web inspector, and an export path to SiFli hardware. The tool provides evidence; humans set the bar.</p>
+            <p class="overview-note"><span class="chip cyan">HUMAN</span><span>Humans provide intent, annotations, and acceptance criteria. The source of truth is <code>user/app/**/*.c</code>.</span></p>
+            <div class="overview-actions">
+              <a class="btn btn-primary" href="#loop" data-screen-link="loop">Explore the loop <span aria-hidden="true">→</span></a>
+              <a class="btn btn-ghost" href="#evidence" data-screen-link="evidence">Read session evidence <span aria-hidden="true">↘</span></a>
+            </div>
+
+            <div class="stat-row">
+              <div class="stat">
+                <span class="stat-num">01</span>
+                <span class="stat-label">Engine / session</span>
+                <span class="stat-sub">1 process</span>
+                <span class="stat-bar" aria-hidden="true"></span>
+              </div>
+              <div class="stat">
+                <span class="stat-num">06</span>
+                <span class="stat-label">LVGL versions</span>
+                <span class="stat-sub">9.6 → 8.3</span>
+                <span class="stat-bar" aria-hidden="true"></span>
+              </div>
+              <div class="stat">
+                <span class="stat-num">0</span>
+                <span class="stat-label">Pass-fail outputs</span>
+                <span class="stat-sub">Humans decide</span>
+                <span class="stat-bar" aria-hidden="true"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="overview-stage">
+            <div class="screen-card">
+              <div class="screen-bar">
+                <span class="led-row" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="bar-title">Exhibit A · Web inspector</span>
+                <span class="chip red"><i class="led"></i>REC</span>
+              </div>
+              <div class="screen-body">
+                <img src="img/web-inspector.png" width="2880" height="1800" alt="LVGL web inspector replaying the coffee ordering app: a real LVGL frame on the left, annotation tools on the right, and a key-frame timeline below.">
+                <span class="hud hud-tl">FRAME 0001 / 0305</span>
+                <span class="hud hud-br">800 × 600 · t = 0 ms</span>
+                <span class="region-marker" aria-hidden="true"><span>A1</span></span>
+              </div>
+              <div class="frame-bar">
+                <span>000001</span>
+                <span class="bar" aria-hidden="true"><i></i></span>
+                <span>000305</span>
+                <span>305 F</span>
+              </div>
+              <div class="annotation-line">
+                <span class="a-tag">A1 / ANNOTATION</span>
+                <span class="a-text">Card spacing 16/12 px → unify to 12px.</span>
+              </div>
+            </div>
+
+            <div class="session-strip">
+              <span class="chip green"><i class="led"></i>Session OK</span>
+              <span class="meta">coffee</span>
+              <span class="meta">305 frames</span>
+              <span class="meta">800 × 600</span>
+              <span class="spacer"></span>
+              <span class="human">HUMAN DECIDES</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 · LOOP -->
+    <section class="screen" id="loop" role="tabpanel" aria-labelledby="tab-loop">
+      <div class="screen-inner">
+        <header class="screen-head">
+          <div class="screen-index" aria-hidden="true">02</div>
+          <div>
+            <p class="screen-kicker">The verification loop</p>
+            <h2>One session.<br>Six handoffs.</h2>
+          </div>
+          <p class="screen-lede">Modify → build → run → collect evidence → decide → fix. The tool does not hardcode app names, and it does not accept on your behalf.</p>
+        </header>
+
+        <div class="loop-layout">
+          <div class="stepper panel" role="group" aria-label="Verification loop steps">
+            <div class="panel-bar"><span class="bar-left">Sequence</span><span class="bar-right">06 / STEPS</span></div>
+            <button class="step is-active" type="button" data-step="0" aria-pressed="true">
+              <span class="step-no">01</span>
+              <span class="step-text"><b>Intent</b><small>Humans set the goal and the bar; no C.</small></span>
+              <span class="step-led" aria-hidden="true"></span>
+            </button>
+            <button class="step" type="button" data-step="1" aria-pressed="false">
+              <span class="step-no">02</span>
+              <span class="step-text"><b>Write C</b><small>AI edits user/app directly; C is the source of truth.</small></span>
+              <span class="step-led" aria-hidden="true"></span>
+            </button>
+            <button class="step" type="button" data-step="2" aria-pressed="false">
+              <span class="step-no">03</span>
+              <span class="step-text"><b>Build</b><small>First build compiles the engine; prebuilt needs GCC only.</small></span>
+              <span class="step-led" aria-hidden="true"></span>
+            </button>
+            <button class="step" type="button" data-step="3" aria-pressed="false">
+              <span class="step-no">04</span>
+              <span class="step-text"><b>Run</b><small>Virtual input and virtual time drive real LVGL.</small></span>
+              <span class="step-led" aria-hidden="true"></span>
+            </button>
+            <button class="step" type="button" data-step="4" aria-pressed="false">
+              <span class="step-no">05</span>
+              <span class="step-text"><b>Evidence</b><small>Frames, timeline, diffs and logs land in the session.</small></span>
+              <span class="step-led" aria-hidden="true"></span>
+            </button>
+            <button class="step" type="button" data-step="5" aria-pressed="false">
+              <span class="step-no">06</span>
+              <span class="step-text"><b>Decide</b><small>AI self-checks; the human makes the final call.</small></span>
+              <span class="step-led" aria-hidden="true"></span>
+            </button>
+          </div>
+
+          <div class="console panel" aria-label="Verification loop console">
+            <div class="panel-bar">
+              <span class="bar-left">Loop console</span>
+              <span class="bar-right"><span class="chip green"><i class="led"></i>READY</span></span>
+            </div>
+            <div class="console-body">
+              <div class="console-top">
+                <div class="gauge" aria-hidden="true">
+                  <svg viewBox="0 0 200 200">
+                    <circle class="gauge-track" cx="100" cy="100" r="78" pathLength="100" stroke-dasharray="75 25" transform="rotate(135 100 100)"/>
+                    <circle class="gauge-fill" id="gaugeFill" cx="100" cy="100" r="78" pathLength="100" stroke-dasharray="12.5 100" transform="rotate(135 100 100)"/>
+                    <circle class="gauge-node on" cx="22" cy="100" r="3.2"/>
+                    <circle class="gauge-node" cx="44.85" cy="44.85" r="3.2"/>
+                    <circle class="gauge-node" cx="100" cy="22" r="3.2"/>
+                    <circle class="gauge-node" cx="155.15" cy="44.85" r="3.2"/>
+                    <circle class="gauge-node" cx="178" cy="100" r="3.2"/>
+                    <circle class="gauge-node" cx="155.15" cy="155.15" r="3.2"/>
+                  </svg>
+                  <div class="gauge-center">
+                    <span class="gauge-num" id="gaugeNum">01</span>
+                    <span class="gauge-label" id="gaugeLabel">INTENT</span>
+                    <span class="gauge-pct" id="gaugePct">16%</span>
+                  </div>
+                </div>
+                <div class="console-copy">
+                  <div class="console-tags"><span id="stepTag">HUMAN</span><span id="stepPhase">INTENT</span></div>
+                  <h3 id="stepTitle">Intent</h3>
+                  <p id="stepDesc">Humans set the goal and acceptance criteria; no C, no widget list.</p>
+                  <div class="console-progress" aria-hidden="true">
+                    <i class="on"></i><i></i><i></i><i></i><i></i><i></i>
+                  </div>
+                </div>
+              </div>
+              <pre class="code-block" id="stepCode"><span class="tk-c"># HUMAN INPUT · ILLUSTRATIVE</span>
+Goal      Coffee ordering screen; show extraction progress
+Bar       Card spacing consistent; clear input feedback
+Feedback  Circle it on screen; save as an annotation</pre>
+            </div>
+            <div class="console-foot">
+              <span class="console-hint">Click a step · illustrative flow</span>
+              <button class="btn-play" id="playLoop" type="button">
+                <span class="play-icon" aria-hidden="true">▶</span><span class="play-label">Play loop</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <p class="visually-hidden" id="loopStatus" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- 03 · EVIDENCE -->
+    <section class="screen" id="evidence" role="tabpanel" aria-labelledby="tab-evidence">
+      <div class="screen-inner">
+        <header class="screen-head">
+          <div class="screen-index" aria-hidden="true">03</div>
+          <div>
+            <p class="screen-kicker">Session evidence</p>
+            <h2>Every frame is numbered.<br>Evidence points back.</h2>
+          </div>
+          <p class="screen-lede">A session is not a recording. It is a replayable, citable evidence directory. Only changed frames hit disk; frame numbers stay continuous.</p>
+        </header>
+
+        <p class="scroll-hint">← Scroll horizontally for the full frame sheet →</p>
+
+        <div class="session-deck">
+          <div class="panel-bar">
+            <span class="bar-left">Session 20261114-095536-1d9d</span>
+            <span class="bar-right">
+              <span class="chip green"><i class="led"></i>OK</span>
+              <span class="chip">305 frames</span>
+              <span class="chip">800 × 600</span>
+              <span class="chip cyan">Changed only</span>
+            </span>
+          </div>
+          <div class="deck-body">
+            <div class="deck-scroll">
+              <div class="deck-mount">
+                <img src="img/frame-grid.png" width="1760" height="1009" loading="lazy" decoding="async" alt="Twelve full PNG frames from one session, numbered 000001 through 000305, showing coffee ordering, extraction, favorites and maintenance screens.">
+              </div>
+            </div>
+          </div>
+          <div class="deck-foot">
+            <span>FRAME 000001</span>
+            <span class="bar" aria-hidden="true"><i></i></span>
+            <span>FRAME 000305</span>
+            <span class="spacer"></span>
+            <a class="text-link" href="img/frame-grid.png" target="_blank" rel="noreferrer">Open full image ↗</a>
+          </div>
+        </div>
+
+        <div class="evidence-grid">
+          <div class="tree-card panel">
+            <div class="panel-bar"><span class="bar-left">sessions/&lt;id&gt;/</span><span class="bar-right">Open directory</span></div>
+<pre class="tree"><span class="d">sessions/20261114-095536-1d9d/</span>
+├── manifest.json          <span class="c">status / app / display / frame_count</span>
+├── timeline.ndjson        <span class="c">input events, frame spans, marks</span>
+├── frame_diffs.ndjson     <span class="c">changed bboxes per frame</span>
+├── frames/                <span class="c">full PNGs, changed frames only</span>
+├── snapshots/             <span class="c">named snapshots</span>
+├── engine.log             <span class="c">exact state printf'd by user C</span>
+├── build.log              <span class="c">build commands and compiler output</span>
+├── annotations.json       <span class="c">human annotations (optional)</span>
+└── whiteboards.json       <span class="c">whiteboards (optional)</span></pre>
+            <div class="json-strip">
+              <span class="json-label">CLI --json · last line</span>
+              <code>{"session_id":"20261114-095536-1d9d","session_dir":"sessions/20261114-095536-1d9d","status":"ok","app":"coffee","display":{"width":800,"height":600},"frame_count":305,"error":null}</code>
+            </div>
+          </div>
+
+          <div class="reading-card panel">
+            <p class="mini-kicker">How AI reads it</p>
+            <h3>Text and coordinates first.<br>Images on demand.</h3>
+            <ol class="read-steps">
+              <li>
+                <span>01</span>
+                <div><strong>Read the summary</strong><p><code>summarize_session</code> returns the annotations / whiteboards index and key fields.</p></div>
+              </li>
+              <li>
+                <span>02</span>
+                <div><strong>Read text and bboxes</strong><p>Notes, ranges and coordinates first; do not open images yet.</p></div>
+              </li>
+              <li>
+                <span>03</span>
+                <div><strong>Open images on demand</strong><p>Full frames or crops; each region keeps the raw and annotated crop.</p></div>
+              </li>
+            </ol>
+            <div class="notice">
+              <span aria-hidden="true">!</span>
+              <p>No object tree or property reads. Exact state is <code>printf</code>'d by user C into <code>engine.log</code> and becomes evidence.</p>
+            </div>
+            <div class="notice policy-note">
+              <span aria-hidden="true">≠</span>
+              <p><code>status: ok</code> is not acceptance. It only means the session ended normally.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 · INSPECTOR -->
+    <section class="screen" id="inspector" role="tabpanel" aria-labelledby="tab-inspector">
+      <div class="screen-inner">
+        <header class="screen-head">
+          <div class="screen-index" aria-hidden="true">04</div>
+          <div>
+            <p class="screen-kicker">Web inspector</p>
+            <h2>Humans circle problems.<br>AI reads coordinates.</h2>
+          </div>
+          <p class="screen-lede">Fixed at <code>127.0.0.1:8765</code>. Frames come from the real runtime: live during a session, replayed from evidence after it ends.</p>
+        </header>
+
+        <div class="inspector-grid">
+          <figure class="device-panel panel">
+            <div class="panel-bar">
+              <span class="bar-left">Default intro / Recorded session</span>
+              <span class="bar-right"><span class="chip green"><i class="led"></i>REPLAY</span></span>
+            </div>
+            <div class="device-body">
+              <div class="device-screen">
+                <img src="img/intro-demo.gif" width="800" height="600" loading="lazy" decoding="async" alt="A recorded session of the default intro app showing the verification loop moving from ready to build, run and evidence ready.">
+              </div>
+            </div>
+            <figcaption class="device-foot">
+              <span>user/app/intro</span>
+              <span>·</span>
+              <span>user/scenarios/intro.json</span>
+              <span class="spacer"></span>
+              <span class="chip">Real frames</span>
+            </figcaption>
+          </figure>
+
+          <div class="inspector-copy">
+            <p class="mini-kicker">Live or replay</p>
+            <h3>Frames, not a re-render.</h3>
+            <p>The web layer only does HTTP / UI adaptation. Replay uses Recording; live uses an independent Runtime. You are looking at frames drawn by LVGL — not a web reimplementation.</p>
+
+            <div class="feature-list">
+              <article>
+                <span class="f-no">01</span>
+                <div><h4>Preview</h4><p>Starts read-only. The live frame stream is observation only; it is not retained or added to evidence.</p></div>
+              </article>
+              <article>
+                <span class="f-no">02</span>
+                <div><h4>Annotation</h4><p>Single frame or time range. Each region stores a bbox, the raw crop and the annotated crop.</p></div>
+              </article>
+              <article>
+                <span class="f-no">03</span>
+                <div><h4>Whiteboard</h4><p>frame / range / global scopes. Text or labels are required; images and words reach AI together.</p></div>
+              </article>
+            </div>
+
+            <div class="file-chips" aria-label="Files AI reads directly">
+              <span>annotations.json</span>
+              <span>whiteboards.json</span>
+              <span>timeline.ndjson</span>
+              <span>frame_diffs.ndjson</span>
+              <span>user/app/**/*.c</span>
+            </div>
+
+            <p class="aside-note">No second protocol client: web, CLI and <code>session_report.py</code> share Runtime / Recording / summarize_session.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 · VERSIONS -->
+    <section class="screen" id="versions" role="tabpanel" aria-labelledby="tab-versions">
+      <div class="screen-inner">
+        <header class="screen-head">
+          <div class="screen-index" aria-hidden="true">05</div>
+          <div>
+            <p class="screen-kicker">Versions &amp; hardware</p>
+            <h2>Versions and hardware<br>both count.</h2>
+          </div>
+          <p class="screen-lede">The same user/app and the same scenario run on six LVGL versions. Device apps target the 9.4 baseline.</p>
+        </header>
+
+        <div class="versions-grid">
+          <div class="version-panel panel">
+            <div class="panel-bar"><span class="bar-left">Version matrix</span><span class="bar-right">06 / TARGETS</span></div>
+            <div style="padding-top:12px">
+              <p class="mini-kicker">One app · six versions</p>
+              <h3>One source.<br>Six targets.</h3>
+
+              <div class="version-rail" role="group" aria-label="Select an LVGL version">
+                <button class="version is-active" type="button" data-version="9.6" aria-pressed="true"><b>9.6</b><small>DEFAULT</small></button>
+                <button class="version" type="button" data-version="9.5" aria-pressed="false"><b>9.5</b><small>SUPPORTED</small></button>
+                <button class="version" type="button" data-version="9.4" aria-pressed="false"><b>9.4</b><small>BASELINE</small></button>
+                <button class="version" type="button" data-version="9.1" aria-pressed="false"><b>9.1</b><small>LEGACY</small></button>
+                <button class="version" type="button" data-version="8.4" aria-pressed="false"><b>8.4</b><small>LEGACY</small></button>
+                <button class="version" type="button" data-version="8.3" aria-pressed="false"><b>8.3</b><small>LEGACY</small></button>
+              </div>
+
+              <div class="version-detail" id="versionDetail" aria-live="polite">
+                <div class="vd-top"><span class="vd-tag">DEFAULT HOST</span><span class="vd-ver">HOST 9.6</span></div>
+                <h4>Host default</h4>
+                <p>Daily preview and evidence use 9.6. The packaged intro app targets 9.4+ and runs on 9.6.</p>
+              </div>
+
+              <p class="version-note">Cross-version comparison covers event semantics and the session file set, not pixels. <code>--lvgl</code> wins over the scenario's <code>"lvgl"</code> field.</p>
+
+              <div class="prebuilt">
+                <span class="pb-label">Prebuilt host SDK</span>
+                <p>Runs with only GCC: <code>--prebuilt</code> reuses <code>sdk/&lt;version&gt;/</code>; <code>--source</code> forces CMake.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="hw-panel panel">
+            <div class="panel-bar">
+              <span class="bar-left">Exhibit E · Huangshan Pai (SiFli)</span>
+              <span class="bar-right"><span class="chip green"><i class="led"></i>ON DEVICE</span></span>
+            </div>
+            <div class="hw-body">
+              <div class="hw-media">
+                <img src="img/huangshanpai-poster.jpg" width="540" height="960" loading="lazy" decoding="async" alt="The Huangshan Pai board held in hand, running the sift_watch LVGL app.">
+                <span class="media-tag">Device clip</span>
+              </div>
+              <div class="hw-info">
+                <p class="hw-kicker">SiFli SF32LB52x</p>
+                <p class="hw-big">390<span>×</span>450</p>
+                <dl class="hw-specs">
+                  <div><dt>board</dt><dd>sf32lb52-lchspi-ulp</dd></div>
+                  <div><dt>screen</dt><dd>390 × 450</dd></div>
+                  <div><dt>source</dt><dd>user/app/sift_watch</dd></div>
+                </dl>
+                <div class="hw-watch">
+                  <img src="img/sift-watch.gif" width="390" height="450" loading="lazy" decoding="async" alt="The sift_watch app rendered by real LVGL at 390 by 450 pixels.">
+                  <p><b>sift_watch</b><br>Real LVGL frames · 390 × 450</p>
+                </div>
+                <div class="hw-links">
+                  <a class="text-link" href="media/huangshanpai.mp4" target="_blank" rel="noreferrer">Watch hardware clip ↗</a>
+                </div>
+              </div>
+            </div>
+
+            <div class="hw-cmds">
+              <div class="hw-cmd">
+                <span>export</span>
+                <code>python -I chip-adapt/sifli/export.py sift_watch --dry-run --force</code>
+              </div>
+              <div class="hw-cmd">
+                <span>build</span>
+                <code>python -I chip-adapt/sifli/host/cli.py build --app sift_watch --actor ai --json</code>
+              </div>
+              <div class="hw-cmd">
+                <span>flash</span>
+                <code>python -I chip-adapt/sifli/host/cli.py flash --app sift_watch --actor ai --json</code>
+              </div>
+            </div>
+
+            <p class="hw-warning"><span aria-hidden="true">!</span><span>Without a board, stop at host verification and an export dry-run. <strong>Never claim the device is verified.</strong> Shared source stays in <code>user/app/</code>.</span></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 · START -->
+    <section class="screen" id="start" role="tabpanel" aria-labelledby="tab-start">
+      <div class="screen-inner">
+        <header class="screen-head">
+          <div class="screen-index" aria-hidden="true">06</div>
+          <div>
+            <p class="screen-kicker">Quick start</p>
+            <h2>From zero to the first frame.</h2>
+          </div>
+          <p class="screen-lede">Python ≥ 3.9, no <code>pip install</code>. Run every command from the repo root with <code>python -I</code>.</p>
+        </header>
+
+        <div class="start-grid">
+          <div class="term">
+            <div class="term-bar">
+              <span class="term-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="term-title">lvgl-for-agent — bash</span>
+              <span class="term-hint">Select to copy</span>
+            </div>
+            <ol class="term-body">
+              <li class="term-line">
+                <span class="ln" aria-hidden="true">01</span>
+                <div class="cmd-block">
+                  <span class="cmt"># clone and enter the repository</span>
+                  <code>git clone https://gitee.com/liang-zequan/lvgl-for-ai.git lvgl-for-agent &amp;&amp; cd lvgl-for-agent</code>
+                </div>
+              </li>
+              <li class="term-line">
+                <span class="ln" aria-hidden="true">02</span>
+                <div class="cmd-block">
+                  <span class="cmt"># fetch LVGL 9.6; default source=auto tries codeload, then the Gitee mirror</span>
+                  <code>python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root .</code>
+                </div>
+              </li>
+              <li class="term-line">
+                <span class="ln" aria-hidden="true">03</span>
+                <div class="cmd-block">
+                  <span class="cmt"># fetch PNG encoder dependencies (zlib / libpng)</span>
+                  <code>python -I core/tools/fetch_png.py --repo-root .</code>
+                </div>
+              </li>
+              <li class="term-line">
+                <span class="ln" aria-hidden="true">04</span>
+                <div class="cmd-block">
+                  <span class="cmt"># run a scenario; the first run builds the engine</span>
+                  <code>python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json</code>
+                </div>
+              </li>
+              <li class="term-line">
+                <span class="ln" aria-hidden="true">05</span>
+                <div class="cmd-block">
+                  <span class="cmt"># open the web inspector: live preview, replay, annotations, whiteboards</span>
+                  <code>python -I core/web.py --open</code>
+                </div>
+              </li>
+            </ol>
+            <div class="term-foot">
+              <span>python -I · no pip install</span>
+              <span>First build usually takes a few minutes</span>
+            </div>
+          </div>
+
+          <aside class="start-aside">
+            <div class="req panel">
+              <p class="mini-kicker">Requirements</p>
+              <h3>You need</h3>
+              <div class="req-grid">
+                <div class="req-item"><span>Python</span><b>≥ 3.9 · no pip</b></div>
+                <div class="req-item"><span>GCC</span><b>MinGW-w64 64-bit</b></div>
+                <div class="req-item"><span>CMake</span><b>≥ 3.20 · source build</b></div>
+                <div class="req-item"><span>Ninja</span><b>source build</b></div>
+                <div class="req-item"><span>curl</span><b>source download</b></div>
+                <div class="req-item"><span>Disk</span><b>~1 GB free</b></div>
+              </div>
+              <p class="req-note">Windows: MSYS2 UCRT64 recommended; <code>gcc</code> must be on PATH.</p>
+            </div>
+
+            <div class="hand-ai panel">
+              <p class="mini-kicker">Hand it to AI</p>
+              <h3>Give the repo to AI.</h3>
+              <p>Claude Code, Cursor or another harness reads <code>core/SKILL.md</code> and <code>CLAUDE.md</code>, then writes from <code>user/app/**/*.c</code>.</p>
+              <p class="hand-ai-skill">Claude Code skill: <code>lvgl-verify-loop</code></p>
+              <a class="text-link" href="../core/SKILL.md">Open the entry contract ↗</a>
+            </div>
+          </aside>
+        </div>
+
+        <div class="port-notes panel">
+          <div class="panel-bar"><span class="bar-left">LVGL port notes</span><span class="bar-right">Interactions &amp; motion</span></div>
+          <div class="port-grid">
+            <div class="port-item">
+              <span class="p-no">01</span>
+              <h4>Screens</h4>
+              <p>Six tab panels map to six LVGL screens or one <code>lv_tabview</code>. Switching uses a 220 ms fade + 8 px slide via <code>lv_anim</code> / <code>lv_scr_load_anim</code>. At 800 × 600 the overview tightens to two compact columns; long screens scroll.</p>
+            </div>
+            <div class="port-item">
+              <span class="p-no">02</span>
+              <h4>Loop</h4>
+              <p>The gauge is one <code>lv_arc</code>. Step changes animate its value over 300 ms. Auto-play is a 2600 ms <code>lv_timer</code>; pressing any step stops it.</p>
+            </div>
+            <div class="port-item">
+              <span class="p-no">03</span>
+              <h4>Motion</h4>
+              <p>Only opacity, small position changes, color and arc/bar value. No blur, parallax, scroll-triggered effects or hover-only information.</p>
+            </div>
+            <div class="port-item">
+              <span class="p-no">04</span>
+              <h4>Media</h4>
+              <p>Screenshots are <code>lv_image</code>; the intro demo is <code>lv_gif</code>. The hardware clip is a poster + desktop link; on device, keep the still or a GIF.</p>
+            </div>
+            <div class="port-item">
+              <span class="p-no">05</span>
+              <h4>Controls</h4>
+              <p>Tabs and buttons have visible selected and pressed states, with touch targets of at least 38 px. Keypad / encoder can follow the tab order. Text selection / copy and the hardware video link are web-only; on device, commands are display-only.</p>
+            </div>
+            <div class="port-item">
+              <span class="p-no">06</span>
+              <h4>Type</h4>
+              <p>One UI family plus one mono family; convert with <code>lv_font_conv</code>. Keep the display sizes and line lengths. Arrows and status glyphs need glyph coverage or small drawn shapes.</p>
+            </div>
+          </div>
+        </div>
+
+        <footer class="site-footer">
+          <p class="tagline">AI writes. AI verifies. <em>Humans decide.</em></p>
+          <nav class="foot-links" aria-label="Documentation">
+            <a href="../README.md">README</a>
+            <a href="../CONTEXT.md">CONTEXT</a>
+            <a href="../user/app/GUIDE.md">App guide</a>
+            <a href="../core/README.md">Tool usage</a>
+            <a href="app.html">App variants</a>
+            <a href="scenario-server.html">Scenarios</a>
+            <a href="../chip-adapt/docs/sifli.html">SiFli</a>
+            <a href="https://gitee.com/liang-zequan/lvgl-for-ai" target="_blank" rel="noreferrer">Gitee ↗</a>
+          </nav>
+          <p class="foot-legal">MIT License · Python ≥ 3.9 · Headless host · No pass/fail output</p>
+        </footer>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="statusbar">
+    <span class="sb-group"><i class="led" style="color: var(--green)"></i>Ready</span>
+    <span class="sb-group sb-hide-m">Evidence only</span>
+    <span class="sb-group sb-human">Human decides</span>
+    <span class="sb-group sb-right sb-hide-m">LVGL 9.6 · 800 × 600 · Virtual time</span>
+    <span class="sb-group sb-right">Session 0001</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  document.documentElement.classList.add("js");
+
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* --------------------------------------------------------------------------
+     Screen tabs
+     -------------------------------------------------------------------------- */
+
+  var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+  var screens = Array.prototype.slice.call(document.querySelectorAll(".screen"));
+  var workspace = document.getElementById("workspace");
+  var screenNames = ["overview", "loop", "evidence", "inspector", "versions", "start"];
+  var currentScreen = "overview";
+
+  function normalizeScreen(name) {
+    return screenNames.indexOf(name) !== -1 ? name : "overview";
+  }
+
+  function showScreen(name, options) {
+    name = normalizeScreen(name);
+    currentScreen = name;
+
+    screens.forEach(function (screen) {
+      var active = screen.id === name;
+      screen.classList.toggle("is-active", active);
+      if (active) screen.removeAttribute("hidden");
+      else screen.setAttribute("hidden", "");
+    });
+
+    tabs.forEach(function (tab) {
+      var active = tab.dataset.screen === name;
+      tab.setAttribute("aria-selected", active ? "true" : "false");
+      tab.tabIndex = active ? 0 : -1;
+    });
+
+    if (workspace) workspace.scrollTop = 0;
+
+    if (name !== "loop" && typeof stopPlayback === "function") stopPlayback();
+
+    if (options && options.push) {
+      history.pushState({ screen: name }, "", "#" + name);
+    } else if (options && options.replace) {
+      history.replaceState({ screen: name }, "", "#" + name);
+    }
+  }
+
+  tabs.forEach(function (tab, index) {
+    tab.addEventListener("click", function () {
+      showScreen(tab.dataset.screen, { push: true });
+    });
+
+    tab.addEventListener("keydown", function (event) {
+      var next = index;
+      if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+        next = (index + 1) % tabs.length;
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+        next = (index - 1 + tabs.length) % tabs.length;
+      } else if (event.key === "Home") {
+        next = 0;
+      } else if (event.key === "End") {
+        next = tabs.length - 1;
+      } else {
+        return;
+      }
+      event.preventDefault();
+      tabs[next].focus();
+      tabs[next].click();
+    });
+  });
+
+  document.querySelectorAll("[data-screen-link]").forEach(function (link) {
+    link.addEventListener("click", function (event) {
+      var target = link.getAttribute("data-screen-link");
+      if (!target) return;
+      event.preventDefault();
+      showScreen(target, { push: true });
+      var tab = document.getElementById("tab-" + target);
+      if (tab) tab.focus({ preventScroll: true });
+    });
+  });
+
+  window.addEventListener("popstate", function () {
+    showScreen(location.hash.slice(1) || "overview", {});
+  });
+
+  var initial = location.hash ? location.hash.slice(1) : "overview";
+  showScreen(initial, { replace: true });
+
+  /* --------------------------------------------------------------------------
+     Verification loop
+     -------------------------------------------------------------------------- */
+
+  var loopSteps = [
+    {
+      n: "01", tag: "HUMAN", phase: "INTENT", title: "Intent",
+      desc: "Humans set the goal and acceptance criteria; no C, no widget list.",
+      code: '<span class="tk-c"># HUMAN INPUT · ILLUSTRATIVE</span>\nGoal      Coffee ordering screen; show extraction progress\nBar       Card spacing consistent; clear input feedback\nFeedback  Circle it on screen; save as an annotation'
+    },
+    {
+      n: "02", tag: "AI", phase: "SOURCE", title: "Write C",
+      desc: "AI edits user/app/**/*.c directly; there is no object tree, inspect or set.",
+      code: '<span class="tk-c">// user/app/coffee/coffee.c</span>\n<span class="tk-k">lv_obj_t</span> * card = lv_obj_create(list);\nlv_obj_set_style_pad_gap(card, <span class="tk-n">12</span>, <span class="tk-n">0</span>);\nlv_obj_add_event_cb(btn, brew_cb, LV_EVENT_CLICKED, ctx);'
+    },
+    {
+      n: "03", tag: "BUILD", phase: "HOST", title: "Build",
+      desc: "The first build fetches sources and compiles the engine; the prebuilt host SDK needs GCC only.",
+      code: '<span class="tk-c">$</span> python -I core/cli.py --lvgl 9.6 ...\n<span class="tk-c">[build]</span> lvgl_9_6 · lvgl_engine.exe\n<span class="tk-c">[build]</span> app variants: coffee\n<span class="tk-c">[build]</span> <span class="tk-s">ok</span> · engine ready'
+    },
+    {
+      n: "04", tag: "RUNTIME", phase: "REPLAY", title: "Run",
+      desc: "Virtual input and virtual time drive real LVGL; the last stdout line is the session path.",
+      code: '<span class="tk-c">$</span> python -I core/cli.py --lvgl 9.6 \\\n    --scenario user/scenarios/coffee.json --json\n\n{"session_id":"20261114-095536-1d9d",\n <span class="tk-a">"status"</span>:"<span class="tk-s">ok</span>","app":"coffee",\n "display":{"width":800,"height":600},\n <span class="tk-a">"frame_count"</span>:305}'
+    },
+    {
+      n: "05", tag: "TOOL", phase: "EVIDENCE", title: "Evidence",
+      desc: "Full PNGs, timeline, per-frame diffs and engine logs; only changed frames are written.",
+      code: 'sessions/20261114-095536-1d9d/\n  manifest.json          status ok · app coffee · 305 frames\n  timeline.ndjson        hit / hit_class / frame spans\n  frame_diffs.ndjson     changed bboxes\n  frames/000001.png …    changed frames only\n  engine.log             exact state printf\'d by user C'
+    },
+    {
+      n: "06", tag: "HUMAN", phase: "DECISION", title: "Decide",
+      desc: "AI self-checks against the human bar and fixes issues; the final call is human. No pass/fail output.",
+      code: '<span class="tk-c">// no pass / fail output from the tool</span>\nRead the evidence:\n  frame 000001 — spacing 16 / 12 px\n  annotation #1 — “unify to 12px”\n  whiteboard    — “sketch the order flow”\n\nVerdict: rework or accept → next loop'
+    }
+  ];
+
+  var stepButtons = Array.prototype.slice.call(document.querySelectorAll(".step"));
+  var progressEls = Array.prototype.slice.call(document.querySelectorAll(".console-progress i"));
+  var gaugeFill = document.getElementById("gaugeFill");
+  var gaugeNodes = Array.prototype.slice.call(document.querySelectorAll(".gauge-node"));
+  var gaugeNum = document.getElementById("gaugeNum");
+  var gaugeLabel = document.getElementById("gaugeLabel");
+  var gaugePct = document.getElementById("gaugePct");
+  var stepTag = document.getElementById("stepTag");
+  var stepPhase = document.getElementById("stepPhase");
+  var stepTitle = document.getElementById("stepTitle");
+  var stepDesc = document.getElementById("stepDesc");
+  var stepCode = document.getElementById("stepCode");
+  var loopStatus = document.getElementById("loopStatus");
+  var playBtn = document.getElementById("playLoop");
+  var playLabel = playBtn ? playBtn.querySelector(".play-label") : null;
+  var playIcon = playBtn ? playBtn.querySelector(".play-icon") : null;
+  var playTimer = null;
+  var activeStep = 0;
+
+  function renderStep(index, announce) {
+    var step = loopSteps[index];
+    activeStep = index;
+
+    stepButtons.forEach(function (btn, i) {
+      var on = i === index;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+
+    progressEls.forEach(function (el, i) {
+      el.classList.toggle("on", i <= index);
+    });
+
+    gaugeNodes.forEach(function (node, i) {
+      node.classList.toggle("on", i <= index);
+    });
+
+    var progress = (index + 1) / loopSteps.length;
+    if (gaugeFill) gaugeFill.style.strokeDasharray = (75 * progress).toFixed(3) + " 100";
+    if (gaugeNum) gaugeNum.textContent = step.n;
+    if (gaugeLabel) gaugeLabel.textContent = step.phase;
+    if (gaugePct) gaugePct.textContent = Math.round(progress * 100) + "%";
+
+    if (stepTag) stepTag.textContent = step.tag;
+    if (stepPhase) stepPhase.textContent = step.phase;
+    if (stepTitle) stepTitle.textContent = step.title;
+    if (stepDesc) stepDesc.textContent = step.desc;
+
+    if (stepCode) {
+      stepCode.innerHTML = step.code;
+      if (!reduceMotion) {
+        stepCode.classList.remove("swap");
+        void stepCode.offsetWidth;
+        stepCode.classList.add("swap");
+      }
+    }
+
+    if (announce && loopStatus) {
+      loopStatus.textContent = "Step " + step.n + ": " + step.title + ". " + step.desc;
+    }
+  }
+
+  stepButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      stopPlayback();
+      renderStep(Number(btn.dataset.step), true);
+    });
+  });
+
+  function stopPlayback() {
+    if (playTimer) {
+      window.clearInterval(playTimer);
+      playTimer = null;
+    }
+    if (playBtn) {
+      playBtn.classList.remove("is-playing");
+      playBtn.setAttribute("aria-pressed", "false");
+    }
+    if (playLabel) playLabel.textContent = "Play loop";
+    if (playIcon) playIcon.textContent = "▶";
+  }
+
+  function startPlayback() {
+    if (playTimer) {
+      stopPlayback();
+      return;
+    }
+    if (playBtn) {
+      playBtn.classList.add("is-playing");
+      playBtn.setAttribute("aria-pressed", "true");
+    }
+    if (playLabel) playLabel.textContent = "Stop";
+    if (playIcon) playIcon.textContent = "■";
+    playTimer = window.setInterval(function () {
+      renderStep((activeStep + 1) % loopSteps.length, true);
+    }, 2600);
+  }
+
+  if (playBtn) {
+    playBtn.setAttribute("aria-pressed", "false");
+    playBtn.addEventListener("click", function () {
+      if (playTimer) stopPlayback();
+      else startPlayback();
+    });
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) stopPlayback();
+  });
+
+  /* --------------------------------------------------------------------------
+     Version selector
+     -------------------------------------------------------------------------- */
+
+  var versionData = {
+    "9.6": { tag: "DEFAULT HOST", label: "HOST 9.6", title: "Host default", text: "Daily preview and evidence use 9.6. The packaged intro app targets 9.4+ and runs on 9.6." },
+    "9.5": { tag: "SUPPORTED", label: "HOST 9.5", title: "Same generation", text: "Same adapter path; select it with --lvgl 9.5 or the scenario's \"lvgl\" field." },
+    "9.4": { tag: "DEVICE BASELINE", label: "BASE 9.4", title: "Device baseline", text: "Device apps target 9.4; SiFli export checks compatibility without rewriting shared source." },
+    "9.1": { tag: "LEGACY HARNESS", label: "LEGACY 9.1", title: "Legacy harness", text: "9.1 and 8.x use the old harness; no object names, hit is empty, only hit_class." },
+    "8.4": { tag: "LEGACY HARNESS", label: "LEGACY 8.4", title: "Legacy harness", text: "Cross-version comparison covers event semantics and the session file set, not pixels." },
+    "8.3": { tag: "LEGACY HARNESS", label: "LEGACY 8.3", title: "Legacy harness", text: "Supports 8.x input semantics; below 9.2 there are no object names, use hit_class." }
+  };
+
+  var versionButtons = Array.prototype.slice.call(document.querySelectorAll(".version"));
+  var versionDetail = document.getElementById("versionDetail");
+
+  versionButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var v = btn.dataset.version;
+      var data = versionData[v];
+      if (!data || !versionDetail) return;
+
+      versionButtons.forEach(function (b) {
+        var on = b === btn;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+
+      versionDetail.innerHTML =
+        '<div class="vd-top"><span class="vd-tag">' + data.tag + '</span><span class="vd-ver">' + data.label + '</span></div>' +
+        '<h4>' + data.title + '</h4>' +
+        '<p>' + data.text + '</p>';
+
+      if (!reduceMotion) {
+        versionDetail.classList.remove("swap");
+        void versionDetail.offsetWidth;
+        versionDetail.classList.add("swap");
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

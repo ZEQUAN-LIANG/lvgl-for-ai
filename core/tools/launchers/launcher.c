@@ -21,6 +21,10 @@
 #define LAUNCHER_TITLE L"Launcher"
 #endif
 
+#ifndef LAUNCHER_PYTHON
+#define LAUNCHER_PYTHON L""
+#endif
+
 #define BUFFER_SIZE 32768U
 #define COMMAND_SIZE 65536U
 
@@ -209,14 +213,28 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR command_line, i
 
     wchar_t python[BUFFER_SIZE];
     int use_pyw = 0;
-    if (find_in_path(L"pythonw.exe", python, (size_t)BUFFER_SIZE) == 0) {
-        if (find_in_path(L"pyw.exe", python, (size_t)BUFFER_SIZE) != 0) {
-            use_pyw = 1;
-        } else {
-            show_error(
-                L"pythonw.exe was not found in PATH.\n"
-                L"Install Python 3.9+ and add its install directory to PATH.");
-            return 1;
+    int use_bundled = 0;
+    if (LAUNCHER_PYTHON[0] != CH_NUL) {
+        wchar_t bundled[BUFFER_SIZE];
+        if (join_path(bundled, (size_t)BUFFER_SIZE, exe_dir, LAUNCHER_PYTHON) != 0) {
+            DWORD attributes = GetFileAttributesW(bundled);
+            if ((attributes != INVALID_FILE_ATTRIBUTES) &&
+                ((attributes & (DWORD)FILE_ATTRIBUTE_DIRECTORY) == 0UL)) {
+                wcscpy(python, bundled);
+                use_bundled = 1;
+            }
+        }
+    }
+    if (use_bundled == 0) {
+        if (find_in_path(L"pythonw.exe", python, (size_t)BUFFER_SIZE) == 0) {
+            if (find_in_path(L"pyw.exe", python, (size_t)BUFFER_SIZE) != 0) {
+                use_pyw = 1;
+            } else {
+                show_error(
+                    L"pythonw.exe was not found in the package runtime or PATH.\n"
+                    L"Install Python 3.9+ and add its install directory to PATH.");
+                return 1;
+            }
         }
     }
 

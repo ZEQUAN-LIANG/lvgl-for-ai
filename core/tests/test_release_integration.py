@@ -197,9 +197,25 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 "lvgl-verify-loop/VERSION.json",
                 "lvgl-verify-loop/LVGL-AI-Viewer.exe",
                 "lvgl-verify-loop/bin/lvgl.cmd",
+                "lvgl-verify-loop/runtime/python/python.exe",
+                "lvgl-verify-loop/runtime/python/pythonw.exe",
+                "lvgl-verify-loop/runtime/python/python311.zip",
                 "lvgl-verify-loop/core/cli.py",
+                "lvgl-verify-loop/core/assets.py",
+                "lvgl-verify-loop/core/lvgl_ai/assets/__init__.py",
+                "lvgl-verify-loop/core/lvgl_ai/assets/vendor/freetype/libfreetype.dll",
+                "lvgl-verify-loop/core/lvgl_ai/assets/vendor/png.py",
+                "lvgl-verify-loop/core/engine/freetype/include/ft2build.h",
+                "lvgl-verify-loop/core/engine/freetype/lib/libfreetype.dll.a",
+                "lvgl-verify-loop/licenses/freetype-py.txt",
+                "lvgl-verify-loop/licenses/FreeType.txt",
+                "lvgl-verify-loop/licenses/pypng.txt",
+                "lvgl-verify-loop/licenses/lv_font_conv-MIT.txt",
                 "lvgl-verify-loop/sdk/9.6/manifest.json",
+                "lvgl-verify-loop/sdk/9.6/lib/libfreetype.dll",
+                "lvgl-verify-loop/sdk/9.6/lib/libfreetype.dll.a",
                 "lvgl-verify-loop/build/lvgl_9_6/lvgl_engine.exe",
+                "lvgl-verify-loop/build/lvgl_9_6/libfreetype.dll",
                 "lvgl-verify-loop/intro-demo.gif",
                 "lvgl-verify-loop/versions.json",
                 "lvgl-verify-loop/user/app/intro/intro.c",
@@ -263,6 +279,8 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             )
             self.assertEqual(version["schema"], "lvgl-ai-version-v1")
             self.assertEqual(version["lvgl"]["host_sdk"], ["9.6"])
+            self.assertEqual(version["python"]["source"], "bundled")
+            self.assertTrue(version["python"]["version"].startswith("3.11."))
             self.assertEqual(
                 version["git_commit"], release_manifest["git_commit"]
             )

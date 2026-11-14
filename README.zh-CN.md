@@ -111,6 +111,8 @@ python -I core/web.py --open
 
 成功时退出码为 `0`，stdout 最后一行是会话目录，`manifest.json` 的 `status` 为 `ok`。默认 `--source auto` 会先试 GitHub codeload，再试 Gitee 镜像；Gitee 的 LVGL 镜像可能返回 HTML/400，失败时请使用默认值或预编译版本包。
 
+预编译 0.2.0 发布包：从同一个 Release 下载 `lvgl-verify-loop-0.2.0-core-win64.zip` 和可选的版本 pack。解压 core 后双击 `LVGL-AI-Viewer.exe`，不需要 Python、GCC 或 CMake。运行 `bin\lvgl.cmd run --lvgl 9.4 ...` 会先询问一次是否下载 9.4 pack；`--yes` 跳过询问，`--offline` 禁止下载。`sifli-tools` 是独立资产，顶层同样是 `lvgl-verify-loop/`；把两个 zip 解压到同一个父目录即可合并。
+
 要让 AI 接手，把这个仓库交给 Claude Code、Cursor 等 harness，它会读取 `core/SKILL.md` 与 `CLAUDE.md`，从 `user/app/**/*.c` 开始写。Claude Code 里的 skill 名是 `lvgl-verify-loop`。
 
 ## 看懂证据
@@ -144,24 +146,30 @@ AI 的结论必须指向这些文件。`status: ok` 表示会话正常结束；�
 ## 版本与真机
 
 - 宿主默认 LVGL 9.6，用于日常预览与取证；发布包里的 `intro` 应用按 9.4+ 编写。
+- 0.2.0 发布一个 core 包，以及 9.5 / 9.4 / 9.1 / 8.4 / 8.3 的预编译 pack。core 包内置
+  Python 3.11 和 9.6 engine；缺失版本首次运行会先确认再下载。
 - 设备应用按 LVGL 9.4 基线编写；导出只做兼容性检查，不自动改写源码。
-- 其他版本用一条命令安装：
+- 查看或安装版本：
 
   ```bash
   python -I core/tools/install_version.py --list
-  python -I core/tools/install_version.py --lvgl 9.4 --source auto
+  python -I core/tools/install_version.py --lvgl 9.4 --mode pack
+  python -I core/tools/install_version.py --lvgl 9.4 --mode source
   ```
 
-  源码模式需要 CMake/Ninja/GCC；有预编译版本包时可用 `--mode pack --pack` 免 CMake/Ninja。
+  pack 模式校验 sha256，不需要 CMake/Ninja；源码模式需要 CMake/Ninja/GCC。
   场景可选 `"lvgl": "9.4"`；`--lvgl` 优先于场景，场景优先于 `LVGL_AI_LVGL_VERSION`。
-- SiFli 命令见上文；SDK、工具链与 sftool 安装见 `chip-adapt/vendor/README.md`。
+  `--offline` 禁止下载；`--yes` 跳过确认。
+- SiFli 在单独的 `sifli-tools` 资产里：包含自研导出/上位机层、`SiFli-Host.exe`、
+  pyserial/xterm 和 `sift_watch` 导出示例；不包含 SiFli SDK、ARM 工具链、sftool 或
+  固件。SDK、工具链与 sftool 安装见 `chip-adapt/vendor/README.md`。
 
 ## 环境依赖
 
 | 依赖 | 要求 | 说明 |
 | --- | --- | --- |
-| Python | ≥ 3.9 | 只用标准库，不需要 `pip install`；命令统一用 `python -I` |
-| GCC | MinGW-w64 64 位 | 必须能在 PATH 中找到 `gcc`；不支持 MSVC `cl.exe` |
+| Python | 发布包内置 3.11.9；源码仓库 ≥ 3.9 | 只用标准库，不需要 `pip install`；engine 在所有版本默认 `LV_USE_FREETYPE=1` 并链接随包 FreeType 2.13.2；命令统一用 `python -I` |
+| GCC | MinGW-w64 64 位 | 只有重新编译用户 C 时需要；发布包预编译 engine 不需要 |
 | CMake | ≥ 3.20 | 仅源码构建需要 |
 | Ninja | 任意近版 | 仅源码构建需要 |
 | curl | 任意近版 | 仅下载 LVGL / PNG 源码时使用 |
@@ -173,7 +181,7 @@ Windows 推荐 MSYS2 UCRT64。完整安装步骤、PATH 配置、首次运行说
 
 - `core/README.md`：工具用法、环境安装、常见错误、测试。
 - `user/app/GUIDE.md`：写用户应用。
-- `docs/app.html` / `docs/scenario-server.html`：应用变体、场景与服务端常量索引。
+- `docs/index.html`：英文项目介绍页；`docs/app.html` / `docs/scenario-server.html`：应用变体、场景与服务端常量索引。
 - `chip-adapt/README.md` / `chip-adapt/docs/sifli.html`：SiFli 适配层与能力边界。
 - `CONTEXT.md`：领域术语表。
 - `CLAUDE.md`：AI 编码代理的仓库工作说明。

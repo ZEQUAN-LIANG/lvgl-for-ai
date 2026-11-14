@@ -111,6 +111,8 @@ python -I core/web.py --open
 
 On success the exit code is `0`, the last stdout line is the session directory, and `manifest.json` has `status: ok`. The default `--source auto` tries GitHub codeload first and the Gitee mirror second; the Gitee LVGL mirror can return HTML/400, so use the default or a version pack when that happens.
 
+For the prebuilt 0.2.0 release, download `lvgl-verify-loop-0.2.0-core-win64.zip` and the optional version packs from the same Release page. Extract the core zip and double-click `LVGL-AI-Viewer.exe`; no Python, GCC or CMake is required. Running `bin\lvgl.cmd run --lvgl 9.4 ...` prompts once before downloading the 9.4 pack; `--yes` skips the prompt and `--offline` forbids it. `sifli-tools` is a separate asset with the same `lvgl-verify-loop/` top-level folder: extract both zips into the same parent to merge them.
+
 To hand the work to AI, give this repository to a harness such as Claude Code or Cursor; it reads `core/SKILL.md` and `CLAUDE.md` and starts writing from `user/app/**/*.c`. The Claude Code skill is named `lvgl-verify-loop`.
 
 ## Reading the evidence
@@ -144,25 +146,30 @@ AI conclusions must point at these files. `status: ok` means the session ended n
 ## Versions and real hardware
 
 - Host default is LVGL 9.6, for daily preview and evidence collection; the package's `intro` app targets 9.4+.
+- The 0.2.0 release publishes one core zip plus precompiled packs for 9.5 / 9.4 / 9.1 / 8.4 / 8.3. The core zip contains Python 3.11 and the 9.6 engine; missing versions are downloaded on first use after a confirmation.
 - Device apps are written against the LVGL 9.4 baseline; export only checks compatibility and never rewrites sources.
-- Install other versions with one command:
+- Install or inspect versions with:
 
   ```bash
   python -I core/tools/install_version.py --list
-  python -I core/tools/install_version.py --lvgl 9.4 --source auto
+  python -I core/tools/install_version.py --lvgl 9.4 --mode pack
+  python -I core/tools/install_version.py --lvgl 9.4 --mode source
   ```
 
-  Source mode needs CMake/Ninja/GCC; a prebuilt version pack can be installed with
-  `--mode pack --pack` without CMake/Ninja. A scenario may set `"lvgl": "9.4"`;
-  `--lvgl` wins over the scenario, then `LVGL_AI_LVGL_VERSION`.
-- SiFli commands are above; SDK, toolchain and sftool installation are in `chip-adapt/vendor/README.md`.
+  Pack mode verifies sha256 and needs no CMake/Ninja; source mode needs CMake/Ninja/GCC.
+  A scenario may set `"lvgl": "9.4"`; `--lvgl` wins over the scenario, then
+  `LVGL_AI_LVGL_VERSION`. `--offline` forbids downloads; `--yes` skips the prompt.
+- SiFli lives in a separate `sifli-tools` asset. It includes the self-developed
+  export/host layer, `SiFli-Host.exe`, pyserial/xterm and a `sift_watch` export
+  example; it does not include the SiFli SDK, ARM toolchain, sftool or firmware.
+  SDK, toolchain and sftool installation are in `chip-adapt/vendor/README.md`.
 
 ## Requirements
 
 | Dependency | Requirement | Notes |
 | --- | --- | --- |
-| Python | ≥ 3.9 | Standard library only, no `pip install`; always run with `python -I` |
-| GCC | MinGW-w64 64-bit | `gcc` must be on PATH; MSVC `cl.exe` is not supported |
+| Python | 3.11.9 bundled in the release; ≥ 3.9 in the source repo | Tool layer uses the standard library; asset conversion uses bundled FreeType/pypng, no `pip install` or Node.js; the engine also links the bundled FreeType 2.13.2 with `LV_USE_FREETYPE=1` on every version; always run with `python -I` |
+| GCC | MinGW-w64 64-bit | Only when rebuilding user C; the release's prebuilt engine does not need it |
 | CMake | ≥ 3.20 | Source builds only |
 | Ninja | any recent version | Source builds only |
 | curl | any recent version | Only for downloading LVGL / PNG sources |
@@ -174,7 +181,7 @@ On Windows, MSYS2 UCRT64 is recommended. Full installation steps, PATH setup, fi
 
 - `core/README.md`: tool usage, environment setup, common errors, tests.
 - `user/app/GUIDE.md`: writing user apps.
-- `docs/app.html` / `docs/scenario-server.html`: indexes for app variants, scenarios and server constants.
+- `docs/index.html`: project introduction page; `docs/app.html` / `docs/scenario-server.html`: indexes for app variants, scenarios and server constants.
 - `chip-adapt/README.md` / `chip-adapt/docs/sifli.html`: SiFli adaptation layer and capabilities.
 - `CONTEXT.md`: domain glossary.
 - `CLAUDE.md`: repository working notes for AI coding agents.
@@ -182,4 +189,4 @@ On Windows, MSYS2 UCRT64 is recommended. Full installation steps, PATH setup, fi
 
 ## License
 
-Project source is MIT; see `LICENSE`. Full license texts for LVGL, lodepng, zlib and libpng are in `licenses/`; notices are in `core/THIRD_PARTY_NOTICES.md`.
+Project source is MIT; see `LICENSE`. Full license texts for LVGL, lodepng, zlib, libpng, freetype-py, FreeType, pypng and the lv_font_conv algorithm reference are in `licenses/`; notices are in `core/THIRD_PARTY_NOTICES.md`.

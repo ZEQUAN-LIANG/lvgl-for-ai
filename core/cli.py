@@ -55,10 +55,17 @@ from lvgl_ai import (  # noqa: E402
     play_scenario,
     summarize_session,
 )
+from lvgl_ai import paths  # noqa: E402
 from lvgl_ai.control.errors import dump_error, exit_code_for  # noqa: E402
 from lvgl_ai.control.evidence import CLI_EVIDENCE_FIELDS  # noqa: E402
 from lvgl_ai.control.input import TOKEN_PATTERN, is_token  # noqa: E402
 from lvgl_ai.scenario import load_scenario  # noqa: E402
+
+TOOLS_DIR = TOOL_ROOT / "tools"
+if str(TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_DIR))
+
+import install_version  # noqa: E402
 
 EXIT_OK = 0
 
@@ -161,6 +168,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="keep the session running until Ctrl+C",
     )
     parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="download a missing LVGL version pack without prompting",
+    )
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="never download a missing LVGL version pack",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="print one JSON summary on stdout",
@@ -189,6 +206,18 @@ def main(argv: list[str] | None = None) -> int:
     lvgl = args.lvgl if args.lvgl is not None else (
         None if scenario is None else scenario.get("lvgl")
     )
+    effective_lvgl = lvgl or paths.lvgl_version_from_env()
+    try:
+        install_version.ensure_pack_for_version(
+            paths.REPO_ROOT,
+            effective_lvgl,
+            interactive=bool(sys.stdin and sys.stdin.isatty()),
+            yes=args.yes,
+            offline=args.offline,
+        )
+    except install_version.InstallError as exc:
+        print(f"[cli] {exc}", file=sys.stderr)
+        return 2
     runtime_kwargs = dict(
         lvgl=lvgl,
         build=args.build,

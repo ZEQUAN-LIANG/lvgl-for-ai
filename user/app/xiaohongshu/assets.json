@@ -1,0 +1,110 @@
+{
+  "assets": {
+    "xhs_font_11": {
+      "kind": "font",
+      "name": "xhs_font_11",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 11
+      },
+      "output": "xhs_font_11.h",
+      "source": "Deng.ttf",
+      "status": "legacy"
+    },
+    "xhs_font_12": {
+      "kind": "font",
+      "name": "xhs_font_12",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 12
+      },
+      "output": "xhs_font_12.h",
+      "source": "Deng.ttf",
+      "status": "legacy"
+    },
+    "xhs_font_12b": {
+      "kind": "font",
+      "name": "xhs_font_12b",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 12
+      },
+      "output": "xhs_font_12b.h",
+      "source": "Dengb.ttf",
+      "status": "legacy"
+    },
+    "xhs_font_13": {
+      "kind": "font",
+      "name": "xhs_font_13",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 13
+      },
+      "output": "xhs_font_13.h",
+      "source": "Deng.ttf",
+      "status": "legacy"
+    },
+    "xhs_font_14": {
+      "kind": "font",
+      "name": "xhs_font_14",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 14
+      },
+      "output": "xhs_font_14.h",
+      "source": "Deng.ttf",
+      "status": "legacy"
+    },
+    "xhs_font_14b": {
+      "kind": "font",
+      "name": "xhs_font_14b",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 14
+      },
+      "output": "xhs_font_14b.h",
+      "source": "Dengb.ttf",
+      "status": "legacy"
+    },
+    "xhs_images": {
+      "kind": "image",
+      "name": "xhs_images",
+      "options": {
+        "formats": [
+          "RGB565",
+          "ARGB8888"
+        ]
+      },
+      "output": "xhs_images.h",
+      "source": "procedural",
+      "status": "legacy"
+    }
+  },
+  "generator": "legacy (gen_xhs_assets.py, removed)",
+  "schema": "lvgl-ai-assets-v1",
+  "target_lvgl": "9.6"
+}

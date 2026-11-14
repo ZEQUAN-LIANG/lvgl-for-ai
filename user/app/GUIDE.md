@@ -81,7 +81,8 @@ void hello_create(void);
 #endif /* HELLO_H */
 ```
 
-版本门必须加：`user/app/**/*.c` 对所有 LVGL 版本都会编译，9.1 / 8.x 不启用应用变体。
+版本门必须加：`user/app/**/*.c` 对所有 LVGL 版本都会编译，9.1 / 8.x 不启用应用变体
+（开发期 `asset_probe` 是跨版本资源探针，例外）。
 
 ### 1.2 实现
 
@@ -287,8 +288,9 @@ python -I core/cli.py --lvgl 9.6 --app hello --idle
 | 构建 `user/app/**/*.c`，链接 LVGL | 控件树、布局、样式 |
 | 启动 engine、初始化 LVGL、显示与刷新 | 事件回调与状态 |
 | 虚拟 pointer / keypad / encoder | 定时器、动画、canvas |
-| 录帧、timeline、frame diff、快照 | 字体、图片、素材生成 |
+| 录帧、timeline、frame diff、快照 | 提供字体/图片源文件与应用专属美术、文案 |
 | 会话、回放、网页预览、实时帧流 | 需要精确状态时自己 `printf` |
+| `lvgl assets` 把字体/图片转成 C 数组 | 决定用哪些字号、字符集、颜色格式 |
 
 所以新增应用时不用碰构建系统。真正要写的是 LVGL 代码。
 
@@ -315,22 +317,52 @@ python -I core/cli.py --lvgl 9.6 --app hello --idle
 - `lv_font_montserrat_16`
 - `lv_font_montserrat_20`
 
-其他字号或字形需要自己生成 C 头文件，例如：
+其他字号或字形用内置转换器生成 C 头文件：
+
+```bat
+bin\lvgl.cmd assets font --app <app> --font C:\Windows\Fonts\Deng.ttf ^
+  --size 24 --bpp 4 --scan-app --name my_font_24
+```
 
 ```c
-#include "my_font_24.h"   /* 由 lv_font_conv 生成，声明 const lv_font_t */
+#include "my_font_24.h"   /* 生成的头，声明 static const lv_font_t my_font_24 */
 
 lv_obj_set_style_text_font(label, &my_font_24, 0);
 ```
 
-生成的头文件放在应用自己的 `user/app/<name>/`；资源头与源码同目录，直接
-`#include "my_font_24.h"` 即可。`spectrum/gen_spectrum_assets.py` 和
-`coffee/gen_coffee_assets.py` 是现有示例，不是通用工具；修改字体文案时才需要重跑。
+- 头文件放在应用自己的 `user/app/<app>/`；资源头与源码同目录，直接
+  `#include "my_font_24.h"` 即可。
+- `--scan-app` 从应用 `.c/.h` 的字符串字面量收集字符集；动态文本用
+  `--text-file` 或 `--text` 补充。中文优先用 `--text-file`。
+- 同时会更新 `user/app/<app>/assets.json`，记录字体路径、字号、bpp 和字符集，
+  以后可用同一命令重放。
+- 字体头带 `LVGL_VERSION_MAJOR/MINOR` 版本门，同一份头可用于 8.3–9.6。
+- `--bpp 8` 只用于 8.x 或 9.3+；9.1/9.2 的明文位图渲染器没有 8 bpp 分支，
+  目标 9.1/9.2 时工具会拒绝生成，建议改用 `--bpp 4`。
+- host engine 默认 `LV_USE_FREETYPE=1`，也可以运行时加载 TTF（8.3–9.6 都链接了
+  随包 FreeType）。9.x 用 `lv_freetype_font_create(path, mode, size, style)`；
+  8.x 先 `lv_freetype_init(...)`，再填 `lv_ft_info_t` 调 `lv_ft_font_init(...)`。
+  这里的 `path` 是宿主文件路径，只用于 host 预览；导出设备时不要依赖它。
+- 仍可手动使用 `lv_font_conv` 生成，但不再是工具链的一部分。
 
 ### 4.3 图片与资源
 
-- 推荐把图片转成 C 数组（`lv_image_dsc_t`），用 `lv_image_set_src(obj, &my_image)`。
-- 图片资源头随应用放在 `user/app/<name>/`；每个应用自己持有，不设公共资源目录。
+- 用内置转换器把 PNG 转成 C 数组：
+
+  ```bat
+  bin\lvgl.cmd assets image --app <app> --input user\app\<app>\logo.png --cf ARGB8888
+  ```
+
+  ```c
+  #include "logo.h"
+  lv_image_set_src(image, &logo);
+  ```
+
+- 支持 `RGB565`、`ARGB8888`、`RGB888`、`A8`；`--cf auto` 按是否有 alpha 自动选择。
+  `--cf` 不带 alpha 时可配 `--background 0xRRGGBB` 合成背景。
+- 图片资源头随应用放在 `user/app/<app>/`；每个应用自己持有，不设公共资源目录。
+  `assets.json` 记录来源 PNG 的 SHA256 和颜色格式。
+- 9.x 图片头在 9.1–9.6 通用；目标 8.x 时用 `--lvgl 8.4` 重新生成。
 - 工具没有提供运行时资源文件加载约定，不要依赖从磁盘读 PNG；把资源编译进二进制。
 - 大图会占用 16 MiB 的 LVGL heap，注意尺寸和数量。
 
@@ -418,7 +450,7 @@ audprc → audcodec DAC → AW8155 扬声器通路，`zc_synth.c` 负责程序�
 |---|---|
 | 只改用户目录 | `user/app/**/*.c`（含各应用自己的资源头）与 `user/scenarios/`；不要改 `core/` 或 `lvgl-src/` |
 | 不写 `main` | engine 负责初始化、tick、刷新和退出 |
-| 应用变体仅 9.6+ | 9.1 / 8.x 忽略选择，固定显示 `demo/` 的 harness |
+| 应用变体仅 9.6+ | 9.1 / 8.x 忽略选择，固定显示 `demo/` 的 harness；开发期 `asset_probe` 例外 |
 | 未知应用名会退出 | engine 打印 `[app] apps=...` 后 `exit(1)`，检查 `apps[]` 与场景是否一致 |
 | 名字格式 | 场景 `app` 匹配 `[A-Za-z0-9_-]+`；`apps[]` 精确匹配 |
 | 不要动 demo harness | `app.c` 里 `demo_harness_create(false)` 和隐藏的 `demo_button` 是工具集成测试的固定目标 `(112, 324)` |
@@ -442,7 +474,7 @@ audprc → audcodec DAC → AW8155 扬声器通路，`zc_synth.c` 负责程序�
 | 点击没反应 | 坐标是否在控件内；控件是否 `clickable`；回调事件码是否正确；是否被上层对象盖住；timeline 的 `hit` 是谁 |
 | 动画不动 | 定时器是否创建、周期是否合理；测试模式是否在推进虚拟时间 |
 | 改了代码画面没变 | 是否误用 `--no-build`；构建是否失败后回退到旧二进制 |
-| 9.1 / 8.x 看不到自己的应用 | 预期行为；应用变体只在 9.6+ 启用 |
+| 9.1 / 8.x 看不到自己的应用 | 预期行为；应用变体只在 9.6+ 启用（`asset_probe` 例外） |
 | timeline 的 `hit` 为空 | LVGL 低于 9.2 没有对象名；本项目 app 变体不受影响 |
 
 ---

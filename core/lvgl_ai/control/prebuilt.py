@@ -32,6 +32,7 @@ REQUIRED_LIBS = (
     "liblvgl.a",
     "liblvgl_ai_libpng.a",
     "liblvgl_ai_zlib.a",
+    "libfreetype.dll.a",
 )
 
 PREBUILT_MARKER = "prebuilt.json"
@@ -71,10 +72,12 @@ class HostSdk:
         root: Path,
         manifest: dict[str, Any],
         manifest_sha256: str,
+        runtime_dlls: list[str] | None = None,
     ) -> None:
         self.root = root
         self.manifest = manifest
         self.manifest_sha256 = manifest_sha256
+        self.runtime_dlls = list(runtime_dlls or [])
 
     @classmethod
     def load(
@@ -119,6 +122,11 @@ class HostSdk:
         _string_list(manifest.get("link_flags"), "link_flags")
         include_dirs = _string_list(manifest.get("include_dirs"), "include_dirs")
         libs = _string_list(manifest.get("libs"), "libs")
+        runtime_dlls = (
+            _string_list(manifest.get("runtime_dlls"), "runtime_dlls")
+            if "runtime_dlls" in manifest
+            else []
+        )
         hashes = manifest.get("sha256")
         if not isinstance(hashes, dict):
             raise BuildError(f"host SDK manifest is missing sha256: {manifest_path}")
@@ -152,6 +160,16 @@ class HostSdk:
                     f"host SDK hash mismatch for {name}: expected {expected}, "
                     f"found {actual}"
                 )
+        for rel in runtime_dlls:
+            candidate = Path(rel)
+            if candidate.is_absolute() or ".." in candidate.parts:
+                raise BuildError(
+                    f"host SDK runtime_dlls must be relative to lib/: {rel!r}"
+                )
+            if not (root / "lib" / candidate).is_file():
+                raise BuildError(
+                    f"host SDK runtime DLL not found: {root / 'lib' / candidate}"
+                )
         lv_conf_hash = manifest.get("lv_conf_sha256")
         if isinstance(lv_conf_hash, str):
             lv_conf = root / "lv_conf.h"
@@ -161,7 +179,7 @@ class HostSdk:
                 raise BuildError(
                     f"host SDK lv_conf.h hash mismatch: {lv_conf}"
                 )
-        return cls(root, manifest, sha256_bytes(data))
+        return cls(root, manifest, sha256_bytes(data), runtime_dlls)
 
     @property
     def lvgl_version(self) -> str:
@@ -194,6 +212,10 @@ class HostSdk:
     @property
     def lib_paths(self) -> list[Path]:
         return [self.root / "lib" / name for name in self.lib_names]
+
+    @property
+    def runtime_dll_paths(self) -> list[Path]:
+        return [self.root / "lib" / name for name in self.runtime_dlls]
 
     @property
     def include_paths(self) -> list[Path]:
@@ -419,6 +441,14 @@ class PrebuiltBuild:
                     path.unlink()
                 except OSError:
                     pass
+
+    def install_runtime_dlls(self) -> None:
+        """Copy SDK runtime DLLs next to the linked engine."""
+        if not self.sdk.runtime_dll_paths:
+            return
+        self.engine_path.parent.mkdir(parents=True, exist_ok=True)
+        for source in self.sdk.runtime_dll_paths:
+            shutil.copy2(source, self.engine_path.parent / source.name)
 
     def write_marker(self) -> None:
         self.build_dir.mkdir(parents=True, exist_ok=True)

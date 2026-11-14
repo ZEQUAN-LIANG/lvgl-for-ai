@@ -11,18 +11,22 @@
 - `lvgl_ai/`：Python 控制层。`Runtime`（一个实例 = 一个 LVGL 进程 = 一次会话）、`Recording`（只读证据视图，annotations 可写）、`play_scenario`、`apps/`（应用管理 package：common / policy / registry / scaffold / trash / views）、错误类型、`web/`（HTTP/UI 适配）。
 - `engine/`：C engine，负责协议、虚拟 indev、录帧、时间轴、窗口。
 - `cli.py`：命令行入口。
+- `assets.py`：字体/图片转 LVGL C 数组入口，不启动 engine 或网页。
 - `session_report.py`：会话证据摘要入口，不启动 engine 或网页。
 - `web.py`：网页端入口。
+- `lvgl_ai/assets/`：资源转换实现与随包 vendored FreeType/pypng（`vendor/`）。
 - `tests/`：`python -I` 测试套件。
 - `api-nav/`：每个 LVGL 版本一份 API 导航。
 - `tools/fetch_lvgl.py`：下载官方 LVGL、校验版本并应用本地 patch。
 - `tools/fetch_png.py`：下载 pin 的 zlib / libpng 源码到 `third_party/`，供 engine 编码 PNG。
 - `tools/new_app.py`：生成应用变体的源文件与场景，并注册到 `user/app/app.c`。
 - `tools/export_sdk.py`：从 `lvgl-src/<version>` 导出宿主预编译 SDK 到 `sdk/<version>`。
-- `tools/install_version.py`：安装其他 LVGL 版本（源码或预编译版本包），读取根目录 `versions.json`。
+- `tools/install_version.py`：安装其他 LVGL 版本（源码或预编译版本包），读取根目录 `versions.json`；含首次下载确认。
+- `tools/pack.py`：生成一个版本的预编译 pack（SDK + engine + `pack.json` + legacy smoke）。
 - `tools/release.py`：生成可分发的 skill zip、`.sha256` 与 release manifest。
+- `tools/release_all.py`：构建 0.2.0 的 core、五个 pack 与 `sifli-tools` 资产。
 - `tools/sync_github.py`：把 Gitee（`origin`）的分支与标签强制镜像到 GitHub（`github`）。
-- `tools/lvgl.py`：统一入口，分发 `run` / `report` / `serve`。
+- `tools/lvgl.py`：统一入口，分发 `run` / `report` / `serve` / `assets`。
 - `tools/contract_snapshot.py`：记录/对比六类外部契约快照，用于重构行为冻结；用法见
   [CONTRACT_SNAPSHOT.md](CONTRACT_SNAPSHOT.md)。
 
@@ -38,6 +42,7 @@
 | `build/` | engine 构建产物（Git 忽略） |
 | `sdk/` | 预编译宿主 SDK（Git 忽略；由 `export_sdk.py` 生成） |
 | `release/` | 解包后的 skill 目录、发布 zip、sha256 与 release manifest（Git 忽略） |
+| `runtime/python/` | 发布包内置的 Python 3.11.9 embeddable x64（Git 忽略） |
 | `bin/` | `lvgl.cmd` 统一入口包装脚本 |
 | `sessions/` | 会话证据（Git 忽略） |
 | `docs/` | 应用变体与场景/服务端常量的索引指针页；SiFli 能力索引见 `chip-adapt/docs/sifli.html` |
@@ -47,10 +52,23 @@
 
 ## 环境准备
 
-需要 Python 3.9+（仅标准库）、CMake 3.20+、Ninja、GCC（Windows 为 MinGW-w64）和 curl；
-ccache 可选，git 用于拉取 `third_party/` 的 PNG 编码器源码以及应用 `patches/`。
-只用预编译宿主 SDK 时，运行时只需要 Python 与 GCC；CMake、Ninja、LVGL 源码和
-`third_party/` 都不是必需项。
+发布包在 `runtime/python/` 内置 Python 3.11.9 embeddable x64，`bin\lvgl.cmd` 和
+`LVGL-AI-Viewer.exe` 优先使用它；解压后运行不需要另装 Python。源码仓库需要 Python
+3.9+（工具层只使用标准库）。
+
+运行预编译 engine 不需要 GCC、CMake、Ninja、LVGL 源码或 `third_party/`。只有重新
+编译 `user/app/**/*.c` 时需要 GCC（Windows 为 MinGW-w64）；源码构建模式还需要
+CMake 3.20+、Ninja 和 curl。ccache 可选，git 用于拉取 `third_party/` 的 PNG 编码器
+源码以及应用 `patches/`。
+
+资源转换器额外使用随包内置的 freetype-py（含 FreeType DLL）与 pypng，位于
+`core/lvgl_ai/assets/vendor/`；不需要 `pip install`、Node.js 或联网。生成好的 C 数组
+是普通 LVGL 资源，构建和运行时不再需要转换器。
+
+host engine 默认开启 `LV_USE_FREETYPE=1`，8.3–9.6 都链接随包 FreeType 2.13.2：
+`core/engine/freetype/include` 是头文件，`lib/libfreetype.dll.a` 是导入库，
+`libfreetype.dll` 在构建后复制到 engine 旁边。预编译 SDK 同样携带头文件、导入库
+和 DLL，预编译链接会自动把 DLL 放到 engine 目录。
 
 ### Windows：MSYS2 UCRT64
 
@@ -158,9 +176,10 @@ python -I core/tools/fetch_png.py --repo-root .
 ## 预编译宿主 SDK
 
 没有 LVGL 源码时，用预编译宿主 SDK 直接编译 `user/app`。SDK 包含五份静态库
-（engine / adapter / LVGL / libpng / zlib）、公共头、`lv_conf.h` 和
-`manifest.json`（`lvgl-ai-host-sdk-v1`，记录编译器版本、defines、include 顺序、
-链接顺序与每份库的 sha256）：
+（engine / adapter / LVGL / libpng / zlib）、FreeType 导入库、公共头、FreeType
+头文件、`lv_conf.h`、运行时 `libfreetype.dll` 和 `manifest.json`
+（`lvgl-ai-host-sdk-v1`，记录编译器版本、defines、include 顺序、链接顺序、
+运行时 DLL 与每份库的 sha256）：
 
 ```bash
 # 从 lvgl-src/<version> 导出；默认输出 sdk/<version>
@@ -219,7 +238,13 @@ python -I core/tools/install_version.py --lvgl 9.4 --mode pack --pack version-pa
 python -I core/tools/lvgl.py run --scenario user/scenarios/settings.json --json
 python -I core/tools/lvgl.py report --latest --log-tail 5
 python -I core/tools/lvgl.py serve
+python -I core/tools/lvgl.py assets font --app coffee --font C:\Windows\Fonts\Deng.ttf --size 16
+python -I core/tools/lvgl.py assets image --app coffee --input logo.png --cf ARGB8888
+python -I core/tools/lvgl.py assets doctor --json
 ```
+
+字体 `--bpp 8` 只适用于 8.x 或 9.3+；9.1/9.2 的明文位图路径没有 8 bpp 分支，
+工具会拒绝生成，建议改用 `--bpp 4`。
 
 ## 发布包
 

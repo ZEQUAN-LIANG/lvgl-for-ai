@@ -134,6 +134,122 @@ class PackInstallTest(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertIn("pack mode needs", err)
 
+    def test_pack_manifest_must_match_the_core(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            repo = make_repo(root)
+            (repo / "VERSION.json").write_text(
+                json.dumps({"tool_version": "0.2.0"}), encoding="utf-8"
+            )
+            pack = root / "pack.zip"
+            with zipfile.ZipFile(pack, "w") as archive:
+                archive.writestr("sdk/9.4/manifest.json", "{}\n")
+                archive.writestr(
+                    f"build/lvgl_9_4/{paths.engine_filename()}", "engine\n"
+                )
+                archive.writestr(
+                    "pack.json",
+                    json.dumps(
+                        {
+                            "schema": install_version.PACK_SCHEMA,
+                            "lvgl": "9.4",
+                            "core_version": "0.1.0",
+                        }
+                    ),
+                )
+            code, _, err = run_main(
+                [
+                    "--lvgl", "9.4",
+                    "--mode", "pack",
+                    "--pack", str(pack),
+                    "--repo-root", str(repo),
+                    "--json",
+                ]
+            )
+            self.assertEqual(code, 2)
+            self.assertIn("requires core", err)
+
+    def test_pack_copies_legacy_smoke_fixture(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            repo = make_repo(root)
+            pack = root / "pack.zip"
+            with zipfile.ZipFile(pack, "w") as archive:
+                archive.writestr("sdk/9.4/manifest.json", "{}\n")
+                archive.writestr(
+                    f"build/lvgl_9_4/{paths.engine_filename()}", "engine\n"
+                )
+                archive.writestr("smoke/legacy_smoke.json", "{}\n")
+            code, out, err = run_main(
+                [
+                    "--lvgl", "9.4",
+                    "--mode", "pack",
+                    "--pack", str(pack),
+                    "--repo-root", str(repo),
+                    "--json",
+                ]
+            )
+            self.assertEqual(code, 0, err)
+            self.assertTrue((repo / "smoke" / "9.4" / "legacy_smoke.json").is_file())
+            payload = json.loads(out)
+            self.assertEqual(
+                Path(payload["smoke"]),
+                repo / "smoke" / "9.4" / "legacy_smoke.json",
+            )
+
+    def test_yes_downloads_a_file_url_and_remembers_the_version(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            repo = make_repo(root)
+            pack = root / "pack.zip"
+            with zipfile.ZipFile(pack, "w") as archive:
+                archive.writestr("sdk/9.4/manifest.json", "{}\n")
+                archive.writestr(
+                    f"build/lvgl_9_4/{paths.engine_filename()}", "engine\n"
+                )
+                archive.writestr(
+                    "pack.json",
+                    json.dumps(
+                        {
+                            "schema": install_version.PACK_SCHEMA,
+                            "lvgl": "9.4",
+                            "core_version": "0.2.0",
+                        }
+                    ),
+                )
+            (repo / "VERSION.json").write_text(
+                json.dumps({"tool_version": "0.2.0"}), encoding="utf-8"
+            )
+            digest = install_version._sha256(pack)
+            index = json.loads((repo / "versions.json").read_text(encoding="utf-8"))
+            index["versions"]["9.4"]["pack"] = {
+                "gitee": pack.as_uri(),
+                "sha256": digest,
+            }
+            (repo / "versions.json").write_text(
+                json.dumps(index), encoding="utf-8"
+            )
+            actions = install_version.ensure_pack_for_version(
+                repo, "9.4", interactive=False, yes=True
+            )
+            self.assertEqual(actions, ["download_pack", "install_pack"])
+            self.assertTrue((repo / "sdk" / "9.4" / "manifest.json").is_file())
+            state = install_version._load_prompt_state(repo)
+            self.assertIn("9.4", state["accepted"])
+
+    def test_offline_missing_pack_is_an_install_error(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            repo = make_repo(Path(raw))
+            index = json.loads((repo / "versions.json").read_text(encoding="utf-8"))
+            index["versions"]["9.4"]["pack"] = {"gitee": "file:///unused.zip"}
+            (repo / "versions.json").write_text(
+                json.dumps(index), encoding="utf-8"
+            )
+            with self.assertRaises(install_version.InstallError):
+                install_version.ensure_pack_for_version(
+                    repo, "9.4", interactive=False, offline=True
+                )
+
     def test_unsafe_zip_member_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

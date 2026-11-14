@@ -10,6 +10,8 @@ sessions/
 /build/
 /sdk/
 /release/
+/runtime/
+/.lvgl-ai/
 /chip-adapt/vendor/*
 !/chip-adapt/vendor/README.md
 /chip-adapt/exports/

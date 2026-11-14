@@ -5,7 +5,7 @@
       "cli": {
         "help": {
           "exit": 0,
-          "text": "usage: cli.py [-h] [--lvgl LVGL] [--app APP] [--record | --no-record] [--build | --no-build] [--prebuilt | --source] [--scenario SCENARIO | --idle] [--json] Run a headless LVGL session and optionally play a scenario. arguments: -h, --help show this help message and exit --lvgl LVGL LVGL version, e.g. 9.6 (default: scenario lvgl, LVGL_AI_LVGL_VERSION, or 9.6) --app APP user app variant (forwarded as LVGL_AI_DEMO); with --scenario the scenario's app is used when this flag is omitted --record, --no-record record frames and evidence files (default: on) --build, --no-build rebuild lvgl_engine from user/app before launch (default: on); --no-build uses an existing build/ engine --prebuilt compile user/app against the prebuilt host SDK in sdk/<version> instead of CMake --source build from lvgl-src/<version> with CMake (default: auto; prebuilt is used when the source tree is missing) --scenario SCENARIO scenario JSON file to play after startup --idle keep the session running until Ctrl+C --json print one JSON summary on stdout"
+          "text": "usage: cli.py [-h] [--lvgl LVGL] [--app APP] [--record | --no-record] [--build | --no-build] [--prebuilt | --source] [--scenario SCENARIO | --idle] [--yes] [--offline] [--json] Run a headless LVGL session and optionally play a scenario. arguments: -h, --help show this help message and exit --lvgl LVGL LVGL version, e.g. 9.6 (default: scenario lvgl, LVGL_AI_LVGL_VERSION, or 9.6) --app APP user app variant (forwarded as LVGL_AI_DEMO); with --scenario the scenario's app is used when this flag is omitted --record, --no-record record frames and evidence files (default: on) --build, --no-build rebuild lvgl_engine from user/app before launch (default: on); --no-build uses an existing build/ engine --prebuilt compile user/app against the prebuilt host SDK in sdk/<version> instead of CMake --source build from lvgl-src/<version> with CMake (default: auto; prebuilt is used when the source tree is missing) --scenario SCENARIO scenario JSON file to play after startup --idle keep the session running until Ctrl+C --yes download a missing LVGL version pack without prompting --offline never download a missing LVGL version pack --json print one JSON summary on stdout"
         },
         "invalid_exit": 2,
         "json_build_error": {
@@ -169,6 +169,32 @@
               "nargs": 0,
               "option_strings": [
                 "--idle"
+              ],
+              "required": false,
+              "type": null
+            },
+            {
+              "action": "_StoreTrueAction",
+              "choices": null,
+              "default": false,
+              "dest": "yes",
+              "help": "download a missing LVGL version pack without prompting",
+              "nargs": 0,
+              "option_strings": [
+                "--yes"
+              ],
+              "required": false,
+              "type": null
+            },
+            {
+              "action": "_StoreTrueAction",
+              "choices": null,
+              "default": false,
+              "dest": "offline",
+              "help": "never download a missing LVGL version pack",
+              "nargs": 0,
+              "option_strings": [
+                "--offline"
               ],
               "required": false,
               "type": null

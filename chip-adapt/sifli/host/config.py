@@ -67,7 +67,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     ),
     "exports_root": str(layout.EXPORTS_DIR),
     "project_dir": "",
-    "app": "",
+    "app": "sift_watch",
     "build_command": [],
     "build_timeout_sec": 1_800,
     "flash_timeout_sec": 300,
