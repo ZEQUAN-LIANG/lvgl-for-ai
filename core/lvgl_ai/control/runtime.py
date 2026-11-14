@@ -293,50 +293,19 @@ class Runtime:
         # to the manifest status instead of reporting "ok".
         self._failure: BaseException | None = None
 
-    # ---- session options (owned by SessionStore) -----------------------
+    # ---- session readouts (RuntimeLike) --------------------------------
     #
-    # These used to be forwarded by ``__getattr__``.  Explicit properties keep
-    # the origin of every option visible to readers and static analysis.
+    # Session options are constructor keywords only and live once in the
+    # SessionStore. Runtime keeps just the three readouts that LiveSession and
+    # the RuntimeLike protocol consume.
 
     @property
     def app(self) -> str | None:
         return self._store.app
 
     @property
-    def build(self) -> bool:
-        return self._store.build
-
-    @property
-    def record(self) -> bool:
-        return self._store.record
-
-    @property
-    def live_frame(self) -> bool:
-        return self._store.live_frame
-
-    @property
-    def record_changed_only(self) -> bool:
-        return self._store.record_changed_only
-
-    @property
     def mode(self) -> str:
         return self._store.mode
-
-    @property
-    def lvgl_src(self) -> Path | None:
-        return self._store.lvgl_src
-
-    @property
-    def sessions_root(self) -> Path:
-        return self._store.sessions_root
-
-    @property
-    def max_log_bytes(self) -> int:
-        return self._store.max_log_bytes
-
-    @property
-    def session_retention(self) -> int | None:
-        return self._store.session_retention
 
     @property
     def ready(self) -> dict[str, Any] | None:
@@ -380,7 +349,7 @@ class Runtime:
         self._open_session()
         self._store.prune()
 
-        if self.build:
+        if self._store.build:
             try:
                 outcome = self._plan.execute(build=True)
             except BaseException as exc:
@@ -421,7 +390,7 @@ class Runtime:
                 log_path=self._store.engine_log_path,
                 on_check=self._record_reply,
                 quit_timeout=(
-                    RECORD_QUIT_TIMEOUT_S if self.record else QUIT_TIMEOUT_S
+                    RECORD_QUIT_TIMEOUT_S if self._store.record else QUIT_TIMEOUT_S
                 ),
                 session_id=self.session_id,
                 app=self.app,
@@ -669,20 +638,20 @@ class Runtime:
         assert self.session_dir is not None
         engine_args = [
             "--session", str(self.session_dir),
-            "--record" if self.record else "--no-record",
+            "--record" if self._store.record else "--no-record",
             "--diff-threshold", str(self.diff_threshold),
             "--max-frames", str(self.max_frames),
         ]
-        if self.record:
+        if self._store.record:
             engine_args.append("--async-encode")
         if self.width is not None and self.height is not None:
             engine_args.extend(
                 ["--width", str(self.width), "--height", str(self.height)]
             )
         engine_args.append("--window" if self.window else "--headless")
-        if self.live_frame:
+        if self._store.live_frame:
             engine_args.append("--live-frame")
-        if self.record_changed_only:
+        if self._store.record_changed_only:
             engine_args.append("--record-changed-only")
         if self.reference is not None:
             engine_args.extend(["--reference", str(self.reference)])
