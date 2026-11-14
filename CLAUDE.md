@@ -107,7 +107,7 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 - `lvgl-src/<version>/`：LVGL 源码，不进 Git；用 `fetch_lvgl.py` 下载。要改 LVGL 时把 unified diff 放进 `patches/<version>/`，由 `fetch_lvgl.py` 应用；不要直接修改已安装的源码树。
 - `sdk/<version>/`：预编译宿主 SDK（静态库、公共头、`lv_conf.h`、`lvgl-ai-host-sdk-v1` manifest），由 `core/tools/export_sdk.py` 生成；不进 Git。
 - `release/`：解包后的 skill 目录 `lvgl-ai-new/`（含 `SKILL.md`、`CONTEXT.md`、`core/`、`user/`、`sdk/`、`bin/`）、release zip、`.sha256` 与 release manifest，由 `core/tools/release.py` 生成；不进 Git。
-- `bin/lvgl.cmd`：统一入口包装脚本，调用 `core/tools/lvgl.py` 的 `run` / `report` / `serve`；`SKILL.md` 是可分发 skill 的入口契约。
+- `bin/lvgl.cmd`：统一入口包装脚本，调用 `core/tools/lvgl.py` 的 `run` / `report` / `serve`；`core/SKILL.md` 是可分发 skill 的入口契约。
 - `sessions/`：会话产物；每次新建会话后删除 `build_error` 会话，并只保留最新的 10 条。
 
 ## 硬约束

@@ -214,10 +214,13 @@ def stage_package(
 ) -> dict[str, Any]:
     """Copy the allowlisted tree and build the package's engine."""
     package.mkdir(parents=True)
-    for name in ("SKILL.md", "CONTEXT.md", "LICENSE"):
+    for name in ("CONTEXT.md", "LICENSE"):
         source = repo_root / name
         if source.is_file():
             shutil.copy2(source, package / name)
+    skill_source = repo_root / "core" / "SKILL.md"
+    if skill_source.is_file():
+        shutil.copy2(skill_source, package / "SKILL.md")
     copy_tree(
         repo_root / "core", package / "core",
         exclude_dirs=CORE_EXCLUDE_DIRS,
