@@ -448,13 +448,28 @@ class Runtime:
             return
 
         link = self._link
+        shutdown_error: BaseException | None = None
+        exit_code: int | None = None
         try:
             exit_code = link.shutdown(send_quit=True)
+        except BaseException as exc:
+            shutdown_error = exc
+            exit_code = link.exit_code
         finally:
             # Release the evidence handles even when shutdown itself fails;
             # otherwise Windows keeps the session directory undeletable.
             self._store.close_log()
             self._store.discard_preview()
+
+        if shutdown_error is not None and self._failure is None:
+            # shutdown() already reaped or abandoned the process; record a
+            # typed crash instead of leaving the manifest at its startup "ok".
+            self._failure = RuntimeCrash(
+                f"engine did not exit cleanly: {shutdown_error}",
+                exit_code=exit_code,
+                log_tail=self._store.log_tail(),
+                log_path=self.engine_log_path,
+            )
 
         if self.session_dir is not None:
             outcome = SessionOutcome.resolve(
@@ -466,6 +481,9 @@ class Runtime:
                 ),
             )
             self._store.write_manifest(outcome)
+
+        if shutdown_error is not None:
+            raise shutdown_error
 
     def record_error(self, error: BaseException) -> None:
         """Remember a harness-side failure for the final manifest.

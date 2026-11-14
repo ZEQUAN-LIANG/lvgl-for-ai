@@ -15,7 +15,15 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from lvgl_ai import EngineNotFound, ProtocolError, Recording, Runtime, RuntimeCrash
+from lvgl_ai import (
+    EngineNotFound,
+    ProtocolError,
+    Recording,
+    Runtime,
+    RuntimeCrash,
+    ScenarioError,
+)
+from lvgl_ai.control.engine_link import EngineLink
 from support import distinct_rgb, read_png_rgb
 
 SESSION_ID_RE = re.compile(r"^\d{8}-\d{6}-[0-9a-f]{4}$")
@@ -552,6 +560,58 @@ class RuntimeProcessSeamTest(unittest.TestCase):
             )
         )
         rt.stop()
+
+    def test_stop_writes_a_crash_manifest_when_shutdown_raises(self) -> None:
+        rt = self._runtime()
+        rt.start()
+        link = rt._link
+        self.assertIsNotNone(link)
+
+        def boom(*args: object, **kwargs: object) -> int | None:
+            proc = link._proc
+            if proc is not None and proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            raise RuntimeCrash("shutdown boom")
+
+        with mock.patch.object(EngineLink, "shutdown", side_effect=boom):
+            with self.assertRaises(RuntimeCrash):
+                rt.stop()
+
+        manifest = json.loads(
+            (rt.session_dir / "manifest.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["status"], "crash")
+        self.assertEqual(manifest["error"]["code"], "crash")
+        self.assertIn("engine did not exit cleanly", manifest["error"]["message"])
+        self.assertIn("shutdown boom", manifest["error"]["message"])
+        self.addCleanup(rt.stop)
+
+    def test_shutdown_failure_does_not_replace_an_existing_failure(self) -> None:
+        rt = self._runtime()
+        rt.start()
+        link = rt._link
+        self.assertIsNotNone(link)
+        rt.record_error(ScenarioError("scenario boom"))
+
+        def boom(*args: object, **kwargs: object) -> int | None:
+            proc = link._proc
+            if proc is not None and proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            raise RuntimeCrash("shutdown boom")
+
+        with mock.patch.object(EngineLink, "shutdown", side_effect=boom):
+            with self.assertRaises(RuntimeCrash):
+                rt.stop()
+
+        manifest = json.loads(
+            (rt.session_dir / "manifest.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["status"], "harness_error")
+        self.assertEqual(manifest["error"]["code"], "scenario_error")
+        self.assertIn("scenario boom", manifest["error"]["message"])
+        self.addCleanup(rt.stop)
 
 
 if __name__ == "__main__":
