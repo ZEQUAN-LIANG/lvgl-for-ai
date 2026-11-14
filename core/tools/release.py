@@ -987,7 +987,6 @@ def release(
         gcc_version=str(staged["version"]["gcc"]["version"]),
         adapters=[],
         digest=zip_hash,
-        sdk_manifest=staged["sdk_manifest"],
     )
     return {
         "package": str(package),

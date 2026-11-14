@@ -219,7 +219,6 @@ def _stage_full_package(
 ) -> dict[str, Any]:
     supported = tuple(plan["supported"])
     base_version = str(plan["default"])
-    intro_versions = set(plan["intro"])
     legacy_versions = set(plan["legacy"])
     engines: dict[str, dict[str, Any]] = {}
     for version in supported:
@@ -477,7 +476,6 @@ def build_release(
             gcc_version=str(staged["version"]["gcc"]["version"]),
             adapters=[],
             digest=full_sha,
-            sdk_manifest=staged["sdk_manifest"],
         )
 
         sifli_package = root / "sifli" / release_bundle.PACKAGE_DIR_NAME
@@ -495,7 +493,6 @@ def build_release(
             gcc_version=str(staged["version"]["gcc"]["version"]),
             adapters=[],
             digest=sifli_sha,
-            sdk_manifest=staged["sdk_manifest"],
         )
 
     summary = {
