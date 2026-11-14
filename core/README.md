@@ -20,6 +20,7 @@
 - `tools/new_app.py`：生成应用变体的源文件与场景，并注册到 `user/app/app.c`。
 - `tools/export_sdk.py`：从 `lvgl-src/<version>` 导出宿主预编译 SDK 到 `sdk/<version>`。
 - `tools/release.py`：生成可分发的 skill zip、`.sha256` 与 release manifest。
+- `tools/sync_github.py`：把 Gitee（`origin`）的分支与标签强制镜像到 GitHub（`github`）。
 - `tools/lvgl.py`：统一入口，分发 `run` / `report` / `serve`。
 - `tools/contract_snapshot.py`：记录/对比六类外部契约快照，用于重构行为冻结；用法见
   [CONTRACT_SNAPSHOT.md](CONTRACT_SNAPSHOT.md)。
