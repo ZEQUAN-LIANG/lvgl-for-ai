@@ -50,26 +50,6 @@ def _stale_engine_argument(log_tail: list[str]) -> str | None:
         return argument or line.strip()
     return None
 
-# Session options owned by SessionStore; Runtime reads them through
-# ``__getattr__`` so no second copy exists and the contract snapshot stays
-# unchanged (properties would be recorded as new public members).
-_SESSION_OPTIONS = frozenset(
-    (
-        "app",
-        "build",
-        "record",
-        "live_frame",
-        "record_changed_only",
-        "mode",
-        "lvgl_src",
-        "sessions_root",
-        "max_log_bytes",
-        "session_retention",
-        "ready",
-    )
-)
-
-
 def _positive_int(value: object, name: str, *, default: int) -> int:
     if value is None:
         return default
@@ -87,68 +67,6 @@ def _env_positive_int(name: str, default: int) -> int:
     except ValueError as exc:
         raise ValueError(f"{name} must be an integer; got {raw!r}") from exc
     return _positive_int(value, name, default=default)
-
-
-_UNSET = object()
-
-
-class RuntimeOptions:
-    """Production-side options for constructing a ``Runtime``.
-
-    Only options that were provided are forwarded, so callers keep the
-    ``Runtime`` defaults they do not set. The private engine/configure/build
-    seams are deliberately absent.
-    """
-
-    def __init__(
-        self,
-        lvgl: str | None = _UNSET,
-        *,
-        app: str | None = _UNSET,
-        width: int | None = _UNSET,
-        height: int | None = _UNSET,
-        build: bool = _UNSET,
-        build_mode: str | None = _UNSET,
-        record: bool = _UNSET,
-        live_frame: bool = _UNSET,
-        record_changed_only: bool = _UNSET,
-        headless: bool = _UNSET,
-        window: bool = _UNSET,
-        sessions_root: str | Path | None = _UNSET,
-        timeout: float = _UNSET,
-        diff_threshold: int = _UNSET,
-        reference: str | Path | None = _UNSET,
-        max_frames: int | None = _UNSET,
-        max_log_bytes: int | None = _UNSET,
-        session_retention: int | None = _UNSET,
-    ) -> None:
-        values = {
-            "lvgl": lvgl,
-            "app": app,
-            "width": width,
-            "height": height,
-            "build": build,
-            "build_mode": build_mode,
-            "record": record,
-            "live_frame": live_frame,
-            "record_changed_only": record_changed_only,
-            "headless": headless,
-            "window": window,
-            "sessions_root": sessions_root,
-            "timeout": timeout,
-            "diff_threshold": diff_threshold,
-            "reference": reference,
-            "max_frames": max_frames,
-            "max_log_bytes": max_log_bytes,
-            "session_retention": session_retention,
-        }
-        self._kwargs = {
-            name: value for name, value in values.items() if value is not _UNSET
-        }
-
-    def as_kwargs(self) -> dict[str, Any]:
-        """Keyword arguments accepted by ``Runtime(**kwargs)``."""
-        return dict(self._kwargs)
 
 
 class RuntimeLike(Protocol):
@@ -423,14 +341,6 @@ class Runtime:
     @property
     def ready(self) -> dict[str, Any] | None:
         return self._store.ready
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name in _SESSION_OPTIONS:
-            raise AttributeError(
-                f"{type(self).__name__!r} attribute {name!r} is read-only; "
-                "it is owned by the session store"
-            )
-        super().__setattr__(name, value)
 
     # ---- lifecycle -----------------------------------------------------
 

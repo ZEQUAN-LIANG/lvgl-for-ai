@@ -20,7 +20,7 @@ from typing import Any, Callable
 
 from ..control.errors import ScenarioError, dump_error
 from ..control.recording import Recording
-from ..control.runtime import Runtime, RuntimeLike, RuntimeOptions
+from ..control.runtime import Runtime, RuntimeLike
 from ..control.session_schema import PREVIEW_FILE
 from .transport import LiveFrame, LiveFrameHub
 from .urls import frame_url
@@ -208,7 +208,7 @@ class LiveSession:
         display: dict[str, int] = {}
         if self._display is not None:
             display["width"], display["height"] = self._display
-        options = RuntimeOptions(
+        return Runtime(
             lvgl=self.lvgl,
             app=self._app,
             build=self.build,
@@ -219,7 +219,6 @@ class LiveSession:
             sessions_root=sessions_root,
             **display,
         )
-        return Runtime(**options.as_kwargs())
 
     def start(
         self,

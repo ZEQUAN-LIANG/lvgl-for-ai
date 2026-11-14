@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 import sys
 import tempfile
 import unittest
@@ -10,7 +9,7 @@ from pathlib import Path
 
 from fake_runtime import FakeRuntime
 from lvgl_ai import Runtime
-from lvgl_ai.control.runtime import RuntimeLike, RuntimeOptions
+from lvgl_ai.control.runtime import RuntimeLike
 
 TOOLS_DIR = Path(__file__).resolve().parent.parent / "tools"
 if str(TOOLS_DIR) not in sys.path:
@@ -42,28 +41,6 @@ RUNTIME_LIKE_MEMBERS = {
     "tick",
     "wait",
 }
-OPTION_NAMES = {
-    "app",
-    "build",
-    "build_mode",
-    "diff_threshold",
-    "headless",
-    "height",
-    "live_frame",
-    "lvgl",
-    "max_frames",
-    "max_log_bytes",
-    "record",
-    "record_changed_only",
-    "reference",
-    "session_retention",
-    "sessions_root",
-    "timeout",
-    "width",
-    "window",
-}
-
-
 class RuntimeOptionCharacterizationTest(unittest.TestCase):
     """Lock the 18 Runtime keywords and the SessionStore values they produce."""
 
@@ -130,67 +107,13 @@ class RuntimeOptionCharacterizationTest(unittest.TestCase):
         self.assertEqual(store.lvgl_src.name, "9.5")
 
 
-class RuntimeOptionsTest(unittest.TestCase):
-    def setUp(self) -> None:
-        self._tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self._tmp.cleanup)
-        self.sessions_root = Path(self._tmp.name) / "sessions"
+class RuntimeOptionBagRemovedTest(unittest.TestCase):
+    def test_the_option_bag_and_duplicate_name_list_are_gone(self) -> None:
+        from lvgl_ai.control import runtime as runtime_module
 
-    def test_only_provided_options_are_forwarded(self) -> None:
-        self.assertEqual(
-            RuntimeOptions(app="coffee", record=False).as_kwargs(),
-            {"app": "coffee", "record": False},
-        )
-
-    def test_width_and_height_are_forwarded_together(self) -> None:
-        kwargs = RuntimeOptions(width=640, height=480).as_kwargs()
-        self.assertEqual((kwargs["width"], kwargs["height"]), (640, 480))
-
-    def test_as_kwargs_are_accepted_by_runtime(self) -> None:
-        options = RuntimeOptions(
-            lvgl="9.6",
-            app="coffee",
-            build=False,
-            record=False,
-            live_frame=True,
-            record_changed_only=True,
-            headless=True,
-            sessions_root=self.sessions_root,
-            timeout=5.0,
-            diff_threshold=12,
-            max_frames=42,
-            max_log_bytes=1024,
-            session_retention=None,
-        )
-        rt = Runtime(**options.as_kwargs())
-        self.addCleanup(rt.stop)
-
-        self.assertEqual(rt.lvgl, "9.6")
-        self.assertEqual(rt.app, "coffee")
-        self.assertIs(rt.build, False)
-        self.assertIs(rt.record, False)
-        self.assertIs(rt.live_frame, True)
-        self.assertIs(rt.record_changed_only, True)
-        self.assertEqual(rt.mode, "headless")
-        self.assertEqual(rt.timeout, 5.0)
-        self.assertEqual(rt.diff_threshold, 12)
-        self.assertEqual(rt.max_frames, 42)
-        self.assertEqual(rt.max_log_bytes, 1024)
-        self.assertIsNone(rt.session_retention)
-        self.assertEqual(rt.sessions_root, self.sessions_root.resolve())
-
-    def test_options_exclude_the_private_runtime_seams(self) -> None:
-        names = set(inspect.signature(RuntimeOptions).parameters)
-        self.assertEqual(names, OPTION_NAMES)
-        self.assertFalse(
-            names
-            & {
-                "_engine_path",
-                "_engine_command",
-                "_configure_command",
-                "_build_command",
-            }
-        )
+        self.assertFalse(hasattr(runtime_module, "RuntimeOptions"))
+        self.assertFalse(hasattr(runtime_module, "_SESSION_OPTIONS"))
+        self.assertFalse(hasattr(runtime_module, "_UNSET"))
 
 
 class RuntimeLikeTest(unittest.TestCase):
@@ -203,13 +126,11 @@ class RuntimeLikeTest(unittest.TestCase):
         }
         self.assertEqual(annotated | methods, RUNTIME_LIKE_MEMBERS)
 
-    def test_protocol_and_options_stay_out_of_public_exports(self) -> None:
+    def test_protocol_stays_out_of_public_exports(self) -> None:
         import lvgl_ai
 
-        for name in ("RuntimeLike", "RuntimeOptions"):
-            with self.subTest(name=name):
-                self.assertNotIn(name, lvgl_ai.__all__)
-                self.assertFalse(hasattr(lvgl_ai, name))
+        self.assertNotIn("RuntimeLike", lvgl_ai.__all__)
+        self.assertFalse(hasattr(lvgl_ai, "RuntimeLike"))
 
     def test_runtime_implements_every_protocol_member(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
