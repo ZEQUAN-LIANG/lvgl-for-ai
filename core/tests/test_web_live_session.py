@@ -405,6 +405,49 @@ class LiveSessionTest(unittest.TestCase):
         self.assertIs(captured["record"], False)
         self.assertEqual((captured["width"], captured["height"]), (640, 480))
 
+    def test_live_options_reach_the_session_store_unchanged(self) -> None:
+        instances: list[Runtime] = []
+
+        class StoreRuntime(Runtime):
+            """Real Runtime + SessionStore, without spawning an engine."""
+
+            def __init__(self, **kwargs: object) -> None:
+                super().__init__(**kwargs)
+                instances.append(self)
+
+            def start(self) -> StoreRuntime:
+                self._session_used = True
+                return self
+
+            def stop(self) -> None:
+                self._store.close_log()
+                self._store.discard_preview()
+
+        with mock.patch("lvgl_ai.web.live_session.Runtime", StoreRuntime):
+            session = LiveSession(self.root / "sessions", lvgl="9.4", build=False)
+            self.addCleanup(_quiet_stop_session, session)
+            session.start("test", "coffee", display=(640, 480))
+
+        self.assertEqual(len(instances), 1)
+        runtime = instances[0]
+        self.assertEqual((runtime.width, runtime.height), (640, 480))
+        store = runtime._store
+        self.assertEqual(store.app, "coffee")
+        self.assertIs(store.build, False)
+        self.assertIs(store.record, False)
+        self.assertIs(store.live_frame, True)
+        self.assertIs(store.record_changed_only, True)
+        self.assertEqual(store.mode, "headless")
+        self.assertEqual(store.max_log_bytes, 16 * 1024 * 1024)
+        self.assertEqual(store.retention, 10)
+        self.assertEqual(
+            store.sessions_root.parent, (self.root / "sessions").resolve()
+        )
+        self.assertEqual(store.lvgl_src.name, "9.4")
+
+        session.stop()
+        self.assertFalse(store.sessions_root.exists())
+
     def test_start_requires_a_runtime_tick(self) -> None:
         class NoTickRuntime(FakeRuntime):
             @property
