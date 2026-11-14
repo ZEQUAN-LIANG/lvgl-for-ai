@@ -72,6 +72,7 @@ CORE_RELEASE_EXCLUDE_FILES = (
     "engine/freetype/README.md",
     "lvgl_ai/assets/vendor/README.md",
     "tools/release_user_app_README.md",
+    "tools/upload_release.py",
 )
 RELEASE_VIEWER = "LVGL-AI-Viewer.exe"
 RELEASE_VIEWER_PATH = Path("bin") / RELEASE_VIEWER

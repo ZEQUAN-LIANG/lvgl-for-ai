@@ -182,6 +182,7 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 "third_party/",
                 "/sessions/",
                 "core/tests/",
+                "core/tools/upload_release.py",
                 "chip-adapt/",
                 "user/app/coffee/",
                 "user/app/xiaohongshu/",

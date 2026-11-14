@@ -8,6 +8,7 @@
 ```text
 release_all.py  →  构建两个完整包：full 与 full-sifli
 release.py      →  构建单版本核心包（解包目录 + zip）
+upload_release.py → 上传 zip 到 GitHub / Gitee Release（token 只读环境变量）
 export_sdk.py   →  从 lvgl-src/<version> 导出 sdk/<version>/
 ```
 
