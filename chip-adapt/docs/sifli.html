@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SiFli SDK 图形能力 · 索引指针</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --fg: #1f2328;
+    --muted: #656d76;
+    --line: #d8dee4;
+    --accent: #0969da;
+    --code-bg: #eef0f3;
+    --warn-bg: #fff8e1;
+    --warn-line: #e3b341;
+    --focus-bg: #eaf2fb;
+    --yes: #1a7f37;
+    --no: #cf222e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171c;
+      --fg: #e6e8eb;
+      --muted: #9aa3ad;
+      --line: #2c313a;
+      --accent: #58a6ff;
+      --code-bg: #1d2229;
+      --warn-bg: #2a2416;
+      --warn-line: #8d6e1f;
+      --focus-bg: #1b2735;
+      --yes: #3fb950;
+      --no: #f85149;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.65 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem 1.1rem;
+    padding: .85rem 1.25rem;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
+  nav a { color: var(--muted); text-decoration: none; }
+  nav a:hover { color: var(--accent); }
+  nav a[aria-current="page"] { color: var(--fg); font-weight: 600; }
+  header, main, footer { max-width: 980px; margin: 0 auto; padding: 0 1.5rem; }
+  header { padding-top: 2rem; }
+  h1 { margin: 0 0 .35rem; font-size: 1.7rem; letter-spacing: -.01em; }
+  h2 {
+    margin: 2.1rem 0 .7rem;
+    padding-left: .55rem;
+    border-left: 3px solid var(--accent);
+    font-size: 1.12rem;
+  }
+  h3 { margin: 1.4rem 0 .45rem; font-size: 1rem; }
+  p { margin: .55rem 0; }
+  .lede { margin: 0 0 .4rem; color: var(--muted); max-width: 68ch; }
+  .scope { margin: 0 0 1.6rem; color: var(--muted); font-size: 13px; }
+  code {
+    padding: .08em .34em;
+    border-radius: 4px;
+    background: var(--code-bg);
+    font-family: "Cascadia Mono", Consolas, "SFMono-Regular", monospace;
+    font-size: .92em;
+  }
+  pre {
+    margin: .8rem 0 1rem;
+    padding: .8rem .95rem;
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--code-bg);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { padding: 0; background: none; font-size: inherit; }
+  .ptr {
+    color: var(--muted);
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 12px;
+  }
+  a { color: var(--accent); }
+  ul, ol { margin: .5rem 0; padding-left: 1.35rem; }
+  li { margin: .3rem 0; }
+  .note {
+    margin: 1rem 0;
+    padding: .7rem .9rem;
+    border: 1px solid var(--warn-line);
+    border-radius: 8px;
+    background: var(--warn-bg);
+    font-size: 13.5px;
+  }
+  .note strong { margin-right: .35rem; }
+  .table-wrap {
+    overflow-x: auto;
+    margin: .9rem 0 1.2rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 13.5px;
+  }
+  th, td {
+    padding: .45rem .55rem;
+    border: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--code-bg);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  tr.focus td { background: var(--focus-bg); }
+  .yes { color: var(--yes); font-weight: 600; }
+  .no { color: var(--no); font-weight: 600; }
+  .tag {
+    display: inline-block;
+    padding: 0 .4rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .diagram {
+    margin: 1rem 0 .35rem;
+    padding: .6rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg);
+    overflow-x: auto;
+  }
+  .diagram svg { display: block; width: 100%; min-width: 760px; height: auto; }
+  .diagram-caption { margin: .15rem 0 1rem; color: var(--muted); font-size: 12.5px; }
+  .diag-box { fill: var(--bg); stroke: var(--line); stroke-width: 1.4; }
+  .diag-host { fill: var(--accent); fill-opacity: .10; stroke: var(--accent); stroke-width: 1.4; }
+  .diag-panel { fill: var(--code-bg); stroke: var(--line); stroke-width: 1.4; }
+  .diag-mem { fill: var(--focus-bg); stroke: var(--line); stroke-width: 1.2; }
+  .diag-line { stroke: var(--accent); stroke-width: 1.8; fill: none; }
+  .diag-arrow { fill: var(--accent); }
+  .diag-text { fill: var(--fg); font: 13px "Segoe UI", "Microsoft YaHei", sans-serif; }
+  .diag-small { fill: var(--muted); font: 11.5px "Segoe UI", "Microsoft YaHei", sans-serif; }
+  .diag-title { fill: var(--fg); font: 600 14px "Segoe UI", "Microsoft YaHei", sans-serif; }
+  footer {
+    margin-top: 2.4rem;
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+<nav>
+  <a href="../../docs/app.html">应用变体</a>
+  <a href="../../docs/scenario-server.html">场景与服务端常量</a>
+  <a href="sifli.html" aria-current="page">SiFli SDK 图形能力</a>
+  <a href="../../CONTEXT.md">CONTEXT.md</a>
+  <a href="../../CLAUDE.md">CLAUDE.md</a>
+</nav>
+
+<header>
+  <h1>SiFli SDK 图形能力（LVGL）</h1>
+  <p class="lede">SiFli-SDK v2.5.1 的显示引擎、编解码引擎与 2D 加速引擎，面向 LVGL 9.4 应用；黄山派 SF32LB52x 为重点。</p>
+  <p class="scope">本页是混合索引：能力矩阵 + 关键事实 + 真源路径。不复制大段实现，不写性能结论；涉及快慢时只记录「走硬件 / 走软件」的路径事实和官方定性描述。除特别说明外，SDK 路径相对 <code>chip-adapt/vendor/sifli-sdk/</code>，仓库路径相对仓库根。开始操作前先读 <a href="../README.md">chip-adapt/README.md</a>；SDK 未下载时，下方 SDK 链接不可用。</p>
+</header>
+
+<main>
+  <h2>1. 芯片家族与定位</h2>
+  <p>SDK v2.5.1 支持 52x、55x、56x、57x、58x 五个芯片家族。本仓库当前只导出黄山派 SF32LB52x；其他家族列在这里用于判断能力差异，不表示已经支持多芯片导出。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>芯片家族</th><th>EPIC 2D 加速</th><th>编解码</th><th>显示 / LCDC 要点</th></tr>
+      </thead>
+      <tbody>
+        <tr class="focus">
+          <td><strong>52x</strong> <span class="tag">黄山派</span></td>
+          <td>填充、混叠、缩放、旋转；A2/A4/A8/L8；YUV；无 JPEGD、L4、颜色矩阵、A8/灰度输出</td>
+          <td>EZIP + EZIPA；无硬件 JPEGD；无 VGLite / GE2D / DMA2D</td>
+          <td>3SPI/4SPI/QAD-SPI、QSPI DDR、DBI 8bit、JDI；无 DPI/TCON/DSI；仅图层 0；无压缩图层；仅垂直镜像</td>
+        </tr>
+        <tr>
+          <td><strong>55x</strong></td>
+          <td>基础填充、混叠、缩放、旋转；无 A2/A4/A8/L8/YUV</td>
+          <td>EZIP；无 EZIPA</td>
+          <td>3SPI/4SPI/QAD-SPI、DSI Command、DBI 8bit、DPI、JDI；无 QSPI DDR；无压缩图层；无镜像</td>
+        </tr>
+        <tr>
+          <td><strong>56x</strong></td>
+          <td>A4/A8/L8/YUV；无 A2</td>
+          <td>EZIP + EZIPA</td>
+          <td>QSPI DDR、DPI、压缩图层；水平/垂直镜像</td>
+        </tr>
+        <tr>
+          <td><strong>57x</strong></td>
+          <td>A2/L4/JPEGD、3x3 矩阵变换、颜色矩阵、灰度/A8 输出</td>
+          <td>EZIP + EZIPA；JPEG 可直入 EPIC</td>
+          <td>QSPI DDR、DBI 16bit、DPI、TCON；无压缩图层</td>
+        </tr>
+        <tr>
+          <td><strong>58x</strong></td>
+          <td>VGLite；EPIC 无 YUV/A2/JPEGD</td>
+          <td>EZIP + EZIPA；独立 JPEGDEC，EPIC 不吃 JPEG</td>
+          <td>DSI Command/Video、DPI、压缩图层、水平/垂直镜像；不支持 QSPI DDR</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>阅读约定</strong>本页只回答「这个能力由谁做、走哪条路径」，不比较速度。原问题中的「绘制哪部分快」不在本页下结论；需要量化时用 SDK 的 <code>fps2</code> / <code>set_display_fps_and_cpu_load()</code> 在目标板上实测。
+  </div>
+
+  <h2>2. 显示引擎：LCDC</h2>
+  <p>LCDC 把 SPI、QAD-SPI、QSPI DDR、DBI、DPI、DSI、JDI 等物理接口统一成同一套送图接口。它支持单色背景、图层 0、图层 1（52x 不支持图层 1）、图层 alpha 混叠、ROI、帧同步/行同步，以及同步和中断两种送数方式。</p>
+
+  <h3>2.1 物理接口</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>接口</th><th>52x</th><th>55x</th><th>56x</th><th>57x</th><th>58x</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>3SPI / 4SPI / QAD-SPI</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>QSPI DDR</td><td class="yes">✓</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">—</td></tr>
+        <tr><td>DBI 8080-8bit</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>DBI 8080-16bit</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td></tr>
+        <tr><td>DSI Command</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td></tr>
+        <tr><td>DSI Video</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td></tr>
+        <tr><td>DPI</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>JDI</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>AHB 输出到 SRAM/PSRAM</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>TCON</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>2.2 DBI / DSI / DPI / JDI 的区别</h3>
+  <p>DBI、DSI、DPI 是 MIPI 的三种显示接口；JDI 是 Japan Display Inc. 的专有行列驱动接口，不是 MIPI 标准。关键差异在「有没有命令通道」和「面板侧有没有 GRAM / T-CON」：DBI 与 DSI Command 先把像素写进面板的 GRAM，DPI 连续送像素，JDI 走专有的行列驱动时序。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 980 700" role="img" aria-labelledby="diag-title">
+      <title id="diag-title">DBI、DSI、DPI、JDI 四种显示接口路径对比</title>
+      <desc>每种接口从 LCDC 主机到面板的路径，以及面板侧是否有显示控制器、GRAM 或专有行列驱动。</desc>
+      <defs>
+        <marker id="diag-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" class="diag-arrow"/>
+        </marker>
+      </defs>
+
+      <g transform="translate(0,0)">
+        <text x="20" y="26" class="diag-title">DBI</text>
+        <text x="20" y="44" class="diag-small">Display Bus Interface</text>
+        <rect x="20" y="56" width="150" height="86" rx="8" class="diag-host"/>
+        <text x="95" y="92" text-anchor="middle" class="diag-text">LCDC</text>
+        <text x="95" y="112" text-anchor="middle" class="diag-small">DBI / SPI-DCX</text>
+        <line x1="170" y1="99" x2="610" y2="99" class="diag-line" marker-end="url(#diag-arrow)"/>
+        <text x="390" y="84" text-anchor="middle" class="diag-small">CS · DCX · WR · RD · D[7:0] / SPI 1/2/4 data</text>
+        <text x="390" y="120" text-anchor="middle" class="diag-small">命令 + 参数 + 像素数据</text>
+        <rect x="620" y="56" width="340" height="86" rx="8" class="diag-panel"/>
+        <rect x="636" y="68" width="160" height="62" rx="6" class="diag-mem"/>
+        <text x="716" y="94" text-anchor="middle" class="diag-text">显示控制器</text>
+        <text x="716" y="114" text-anchor="middle" class="diag-small">+ GRAM</text>
+        <line x1="796" y1="99" x2="826" y2="99" class="diag-line" marker-end="url(#diag-arrow)"/>
+        <rect x="830" y="68" width="112" height="62" rx="6" class="diag-box"/>
+        <text x="886" y="104" text-anchor="middle" class="diag-text">玻璃</text>
+      </g>
+
+      <g transform="translate(0,150)">
+        <text x="20" y="26" class="diag-title">DSI</text>
+        <text x="20" y="44" class="diag-small">Display Serial Interface</text>
+        <rect x="20" y="56" width="150" height="86" rx="8" class="diag-host"/>
+        <text x="95" y="92" text-anchor="middle" class="diag-text">LCDC</text>
+        <text x="95" y="112" text-anchor="middle" class="diag-small">DSI host</text>
+        <line x1="170" y1="99" x2="610" y2="99" class="diag-line" marker-end="url(#diag-arrow)"/>
+        <text x="390" y="84" text-anchor="middle" class="diag-small">CLK± · D0± · D1±（1~2 lane）</text>
+        <text x="390" y="120" text-anchor="middle" class="diag-small">命令包 / 像素包</text>
+        <rect x="620" y="56" width="340" height="86" rx="8" class="diag-panel"/>
+        <rect x="636" y="68" width="160" height="62" rx="6" class="diag-mem"/>
+        <text x="716" y="94" text-anchor="middle" class="diag-text">DSI RX + 控制器</text>
+        <text x="716" y="114" text-anchor="middle" class="diag-small">+ GRAM</text>
+        <line x1="796" y1="99" x2="826" y2="99" class="diag-line" marker-end="url(#diag-arrow)"/>
+        <rect x="830" y="68" width="112" height="62" rx="6" class="diag-box"/>
+        <text x="886" y="104" text-anchor="middle" class="diag-text">玻璃</text>
+      </g>
+
+      <g transform="translate(0,300)">
+        <text x="20" y="26" class="diag-title">DPI</text>
+        <text x="20" y="44" class="diag-small">Display Pixel Interface</text>
+        <rect x="20" y="56" width="150" height="86" rx="8" class="diag-host"/>
+        <text x="95" y="92" text-anchor="middle" class="diag-text">LCDC</text>
+        <text x="95" y="112" text-anchor="middle" class="diag-small">DPI</text>
+        <line x1="170" y1="99" x2="610" y2="99" class="diag-line" marker-end="url(#diag-arrow)"/>
+        <text x="390" y="84" text-anchor="middle" class="diag-small">PCLK · HSYNC · VSYNC · DE · R/G/B</text>
+        <text x="390" y="120" text-anchor="middle" class="diag-small">连续像素流，无命令通道</text>
+        <rect x="620" y="56" width="340" height="86" rx="8" class="diag-panel"/>
+        <rect x="636" y="68" width="160" height="62" rx="6" class="diag-mem"/>
+        <text x="716" y="94" text-anchor="middle" class="diag-text">T-CON / 面板时序</text>
+        <text x="716" y="114" text-anchor="middle" class="diag-small">无命令通道</text>
+        <line x1="796" y1="99" x2="826" y2="99" class="diag-line" marker-end="url(#diag-arrow)"/>
+        <rect x="830" y="68" width="112" height="62" rx="6" class="diag-box"/>
+        <text x="886" y="104" text-anchor="middle" class="diag-text">玻璃</text>
+      </g>
+
+      <g transform="translate(0,450)">
+        <text x="20" y="26" class="diag-title">JDI</text>
+        <text x="20" y="44" class="diag-small">Japan Display Inc. 专有接口</text>
+        <rect x="20" y="56" width="150" height="86" rx="8" class="diag-host"/>
+        <text x="95" y="92" text-anchor="middle" class="diag-text">LCDC</text>
+        <text x="95" y="112" text-anchor="middle" class="diag-small">JDI</text>
+        <line x1="170" y1="99" x2="610" y2="99" class="diag-line" marker-end="url(#diag-arrow)"/>
+        <text x="390" y="84" text-anchor="middle" class="diag-small">HCK · VCK · HST · VST · ENB · 数据</text>
+        <text x="390" y="120" text-anchor="middle" class="diag-small">专有行列驱动时序，无标准命令通道</text>
+        <rect x="620" y="56" width="340" height="86" rx="8" class="diag-panel"/>
+        <rect x="636" y="68" width="160" height="62" rx="6" class="diag-mem"/>
+        <text x="716" y="94" text-anchor="middle" class="diag-text">JDI 行列驱动</text>
+        <text x="716" y="114" text-anchor="middle" class="diag-small">像素存储</text>
+        <line x1="796" y1="99" x2="826" y2="99" class="diag-line" marker-end="url(#diag-arrow)"/>
+        <rect x="830" y="68" width="112" height="62" rx="6" class="diag-box"/>
+        <text x="886" y="104" text-anchor="middle" class="diag-text">玻璃</text>
+      </g>
+
+      <text x="20" y="620" class="diag-small">实线：主机送数/命令；面板内箭头：面板内部控制/扫描路径。</text>
+      <text x="20" y="640" class="diag-small">DBI / DSI Command 写显示控制器 GRAM；DPI 连续送像素；JDI 走专有行列驱动时序。</text>
+      <text x="20" y="660" class="diag-small">黄山派 CO5300 走 LCDC_INTF_SPI_DCX_4DATA（QAD-SPI），是带 DCX 的 SPI 类 DBI 路径。</text>
+    </svg>
+  </div>
+  <p class="diagram-caption">图：从 LCDC 到面板的路径。DBI 和 DSI Command 先写面板 GRAM；DPI 连续送像素；JDI 走专有行列驱动时序。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>维度</th><th>DBI</th><th>DSI</th><th>DPI</th><th>JDI</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>全称 / 来源</td><td>MIPI Display Bus Interface</td><td>MIPI Display Serial Interface</td><td>MIPI Display Pixel Interface</td><td>Japan Display Inc. 专有接口，不是 MIPI 标准</td></tr>
+        <tr><td>物理形态</td><td>8/16bit 并口（8080 A/B）或带 DCX 的 SPI（1/2/4 data）</td><td>1~2 条差分数据 lane + 时钟 lane</td><td>并行 RGB + PCLK / HSYNC / VSYNC / DE</td><td>串行或并行；并行使用 HCK / VCK / HST / VST / ENB 等</td></tr>
+        <tr><td>命令通道</td><td>有；DCX 区分命令/数据</td><td>有；DCS 命令包</td><td>无</td><td>无标准 DCS 命令通道；专有寄存器/时序</td></tr>
+        <tr><td>屏幕侧</td><td>显示控制器 + GRAM</td><td>Command：控制器 + GRAM；Video：连续流</td><td>通常 T-CON / 无 GRAM</td><td>JDI 行列驱动 + 像素存储</td></tr>
+        <tr><td>刷新模型</td><td>写 GRAM 脏区，TE 同步</td><td>Command 写 GRAM；Video 连续像素流</td><td>按行/帧连续送像素</td><td>按 bank/row/column 区域送像素，ENB 控制有效列</td></tr>
+        <tr><td>SiFli LCDC 枚举</td><td><code>LCDC_INTF_DBI_8BIT_*</code><br><code>LCDC_INTF_DBI_16BIT_*</code><br><code>LCDC_INTF_SPI_DCX_*</code></td><td><code>LCDC_INTF_DSI</code><br><code>LCDC_INTF_DSI_VIDEO</code></td><td><code>LCDC_INTF_DPI</code><br><code>LCDC_INTF_DPI_AUX</code></td><td><code>LCDC_INTF_JDI_SERIAL</code><br><code>LCDC_INTF_JDI_PARALLEL</code></td></tr>
+        <tr><td>芯片支持</td><td>8bit 全家族；16bit 仅 57x；SPI-DCX 1/2/4 data 全家族</td><td>Command：55x/58x；Video：58x</td><td>55x/56x/57x/58x；52x 不支持</td><td>接口表全家族 Y；实际以板级屏幕为准</td></tr>
+        <tr><td>典型屏幕</td><td>CO5300 QAD-SPI（黄山派）</td><td>MIPI DSI 屏（RM69090 等）</td><td>RGB 并口屏 / T-CON 屏</td><td>JDI 反射式/记忆型屏（JDI387A、LS013B7DD02）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>真源：<a href="../vendor/sifli-sdk/docs/source/zh_CN/hal/lcdc.md">hal/lcdc.md</a>、<a href="../vendor/sifli-sdk/docs/source/zh_CN/hal/dsi.md">hal/dsi.md</a>、<code>SDK: drivers/Include/bf0_hal_lcdc.h</code>、<code>SDK: customer/peripherals/display/jdi387a/jdi387a.c</code>。</p>
+
+  <div class="note">
+    <strong>52x / 黄山派</strong>52x 只有 DBI / SPI-DCX 路径，没有 DSI 和 DPI；黄山派 CO5300 走 <code>LCDC_INTF_SPI_DCX_4DATA</code>（QAD-SPI），不是 MIPI DBI 8/16bit，也不是 DSI/DPI。JDI 枚举在 LCDC 接口表里全家族可用，但实际以板级屏幕为准。
+  </div>
+
+  <h3>2.3 图层与颜色</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>特性</th><th>52x</th><th>55x</th><th>56x</th><th>57x</th><th>58x</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>图层 1</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>垂直镜像</td><td class="yes">✓</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>水平镜像</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td><td class="yes">✓</td></tr>
+        <tr><td>解压缩压缩图层</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td><td class="yes">✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>输出颜色格式：RGB332、RGB565、RGB888、RGB565_SWAP（55x 不支持 565_SWAP）。图层颜色格式：RGB332、RGB565、RGB888、ARGB8888、ARGB8565、A8（55x 不支持）、L8（55x 不支持）、RGB565_SWAP（55x 不支持）。</p>
+
+  <h3>2.4 黄山派 CO5300 链路</h3>
+  <ul>
+    <li>屏幕：CO5300，390x450，QAD-SPI 4 数据线；面板带 GRAM，TE 打开，LCDC 使用 <code>HAL_LCDC_SYNC_VER</code> 同步。</li>
+    <li>板级开关：<code>CONFIG_BSP_USING_EPIC=y</code>、<code>CONFIG_BSP_USING_LCD=y</code>、<code>CONFIG_LCD_USING_TFT_CO5300=y</code>、<code>CONFIG_BSP_USING_TOUCHD=y</code>，见 <a href="../vendor/sifli-sdk/customer/boards/sf32lb52-lchspi-ulp/hcpu/board.conf">board.conf</a>。</li>
+    <li>52x 没有压缩 framebuffer，默认走 <code>LCD_FB_USING_ONE_UNCOMPRESSED</code>：一个 PSRAM 全屏 framebuffer + SRAM partial 绘制缓冲。开启 <code>CONFIG_LV_FB_TWO_NOT_SCREEN_SIZE=y</code> 时是两个 partial 缓冲，每个 <code>LV_FB_LINE_NUM</code> 行，不是两个全屏 FB。</li>
+    <li>刷新路径：LVGL 先画到 SRAM partial buffer → <code>drv_lcd_fb_write_send()</code> 合并脏区并拷贝到 PSRAM framebuffer（部分拷贝由 EPIC 的 <code>drv_epic_copy</code> 完成）→ LCDC 在 TE 同步下送 CO5300 GRAM。</li>
+    <li>真源：<code>SDK: middleware/lvgl/lv_drivers_v9/lv_lcd.c</code>（flush / flush_wait / rounder / render_start）、<code>SDK: rtos/rtthread/bsp/sifli/drivers/drv_lcd_fb.c</code>、<code>SDK: customer/peripherals/display/co5300/co5300.c</code>。</li>
+  </ul>
+
+  <h2>3. 编解码引擎</h2>
+  <p>SiFli 的「编解码」在 LVGL 侧主要指 EZIP / EZIPA 硬件解压，以及 JPEG、PNG、GIF、视频的软件或硬件路径。52x 没有硬件 JPEG 解码；EZIP 是 52x 上大图、背景和动画帧的主要硬件路径。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>格式 / 能力</th><th>52x</th><th>55x</th><th>56x</th><th>57x</th><th>58x</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>EZIP 静态图</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td>硬件解压；输出 AHB 或 EPIC；可混叠/缩放，不可旋转</td></tr>
+        <tr><td>EZIPA 动画</td><td class="yes">✓</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td>私有容器；逐帧 EPIC + EZIP 合成</td></tr>
+        <tr><td>JPEG 硬件解码</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td>57x 是 JPEGD；58x 是独立 JPEGDEC</td></tr>
+        <tr><td>JPEG 直入 EPIC</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td><td>仅 57x 的 EPIC 输入支持 JPEG</td></tr>
+        <tr><td>PNG</td><td>软件</td><td>软件</td><td>软件</td><td>软件</td><td>软件</td><td>LVGL lodepng；默认通常不开</td></tr>
+        <tr><td>GIF</td><td>软件库</td><td>软件库</td><td>软件库</td><td>软件库</td><td>软件库</td><td><code>gif_dec</code>；具体可用性以 Kconfig 和示例 README 为准</td></tr>
+        <tr><td>YUV 显示</td><td class="yes">✓</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">—</td><td>EPIC 输入 YUV；视频 YUV420p 可用于 52x/56x/57x</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>3.1 EZIP / EZIPA</h3>
+  <ul>
+    <li>EZIP 是 SiFli 私有压缩格式。HAL 支持 AHB 和 EPIC 两种输出：AHB 模式把解压结果写到指定内存，EPIC 模式把解压结果直接送入 EPIC，由 EPIC 完成混叠和缩放；<strong>EZIP 不支持旋转</strong>。</li>
+    <li>AHB 模式下同一个 EZIP 硬件还支持 LZ4 和 GZIP4 解压；图像 EZIP 走 <code>HAL_EZIP_MODE_EZIP</code>。</li>
+    <li>EZIPA 是动画容器，基于 EPIC + EZIP 逐帧合成；SDK 文档常称「APNG」，但运行时代码解析的是私有 <code>ezipa_hdr_t</code>、帧表和动画控制表，不是标准 APNG chunk。</li>
+    <li>LVGL v9 的 EZIP 解码器由 <code>LV_USE_DRAW_EPIC &amp;&amp; LV_USE_EZIP</code> 启用，注册在 <code>SDK: middleware/lvgl/lv_drivers_v9/lvsf_img_decoder.c</code>。变量源只给压缩数据打 <code>LV_IMAGE_FLAGS_EZIP</code> 标记，不做 CPU 解压；文件源在打开时装载到 PSRAM/SRAM 缓存，NOR MTD 上可通过物理地址直接映射，减少拷贝。</li>
+    <li>绘制时 <code>LV_IMAGE_FLAGS_EZIP</code> 被映射为 <code>EPIC_INPUT_EZIP</code>，见 <code>SDK: middleware/lvgl/lv_drivers_v9/sifli/lv_draw_epic_img.c</code>；真正解压发生在 EPIC 混叠时，不在 <code>lv_image_set_src()</code>。</li>
+    <li>EZIPA 的 LVGL 控件在 <code>SDK: middleware/lvgl/lvsf_v9/lvsf_ezipa.c</code>，解码器在 <code>SDK: middleware/ezipa_dec/ezipa_dec.c</code>。</li>
+  </ul>
+
+  <h3>3.2 JPEG / PNG / GIF</h3>
+  <ul>
+    <li><strong>52x</strong>：没有硬件 JPEGD。LVGL v8 工程常用 <code>CONFIG_LV_USE_SJPG=y</code>（TJpgDec 软件解码）；LVGL v9 需要手动开 TJPGD 或 libjpeg-turbo，默认示例通常不开。</li>
+    <li><strong>57x</strong>：有 JPEGD，EPIC 输入格式支持 JPEG，可以把 JPEG 直接交给 EPIC 混叠；HAL JPEGD 也可输出 YUV420 到 AHB，供视频路径使用。</li>
+    <li><strong>58x</strong>：独立 JPEGDEC，EPIC 本身不吃 JPEG；ffmpeg 的 MJPEG 路径直接调用 <code>jpeg_decode2</code>。</li>
+    <li><strong>PNG</strong>：LVGL 的 lodepng / libpng 软件解码，默认通常不开；官方推荐构建期把 PNG 转成 EZIP。</li>
+    <li><strong>GIF</strong>：<code>gif_dec</code> 预编译库，CPU 软件解码；官方文档说明 GIF 不支持透明度。AGIF 示例在构建期把 GIF 交给 eZIP 工具转换。</li>
+  </ul>
+
+  <h3>3.3 视频</h3>
+  <ul>
+    <li>ffmpeg 路径：h264、h263、mjpeg 等视频编码，mp3、aac、opus、vorbis 等音频编码；封装支持 ogg、mp4。h264/h263 解码后是 YUV，52x/56x/57x 可以直接用 YUV420p 显示。</li>
+    <li>EZIP 视频：每帧单独 EZIP 压缩，不做帧间压缩，仍使用 mp4 封装；解码后拿到的是 EZIP 数据，UI 直接显示，硬件解压由 EPIC/EZIP 完成。</li>
+    <li>MJPEG 在 58x 上有硬件解码路径；文档中「MJPEG 只在 58x 硬件解码」的说法对 57x 不完全准确，代码里同时存在 57x 的 <code>HAL_JPEGD</code> 路径。以 <code>SDK: external/ffmpeg/libavcodec/mjpegdec.c</code> 和芯片寄存器定义为最终依据。</li>
+  </ul>
+
+  <h3>3.4 资源生成与加载</h3>
+  <ul>
+    <li>构建期转换用 <code>tools/png2ezip/ezip.exe</code>。常用命令：<code>ezip -convert x.png -rgb565 -cfile 2 -section ROM3_IMG -lvgl_version 9</code>；<code>-binfile 2 -binext .ezip</code> 生成二进制文件。</li>
+    <li><code>-cfile 1</code> 是像素格式 C 文件，<code>-cfile 2</code> 是 EZIP C 文件；小图可用 <code>-dpt 1</code> 直接转像素，大图用 <code>-dpt 4</code> 配合 <code>-ers</code>（2 的幂）控制解压缓冲。</li>
+    <li>57x 的资源必须加 <code>-winsize 2048</code>；SDK 的 <code>Env.ImgResource()</code> 在 <code>SOC_SF32LB57X</code> 时会自动补上。</li>
+    <li>运行时文件加载：<code>lv_image_set_src(img, "A:/x.ezip")</code> 需要 <code>CONFIG_LV_USE_FS_POSIX=y</code> 和盘符配置；文件模式节省内存，预加载到 PSRAM 的 <code>dsc</code> 模式占用更多内存。图片文件数据缓存池由 <code>CONFIG_IMAGE_CACHE_IN_PSRAM_SIZE</code> / <code>CONFIG_IMAGE_CACHE_IN_SRAM_SIZE</code> 配置。</li>
+    <li>真源：<code>SDK: docs/source/zh_CN/app_note/ezip_tool_usage.md</code>、<a href="../vendor/sifli-sdk/tools/png2ezip/Help.txt">Help.txt</a>、<code>SDK: example/multimedia/lvgl/ezip_v9/src/main.c</code>。</li>
+  </ul>
+
+  <h2>4. 加速引擎：EPIC</h2>
+  <p>EPIC 是 2D 图形引擎。官方 HAL 文档列出的能力包括：两幅图 alpha 混叠、任意锚点旋转、缩放、一次操作内旋转后缩放、纯色/半透明填充、输入输出颜色格式自动转换、小数坐标混叠（55x 不支持）。它不负责画线、圆、多边形；单步渲染模式明确不支持这些操作，渲染列表模式才提供。</p>
+
+  <h3>4.1 能力矩阵</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>能力</th><th>52x</th><th>55x</th><th>56x</th><th>57x</th><th>58x</th><th>备注</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>填充</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td>纯色/半透明；2-stop 渐变在 LVGL 单步模式</td></tr>
+        <tr><td>混叠</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td>alpha blend</td></tr>
+        <tr><td>缩放</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td>精度按家族不同</td></tr>
+        <tr><td>旋转</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td>EZIP/JPG/YUV 除外</td></tr>
+        <tr><td>水平镜像</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td>任意锚点；不能与旋转/缩放同时进行</td></tr>
+        <tr><td>垂直镜像</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td><td>除 EZIP/JPG</td></tr>
+        <tr><td>3x3 矩阵变换</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td><td>57x 新增</td></tr>
+        <tr><td>A2 填充</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td><td>52x/57x</td></tr>
+        <tr><td>A4/A8 mask</td><td class="yes">✓</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td>Mask/Overwrite/Fill</td></tr>
+        <tr><td>L8</td><td class="yes">✓</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td></td></tr>
+        <tr><td>L4</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td><td>57x</td></tr>
+        <tr><td>YUV 输入</td><td class="yes">✓</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">—</td><td>YUYV/UYVY/iYUV</td></tr>
+        <tr><td>JPEG 输入</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td><td>仅 57x 的 JPEGD 路径</td></tr>
+        <tr><td>A8/灰度/L4 输出</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td><td>57x</td></tr>
+        <tr><td>坐标上限（变形 / 普通）</td><td>512 / 1024</td><td>1024 / 1024</td><td>512 / 1024</td><td>512 / 8192</td><td>1024 / 1024</td><td>一次混叠的前景、背景、输出区域并集</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>4.2 单步渲染（默认）</h3>
+  <p>未开启 <code>CONFIG_DRV_EPIC_NEW_API</code> 时，LVGL v9 使用 <code>SDK: middleware/lvgl/lv_drivers_v9/sifli/lv_draw_epic.c</code> 的 draw unit。能派给 EPIC 的任务是白名单：</p>
+  <ul>
+    <li>矩形填充：纯色，或 2 个色标的水平/垂直渐变；带 alpha 或 mask 的填充。</li>
+    <li>图片：普通混叠、缩放、旋转；EZIP/JPG/YUV 可以混叠/缩放，但不能旋转。</li>
+    <li>字体：A2/A4/A8 位图字形；静态 A8 bitmap 直接使用。</li>
+    <li>边框：只有无圆角、四边完整的边框才走 EPIC。</li>
+  </ul>
+  <p>以下任务在单步模式下明确回退到软件绘制：圆角矩形、超过 2 个色标的渐变、渐变输出格式不受支持、带 recolor 的图片/图层、RGB565A8 带旋转/缩放、不支持的图片颜色格式、非完整边框或圆角边框、矢量字体。arc、line 的 evaluate 分支被 <code>#if 0</code> 关闭；shadow（BOX_SHADOW）、LETTER、TRIANGLE、MASK_RECTANGLE 没有 EPIC 分支，全部走 SW draw unit。</p>
+
+  <h3>4.3 渲染列表（可选）</h3>
+  <p>开启 <code>CONFIG_DRV_EPIC_NEW_API=y</code> 后，LVGL v9 改用 <code>SDK: middleware/lvgl/lv_drivers_v9/sifli_renderlist/lv_draw_epic.c</code>。驱动层把一系列渲染操作收集成列表，支持：</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>操作</th><th>几何/遮罩由谁生成</th><th>最终像素</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>DRV_EPIC_DRAW_RECT</code>（无圆角）</td><td>EPIC 按矩形直接填充</td><td>EPIC</td></tr>
+        <tr><td><code>DRV_EPIC_DRAW_RECT</code>（圆角 / 上下圆角）</td><td>CPU 用 <code>drv_epic_mask_radius_*</code> + <code>drv_epic_mask_apply</code> 生成 A8 圆角 mask</td><td>EPIC masked fill</td></tr>
+        <tr><td><code>DRV_EPIC_DRAW_IMAGE</code></td><td>EPIC 直接做混叠/旋转/缩放；可选 mask</td><td>EPIC</td></tr>
+        <tr><td><code>DRV_EPIC_DRAW_ARC</code></td><td>CPU 生成角度/半径 mask；58x 可用 VGLite 生成 arc mask</td><td>EPIC masked fill</td></tr>
+        <tr><td><code>DRV_EPIC_DRAW_LINE</code>（水平/垂直实线）</td><td>EPIC 按矩形直接填充</td><td>EPIC</td></tr>
+        <tr><td><code>DRV_EPIC_DRAW_LINE</code>（斜线 / 虚线）</td><td>CPU 生成线 mask；虚线用 EPIC mono layer</td><td>EPIC blend</td></tr>
+        <tr><td><code>DRV_EPIC_DRAW_BORDER</code>（无圆角）</td><td>四条矩形</td><td>EPIC</td></tr>
+        <tr><td><code>DRV_EPIC_DRAW_BORDER</code>（圆角）</td><td>CPU 生成圆角 mask</td><td>EPIC masked fill</td></tr>
+        <tr><td><code>DRV_EPIC_DRAW_POLYGON</code></td><td>CPU 生成边线 mask</td><td>EPIC masked fill</td></tr>
+        <tr><td><code>DRV_EPIC_DRAW_LETTERS</code></td><td>字形 bitmap 由字体/渲染准备</td><td>EPIC blend</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>所以更准确的说法是：这些操作由 EPIC 渲染列表执行，最终填充/混叠在 EPIC；但圆角矩形、圆弧、斜线、圆角边框、多边形的几何遮罩由 CPU（58x 的圆弧可用 VGLite）生成，不是 EPIC 自己画几何形状。纯 EPIC 几何的是无圆角矩形、图片混叠/变换、水平/垂直实线、无圆角边框和字形混叠。</p>
+  <p>官方 <code>SDK: example/rt_device/gpu/render_list_mode/README.md</code> 示例明确支持 <code>sf32lb52-lchspi-ulp</code>；<code>watch</code>（LVGL v8）工程的 <code>proj.conf</code> 已开启 <code>CONFIG_DRV_EPIC_NEW_API=y</code>。驱动文档明确渲染列表不能用于 55x。驱动层还有 <code>DRV_EPIC_DRAW_SHADOW</code>（CPU 生成覆盖 mask + EPIC masked fill），但 LVGL v9 的 render-list draw unit 目前没有派发 <code>BOX_SHADOW</code>，所以 LVGL v9 的阴影仍走软件。</p>
+  <p>真源：<code>SDK: rtos/rtthread/bsp/sifli/drivers/drv_epic_rl_draw.c</code>、<code>SDK: rtos/rtthread/bsp/sifli/drivers/drv_epic_mask.c</code>、<code>SDK: rtos/rtthread/bsp/sifli/drivers/drv_epic.h</code>。</p>
+
+  <h3>4.4 限制与不支持项</h3>
+  <ul>
+    <li>EZIP 不能旋转；EPIC 的旋转/矩阵变换不支持 EZIP、JPG、YUV 输入。</li>
+    <li>52x 一次混叠的前景、背景、输出区域并集不能超过 <code>EPIC_COORDINATES_MAX</code>；有变形时上限 512，普通混叠 1024。</li>
+    <li>A4/A8 做 mask 时不能旋转或矩阵变换。</li>
+    <li>镜像不能与旋转、缩放同时进行。</li>
+    <li>52x 没有 JPEGD、L4、颜色矩阵、3x3 矩阵、A8/灰度输出；这些是 57x 的能力。</li>
+    <li>52x 没有 GE2D、DMA2D、VGLITE；不要使用 52x 不存在的加速 API。</li>
+  </ul>
+
+  <h2>5. 官方推荐写法</h2>
+  <p>官方推荐的 LVGL 应用不是从零写 <code>lv_port_disp.c</code>，而是复用 SDK 的 <code>middleware/lvgl</code> 适配层。适配层负责 LCD、触摸、按键、滚轮、FPS 统计；应用只写 UI。</p>
+
+  <h3>5.1 工程结构</h3>
+  <ul>
+    <li><code>project/SConstruct</code>：按 <code>PrepareEnv → AddBootLoader → SifliEnv → PrepareBuilding/DoBuilding → AddFTAB → GenDownloadScript</code> 组织。</li>
+    <li><code>project/SConscript</code>：导入 SDK 根 <code>SConscript</code>，再导入 <code>../src/SConscript</code>。</li>
+    <li><code>project/Kconfig</code>：<code>source "$SIFLI_SDK/Kconfig.v2"</code> 与 <code>rsource "Kconfig.proj"</code>。</li>
+    <li><code>project/Kconfig.proj</code>：应用私有配置项。</li>
+    <li><code>project/proj.conf</code>：只写相对 <code>board.conf</code> 和 Kconfig 默认值的最小差异。</li>
+    <li><code>project/rtconfig.py</code>：工具链/芯片/核/目标名；应用级可以是空文件，板级会提供默认值。</li>
+    <li><code>src/SConscript</code>：用 <code>Glob('*.c')</code> + <code>DefineGroup</code> 收集应用源文件；新增子目录要在父 <code>SConscript</code> 显式导入。</li>
+    <li><code>src/main.c</code>：应用入口。</li>
+  </ul>
+  <p>配置优先级：<code>proj.conf</code> &gt; <code>board.conf</code> &gt; Kconfig 默认值；板级差异化可放在 <code>project/sf32lb52-lchspi-ulp_hcpu/proj.conf</code>，优先级最高。真源：<code>SDK: docs/source/zh_CN/app_development/create_application.md</code>、<code>SDK: docs/source/zh_CN/app_development/build_and_configuration.md</code>。</p>
+
+  <h3>5.2 应用入口</h3>
+  <p>最小工程的标准写法：</p>
+  <pre><code>littlevgl2rtt_init("lcd");
+app_create();
+while (1) {
+    rt_uint32_t ms = lv_task_handler();
+    rt_thread_mdelay(ms);
+}</code></pre>
+  <ul>
+    <li><code>littlevgl2rtt_init("lcd")</code> 内部调用 <code>lv_hal_init()</code>，初始化 LCD、触摸、按键、滚轮，并注册图片解码器和 FPS 统计；它<strong>不调用</strong> <code>lv_init()</code>。</li>
+    <li><code>lv_init()</code> 由 <code>gui_lib_init()</code> 在 RT-Thread 组件初始化阶段完成，通过 <code>INIT_COMPONENT_EXPORT</code> 注册；应用不要再调一次。</li>
+    <li>主循环用 <code>lv_task_handler()</code>（<code>lv_timer_handler()</code> 的兼容别名），返回值作为 <code>rt_thread_mdelay()</code> 的延时。</li>
+    <li>真源：<code>SDK: middleware/lvgl/littlevgl2rtt.c</code>、<code>SDK: middleware/lvgl/littlevgl2rtt.h</code>、<code>SDK: middleware/lvgl/lv_drivers_v9/lvgl_drv.c</code>。</li>
+  </ul>
+
+  <h3>5.3 多应用 / 多页面</h3>
+  <ul>
+    <li>产品级 UI 用 <code>GUI_APP_FRAMEWORK</code>：<code>gui_app_init(1)</code>、<code>gui_app_run("Main")</code>，应用通过 <code>BUILTIN_APP_EXPORT</code> 注册。</li>
+    <li>页面生命周期：<code>on_start</code> 创建控件/订阅服务；<code>on_resume</code> 启动 timer；<code>on_pause</code> 停止 timer；<code>on_stop</code> 退订/释放内存。</li>
+    <li>参考 <a href="../vendor/sifli-sdk/example/multimedia/lvgl/watch_v9">watch_v9</a>（LVGL v9）和 <code>SDK: example/multimedia/lvgl/watch</code>（LVGL v8）。</li>
+    <li>真源：<code>SDK: docs/source/zh_CN/middleware/gui_app_framework.md</code>、<code>SDK: middleware/include/gui_app_fwk.h</code>。</li>
+  </ul>
+
+  <h3>5.4 关键配置</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>配置</th><th>作用</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>CONFIG_PKG_USING_LITTLEVGL2RTT=y</code></td><td>启用 LVGL 2 RT-Thread 适配层；<code>middleware/lvgl</code> 的源码组依赖它。</td></tr>
+        <tr><td><code>CONFIG_LV_USE_EZIP=y</code></td><td>启用 EZIP 解码器；Kconfig 默认 y。</td></tr>
+        <tr><td><code>CONFIG_DRV_EPIC_NEW_API=y</code></td><td>启用 EPIC 渲染列表模式；可选，需在目标板上验证。</td></tr>
+        <tr><td><code>CONFIG_IMAGE_CACHE_IN_PSRAM_SIZE</code></td><td>图片文件数据缓存池大小；EZIP 文件源优先从该池分配。</td></tr>
+        <tr><td><code>CONFIG_LV_FB_TWO_NOT_SCREEN_SIZE=y</code></td><td>两个 partial 绘制缓冲，每个 <code>LV_FB_LINE_NUM</code> 行。</td></tr>
+        <tr><td><code>CONFIG_LV_FB_LINE_NUM</code></td><td>每个 partial 缓冲的行数；默认 100。</td></tr>
+        <tr><td><code>CONFIG_LV_DEF_REFR_PERIOD=16</code></td><td>LVGL 默认刷新周期。</td></tr>
+        <tr><td><code>CONFIG_LV_OS_RTTHREAD=y</code></td><td>LVGL 的 RT-Thread OS 适配。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>5.5 资源与缓存</h3>
+  <ul>
+    <li>构建期优先用 <code>Env.ImgResource()</code> / <code>ezip.exe</code> 把图片转成 EZIP，放进 <code>.ROM3_IMG</code> 等资源段；小图可以用 <code>-dpt 1</code> 直接转像素，避免运行时解压。</li>
+    <li>大图、可替换资源放文件系统或 SD 卡，运行时通过 <code>lv_image_set_src()</code> 加载；需要 <code>CONFIG_LV_USE_FS_POSIX=y</code> 和盘符配置。</li>
+    <li>官方建议在页面的 <code>on_resume()</code> 把热图复制到 SRAM，冷资源留在 Flash/PSRAM。</li>
+    <li>图片缓存分两层：LVGL 的 <code>LV_IMG_CACHE_DEF_SIZE</code>（条目数）和 SiFli 的 <code>CONFIG_IMAGE_CACHE_IN_PSRAM_SIZE</code> / <code>CONFIG_IMAGE_CACHE_IN_SRAM_SIZE</code>（解码数据缓存池）。</li>
+  </ul>
+
+  <h3>5.6 调试与测量</h3>
+  <ul>
+    <li>串口 <code>fps2</code> 开关 FPS/CPU/EPIC 统计；日志每 2 秒输出一次，包含 FPS、CPU load、EPIC 占用、LVGL idle、cache miss。</li>
+    <li>代码里可以调 <code>set_display_fps_and_cpu_load(1)</code> 和 <code>lv_get_fps()</code>；这些 API 在 <code>SDK: middleware/lvgl/littlevgl2rtt.h</code>。</li>
+    <li>本页不给出测量值，也不比较快慢；量化结论以目标板实测为准。</li>
+  </ul>
+
+  <h3>5.7 代码风格</h3>
+  <p>按官方 <code>sifli-code-review</code> skill 与 SDK <code>.clang-format</code> 执行；本页不复制规则。</p>
+
+  <h2>6. demo 对接</h2>
+  <p>最小工程从 <code>SDK: example/get-started/hello_world/rtt</code> 复制；LVGL v9 的 demo 参考 <a href="../vendor/sifli-sdk/example/multimedia/lvgl/lvgl_v9_demos">lvgl_v9_demos</a>；产品级多页面参考 <a href="../vendor/sifli-sdk/example/multimedia/lvgl/watch_v9">watch_v9</a>（LVGL v9）或 <code>SDK: example/multimedia/lvgl/watch</code>（LVGL v8）。</p>
+
+  <h3>6.1 最小工程步骤</h3>
+  <ol>
+    <li>复制 <code>hello_world/rtt/project</code> 和 <code>hello_world/rtt/src</code>。</li>
+    <li>保留 <code>SConstruct</code>、<code>SConscript</code>、<code>Kconfig</code>、<code>Kconfig.proj</code>、<code>proj.conf</code>、<code>rtconfig.py</code>。</li>
+    <li>把应用源文件放进 <code>src/</code>；<code>src/SConscript</code> 用 <code>Glob('*.c')</code> 收集。</li>
+    <li>需要板级差异时，新建 <code>project/sf32lb52-lchspi-ulp_hcpu/proj.conf</code>，只写覆盖项。</li>
+    <li>构建：<code>scons --board=sf32lb52-lchspi-ulp -j8</code>；产物在 <code>build_sf32lb52-lchspi-ulp_hcpu/</code>，烧录用 <code>uart_download.bat</code>。</li>
+  </ol>
+
+  <h3>6.2 参考示例</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>示例</th><th>用途</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>SDK: example/get-started/hello_world/rtt</code></td><td>最小工程模板：<code>project/</code> + <code>src/</code> + <code>main.c</code></td></tr>
+        <tr><td><a href="../vendor/sifli-sdk/example/multimedia/lvgl/lvgl_v9_demos">lvgl_v9_demos</a></td><td>LVGL v9 demo 工程；<code>lvgl_v9_demos/project/proj.conf</code> 可作配置基线</td></tr>
+        <tr><td><a href="../vendor/sifli-sdk/example/multimedia/lvgl/watch_v9">watch_v9</a></td><td>LVGL v9 产品级多应用模板；使用 <code>GUI_APP_FRAMEWORK</code></td></tr>
+        <tr><td><code>SDK: example/multimedia/lvgl/watch</code></td><td>LVGL v8 产品级模板；<code>proj.conf</code> 开启 <code>CONFIG_DRV_EPIC_NEW_API=y</code></td></tr>
+        <tr><td><code>SDK: example/multimedia/lvgl/ezip_v9</code></td><td>EZIP 文件加载、PSRAM 预加载、<code>A:/</code> 盘符示例</td></tr>
+        <tr><td><a href="../vendor/sifli-sdk/example/rt_device/gpu/render_list_mode">render_list_mode</a></td><td>EPIC 渲染列表；官方支持 <code>sf32lb52-lchspi-ulp</code></td></tr>
+        <tr><td><code>SDK: example/lcd_fb</code></td><td>LCD framebuffer / LCDC 送屏路径，不是 LVGL 应用</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.3 与本仓库 chip-adapt 导出的关系</h3>
+  <ul>
+    <li><a href="../sifli/export.py">chip-adapt/sifli/export.py</a> 负责复制 <code>user/app</code> 源码、生成 SCons 工程、调用 <code>ezip.exe</code> 生成资源 C 数组；导出产物在 <code>chip-adapt/exports/&lt;app&gt;/</code>，不写入下载的 SDK。</li>
+    <li>资源由 <code>user/app/&lt;app&gt;/assets.json</code> 声明：冷图用 <code>mode=ezip</code>，旋转/缩放/热图用 <code>mode=raw</code>；导出器生成 <code>src/app/&lt;app&gt;/assets.h</code>、<code>assets.c</code> 和 <code>app_assets_init()</code>，并把缓存配置写进 <code>project/proj.conf</code>。</li>
+    <li>导出的 <code>src/main.c</code> 是官方最小工程写法：<code>littlevgl2rtt_init("lcd")</code> → <code>app_create()</code> → <code>lv_task_handler()</code> 循环。应用入口是 <code>void &lt;app&gt;_create(void)</code>；<code>src/app/app.c</code> 先调 <code>app_assets_init()</code>，再调应用入口。</li>
+    <li><code>src/app/lvgl_ai_sdk.h</code> 用 <code>__has_include("littlevgl2rtt.h")</code> 区分 SDK 构建与本地 headless 验证：SDK 构建拿真实头，本地验证拿 <code>sim_sifli.h</code> 桩。桩只用于验证，不代表 EPIC、触摸或真实刷新行为。</li>
+    <li>应用必须按 LVGL 9.4 基线编写；导出器扫描 9.5/9.6-only API，发现时返回 <code>unsupported_api</code>，不生成会编译失败的工程。</li>
+    <li>真源：<a href="../sifli/README.md">chip-adapt/sifli/README.md</a>、<a href="../sifli/templates/src/main.c">templates/src/main.c</a>、<a href="../sifli/templates/src/app/lvgl_ai_sdk.h">templates/src/app/lvgl_ai_sdk.h</a>。</li>
+  </ul>
+
+  <h2>7. 黄山派落地清单</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>项</th><th>值</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>开发板</td><td>立创黄山派，板名 <code>sf32lb52-lchspi-ulp</code></td></tr>
+        <tr><td>SoC</td><td>SF32LB52x，HCPU，RT-Thread</td></tr>
+        <tr><td>SDK</td><td>SiFli-SDK v2.5.1（Gitee <code>SiFli/sifli-sdk</code>，release/v2.5）</td></tr>
+        <tr><td>LVGL</td><td>9.4.0（<code>external/lvgl_v9</code>）</td></tr>
+        <tr><td>屏幕</td><td>CO5300，390x450，QAD-SPI 4 数据线</td></tr>
+        <tr><td>触摸</td><td>FT6146</td></tr>
+        <tr><td>PSRAM</td><td>8MB，MPI1 OPI</td></tr>
+        <tr><td>Flash</td><td>MPI2</td></tr>
+        <tr><td>构建</td><td><code>scons --board=sf32lb52-lchspi-ulp -j8</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>7.1 配置清单</h3>
+  <ul>
+    <li>板级：<code>CONFIG_BSP_USING_EPIC=y</code>、<code>CONFIG_BSP_USING_LCD=y</code>、<code>CONFIG_LCD_USING_TFT_CO5300=y</code>、<code>CONFIG_BSP_USING_TOUCHD=y</code>。</li>
+    <li>LVGL：<code>CONFIG_PKG_USING_LITTLEVGL2RTT=y</code>、<code>CONFIG_LV_USE_EZIP=y</code>、<code>CONFIG_LV_FB_TWO_NOT_SCREEN_SIZE=y</code>、<code>CONFIG_LV_FB_LINE_NUM</code>、<code>CONFIG_IMAGE_CACHE_IN_PSRAM_SIZE</code>、<code>CONFIG_LV_DEF_REFR_PERIOD=16</code>、<code>CONFIG_LV_OS_RTTHREAD=y</code>。</li>
+    <li>可选：<code>CONFIG_DRV_EPIC_NEW_API=y</code> 启用渲染列表；开启后圆角矩形、边框、圆弧、线、多边形、点阵字可走 EPIC，阴影仍走软件。是否开启以目标板验证为准。</li>
+    <li>资源：<code>ezip.exe</code> 在 <code>tools/png2ezip/</code>；常用 <code>-rgb565 -cfile 2 -section ROM3_IMG</code>；小图 <code>-dpt 1</code>，大图 <code>-dpt 4</code> + <code>-ers</code>。57x 的 <code>-winsize 2048</code> 不适用。</li>
+  </ul>
+
+  <h3>7.2 应用约束</h3>
+  <ul>
+    <li>按 LVGL 9.4 API 编写；不要使用 9.5/9.6-only API；版本门建议写 <code>LVGL_VERSION_MINOR &gt;= 4</code>。</li>
+    <li>屏幕 390x450；非 390x450 的设计需要自行适配布局。</li>
+    <li>EZIP 只能混叠/缩放，不能旋转；需要旋转的图片要先复制到 RAM，并避开 EZIP 输入。</li>
+    <li>52x 没有硬件 JPEG；不要在运行时直接解大 PNG/JPEG，构建期转 EZIP。</li>
+    <li>不要使用 52x 不存在的加速 API：<code>LV_USE_VGLITE</code>、GE2D、DMA2D、硬件 JPEGD。</li>
+  </ul>
+
+  <h3>7.3 验证顺序</h3>
+  <p>导出与 headless 验证的完整命令见 <a href="../sifli/README.md">chip-adapt/sifli/README.md</a>；固件构建与烧录优先用 <a href="../sifli/host/README.md">chip-adapt/sifli/host/README.md</a> 的内部 host，官方 <code>sifli-build-win</code> / <code>sftool</code> skill 只在手动方式或通用 SDK 场景参考。headless 结果不代表真机 EPIC、触摸或刷新行为。</p>
+
+  <h2>8. 真源索引</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>主题</th><th>真源</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>SDK 版本</td><td><a href="../vendor/sifli-sdk/version.txt">version.txt</a></td></tr>
+        <tr><td>EPIC HAL</td><td><code>SDK: docs/source/zh_CN/hal/epic.md</code>、<code>SDK: drivers/Include/bf0_hal_epic.h</code>、<code>SDK: drivers/hal/bf0_hal_epic.c</code></td></tr>
+        <tr><td>EPIC 驱动</td><td><code>SDK: docs/source/zh_CN/drivers/epic.md</code>、<code>SDK: middleware/lvgl/lv_drivers_v9/sifli</code>、<code>SDK: middleware/lvgl/lv_drivers_v9/sifli_renderlist</code></td></tr>
+        <tr><td>EZIP / EZIPA</td><td><code>SDK: docs/source/zh_CN/hal/ezip.md</code>、<code>SDK: middleware/lvgl/lv_drivers_v9/lvsf_img_decoder.c</code>、<code>SDK: middleware/ezipa_dec/ezipa_dec.c</code></td></tr>
+        <tr><td>LCDC / 显示</td><td><a href="../vendor/sifli-sdk/docs/source/zh_CN/hal/lcdc.md">hal/lcdc.md</a>、<a href="../vendor/sifli-sdk/docs/source/zh_CN/hal/dsi.md">hal/dsi.md</a>、<code>SDK: drivers/Include/bf0_hal_lcdc.h</code>、<code>SDK: middleware/lvgl/lv_drivers_v9/lv_lcd.c</code>、<code>SDK: rtos/rtthread/bsp/sifli/drivers/drv_lcd_fb.c</code>、<code>SDK: customer/peripherals/display/co5300/co5300.c</code>、<code>SDK: customer/peripherals/display/jdi387a/jdi387a.c</code></td></tr>
+        <tr><td>JPEG / 视频</td><td><code>SDK: docs/source/zh_CN/middleware/video.md</code>、<code>SDK: middleware/lvgl/lv_drivers_v9/lvsf_jpeg_decoder.c</code>、<code>SDK: external/ffmpeg/libavcodec/mjpegdec.c</code></td></tr>
+        <tr><td>LVGL 适配</td><td><code>SDK: middleware/lvgl/lv_conf_sifli.h</code>、<code>SDK: middleware/lvgl/littlevgl2rtt.c</code>、<code>SDK: middleware/lvgl/lv_drivers_v9/lvgl_drv.c</code>、<code>SDK: middleware/lvgl/Kconfig</code></td></tr>
+        <tr><td>官方写法</td><td><code>SDK: docs/source/zh_CN/app_development/create_application.md</code>、<code>SDK: docs/source/zh_CN/app_development/build_and_configuration.md</code>、<code>SDK: docs/source/zh_CN/quickstart/build.md</code>、<code>SDK: docs/source/zh_CN/middleware/gui_app_framework.md</code></td></tr>
+        <tr><td>资源工具</td><td><code>SDK: docs/source/zh_CN/app_note/ezip_tool_usage.md</code>、<a href="../vendor/sifli-sdk/tools/png2ezip/Help.txt">png2ezip/Help.txt</a>、<code>SDK: example/multimedia/lvgl/ezip_v9</code></td></tr>
+        <tr><td>代码风格</td><td><code>SDK: skills/sifli-code-review/SKILL.md</code>、<a href="../vendor/sifli-sdk/.clang-format">.clang-format</a></td></tr>
+        <tr><td>官方内存 / EPIC 数据</td><td><code>SDK: docs/source/zh_CN/app_note/memory_usage.md</code>（本页不转述具体数字）</td></tr>
+        <tr><td>本仓库适配</td><td><a href="../sifli/README.md">chip-adapt/sifli/README.md</a>、<a href="../sifli/adapter.json">adapter.json</a>、<a href="../sifli/export.py">export.py</a>、<a href="../sifli/templates">templates/</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<footer>索引指针 · 以链接文件为准 · 本页不定义验收标准</footer>
+</body>
+</html>

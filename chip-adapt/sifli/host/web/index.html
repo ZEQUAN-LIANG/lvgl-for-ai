@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>SiFli Host · 黄山派</title>
+    <link rel="stylesheet" href="/vendor/xterm/xterm.css" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">SF</span>
+          <div>
+            <strong>SiFli Host</strong>
+            <span class="brand-sub">黄山派 · SF32LB52x</span>
+          </div>
+        </div>
+
+        <div class="toolbar-group">
+          <label class="field">
+            <span>端口</span>
+            <select id="portSelect" aria-label="串口"></select>
+          </label>
+          <button id="refreshPorts" class="icon-button" type="button" title="刷新串口">
+            ↻
+          </button>
+          <label class="field">
+            <span>波特率</span>
+            <input
+              id="baudInput"
+              list="baudList"
+              value="1000000"
+              inputmode="numeric"
+              aria-label="波特率"
+            />
+            <datalist id="baudList">
+              <option value="1000000"></option>
+              <option value="921600"></option>
+              <option value="460800"></option>
+              <option value="230400"></option>
+              <option value="115200"></option>
+              <option value="57600"></option>
+              <option value="38400"></option>
+              <option value="19200"></option>
+              <option value="9600"></option>
+            </datalist>
+          </label>
+          <button id="connectBtn" class="primary" type="button">连接</button>
+          <button id="disconnectBtn" class="secondary" type="button" disabled>
+            断开
+          </button>
+          <button id="resetBtn" class="secondary" type="button" disabled>
+            复位
+          </button>
+        </div>
+
+        <label class="switch" title="串口断开后自动重连">
+          <input id="autoReconnect" type="checkbox" checked />
+          <span>自动重连</span>
+        </label>
+
+        <div class="status-pill" id="statusPill" data-state="closed">
+          <span class="dot"></span>
+          <span id="statusText">未连接</span>
+        </div>
+      </header>
+
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="terminal" type="button">
+          终端
+        </button>
+        <button class="tab" data-tab="activity" type="button">
+          活动
+          <span id="activityBadge" class="badge hidden"></span>
+        </button>
+        <div class="tabs-spacer"></div>
+        <label class="switch tab-switch" title="在终端本地显示键盘输入">
+          <input id="localEcho" type="checkbox" />
+          <span>回显</span>
+        </label>
+        <button id="clearBtn" class="tab-action" type="button">清屏</button>
+        <a id="downloadLog" class="tab-action" href="#" download>下载日志</a>
+      </nav>
+
+      <div id="globalProgress" class="global-progress hidden">
+        <div id="globalBar" class="global-bar"></div>
+        <span id="globalLabel"></span>
+      </div>
+
+      <main class="workspace">
+        <section class="pane active" id="pane-terminal" role="tabpanel">
+          <div class="flash-dock">
+            <div class="dock-row paths">
+              <label class="mini">
+                <span>PROJECT</span>
+                <input id="projectInput" placeholder="chip-adapt/exports/<app>/project" />
+              </label>
+              <label class="mini">
+                <span>BUILD</span>
+                <input id="buildInput" placeholder=".../build_sf32lb52-lchspi-ulp_hcpu" />
+              </label>
+              <span class="tag" id="suggestTag">自动填充</span>
+            </div>
+            <div class="dock-row actions">
+              <button id="buildBtn" class="secondary" type="button">构建</button>
+              <button id="flashOnlyBtn" class="secondary" type="button">仅烧录</button>
+              <button id="flashBuildBtn" class="primary" type="button">
+                构建并烧录
+              </button>
+              <span class="dock-status" id="jobStatus">空闲</span>
+              <span class="dock-percent" id="jobPercent">0%</span>
+              <div class="progress dock-progress">
+                <div class="progress-bar" id="jobBar"></div>
+              </div>
+            </div>
+          </div>
+          <div id="terminal" class="terminal-host" aria-label="串口终端"></div>
+        </section>
+
+        <section class="pane" id="pane-activity" role="tabpanel">
+          <div class="activity-head">
+            <span>实时活动</span>
+            <span class="muted">AI / CLI / WEB / SYS</span>
+          </div>
+          <ul id="activityList" class="activity-list"></ul>
+        </section>
+      </main>
+
+      <footer class="statusbar">
+        <span id="statusPort">—</span>
+        <span id="statusBaud">—</span>
+        <span id="statusBytes">RX 0 / TX 0</span>
+        <span id="statusCursor">cursor 0</span>
+        <span id="statusReconnect">自动重连: 开</span>
+        <span class="spacer"></span>
+        <span id="statusServer">127.0.0.1:8766</span>
+      </footer>
+
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <script src="/vendor/xterm/xterm.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

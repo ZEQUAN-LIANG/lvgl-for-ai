@@ -1,0 +1,10 @@
+{
+  "schema": "lvgl-ai-assets-v1",
+  "local_header": "",
+  "assets": {},
+  "cache": {
+    "image_cache_psram_size": 2097152,
+    "lv_cache_def_size": 0,
+    "lv_image_header_cache_cnt": 0
+  }
+}

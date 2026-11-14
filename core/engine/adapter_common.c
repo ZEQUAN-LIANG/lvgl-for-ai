@@ -11,6 +11,7 @@
 
 #include "adapter.h"
 #include "adapter_internal.h"
+#include "png_writer.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -105,7 +106,13 @@ const adapter_info_t * adapter_info(const adapter_t * adapter)
 void adapter_refresh(adapter_t * adapter)
 {
     if(adapter == NULL) return;
+    common_of(adapter)->refresh_painted = false;
     adapter_prim_refresh(adapter);
+}
+
+bool adapter_last_refresh_painted(const adapter_t * adapter)
+{
+    return adapter != NULL && common_of_const(adapter)->refresh_painted;
 }
 
 const uint8_t * adapter_framebuffer(const adapter_t * adapter)
@@ -292,31 +299,8 @@ int adapter_save_png(const adapter_t * adapter, const char * path)
 {
     if(adapter == NULL || path == NULL) return -1;
     const adapter_common_t * common = common_of_const(adapter);
-
-    unsigned char * rgba = framebuffer_to_rgba(common);
-    if(rgba == NULL) return -1;
-
-    unsigned char * png = NULL;
-    size_t png_size = 0;
-    int encoded = adapter_prim_png_encode(rgba, common->width,
-                                          common->height, &png, &png_size);
-    free(rgba);
-    if(encoded != 0) return -1;
-
-    FILE * file = fopen(path, "wb");
-    if(file == NULL) {
-        fprintf(stderr, "[engine] cannot write %s\n", path);
-        adapter_prim_png_free(png);
-        return -1;
-    }
-    size_t written = fwrite(png, 1, png_size, file);
-    fclose(file);
-    adapter_prim_png_free(png);
-    if(written != png_size) {
-        fprintf(stderr, "[engine] short write to %s\n", path);
-        return -1;
-    }
-    return 0;
+    return png_writer_write_xrgb(common->framebuffer, common->width,
+                                 common->height, path);
 }
 
 int adapter_load_png(const char * path,

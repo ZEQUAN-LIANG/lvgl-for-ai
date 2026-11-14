@@ -19,7 +19,6 @@ used to raise it.
 from __future__ import annotations
 
 from functools import cached_property
-from pathlib import Path
 from typing import Any
 
 from ..control.recording import ANNOTATIONS_SCHEMA, Recording
@@ -43,103 +42,120 @@ def _display(value: Any) -> str:
     return "" if value is None else str(value)
 
 
-def _frame_no_from_name(path: Path, fallback: int) -> int:
-    stem = path.stem
-    return int(stem) if stem.isdigit() else fallback
+def _file_name(relative: str) -> str:
+    return relative.rsplit("/", 1)[-1]
 
 
-def _timeline_by_file(
-    rows: list[dict[str, Any]], row_type: str
-) -> dict[str, dict[str, Any]]:
-    return {
-        row["file"]: row
-        for row in rows
-        if row.get("type") == row_type and isinstance(row.get("file"), str)
-    }
-
-
-def _frame_entries(
-    recording: Recording, timeline: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
-    """Frame rows with ``frame_no``/``t_ms`` from the timeline when available."""
-    by_file = _timeline_by_file(timeline, "frame")
-    entries: list[dict[str, Any]] = []
-    for index, path in enumerate(recording.frames, start=1):
-        relative = path.relative_to(recording.path).as_posix()
-        row = by_file.get(relative, {})
-        frame_no = row.get("frame_no")
-        if not _is_int(frame_no):
-            frame_no = _frame_no_from_name(path, index)
-        t_ms = row.get("t_ms")
-        if not _is_int(t_ms):
-            t_ms = 0
-        entries.append(
-            {
-                "frame_no": frame_no,
-                "t_ms": t_ms,
-                "file": relative,
-                "url": urls.frame_url(recording.path.name, path.name),
-            }
-        )
-    return entries
-
-
-def _snapshot_entries(
-    recording: Recording, timeline: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
-    """Snapshot rows with their timeline label when available."""
-    by_file = _timeline_by_file(timeline, "snapshot")
-    entries: list[dict[str, Any]] = []
-    for path in recording.snapshots:
-        relative = path.relative_to(recording.path).as_posix()
-        row = by_file.get(relative, {})
-        label = row.get("label")
-        entries.append(
-            {
-                "label": label if isinstance(label, str) and label else path.stem,
-                "file": relative,
-                "url": urls.snapshot_url(recording.path.name, path.name),
-                "frame_no": row.get("frame_no"),
-                "t_ms": row.get("t_ms"),
-            }
-        )
-    return entries
-
-
-def _note_view(note: dict[str, Any], session_id: str | None) -> dict[str, Any]:
-    """Note fields, labels, region text and crop URLs in one place."""
+def _note_view(
+    note: dict[str, Any],
+    session_id: str | None,
+    frames_by_no: dict[int, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Note fields, labels, region text, frame links and crop URLs."""
     tags_value = note.get("tags")
     tags = " ".join(f"#{tag}" for tag in tags_value) if tags_value else ""
-    regions_value = note.get("regions")
+    anchors_value = note.get("anchors")
+    frame_start = note.get("frame_start")
+    frame_end = note.get("frame_end")
+    frame_numbers: list[int] = []
+    annotated_by_frame: dict[int, str] = {}
     region_text = ""
     crops: list[dict[str, str]] = []
-    if regions_value:
-        region_text = "；".join(
-            f"({region.get('x')}, {region.get('y')}) "
-            f"{region.get('w')}×{region.get('h')}"
-            for region in regions_value
-        )
-        for region in regions_value:
-            image = region.get("image")
-            if not isinstance(image, str) or not image:
+    anchor_count = 0
+    if isinstance(anchors_value, list) and anchors_value:
+        anchor_count = len(anchors_value)
+        text_parts = []
+        for anchor in anchors_value:
+            if not isinstance(anchor, dict):
                 continue
-            crops.append(
-                {
-                    "url": urls.region_url(session_id, image),
-                    "alt": NOTE_CROP_ALT,
-                }
+            frame_no = anchor.get("frame_no")
+            if _is_int(frame_no):
+                frame_numbers.append(frame_no)
+                annotated = anchor.get("annotated")
+                if isinstance(annotated, str) and annotated:
+                    annotated_by_frame[frame_no] = annotated
+            regions_value = anchor.get("regions") or []
+            if not isinstance(regions_value, list) or not regions_value:
+                continue
+            text_parts.append(
+                f"帧 {_display(frame_no)}: "
+                + "；".join(
+                    f"({region.get('x')}, {region.get('y')}) "
+                    f"{region.get('w')}×{region.get('h')}"
+                    for region in regions_value
+                )
             )
+            for region in regions_value:
+                image = region.get("image")
+                if not isinstance(image, str) or not image:
+                    continue
+                crops.append(
+                    {
+                        "url": urls.region_url(session_id, image),
+                        "alt": f"帧 {_display(frame_no)} 标注区域",
+                    }
+                )
+        region_text = "\n".join(text_parts)
+    else:
+        if _is_int(note.get("frame_no")):
+            frame_numbers.append(note["frame_no"])
+        regions_value = note.get("regions")
+        if regions_value:
+            region_text = "；".join(
+                f"({region.get('x')}, {region.get('y')}) "
+                f"{region.get('w')}×{region.get('h')}"
+                for region in regions_value
+            )
+            for region in regions_value:
+                image = region.get("image")
+                if not isinstance(image, str) or not image:
+                    continue
+                crops.append(
+                    {
+                        "url": urls.region_url(session_id, image),
+                        "alt": NOTE_CROP_ALT,
+                    }
+                )
+    if anchor_count:
+        if frame_start == frame_end:
+            meta = (
+                f"帧 {_display(frame_start)} · "
+                f"{anchor_count} 个锚点 · t={_display(note.get('t_ms'))} ms"
+            )
+        else:
+            meta = (
+                f"帧 {_display(frame_start)}–{_display(frame_end)} · "
+                f"{anchor_count} 个锚点 · t={_display(note.get('t_ms'))} ms"
+            )
+    else:
+        meta = (
+            f"帧 {_display(note.get('frame_no'))} · "
+            f"t={_display(note.get('t_ms'))} ms"
+        )
+    frame_views = []
+    by_number = frames_by_no or {}
+    for frame_no in dict.fromkeys(frame_numbers):
+        frame = by_number.get(frame_no)
+        if frame is None:
+            continue
+        view = {
+            "frame_no": frame_no,
+            "url": frame["url"],
+            "t_ms": frame.get("t_ms", 0),
+        }
+        annotated = annotated_by_frame.get(frame_no)
+        if annotated:
+            view["annotated"] = urls.region_url(session_id, annotated)
+        frame_views.append(view)
     return {
         "id": note.get("id"),
         "frame_no": note.get("frame_no"),
         "has_frame": _is_int(note.get("frame_no")),
-        "meta": (
-            f"帧 {_display(note.get('frame_no'))} · "
-            f"t={_display(note.get('t_ms'))} ms"
-        ),
+        "meta": meta,
         "tags": tags,
         "text": note.get("text"),
         "region_text": region_text,
+        "frames": frame_views,
         "crops": crops,
     }
 
@@ -192,13 +208,37 @@ class ReplayModel:
     def frames(self) -> list[dict[str, Any]]:
         if self._recording is None:
             return []
-        return _frame_entries(self._recording, self.timeline)
+        # Read the timeline first: Recording fills its shared view cache from
+        # this read, so frame_views() does not read the file a second time.
+        self.timeline
+        session_id = self._recording.path.name
+        return [
+            {
+                "frame_no": view["frame_no"],
+                "t_ms": view["t_ms"],
+                "file": view["file"],
+                "url": urls.frame_url(session_id, _file_name(view["file"])),
+            }
+            for view in self._recording.frame_views()
+        ]
 
     @cached_property
     def snapshots(self) -> list[dict[str, Any]]:
         if self._recording is None:
             return []
-        return _snapshot_entries(self._recording, self.timeline)
+        # Same order as frames: one timeline read feeds both view lists.
+        self.timeline
+        session_id = self._recording.path.name
+        return [
+            {
+                "label": view["label"],
+                "file": view["file"],
+                "url": urls.snapshot_url(session_id, _file_name(view["file"])),
+                "frame_no": view["frame_no"],
+                "t_ms": view["t_ms"],
+            }
+            for view in self._recording.snapshot_views()
+        ]
 
     @cached_property
     def _frame_diffs_read(
@@ -280,7 +320,14 @@ class ReplayModel:
     def note_views(self) -> list[dict[str, Any]]:
         """Notes rendered by the page; ``page_render._render_notes`` renders them."""
         notes = self.annotations.get("notes") or []
-        return [_note_view(note, self.session_id) for note in notes]
+        frames_by_no = {
+            frame["frame_no"]: frame
+            for frame in self.frames
+            if _is_int(frame.get("frame_no"))
+        }
+        return [
+            _note_view(note, self.session_id, frames_by_no) for note in notes
+        ]
 
     def prime(self) -> None:
         """Read every section the replay page renders, in its historical order."""

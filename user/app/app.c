@@ -3,15 +3,16 @@
  * The user entry point: lvgl_engine calls exactly this function.
  *
  * LVGL 9.6 starts the AURELIA C9 coffee machine by default. LVGL_AI_DEMO selects
- * the app variant: coffee (default), xiaohongshu (alias xhs) or spectrum. The CLI and
+ * the app variant: coffee (default), xiaohongshu (alias xhs), spectrum,
+ * sift_watch, zombie_cannon or textarea_evidence. The CLI and
  * web set it from a scenario's "app" field, so the same value is recorded in
  * the session manifest. The original demo tree is always created but hidden,
  * because the tool's integration tests target its named button; older LVGL
  * targets show that demo as-is.
  *
- * Every app exposes the same ``void create(lv_obj_t * screen)`` entry. Adding
- * an app means one row in ``apps`` plus its implementation; the tool layer
- * never learns app names.
+ * Every app exposes the same ``void create(void)`` entry. Adding an app means
+ * one row in ``apps`` plus its implementation; the tool layer never learns app
+ * names.
  */
 
 #include "lvgl.h"
@@ -21,6 +22,9 @@
 #include "coffee/coffee_ui.h"
 #include "xiaohongshu/xhs_page.h"
 #include "spectrum/spectrum.h"
+#include "textarea_evidence/textarea_evidence.h"
+#include "sift_watch/sift_watch.h"
+#include "zombie_cannon/zombie_cannon.h"
 #endif
 
 #include <stdio.h>
@@ -28,7 +32,7 @@
 #include <string.h>
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
-typedef void (* app_create_fn)(lv_obj_t * screen);
+typedef void (* app_create_fn)(void);
 
 typedef struct {
     const char * name;
@@ -39,6 +43,9 @@ static const app_entry_t apps[] = {
     {"coffee", coffee_create},
     {"xiaohongshu", xhs_page_create},
     {"spectrum", spectrum_create},
+    {"textarea_evidence", textarea_evidence_create},
+    {"sift_watch", sift_watch_create},
+    {"zombie_cannon", zombie_cannon_create},
 };
 
 #define APP_COUNT (sizeof(apps) / sizeof(apps[0]))
@@ -92,7 +99,7 @@ void app_create(void)
      * tool's integration tests target its named button. */
     demo_harness_create(false);
     printf("[app] app=%s\n", app->name);
-    app->create(lv_screen_active());
+    app->create();
 #else
     printf("[app] app=harness (LVGL < 9.6)\n");
     demo_harness_create(true);

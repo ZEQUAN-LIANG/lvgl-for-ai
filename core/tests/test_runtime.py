@@ -15,11 +15,24 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from lvgl_ai import EngineNotFound, ProtocolError, Runtime, RuntimeCrash
+from lvgl_ai import EngineNotFound, ProtocolError, Recording, Runtime, RuntimeCrash
 from support import distinct_rgb, read_png_rgb
 
 SESSION_ID_RE = re.compile(r"^\d{8}-\d{6}-[0-9a-f]{4}$")
 FAKE_ENGINE = Path(__file__).with_name("fake_engine.py")
+SESSION_OPTION_NAMES = (
+    "app",
+    "build",
+    "record",
+    "live_frame",
+    "record_changed_only",
+    "mode",
+    "lvgl_src",
+    "sessions_root",
+    "max_log_bytes",
+    "session_retention",
+    "ready",
+)
 
 
 class RuntimeIntegrationTest(unittest.TestCase):
@@ -97,6 +110,7 @@ class RuntimeIntegrationTest(unittest.TestCase):
             build=True,
             width=640,
             height=480,
+            record_changed_only=False,
             sessions_root=self.sessions_root,
         )
         self.addCleanup(rt.stop)
@@ -201,6 +215,69 @@ class RuntimeIntegrationTest(unittest.TestCase):
         self.assertIn("cmake", message.lower())
         self.assertIn("--build", message)
         self.assertIn(str(missing), message)
+
+
+class RuntimeSessionOptionTest(unittest.TestCase):
+    """Session options are stored once, by SessionStore; Runtime forwards them."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.sessions_root = Path(self._tmp.name) / "sessions"
+
+    def test_session_options_are_read_from_the_store(self) -> None:
+        rt = Runtime(
+            lvgl="9.6",
+            app="coffee",
+            build=False,
+            record=False,
+            live_frame=True,
+            record_changed_only=True,
+            sessions_root=self.sessions_root,
+            max_log_bytes=12345,
+            session_retention=None,
+        )
+
+        for name in SESSION_OPTION_NAMES:
+            with self.subTest(option=name):
+                self.assertNotIn(name, vars(rt), f"{name} must live in the store")
+                self.assertEqual(
+                    getattr(rt, name), getattr(rt._store, name)
+                )
+
+        self.assertEqual(rt.app, "coffee")
+        self.assertIs(rt.build, False)
+        self.assertIs(rt.record, False)
+        self.assertIs(rt.live_frame, True)
+        self.assertIs(rt.record_changed_only, True)
+        self.assertEqual(rt.mode, "headless")
+        self.assertEqual(rt.sessions_root, self.sessions_root.resolve())
+        self.assertEqual(rt.max_log_bytes, 12345)
+        self.assertIsNone(rt.session_retention)
+        self.assertIsNone(rt.ready)
+        self.assertIsInstance(rt.lvgl_src, Path)
+
+    def test_session_options_reject_outside_assignment(self) -> None:
+        rt = Runtime(
+            lvgl="9.6",
+            app="coffee",
+            build=False,
+            record=False,
+            live_frame=True,
+            record_changed_only=True,
+            sessions_root=self.sessions_root,
+            max_log_bytes=12345,
+            session_retention=None,
+        )
+
+        for name in SESSION_OPTION_NAMES:
+            with self.subTest(option=name):
+                before = getattr(rt, name)
+                store_before = getattr(rt._store, name)
+                with self.assertRaises(AttributeError):
+                    setattr(rt, name, "overridden")
+                self.assertEqual(getattr(rt, name), before)
+                self.assertEqual(getattr(rt._store, name), store_before)
 
 
 class RuntimeProcessSeamTest(unittest.TestCase):
@@ -323,11 +400,115 @@ class RuntimeProcessSeamTest(unittest.TestCase):
         self.assertIn(
             "[fake_engine] crashing before ready", "\n".join(caught.exception.log_tail)
         )
+        self.assertIn(
+            "engine closed stdout before announcing ready",
+            str(caught.exception),
+        )
+        self.assertNotIn(
+            "engine 产物早于当前 Runtime，请用 --build 重建",
+            str(caught.exception),
+        )
         manifest = json.loads(
             (rt.session_dir / "manifest.json").read_text(encoding="utf-8")
         )
         self.assertEqual(manifest["status"], "crash")
         self.assertEqual(manifest["error"]["code"], "crash")
+        rt.stop()
+
+    def test_window_fallback_writes_the_ready_mode_back_to_the_store(self) -> None:
+        rt = Runtime(
+            lvgl="9.6",
+            build=False,
+            window=True,
+            sessions_root=self.sessions_root,
+            _engine_command=[sys.executable, "-I", str(FAKE_ENGINE)],
+        )
+        self.addCleanup(rt.stop)
+        rt.start()
+
+        self.assertEqual(rt.ready["mode"], "headless")
+        self.assertEqual(rt.mode, "headless")
+        self.assertEqual(rt._store.mode, "headless")
+        self.assertIs(rt.window, False)
+        self.assertIs(rt.headless, True)
+        manifest = json.loads(
+            (rt.session_dir / "manifest.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["mode"], "headless")
+
+    def test_reserved_frames_are_not_the_manifest_frame_count(self) -> None:
+        rt = self._runtime()
+        self.addCleanup(rt.stop)
+        rt.start()
+        rt.tick(16)
+        rt.tick(16)
+        reserved = rt.frame_count
+        self.assertEqual(reserved, 3)
+
+        rt.stop()
+
+        recording = Recording.open(rt.session_dir)
+        self.assertEqual(recording.frames, [])
+        self.assertEqual(recording.manifest["frame_count"], len(recording.frames))
+        self.assertEqual(recording.manifest["frame_count"], 0)
+        self.assertEqual(rt.frame_count, reserved)
+
+    def test_live_only_session_counts_no_recorded_frames(self) -> None:
+        rt = Runtime(
+            lvgl="9.6",
+            app="coffee",
+            build=False,
+            record=False,
+            live_frame=True,
+            record_changed_only=True,
+            sessions_root=self.sessions_root,
+            _engine_command=[sys.executable, "-I", str(FAKE_ENGINE)],
+        )
+        self.addCleanup(rt.stop)
+        rt.start()
+        rt.tick(16)
+        reserved = rt.frame_count
+        self.assertGreaterEqual(reserved, 2)
+
+        rt.stop()
+
+        recording = Recording.open(rt.session_dir)
+        self.assertEqual(recording.frames, [])
+        self.assertEqual(recording.manifest["frame_count"], 0)
+        self.assertIs(recording.manifest["record_changed_only"], True)
+        self.assertEqual(recording.manifest["app"], "coffee")
+
+    def test_stale_engine_unknown_argument_crash_is_actionable(self) -> None:
+        rt = self._runtime()
+        with mock.patch.dict(os.environ, {"FAKE_UNKNOWN_ARG": "1"}):
+            with self.assertRaises(RuntimeCrash) as caught:
+                rt.start()
+
+        error = caught.exception
+        message = str(error)
+        self.assertIn("engine 产物早于当前 Runtime，请用 --build 重建", message)
+        self.assertIn("--record-changed-only", message)
+        self.assertEqual(error.exit_code, 2)
+        self.assertTrue(any("unknown argument" in line for line in error.log_tail))
+        self.assertIsNotNone(error.log_path)
+        self.assertTrue(Path(error.log_path).is_file())
+
+        manifest = json.loads(
+            (rt.session_dir / "manifest.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["status"], "crash")
+        self.assertEqual(manifest["error"]["code"], "crash")
+        self.assertIn(
+            "engine 产物早于当前 Runtime，请用 --build 重建",
+            manifest["error"]["message"],
+        )
+        self.assertEqual(manifest["error"]["detail"]["exit_code"], 2)
+        self.assertTrue(
+            any(
+                "unknown argument" in line
+                for line in manifest["error"]["detail"]["log_tail"]
+            )
+        )
         rt.stop()
 
 

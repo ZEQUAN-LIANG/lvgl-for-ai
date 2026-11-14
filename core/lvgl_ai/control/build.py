@@ -13,7 +13,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
 
 from .. import paths
 from .errors import BuildError, LinkError
@@ -53,9 +53,12 @@ def configure_command(
     lvgl_src: Path,
     lvgl_version: str,
     user_app_dir: Path,
-    user_asset_dir: Path,
     ccache: bool,
+    zlib_src: Path | None = None,
+    libpng_src: Path | None = None,
 ) -> list[str]:
+    zlib_path = zlib_src if zlib_src is not None else paths.zlib_src()
+    libpng_path = libpng_src if libpng_src is not None else paths.libpng_src()
     command = [
         "cmake",
         "-S", str(engine_dir),
@@ -66,7 +69,8 @@ def configure_command(
         f"-DLVGL_AI_LVGL_SRC={lvgl_src}",
         f"-DLVGL_AI_LVGL_VERSION={lvgl_version}",
         f"-DLVGL_AI_USER_APP_DIR={user_app_dir}",
-        f"-DLVGL_AI_USER_ASSET_DIR={user_asset_dir}",
+        f"-DLVGL_AI_ZLIB_SRC={zlib_path}",
+        f"-DLVGL_AI_LIBPNG_SRC={libpng_path}",
     ]
     if ccache:
         command.append("-DCMAKE_C_COMPILER_LAUNCHER=ccache")
@@ -77,7 +81,12 @@ def build_command(build_dir: Path) -> list[str]:
     return ["cmake", "--build", str(build_dir), "--target", "lvgl_engine"]
 
 
-def run_capture(command: Sequence[str], *, timeout: float | None) -> BuildResult:
+def run_capture(
+    command: Sequence[str],
+    *,
+    timeout: float | None,
+    env: Mapping[str, str] | None = None,
+) -> BuildResult:
     start = time.perf_counter()
     # cmake/ninja are console programs; when the web runs under pythonw this
     # stops each incremental build from flashing a console window.
@@ -93,6 +102,7 @@ def run_capture(command: Sequence[str], *, timeout: float | None) -> BuildResult
         encoding="utf-8",
         errors="replace",
         timeout=timeout,
+        env=env,
         **flags,
     )
     return BuildResult(
@@ -191,8 +201,9 @@ def needs_configure(
     lvgl_src: Path,
     lvgl_version: str,
     user_app_dir: Path,
-    user_asset_dir: Path,
     engine_dir: Path | None = None,
+    zlib_src: Path | None = None,
+    libpng_src: Path | None = None,
 ) -> bool:
     cache_path = build_dir / "CMakeCache.txt"
     # A failed configure can leave CMakeCache.txt without build.ninja; always
@@ -203,8 +214,11 @@ def needs_configure(
         "LVGL_AI_LVGL_SRC": lvgl_src,
         "LVGL_AI_LVGL_VERSION": lvgl_version,
         "LVGL_AI_USER_APP_DIR": user_app_dir,
-        "LVGL_AI_USER_ASSET_DIR": user_asset_dir,
-        # Moving the checkout leaves the four LVGL_AI_* values unchanged, but the
+        "LVGL_AI_ZLIB_SRC": zlib_src if zlib_src is not None else paths.zlib_src(),
+        "LVGL_AI_LIBPNG_SRC": (
+            libpng_src if libpng_src is not None else paths.libpng_src()
+        ),
+        # Moving the checkout leaves the LVGL_AI_* values unchanged, but the
         # generated build files still embed the old engine directory.
         "CMAKE_HOME_DIRECTORY": paths.ENGINE_DIR if engine_dir is None else engine_dir,
     }
@@ -265,6 +279,7 @@ def build_environment_message(
     lvgl_src: Path,
     lvgl_version: str,
     missing_tools: Sequence[str],
+    png_sources: Sequence[Path] = (),
 ) -> str:
     """Compose an actionable message for a source-build preflight failure."""
     if not lvgl_src.is_dir():
@@ -274,6 +289,13 @@ def build_environment_message(
             f"LVGL {lvgl_version} tree there; tools/fetch_lvgl.py can download "
             f"supported versions. If a build/ engine already exists, use "
             f"build=False / --no-build."
+        )
+    missing_png = [str(path) for path in png_sources if not path.is_dir()]
+    if missing_png:
+        return (
+            "PNG encoder source not found: "
+            + ", ".join(missing_png)
+            + ". Run: python -I core/tools/fetch_png.py --repo-root ."
         )
     tools = ", ".join(missing_tools)
     return (

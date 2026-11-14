@@ -224,6 +224,7 @@ class BuildFailureSessionTest(unittest.TestCase):
         return Runtime(
             lvgl="9.6",
             build=True,
+            record_changed_only=False,
             sessions_root=self.sessions_root,
             _build_command=[
                 self.gcc,
@@ -660,6 +661,7 @@ class MaxFramesIntegrationTest(unittest.TestCase):
         runtime = Runtime(
             lvgl="9.6",
             build=True,
+            record_changed_only=False,
             sessions_root=self.sessions_root,
             max_frames=3,
         )
@@ -730,7 +732,10 @@ class ChecksIntegrationTest(unittest.TestCase):
 
     def test_checks_record_execution_only(self) -> None:
         runtime = Runtime(
-            lvgl="9.6", build=True, sessions_root=self.sessions_root
+            lvgl="9.6",
+            build=True,
+            record_changed_only=False,
+            sessions_root=self.sessions_root,
         )
         self.addCleanup(runtime.stop)
         runtime.start()

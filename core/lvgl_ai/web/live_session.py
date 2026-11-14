@@ -11,7 +11,6 @@ semantics; ``WebApp`` maps the code to a status and stays a composition root.
 
 from __future__ import annotations
 
-import json
 import shutil
 import tempfile
 import threading
@@ -21,8 +20,8 @@ from typing import Any, Callable
 
 from ..control.errors import ScenarioError, dump_error
 from ..control.recording import Recording
-from ..control.runtime import Runtime
-from ..control.session_schema import PREVIEW_FILE, TIMELINE_FILE
+from ..control.runtime import Runtime, RuntimeLike, RuntimeOptions
+from ..control.session_schema import PREVIEW_FILE
 from .transport import LiveFrame, LiveFrameHub
 from .urls import frame_url
 
@@ -35,14 +34,13 @@ LIVE_KINDS = ("record", "test")
 # One virtual frame per browser input event. LVGL only reads indevs and draws
 # inside a tick, so the live session must advance time after forwarding input.
 LIVE_INPUT_STEP_MS = 16
-# Test mode advances one 33 ms frame (about 30 fps) and writes only a raw
-# preview, so it can track real time. Recording mode keeps the 100 ms evidence
-# cadence: its PNG encode dominates the tick even though the preview itself is
-# now a raw stream.
+# Both modes advance one 33 ms frame (about 30 fps). Recording hands PNG
+# encoding to the engine's worker pool, so its ticker can share the test
+# preview's cadence.
 LIVE_TEST_TICK_MS = 33
 LIVE_TEST_INTERVAL_S = 0.033
-LIVE_TICK_MS = 100
-LIVE_TICK_INTERVAL_S = 0.1
+LIVE_TICK_MS = 33
+LIVE_TICK_INTERVAL_S = 0.033
 # kind -> (virtual ms per tick, wall-clock seconds between ticks)
 TICK_PROFILE = {
     "test": (LIVE_TEST_TICK_MS, LIVE_TEST_INTERVAL_S),
@@ -122,7 +120,7 @@ class LiveSession:
         self,
         sessions_root: str | Path,
         *,
-        runtime_factory: Callable[[], Runtime] | None = None,
+        runtime_factory: Callable[[], RuntimeLike] | None = None,
         lvgl: str | None = None,
         build: bool = True,
     ) -> None:
@@ -132,7 +130,7 @@ class LiveSession:
         self._runtime_factory = runtime_factory or self._default_runtime
         self._lock = threading.RLock()
         self._state = IDLE
-        self._runtime: Runtime | None = None
+        self._runtime: RuntimeLike | None = None
         self._test = False
         self._app: str | None = None
         self._display: tuple[int, int] | None = None
@@ -140,6 +138,7 @@ class LiveSession:
         self._ticker: threading.Thread | None = None
         self._ticker_stop: threading.Event | None = None
         self._test_root: Path | None = None
+        self._last_error: dict[str, Any] | None = None
 
     # ---- state ---------------------------------------------------------
 
@@ -163,18 +162,14 @@ class LiveSession:
         # fails, exactly like the old bridge-based check).
         if self._state == STARTING:
             return True
-        return self._runtime is not None and bool(
-            getattr(self._runtime, "is_running", False)
-        )
+        return self._runtime is not None and bool(self._runtime.is_running)
 
     def _is_active_snapshot(self) -> bool:
         """Lock-free read for ``GET /``: page rendering must not wait on ticks."""
         if self._state == STARTING:
             return True
         runtime = self._runtime
-        return runtime is not None and bool(
-            getattr(runtime, "is_running", False)
-        )
+        return runtime is not None and bool(runtime.is_running)
 
     def selected_app(self, requested: str | None) -> str | None:
         """Keep the running session authoritative over a URL request.
@@ -195,7 +190,7 @@ class LiveSession:
 
     # ---- lifecycle -----------------------------------------------------
 
-    def _default_runtime(self) -> Runtime:
+    def _default_runtime(self) -> RuntimeLike:
         sessions_root = self.sessions_root
         if self._test:
             # A test session is a recording with record=False: the engine
@@ -210,7 +205,10 @@ class LiveSession:
                 )
             )
             sessions_root = self._test_root
-        options = dict(
+        display: dict[str, int] = {}
+        if self._display is not None:
+            display["width"], display["height"] = self._display
+        options = RuntimeOptions(
             lvgl=self.lvgl,
             app=self._app,
             build=self.build,
@@ -219,10 +217,9 @@ class LiveSession:
             record_changed_only=True,
             headless=True,
             sessions_root=sessions_root,
+            **display,
         )
-        if self._display is not None:
-            options["width"], options["height"] = self._display
-        return Runtime(**options)
+        return Runtime(**options.as_kwargs())
 
     def start(
         self,
@@ -239,14 +236,12 @@ class LiveSession:
                     "live_running", "a live session is already running"
                 )
             self._state = STARTING
-            runtime: Runtime | None = None
+            runtime: RuntimeLike | None = None
             try:
                 # An engine may have exited on its own (crash) or a previous
                 # start may have failed. Let Runtime finish that session's
                 # manifest before replacing it.
-                if self._runtime is not None and not getattr(
-                    self._runtime, "is_running", False
-                ):
+                if self._runtime is not None and not self._runtime.is_running:
                     self._retire_locked()
                 self._test = kind == "test"
                 self._app = app
@@ -260,19 +255,24 @@ class LiveSession:
                 # tick still has something to draw.
                 self._publish_locked(runtime, self._hub)
                 self._start_ticker_locked()
+                self._last_error = None
                 self._state = RUNNING
             except Exception as exc:  # noqa: BLE001 - map every failure layer
                 live = None if runtime is None else self._status_for(runtime)
+                error_payload = dump_error(exc)
+                self._last_error = error_payload
                 hub = self._hub
                 self._hub = None
                 if hub is not None:
                     hub.close()
                 self._discard_test_root()
+                if self._test:
+                    self._runtime = None
                 self._state = IDLE
                 raise LiveError(
                     "live_start_error",
                     str(exc),
-                    detail={"error": dump_error(exc), "live": live},
+                    detail={"error": error_payload, "live": live},
                 ) from exc
         return self.status()
 
@@ -344,34 +344,37 @@ class LiveSession:
                 else empty_live_status()
             )
             payload["starting"] = self._state == STARTING
+            payload["last_error"] = self._last_error
             return payload
 
-    def _status_for(self, runtime: Runtime) -> dict[str, Any]:
-        session_id = getattr(runtime, "session_id", None)
-        session_dir = getattr(runtime, "session_dir", None)
+    def _status_for(self, runtime: RuntimeLike) -> dict[str, Any]:
+        session_id = runtime.session_id
+        session_dir = runtime.session_dir
         payload = empty_live_status()
         t_ms = _t_ms_value(runtime)
         payload.update(
-            running=bool(getattr(runtime, "is_running", False)),
-            pid=getattr(runtime, "pid", None),
-            mode=getattr(runtime, "mode", None),
+            running=bool(runtime.is_running),
+            pid=runtime.pid,
+            mode=runtime.mode,
             session_id=session_id,
             session_dir=None if session_dir is None else str(session_dir),
-            app=getattr(runtime, "app", None),
+            app=runtime.app,
             t_ms=t_ms,
             test=self._test,
         )
-        size = _display_size(getattr(runtime, "ready", None))
+        size = _display_size(runtime.ready)
         if size is not None:
             payload["width"], payload["height"] = size
         if session_dir is None:
             return payload
 
         path = Path(session_dir)
-        frames: list[Path] = []
+        frame_total = 0
+        latest: dict[str, Any] | None = None
         try:
             recording = Recording.open(path)
-            frames = recording.frames
+            latest = recording.latest_frame()
+            frame_total = len(recording.frames)
             manifest = recording.manifest
             payload["status"] = manifest["status"]
             payload["error"] = manifest["error"]
@@ -382,24 +385,21 @@ class LiveSession:
             pass
 
         # Changed-only recording counts retained frames, not wall-clock ticks.
-        payload["frame_count"] = len(frames)
-        if frames:
-            latest = frames[-1]
-            relative = latest.relative_to(path).as_posix()
-            stem = latest.stem
-            frame_no = int(stem) if stem.isdigit() else None
+        payload["frame_count"] = frame_total
+        if latest is not None:
+            filename = latest["file"].rsplit("/", 1)[-1]
             payload["latest_frame"] = {
-                "file": relative,
-                "url": frame_url(session_id or path.name, latest.name),
-                "frame_no": frame_no,
-                "t_ms": _latest_frame_t_ms(path, relative),
+                "file": latest["file"],
+                "url": frame_url(session_id or path.name, filename),
+                "frame_no": latest["frame_no"],
+                "t_ms": latest["t_ms"],
             }
         else:
             # No frame history (test mode, or a recording before its first
             # frame): the engine-reported change counter is still useful to
             # the page HUD. Test-mode pixels arrive through /api/live/stream,
             # not a latest_frame URL.
-            count = getattr(runtime, "frame_count", 0)
+            count = runtime.frame_count
             if isinstance(count, bool) or not isinstance(count, int) or count < 0:
                 count = 0
             payload["frame_count"] = count
@@ -412,11 +412,7 @@ class LiveSession:
         with self._lock:
             runtime = self._runtime
             hub = self._hub
-            if (
-                runtime is None
-                or hub is None
-                or not getattr(runtime, "is_running", False)
-            ):
+            if runtime is None or hub is None or not runtime.is_running:
                 raise LiveError("live_not_running", "no live session")
             return LiveStream(hub)
 
@@ -428,13 +424,13 @@ class LiveSession:
 
     @staticmethod
     def _read_live_frame(
-        runtime: Runtime,
+        runtime: RuntimeLike,
     ) -> tuple[int, int, int, bytes] | None:
         """Read the newest ``live.rgba`` plus dimensions and virtual time."""
-        session_dir = getattr(runtime, "session_dir", None)
+        session_dir = runtime.session_dir
         if session_dir is None:
             return None
-        size = _display_size(getattr(runtime, "ready", None))
+        size = _display_size(runtime.ready)
         if size is None:
             return None
         width, height = size
@@ -447,7 +443,7 @@ class LiveSession:
         return width, height, _t_ms_value(runtime), pixels
 
     def _publish_locked(
-        self, runtime: Runtime, hub: LiveFrameHub
+        self, runtime: RuntimeLike, hub: LiveFrameHub
     ) -> LiveFrame | None:
         """Publish the current raw frame; return the hub frame or ``None``."""
         frame = self._read_live_frame(runtime)
@@ -457,8 +453,8 @@ class LiveSession:
         return hub.publish(width, height, t_ms, pixels)
 
     @staticmethod
-    def _live_file_stat(runtime: Runtime) -> tuple[int, int] | None:
-        session_dir = getattr(runtime, "session_dir", None)
+    def _live_file_stat(runtime: RuntimeLike) -> tuple[int, int] | None:
+        session_dir = runtime.session_dir
         if session_dir is None:
             return None
         try:
@@ -477,6 +473,8 @@ class LiveSession:
         self._ticker_stop = stop
 
         runtime = self._runtime
+        if runtime is not None and not callable(runtime.tick):
+            raise TypeError("live runtime must provide tick()")
         last_stat = self._live_file_stat(runtime) if runtime is not None else None
 
         def loop() -> None:
@@ -489,40 +487,34 @@ class LiveSession:
                     if stop.is_set():
                         return
                     runtime = self._runtime
-                    if runtime is not None and getattr(
-                        runtime, "is_running", False
-                    ):
-                        tick = getattr(runtime, "tick", None)
-                        if tick is not None:
-                            tick_ms, interval = TICK_PROFILE[
-                                "test" if self._test else "record"
-                            ]
-                            before = getattr(runtime, "frame_count", 0)
-                            try:
-                                tick(tick_ms, track_check=False)
-                            except Exception:  # noqa: BLE001 - keep the page alive
-                                pass
-                            else:
-                                after = getattr(
-                                    runtime, "frame_count", before
-                                )
-                                hub = self._hub
-                                stat = self._live_file_stat(runtime)
-                                changed = stat is not None and stat != last_stat
-                                if after != before:
-                                    changed = True
-                                if changed and hub is not None:
-                                    frame = self._read_live_frame(runtime)
-                                    if frame is not None:
-                                        width, height, t_ms, pixels = frame
-                                        publish_args = (
-                                            hub,
-                                            width,
-                                            height,
-                                            t_ms,
-                                            pixels,
-                                        )
-                                        last_stat = stat
+                    if runtime is not None and runtime.is_running:
+                        tick_ms, interval = TICK_PROFILE[
+                            "test" if self._test else "record"
+                        ]
+                        before = runtime.frame_count
+                        try:
+                            runtime.tick(tick_ms, track_check=False)
+                        except Exception:  # noqa: BLE001 - keep the page alive
+                            pass
+                        else:
+                            after = runtime.frame_count
+                            hub = self._hub
+                            stat = self._live_file_stat(runtime)
+                            changed = stat is not None and stat != last_stat
+                            if after != before:
+                                changed = True
+                            if changed and hub is not None:
+                                frame = self._read_live_frame(runtime)
+                                if frame is not None:
+                                    width, height, t_ms, pixels = frame
+                                    publish_args = (
+                                        hub,
+                                        width,
+                                        height,
+                                        t_ms,
+                                        pixels,
+                                    )
+                                    last_stat = stat
                 if publish_args is not None:
                     hub, width, height, t_ms, pixels = publish_args
                     try:
@@ -558,9 +550,9 @@ class LiveSession:
 
     # ---- input ---------------------------------------------------------
 
-    def _running_runtime(self) -> Runtime:
+    def _running_runtime(self) -> RuntimeLike:
         runtime = self._runtime
-        if runtime is None or not getattr(runtime, "is_running", False):
+        if runtime is None or not runtime.is_running:
             raise LiveError("live_not_running", "no live session")
         return runtime
 
@@ -633,8 +625,8 @@ def _display_size(ready: Any) -> tuple[int, int] | None:
     return None
 
 
-def _t_ms_value(runtime: Runtime) -> int:
-    t_ms = getattr(runtime, "t_ms", 0)
+def _t_ms_value(runtime: RuntimeLike) -> int:
+    t_ms = runtime.t_ms
     if isinstance(t_ms, bool) or not isinstance(t_ms, int) or t_ms < 0:
         return 0
     return t_ms
@@ -646,33 +638,3 @@ def _input_int(value: Any, name: str) -> int:
             "invalid_input", f"{name} must be a non-negative integer"
         )
     return value
-
-
-def _latest_frame_t_ms(session_dir: Path, frame_file: str) -> int | None:
-    """Read the newest matching frame row from the tail of timeline.ndjson.
-
-    Live sessions are polled every few seconds; reading the whole timeline on
-    each poll would grow with the recording. The frame rows are small and the
-    newest one is near the end, so a bounded tail read is enough.
-    """
-    path = session_dir / TIMELINE_FILE
-    try:
-        with path.open("rb") as handle:
-            handle.seek(0, 2)
-            size = handle.tell()
-            chunk = min(size, 65536)
-            handle.seek(size - chunk)
-            data = handle.read()
-    except OSError:
-        return None
-    for line in reversed(data.splitlines()):
-        try:
-            row = json.loads(line)
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            continue
-        if row.get("type") == "frame" and row.get("file") == frame_file:
-            t_ms = row.get("t_ms")
-            if isinstance(t_ms, int) and not isinstance(t_ms, bool):
-                return t_ms
-            return None
-    return None

@@ -16,6 +16,7 @@ from pathlib import Path
 from lvgl_ai import BuildError, EngineNotFound, LinkError, paths
 from lvgl_ai.control.build import BuildResult, format_build_log
 from lvgl_ai.control.build_plan import BUILD_TIMEOUT_S, BuildPlan
+from lvgl_ai.control.locks import BuildLock
 
 
 def build_result(
@@ -37,8 +38,10 @@ class ScriptedRunner:
         self.results = list(results)
         self.calls: list[dict] = []
 
-    def __call__(self, command, *, timeout):  # noqa: ANN001 - test seam
-        self.calls.append({"command": list(command), "timeout": timeout})
+    def __call__(self, command, *, timeout, env=None):  # noqa: ANN001
+        self.calls.append(
+            {"command": list(command), "timeout": timeout, "env": env}
+        )
         result = (
             self.results.pop(0)
             if self.results
@@ -64,12 +67,14 @@ class BuildPlanCase(unittest.TestCase):
         self.build_dir = self.root / "build" / "lvgl_9_6"
         self.engine_dir = self.root / "core" / "engine"
         self.user_app_dir = self.root / "user" / "app"
-        self.user_asset_dir = self.root / "user" / "asset"
+        self.zlib_src = self.root / "third_party" / "zlib"
+        self.libpng_src = self.root / "third_party" / "libpng"
         for path in (
             self.lvgl_src,
             self.engine_dir,
             self.user_app_dir,
-            self.user_asset_dir,
+            self.zlib_src,
+            self.libpng_src,
         ):
             path.mkdir(parents=True, exist_ok=True)
 
@@ -79,7 +84,11 @@ class BuildPlanCase(unittest.TestCase):
             "build_dir": self.build_dir,
             "engine_dir": self.engine_dir,
             "user_app_dir": self.user_app_dir,
-            "user_asset_dir": self.user_asset_dir,
+            "zlib_src": self.zlib_src,
+            "libpng_src": self.libpng_src,
+            # Keep these tests independent of a real sdk/<version> in the
+            # checkout; prebuilt selection is covered in test_prebuilt.py.
+            "sdk_dir": self.root / "sdk" / "9.6",
             "ccache": False,
             "missing_tools": lambda: [],
             "runner": runner or ScriptedRunner(),
@@ -93,7 +102,6 @@ class BuildPlanCase(unittest.TestCase):
         version: str = "9.6",
         lvgl_src: Path | None = None,
         user_app_dir: Path | None = None,
-        user_asset_dir: Path | None = None,
         home: Path | None = None,
         ninja: bool = True,
     ) -> None:
@@ -104,9 +112,8 @@ class BuildPlanCase(unittest.TestCase):
             "LVGL_AI_USER_APP_DIR": (
                 self.user_app_dir if user_app_dir is None else user_app_dir
             ),
-            "LVGL_AI_USER_ASSET_DIR": (
-                self.user_asset_dir if user_asset_dir is None else user_asset_dir
-            ),
+            "LVGL_AI_ZLIB_SRC": self.zlib_src,
+            "LVGL_AI_LIBPNG_SRC": self.libpng_src,
             "CMAKE_HOME_DIRECTORY": (
                 self.engine_dir if home is None else home
             ),
@@ -140,6 +147,17 @@ class PreflightTest(BuildPlanCase):
         self.assertIn("fetch_lvgl.py", message)
         self.assertIn("LVGL_AI_LVGL_SRC", message)
         self.assertIn("--no-build", message)
+        self.assertEqual(caught.exception.command, plan.configure_command)
+
+    def test_missing_png_sources_report_the_fetch_command(self) -> None:
+        missing = self.root / "missing-zlib"
+        plan = self.plan(zlib_src=missing)
+        with self.assertRaises(BuildError) as caught:
+            plan.preflight()
+        message = str(caught.exception)
+        self.assertIn("PNG encoder source not found", message)
+        self.assertIn(str(missing), message)
+        self.assertIn("fetch_png.py", message)
         self.assertEqual(caught.exception.command, plan.configure_command)
 
     def test_missing_tools_are_named_with_the_install_hint(self) -> None:
@@ -176,6 +194,17 @@ class PreflightTest(BuildPlanCase):
 
 
 class ConfigureTriggerTest(BuildPlanCase):
+    def test_build_subprocesses_get_a_writable_temp_dir(self) -> None:
+        runner = ScriptedRunner()
+        plan = self.plan(runner=runner)
+        plan.configure()
+        call = runner.calls[0]
+        temp_dir = (self.build_dir / ".build-tmp").resolve()
+        self.assertEqual(call["env"]["TMP"], str(temp_dir))
+        self.assertEqual(call["env"]["TEMP"], str(temp_dir))
+        self.assertTrue(temp_dir.is_dir())
+
+
     def test_an_absent_cache_requires_configure(self) -> None:
         self.assertTrue(self.plan().needs_configure())
 
@@ -192,7 +221,6 @@ class ConfigureTriggerTest(BuildPlanCase):
             "version": {"version": "9.5"},
             "lvgl source": {"lvgl_src": self.root / "other-lvgl"},
             "user app": {"user_app_dir": self.root / "other-app"},
-            "user asset": {"user_asset_dir": self.root / "other-asset"},
             "moved checkout": {"home": self.root / "old-checkout" / "core" / "engine"},
         }
         for name, overrides in cases.items():
@@ -234,6 +262,7 @@ class ConfigureTriggerTest(BuildPlanCase):
         )
         expected = "\n".join(
             [
+                "# build mode: source",
                 format_build_log(
                     BuildResult(
                         command=plan.configure_command,
@@ -270,6 +299,7 @@ class ConfigureTriggerTest(BuildPlanCase):
         self.assertEqual(runner.calls[0]["command"], plan.build_command)
         expected = "\n".join(
             [
+                "# build mode: source",
                 "# phase: configure\n"
                 f"# skipped: cache matches {self.build_dir / 'CMakeCache.txt'}\n",
                 format_build_log(
@@ -315,7 +345,9 @@ class BuildFailureTest(BuildPlanCase):
             plan.execute(build=True)
         error = caught.exception
         self.assertEqual(error.command, plan.build_command)
-        self.assertTrue(error.log_text.startswith("# phase: configure\n"))
+        self.assertTrue(
+            error.log_text.startswith("# build mode: source\n# phase: configure\n")
+        )
         self.assertIn("# phase: build\n", error.log_text)
         self.assertEqual(error.first_error["file"], "app.c")
         self.assertEqual(error.first_error["line"], 3)
@@ -332,6 +364,7 @@ class BuildFailureTest(BuildPlanCase):
         error = caught.exception
         self.assertTrue(
             error.log_text.startswith(
+                "# build mode: source\n"
                 "# phase: configure\n"
                 f"# skipped: cache matches {self.build_dir / 'CMakeCache.txt'}\n"
             )
@@ -430,6 +463,46 @@ class EngineResolutionTest(BuildPlanCase):
         error = plan.missing_engine_error()
         assert error is not None
         self.assertEqual(error.engine_path, str(explicit))
+
+
+class BuildDirIsolationTest(unittest.TestCase):
+    def test_default_user_app_keeps_the_version_directory(self) -> None:
+        self.assertEqual(
+            paths.build_dir_for("9.6"),
+            paths.build_dir_for("9.6", paths.USER_APP_DIR),
+        )
+
+    def test_exported_app_gets_a_stable_separate_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            first = root / "sift_watch" / "src" / "app"
+            second = root / "coffee" / "src" / "app"
+            first.mkdir(parents=True)
+            second.mkdir(parents=True)
+            first_dir = paths.build_dir_for("9.6", first)
+            self.assertEqual(first_dir, paths.build_dir_for("9.6", first))
+            self.assertIn("_export_", first_dir.name)
+            self.assertNotEqual(first_dir, paths.build_dir_for("9.6"))
+            self.assertNotEqual(
+                first_dir, paths.build_dir_for("9.6", second)
+            )
+
+
+class BuildLockTest(unittest.TestCase):
+    def test_second_lock_times_out(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with BuildLock(tmp):
+                with self.assertRaises(BuildError) as raised:
+                    with BuildLock(tmp, timeout=0.2):
+                        pass
+            self.assertIn("build lock timeout", str(raised.exception))
+
+    def test_lock_is_reusable_after_release(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with BuildLock(tmp):
+                pass
+            with BuildLock(tmp, timeout=0.2):
+                pass
 
 
 if __name__ == "__main__":

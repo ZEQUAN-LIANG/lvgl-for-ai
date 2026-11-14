@@ -226,18 +226,29 @@ def point_in_poly(x: float, y: float, points: list[tuple[float, float]]) -> bool
     return inside
 
 
+# The implicit heart curve spans x -1.13..1.13 and y -0.98..1.23; map that box
+# onto the requested square so both top lobes are drawn instead of flattened.
+HEART_X = 1.13
+HEART_Y_CENTER = (1.23 - 0.98) / 2
+HEART_Y_HALF = (1.23 + 0.98) / 2
+
+
+def heart_hit(cx: float, cy: float, size: float, x: int, y: int) -> bool:
+    nx = (x + 0.5 - cx) / size * HEART_X
+    ny = -(y + 0.5 - cy) / size * HEART_Y_HALF + HEART_Y_CENTER
+    base = nx * nx + ny * ny - 1
+    return base * base * base - nx * nx * ny * ny * ny <= 0
+
+
 def heart(canvas: Canvas, cx: float, cy: float, size: float,
           color: tuple[int, int, int], alpha: float) -> None:
-    left = int(cx - size)
-    right = int(cx + size)
-    top = int(cy - size)
-    bottom = int(cy + size)
+    left = int(cx - size) - 1
+    right = int(cx + size) + 1
+    top = int(cy - size) - 1
+    bottom = int(cy + size) + 1
     for y in range(top, bottom + 1):
         for x in range(left, right + 1):
-            nx = (x + 0.5 - cx) / size
-            ny = -(y + 0.5 - cy) / size
-            base = nx * nx + ny * ny - 1
-            if base * base * base - nx * nx * ny * ny * ny <= 0:
+            if heart_hit(cx, cy, size, x, y):
                 canvas.blend(x, y, color, alpha)
 
 
@@ -523,18 +534,15 @@ def make_icons(preview_dir: Path | None) -> dict[str, Canvas]:
     out["next"] = finish_icon(c, preview_dir, "next")
 
     c = icon_canvas()
-    heart(c, s(14), s(14.5), s(11), WHITE, 1.0)
+    heart(c, s(14), s(14), s(11), WHITE, 1.0)
     for y in range(c.h):
         for x in range(c.w):
-            nx = (x + 0.5 - s(14)) / s(8.6)
-            ny = -(y + 0.5 - s(14.5)) / s(8.6)
-            base = nx * nx + ny * ny - 1
-            if base * base * base - nx * nx * ny * ny * ny <= 0:
+            if heart_hit(s(14), s(14), s(8.6), x, y):
                 c.erase(x, y, 1.0)
     out["heart"] = finish_icon(c, preview_dir, "heart")
 
     c = icon_canvas()
-    heart(c, s(14), s(14.5), s(11), WHITE, 1.0)
+    heart(c, s(14), s(14), s(11), WHITE, 1.0)
     out["heart_filled"] = finish_icon(c, preview_dir, "heart_filled")
 
     c = icon_canvas()
@@ -687,6 +695,9 @@ def generate_fonts(force: bool) -> None:
             "-r", "0x20-0x7E",
         ], check=True, cwd=HERE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         text = output.read_text(encoding="utf-8")
+        # Keep the generated banner free of build-machine absolute paths.
+        text = text.replace(str(HERE), ".")
+        text = text.replace(str(source), source.name)
         text = text.replace(f"const lv_font_t {name} =",
                             f"static const lv_font_t {name} =")
         text = text.replace("uint8_t glyph_bitmap[]",

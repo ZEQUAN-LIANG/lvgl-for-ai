@@ -23,6 +23,8 @@ if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
 import contract_snapshot as cs
+# Side effect: install the Windows-safe TemporaryDirectory before setUp runs.
+import support  # noqa: F401,E402
 
 
 class ContractSnapshotTest(unittest.TestCase):
@@ -91,7 +93,7 @@ class ContractSnapshotTest(unittest.TestCase):
         )
         self.assertEqual(self._probe("method_post_timeline")["status"], 405)
         self.assertEqual(self._probe("method_put")["status"], 501)
-        self.assertEqual(self._probe("method_delete")["status"], 501)
+        self.assertEqual(self._probe("method_delete")["status"], 405)
         create = self._probe("app_create")
         self.assertEqual(create["status"], 201)
         self.assertIn("action", create["json_shape"]["object"])
@@ -127,11 +129,11 @@ class ContractSnapshotTest(unittest.TestCase):
             for option in action["option_strings"]
         }
         self.assertTrue(
-            {"--record", "--no-record", "--record-changed-only", "--build",
+            {"--record", "--no-record", "--build",
              "--scenario", "--idle", "--json"}.issubset(options)
         )
         self.assertEqual(cli["cli"]["help"]["exit"], 0)
-        self.assertIn("--record-changed-only", cli["cli"]["help"]["text"])
+        self.assertNotIn("--record-changed-only", cli["cli"]["help"]["text"])
         self.assertEqual(cli["cli"]["invalid_exit"], 2)
         self.assertEqual(cli["cli"]["json_success"]["exit"], 0)
         self.assertEqual(
@@ -201,6 +203,9 @@ class ContractSnapshotTest(unittest.TestCase):
         self.assertEqual(
             protocol["required_reply_fields"]["snapshot"], ["file"]
         )
+        self.assertEqual(
+            protocol["reply_shapes"]["wait"]["object"]["changed"], "boolean"
+        )
         self.assertEqual(protocol["error_reply_outcome"], "ProtocolError")
         self.assertIn(
             "error", protocol["error_reply_shape"]["object"]
@@ -215,6 +220,7 @@ class ContractSnapshotTest(unittest.TestCase):
                 "12",
                 "--max-frames",
                 "42",
+                "--async-encode",
                 "--headless",
                 "--live-frame",
                 "--record-changed-only",

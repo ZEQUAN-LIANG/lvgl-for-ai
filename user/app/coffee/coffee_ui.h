@@ -258,7 +258,7 @@ void coffee_dim_overlay_set(lv_obj_t * obj);
 void coffee_refresh_all(void);
 
 /* Shell and overlays. */
-void coffee_create(lv_obj_t * screen);
+void coffee_create(void);
 void coffee_show_page(coffee_page_id_t page);
 void coffee_toggle_standby(void);
 lv_obj_t * coffee_modal_host(void);

@@ -91,7 +91,12 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
         self.sessions_root = Path(self._tmp.name) / "sessions"
 
     def _runtime(self, **kwargs) -> Runtime:
-        options = {"lvgl": "9.6", "build": True, "sessions_root": self.sessions_root}
+        options = {
+            "lvgl": "9.6",
+            "build": True,
+            "record_changed_only": False,
+            "sessions_root": self.sessions_root,
+        }
         options.update(kwargs)
         return Runtime(**options)
 

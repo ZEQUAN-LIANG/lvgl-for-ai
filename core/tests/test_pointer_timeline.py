@@ -33,7 +33,12 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
         self.sessions_root = Path(self._tmp.name) / "sessions"
 
     def _runtime(self) -> Runtime:
-        return Runtime(lvgl="9.6", build=True, sessions_root=self.sessions_root)
+        return Runtime(
+            lvgl="9.6",
+            build=True,
+            record_changed_only=False,
+            sessions_root=self.sessions_root,
+        )
 
     def test_pointer_hits_named_button_and_timeline_input_rows(self) -> None:
         rt = self._runtime()
@@ -73,15 +78,6 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
         self.assertEqual(rt.ready["frames"], 1)  # ready is a snapshot of startup
         rt.wait(48)
 
-        frames = sorted((rt.session_dir / "frames").glob("*.png"))
-        self.assertEqual(
-            [path.name for path in frames],
-            [f"{index:06d}.png" for index in range(1, 6)],
-        )
-        for path in frames:
-            width, height, _ = read_png_rgb(path)
-            self.assertEqual((width, height), (800, 600))
-
         rows = read_ndjson(rt.session_dir / "timeline.ndjson")
         frame_rows = [row for row in rows if row["type"] == "frame"]
         self.assertEqual([row["frame_no"] for row in frame_rows], [1, 2, 3, 4, 5])
@@ -102,6 +98,15 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
         self.assertEqual((wait_row["frame_start"], wait_row["frame_end"]), (2, 5))
 
         rt.stop()
+        frames = sorted((rt.session_dir / "frames").glob("*.png"))
+        self.assertEqual(
+            [path.name for path in frames],
+            [f"{index:06d}.png" for index in range(1, 6)],
+        )
+        for path in frames:
+            width, height, _ = read_png_rgb(path)
+            self.assertEqual((width, height), (800, 600))
+
         rows = read_ndjson(rt.session_dir / "timeline.ndjson")
         end_rows = [row for row in rows if row["type"] == "end"]
         self.assertEqual(len(end_rows), 1)
@@ -115,6 +120,7 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
         rt.start()
         rt.tick(16)
         rt.wait(frames=3)
+        rt.stop()
 
         frames = sorted((rt.session_dir / "frames").glob("*.png"))
         self.assertEqual(len(frames), 5)
@@ -211,7 +217,12 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
 
     def test_same_input_sequence_has_identical_frames(self) -> None:
         def run_once(root: Path) -> list[tuple[str, str]]:
-            rt = Runtime(lvgl="9.6", build=True, sessions_root=root)
+            rt = Runtime(
+                lvgl="9.6",
+                build=True,
+                record_changed_only=False,
+                sessions_root=root,
+            )
             try:
                 rt.start()
                 rt.pointer("down", *BUTTON_CENTER)

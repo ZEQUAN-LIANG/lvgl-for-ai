@@ -10,6 +10,7 @@
  */
 
 #include "adapter.h"
+#include "frame_encoder.h"
 #include "json.h"
 #include "protocol.h"
 #include "session.h"
@@ -44,6 +45,7 @@ static void print_usage(FILE * out)
     fprintf(out,
             "usage: lvgl_engine --session DIR [--record|--no-record]\n"
             "                  [--live-frame] [--record-changed-only]\n"
+            "                  [--async-encode]\n"
             "                  [--diff-threshold 0-255]\n"
             "                  [--reference PNG] [--max-frames N]\n"
             "                  [--width W --height H] (default 800x600, "
@@ -146,6 +148,11 @@ static void reply_state(FILE * out, long seq, const engine_t * engine,
     protocol_reply_ok(out, seq, fields);
 }
 
+static const char * wait_changed_field(bool changed)
+{
+    return changed ? ",\"changed\":true" : ",\"changed\":false";
+}
+
 static bool handle_pointer(engine_t * engine, FILE * out,
                            const command_t * command)
 {
@@ -240,9 +247,11 @@ static bool handle_wait(engine_t * engine, FILE * out,
                                      "usage: wait frames <n>");
             return true;
         }
-        session_wait_frames(&engine->session, frames, engine_service_window,
-                            engine);
-        reply_state(out, command->seq, engine, NULL);
+        bool changed =
+            session_wait_frames(&engine->session, frames,
+                                engine_service_window, engine);
+        reply_state(out, command->seq, engine,
+                    wait_changed_field(changed));
         return true;
     }
 
@@ -252,8 +261,9 @@ static bool handle_wait(engine_t * engine, FILE * out,
                                  "usage: wait <ms> | wait frames <n>");
         return true;
     }
-    session_wait_ms(&engine->session, ms, engine_service_window, engine);
-    reply_state(out, command->seq, engine, NULL);
+    bool changed =
+        session_wait_ms(&engine->session, ms, engine_service_window, engine);
+    reply_state(out, command->seq, engine, wait_changed_field(changed));
     return true;
 }
 
@@ -527,6 +537,7 @@ int main(int argc, char ** argv)
     bool record = false;
     bool live_frame = false;
     bool record_changed_only = false;
+    bool async_encode = false;
     bool window_requested = false;
 
     for(int i = 1; i < argc; i++) {
@@ -579,6 +590,9 @@ int main(int argc, char ** argv)
         }
         else if(strcmp(argv[i], "--record-changed-only") == 0) {
             record_changed_only = true;
+        }
+        else if(strcmp(argv[i], "--async-encode") == 0) {
+            async_encode = true;
         }
         else if(strcmp(argv[i], "--window") == 0) {
             window_requested = true;
@@ -651,6 +665,16 @@ int main(int argc, char ** argv)
     memset(&engine, 0, sizeof(engine));
     engine.adapter = adapter;
 
+    uint64_t encode_budget = FRAME_ENCODER_BUDGET_BYTES;
+    const char * budget_text = getenv("LVGL_AI_ENCODE_BUDGET_BYTES");
+    if(budget_text != NULL && budget_text[0] != '\0') {
+        char * end = NULL;
+        unsigned long long value = strtoull(budget_text, &end, 10);
+        if(end != budget_text && *end == '\0' && value > 0) {
+            encode_budget = (uint64_t)value;
+        }
+    }
+
     session_config_t session_config;
     memset(&session_config, 0, sizeof(session_config));
     session_config.adapter = adapter;
@@ -660,6 +684,8 @@ int main(int argc, char ** argv)
     session_config.record = record;
     session_config.live = live_frame;
     session_config.record_changed_only = record_changed_only;
+    session_config.async_encode = async_encode;
+    session_config.encode_budget_bytes = encode_budget;
     session_config.max_frames = max_frames;
     session_config.diff_threshold = (int)diff_threshold;
     session_config.reference = reference_pixels;
@@ -696,15 +722,17 @@ int main(int argc, char ** argv)
 
     app_create();
     session_refresh_frame(&engine.session);
+    session_drain_encoding(&engine.session);
 
     const adapter_info_t * info = adapter_info(adapter);
     const char * mode = engine.window != NULL ? "window" : "headless";
     fprintf(stderr,
             "[engine] lvgl=%s adapter=%s mode=%s display=%ux%u record=%s "
-            "changed_only=%s\n",
+            "changed_only=%s async_encode=%s\n",
             info->lvgl_version, info->adapter_name, mode,
             info->width, info->height, record ? "on" : "off",
-            record_changed_only ? "on" : "off");
+            record_changed_only ? "on" : "off",
+            async_encode ? "on" : "off");
 
     const char * capabilities =
         record ? "[\"pointer\",\"key\",\"encoder\",\"tick\",\"wait\","
@@ -728,10 +756,11 @@ int main(int argc, char ** argv)
     }
 
     session_end(&engine.session);
+    bool encoder_failed = session_encoder_failed(&engine.session);
     stdin_queue_free(engine.stdin_queue);
     window_destroy(engine.window);
     session_close(&engine.session);
     adapter_free_pixels(reference_pixels);
     adapter_destroy(adapter);
-    return 0;
+    return encoder_failed ? 1 : 0;
 }

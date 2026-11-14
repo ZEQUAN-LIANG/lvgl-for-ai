@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Iterable
 
-from ..scenario import ScenarioError, load_scenario
+from ..scenario import scenario_index
 from . import common, policy, registry
 from .common import AppError
 
@@ -90,38 +90,10 @@ def list_apps(repo_root: str | Path) -> dict[str, Any]:
     }
 
 
-def scenario_index(root: Path) -> list[dict[str, Any]]:
-    """Return the parsed ``user/scenarios`` index shared by views and trash."""
-    scenarios_dir = common._user_scenarios(root)
-    result: list[dict[str, Any]] = []
-    if not scenarios_dir.is_dir():
-        return result
-    for path in sorted(scenarios_dir.glob("*.json")):
-        if path.is_symlink() or not path.is_file():
-            continue
-        entry: dict[str, Any] = {
-            "path": common._relative(path, root),
-            "basename": path.name,
-            "app": None,
-            "valid": False,
-            "error": None,
-        }
-        try:
-            document = load_scenario(path)
-        except (OSError, ValueError, ScenarioError) as exc:
-            entry["error"] = str(exc)
-        else:
-            app = document.get("app")
-            entry["app"] = app if isinstance(app, str) else None
-            entry["valid"] = True
-        result.append(entry)
-    return result
-
-
 def _orphans(
     root: Path,
     registered: set[str],
-    scenario_index: Iterable[dict[str, Any]],
+    index: Iterable[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     user_app = common._user_app(root)
@@ -141,7 +113,7 @@ def _orphans(
                         common._max_mtime_ns([path])
                     ),
                 })
-    for item in scenario_index:
+    for item in index:
         app = item.get("app")
         if (
             item.get("valid")

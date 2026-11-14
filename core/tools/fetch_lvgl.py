@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -223,10 +224,17 @@ def _git_apply(tree: Path, patch: Path, *, check: bool) -> None:
     if check:
         command.append("--check")
     command.append(str(patch))
+    # The installed tree can live inside the tool repository (lvgl-src/) or a
+    # temp directory under it. Stop repository discovery at the tree's parent
+    # so git treats the tree as a plain directory and resolves patch paths
+    # relative to it instead of silently skipping them.
+    env = os.environ.copy()
+    env["GIT_CEILING_DIRECTORIES"] = str(tree.resolve().parent)
     try:
         result = subprocess.run(
             command,
             cwd=tree,
+            env=env,
             capture_output=True,
             text=True,
             encoding="utf-8",

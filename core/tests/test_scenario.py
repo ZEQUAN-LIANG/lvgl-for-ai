@@ -15,6 +15,7 @@ from pathlib import Path
 from fake_runtime import FakeRuntime
 from lvgl_ai import Recording, Runtime, ScenarioError, play_scenario
 from lvgl_ai import paths
+from lvgl_ai import scenario as scenario_module
 from lvgl_ai.scenario import load_scenario
 
 SETTINGS_SCENARIO = paths.REPO_ROOT / "user" / "scenarios" / "settings.json"
@@ -80,6 +81,78 @@ class ScenarioExpansionTest(unittest.TestCase):
         moves = [command for command in self.runtime.commands if command[:2] == ("pointer", "move")]
         self.assertEqual(len(moves), 8)
         self.assertEqual(moves[-1], ("pointer", "move", 80, 0))
+
+    def test_drag_interval_ms_advances_after_each_move(self) -> None:
+        play_scenario(
+            self.runtime,
+            [
+                {
+                    "type": "drag",
+                    "from": [0, 0],
+                    "to": [30, 0],
+                    "steps": 3,
+                    "interval_ms": 16,
+                }
+            ],
+        )
+        self.assertEqual(
+            self.runtime.commands,
+            [
+                ("pointer", "down", 0, 0),
+                ("pointer", "move", 10, 0),
+                ("wait", 16),
+                ("pointer", "move", 20, 0),
+                ("wait", 16),
+                ("pointer", "move", 30, 0),
+                ("wait", 16),
+                ("pointer", "up", 30, 0),
+                ("snapshot", "drag_end"),
+            ],
+        )
+
+    def test_drag_interval_ms_zero_keeps_the_old_command_sequence(self) -> None:
+        play_scenario(
+            self.runtime,
+            [
+                {
+                    "type": "drag",
+                    "from": [0, 0],
+                    "to": [100, 40],
+                    "steps": 4,
+                    "interval_ms": 0,
+                }
+            ],
+        )
+        self.assertEqual(
+            self.runtime.commands,
+            [
+                ("pointer", "down", 0, 0),
+                ("pointer", "move", 25, 10),
+                ("pointer", "move", 50, 20),
+                ("pointer", "move", 75, 30),
+                ("pointer", "move", 100, 40),
+                ("pointer", "up", 100, 40),
+                ("snapshot", "drag_end"),
+            ],
+        )
+
+    def test_pointer_step_sends_one_pointer_command_without_press_synthesis(self) -> None:
+        play_scenario(
+            self.runtime,
+            [
+                {"type": "pointer", "action": "move", "x": 12, "y": 34},
+                {"type": "pointer", "action": "down", "x": 1, "y": 2},
+                {"type": "pointer", "action": "up", "x": 3, "y": 4},
+            ],
+        )
+        self.assertEqual(
+            self.runtime.commands,
+            [
+                ("pointer", "move", 12, 34),
+                ("pointer", "down", 1, 2),
+                ("pointer", "up", 3, 4),
+            ],
+        )
 
     def test_wait_accepts_ms_or_frames(self) -> None:
         play_scenario(
@@ -204,6 +277,67 @@ class ScenarioValidationTest(unittest.TestCase):
             [{"type": "encoder", "action": "turn", "diff": 32768}], "diff"
         )
 
+    def test_pointer_step_validates_action_and_coordinates_before_any_command(self) -> None:
+        cases = [
+            (
+                {"type": "pointer", "action": "tap", "x": 1, "y": 2},
+                "pointer.action must be one of ['down', 'move', 'up']; got 'tap'",
+            ),
+            (
+                {"type": "pointer", "x": 1, "y": 2},
+                "pointer.action must be one of ['down', 'move', 'up']; got None",
+            ),
+            (
+                {"type": "pointer", "action": "move", "y": 2},
+                "x is required",
+            ),
+            (
+                {"type": "pointer", "action": "move", "x": -1, "y": 2},
+                "x must be >= 0; got -1",
+            ),
+            (
+                {"type": "pointer", "action": "move", "x": 1, "y": True},
+                "y must be an integer",
+            ),
+            (
+                {"type": "pointer", "action": "move", "x": 1, "y": 2, "label": "x"},
+                "unexpected field(s) label for pointer",
+            ),
+        ]
+        for step, fragment in cases:
+            with self.subTest(step=step):
+                self.runtime.commands.clear()
+                error = self.assert_scenario_error(
+                    [{"type": "wait", "ms": 16}, step], fragment
+                )
+                self.assertEqual(error.step, 1)
+                self.assertEqual(self.runtime.commands, [])
+
+    def test_drag_interval_ms_must_be_a_non_negative_integer(self) -> None:
+        cases = [
+            (-1, "interval_ms must be >= 0; got -1"),
+            (True, "interval_ms must be an integer"),
+            (1.5, "interval_ms must be an integer"),
+            ("16", "interval_ms must be an integer"),
+        ]
+        for value, fragment in cases:
+            with self.subTest(value=value):
+                self.runtime.commands.clear()
+                error = self.assert_scenario_error(
+                    [
+                        {"type": "wait", "ms": 16},
+                        {
+                            "type": "drag",
+                            "from": [0, 0],
+                            "to": [1, 1],
+                            "interval_ms": value,
+                        },
+                    ],
+                    fragment,
+                )
+                self.assertEqual(error.step, 1)
+                self.assertEqual(self.runtime.commands, [])
+
     def test_unknown_field_is_rejected(self) -> None:
         self.assert_scenario_error(
             [{"type": "mark", "id": "ok", "label": "typo"}], "unexpected field"
@@ -312,6 +446,13 @@ class ScenarioFileTest(unittest.TestCase):
         )
         self.assertNotIn("display", load_scenario(path))
 
+    def test_drag_interval_ms_defaults_to_zero(self) -> None:
+        path = scenario_file(
+            self.root,
+            [{"type": "drag", "from": [0, 0], "to": [1, 1]}],
+        )
+        self.assertEqual(load_scenario(path)["steps"][0]["interval_ms"], 0)
+
     def test_display_bounds_are_inclusive(self) -> None:
         for width, height in ((1, 1), (4096, 4096)):
             with self.subTest(width=width, height=height):
@@ -364,6 +505,154 @@ class ScenarioFileTest(unittest.TestCase):
                 self.assertIn(fragment, str(caught.exception))
 
 
+class ScenarioIndexTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name) / "repo"
+        self.scenarios = self.root / "user" / "scenarios"
+        self.scenarios.mkdir(parents=True)
+
+    def _write(self, directory: Path, filename: str, **fields) -> Path:
+        path = directory / filename
+        path.write_text(
+            json.dumps({
+                "schema": "lvgl-ai-scenario-v1",
+                "steps": [{"type": "wait", "ms": 16}],
+                **fields,
+            }),
+            encoding="utf-8",
+        )
+        return path
+
+    def test_entries_carry_seven_fields_and_invalid_errors(self) -> None:
+        self._write(
+            self.scenarios,
+            "coffee.json",
+            name="coffee",
+            app="coffee",
+            display={"width": 640, "height": 480},
+        )
+        self._write(self.scenarios, "plain.json", app="plain")
+        bad = self.scenarios / "bad.json"
+        bad.write_text("{", encoding="utf-8")
+
+        entries = scenario_module.scenario_index(self.root)
+        self.assertEqual(
+            [entry["basename"] for entry in entries],
+            ["bad.json", "coffee.json", "plain.json"],
+        )
+        for entry in entries:
+            self.assertEqual(
+                set(entry),
+                {"path", "basename", "app", "name", "display", "valid", "error"},
+            )
+
+        by_name = {entry["basename"]: entry for entry in entries}
+        self.assertEqual(
+            by_name["coffee.json"],
+            {
+                "path": "user/scenarios/coffee.json",
+                "basename": "coffee.json",
+                "app": "coffee",
+                "name": "coffee",
+                "display": {"width": 640, "height": 480},
+                "valid": True,
+                "error": None,
+            },
+        )
+        self.assertTrue(by_name["plain.json"]["valid"])
+        self.assertIsNone(by_name["plain.json"]["name"])
+        self.assertIsNone(by_name["plain.json"]["display"])
+
+        self.assertFalse(by_name["bad.json"]["valid"])
+        self.assertIsNone(by_name["bad.json"]["app"])
+        self.assertIsNone(by_name["bad.json"]["name"])
+        self.assertIsNone(by_name["bad.json"]["display"])
+        self.assertIn("invalid JSON", by_name["bad.json"]["error"])
+        self.assertIn("bad.json", by_name["bad.json"]["error"])
+
+    def test_one_invalid_scenario_does_not_block_the_others(self) -> None:
+        self._write(self.scenarios, "good.json", name="good", app="coffee")
+        self._write(
+            self.scenarios,
+            "wrong_schema.json",
+            schema="lvgl-ai-scenario-v0",
+            app="coffee",
+        )
+        entries = scenario_module.scenario_index(self.root)
+        by_name = {entry["basename"]: entry for entry in entries}
+        self.assertTrue(by_name["good.json"]["valid"])
+        self.assertFalse(by_name["wrong_schema.json"]["valid"])
+        self.assertIn(
+            "lvgl-ai-scenario-v1", by_name["wrong_schema.json"]["error"]
+        )
+
+    def test_index_accepts_an_independent_scenarios_dir(self) -> None:
+        other = Path(self._tmp.name) / "display-scenarios"
+        other.mkdir()
+        self._write(
+            other,
+            "coffee.json",
+            name="coffee",
+            app="coffee",
+            display={"width": 320, "height": 240},
+        )
+        entries = scenario_module.scenario_index(
+            self.root, scenarios_dir=other
+        )
+        self.assertEqual(
+            [entry["basename"] for entry in entries], ["coffee.json"]
+        )
+        self.assertEqual(entries[0]["app"], "coffee")
+        self.assertEqual(
+            entries[0]["display"], {"width": 320, "height": 240}
+        )
+        self.assertEqual(Path(entries[0]["path"]).name, "coffee.json")
+        self.assertEqual(
+            scenario_module.scenario_index(
+                self.root, scenarios_dir=other / "missing"
+            ),
+            [],
+        )
+
+
+class ScenarioFileDragTimeTest(unittest.TestCase):
+    def test_drag_interval_ms_scenario_file_emits_waits_between_moves(
+        self,
+    ) -> None:
+        runtime = FakeRuntime()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = scenario_file(
+                Path(tmp),
+                [
+                    {
+                        "type": "drag",
+                        "from": [0, 0],
+                        "to": [30, 0],
+                        "steps": 3,
+                        "interval_ms": 16,
+                    }
+                ],
+            )
+            play_scenario(runtime, path)
+
+        self.assertEqual(
+            runtime.commands,
+            [
+                ("pointer", "down", 0, 0),
+                ("pointer", "move", 10, 0),
+                ("wait", 16),
+                ("pointer", "move", 20, 0),
+                ("wait", 16),
+                ("pointer", "move", 30, 0),
+                ("wait", 16),
+                ("pointer", "up", 30, 0),
+                ("snapshot", "drag_end"),
+            ],
+        )
+
+
 class ScenarioErrorMappingTest(unittest.TestCase):
     def test_runtime_errors_propagate_unchanged(self) -> None:
         from lvgl_ai import RuntimeCrash
@@ -382,7 +671,12 @@ class SettingsScenarioIntegrationTest(unittest.TestCase):
         self.sessions_root = Path(self._tmp.name) / "sessions"
 
     def test_settings_scenario_runs_on_the_real_engine(self) -> None:
-        rt = Runtime(lvgl="9.6", build=True, sessions_root=self.sessions_root)
+        rt = Runtime(
+            lvgl="9.6",
+            build=True,
+            record_changed_only=False,
+            sessions_root=self.sessions_root,
+        )
         self.addCleanup(rt.stop)
         rt.start()
         replies = play_scenario(rt, SETTINGS_SCENARIO)
@@ -451,6 +745,34 @@ class SettingsScenarioIntegrationTest(unittest.TestCase):
             self.assertTrue((recording.path / row["file"]).is_file())
         self.assertEqual(len(recording.frames), 9)
         self.assertIn("[app] demo_button clicked", recording.log())
+
+    def test_drag_interval_ms_advances_timeline_input_t_ms(self) -> None:
+        rt = Runtime(lvgl="9.6", build=True, sessions_root=self.sessions_root)
+        self.addCleanup(rt.stop)
+        rt.start()
+        path = scenario_file(
+            Path(self._tmp.name),
+            [
+                {
+                    "type": "drag",
+                    "from": [0, 0],
+                    "to": [120, 0],
+                    "steps": 4,
+                    "interval_ms": 16,
+                }
+            ],
+        )
+        play_scenario(rt, path)
+        rt.stop()
+
+        rows = Recording.open(rt.session_dir).timeline()
+        moves = [
+            row
+            for row in rows
+            if row["type"] == "input" and row["action"] == "move"
+        ]
+        self.assertEqual([row["t_ms"] for row in moves], [0, 16, 32, 48])
+        self.assertGreater(moves[-1]["t_ms"], moves[0]["t_ms"])
 
     def test_path_and_list_forms_produce_the_same_timeline(self) -> None:
         steps = json.loads(SETTINGS_SCENARIO.read_text(encoding="utf-8"))["steps"]

@@ -1,0 +1,14 @@
+{
+  "host": "127.0.0.1",
+  "port": 8766,
+  "default_baud": 1000000,
+  "board": "sf32lb52-lchspi-ulp",
+  "app": "",
+  "project_dir": "",
+  "build_command": [],
+  "flash_baud": 1000000,
+  "flash_verify": true,
+  "flash_erase_all": false,
+  "auto_reconnect": true,
+  "reconnect_interval_s": 0.8
+}

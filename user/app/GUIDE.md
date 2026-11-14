@@ -15,7 +15,7 @@ LVGL 9.6 真实构建并跑过场景；照抄可以复现。
 | 注册行 | 是 | `user/app/app.c` 的 `apps[]` | 让 `LVGL_AI_DEMO` 找到这个变体 |
 | 场景 | 强烈建议 | `user/scenarios/<name>.json` | 声明 `app`，提供可重复的输入与快照 |
 | 头文件 | 可选 | `user/app/<name>/<name>.h` | 多文件拆分，或给 `app.c` 提供声明 |
-| 资源头 | 可选 | `user/app/<name>/` 或 `user/asset/` | 字体、图片编译进二进制 |
+| 资源头 | 可选 | `user/app/<name>/` | 字体、图片编译进二进制，随应用独立 |
 
 **不需要**写 `main`、`CMakeLists.txt`、改 `core/`、改 `lvgl-src/`，也不需要维护第二份应用清单。
 
@@ -53,7 +53,7 @@ python -I core/tools/new_app.py hello
 脚本只生成骨架，业务界面仍要自己写。它不构建；生成后按 2.2 或 2.1 走源码构建。
 名字必须是 `^[a-z][a-z0-9_]{0,31}$`，且不能与现有应用或场景重名。
 
-双击仓库根 `open-web.vbs` 打开普通页面后，点顶部「应用管理」；也可以运行
+双击仓库根 `LVGL-AI-Viewer.exe` 打开普通页面后，点顶部「应用管理」；也可以运行
 `python -I core/web.py --manage --open` 在启动时直接打开管理对话框。管理台可以
 新建、预览、删除和恢复。删除会移到 `user/.trash/apps/<trash-id>/`；内置应用受保护，
 永久删除需要再次确认。
@@ -72,7 +72,7 @@ python -I core/tools/new_app.py hello
 #include "lvgl.h"
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
-void hello_create(lv_obj_t * screen);
+void hello_create(void);
 #endif
 
 #endif /* HELLO_H */
@@ -100,8 +100,10 @@ static void hello_click_cb(lv_event_t * event)
     printf("[hello] clicked\n");
 }
 
-void hello_create(lv_obj_t * screen)
+void hello_create(void)
 {
+    lv_obj_t * screen = lv_screen_active();
+    app_set_name("hello");
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x101318), 0);
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
 
@@ -110,23 +112,23 @@ void hello_create(lv_obj_t * screen)
     lv_obj_set_style_text_font(title, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(0xE6E8EB), 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 24);
-    app_set_name(title, "hello_title");
+    app_obj_set_name(title, "hello_title");
 
     lv_obj_t * status = lv_label_create(screen);
     lv_label_set_text(status, "waiting");
     lv_obj_set_style_text_color(status, lv_color_hex(0x9AA3AD), 0);
     lv_obj_align(status, LV_ALIGN_CENTER, 0, 48);
-    app_set_name(status, "hello_status");
+    app_obj_set_name(status, "hello_status");
 
     lv_obj_t * button = lv_button_create(screen);
     lv_obj_set_size(button, 160, 48);
     lv_obj_align(button, LV_ALIGN_CENTER, 0, 0);
-    app_set_name(button, "hello_button");
+    app_obj_set_name(button, "hello_button");
 
     lv_obj_t * button_label = lv_label_create(button);
     lv_label_set_text(button_label, "CLICK");
     lv_obj_center(button_label);
-    app_set_name(button_label, "hello_button_label");
+    app_obj_set_name(button_label, "hello_button_label");
 
     lv_obj_add_event_cb(button, hello_click_cb, LV_EVENT_CLICKED, status);
 
@@ -138,8 +140,8 @@ void hello_create(lv_obj_t * screen)
 
 要点：
 
-- `screen` 是 engine 已经创建好的活动屏幕，直接往上加控件，不要自己初始化 LVGL。
-- `app_set_name()` 来自 `user/app/app.h`，`app.c` 已把 `user/app` 加入 include 路径。
+- 入口签名是 `void <name>_create(void)`，不接收 `lv_obj_t *`；用 `lv_screen_active()` 取 engine 已创建好的活动屏幕，直接往上加控件，不要自己初始化 LVGL。
+- `app_set_name()` 命名当前 screen；`app_obj_set_name()` 命名具体控件。两者都来自 `user/app/app.h`，`app.c` 已把 `user/app` 加入 include 路径。
   9.2+ 才有对象名；命名后 timeline 的 `hit` 才会显示 `hello_button`。
 - `printf` 走 engine 的 stdout，会进入会话的 `engine.log`。需要立即看到时加
   `fflush(stdout)`，尤其是崩溃前。
@@ -318,15 +320,14 @@ python -I core/cli.py --lvgl 9.6 --app hello --idle
 lv_obj_set_style_text_font(label, &my_font_24, 0);
 ```
 
-生成的头文件放在 `user/app/<name>/` 或 `user/asset/`；两者都在 include 路径里。
-`spectrum/gen_spectrum_assets.py` 和 `coffee/gen_coffee_assets.py` 是现有示例，不是通用
-工具；修改字体文案时才需要重跑。
+生成的头文件放在应用自己的 `user/app/<name>/`；资源头与源码同目录，直接
+`#include "my_font_24.h"` 即可。`spectrum/gen_spectrum_assets.py` 和
+`coffee/gen_coffee_assets.py` 是现有示例，不是通用工具；修改字体文案时才需要重跑。
 
 ### 4.3 图片与资源
 
 - 推荐把图片转成 C 数组（`lv_image_dsc_t`），用 `lv_image_set_src(obj, &my_image)`。
-- `user/asset/` 已加入编译 include 路径，适合放共享资源头；目录契约见
-  [`user/asset/README.md`](../asset/README.md)。
+- 图片资源头随应用放在 `user/app/<name>/`；每个应用自己持有，不设公共资源目录。
 - 工具没有提供运行时资源文件加载约定，不要依赖从磁盘读 PNG；把资源编译进二进制。
 - 大图会占用 16 MiB 的 LVGL heap，注意尺寸和数量。
 
@@ -371,7 +372,8 @@ lv_timer_create(tick_cb, 16, NULL);
 
 ### 4.6 命名与证据
 
-- 给会被点击、拖拽、聚焦的控件命名：`app_set_name(obj, "myapp_button")`。
+- 给会被点击、拖拽、聚焦的控件命名：`app_obj_set_name(obj, "myapp_button")`。
+- 应用根 screen 用 `app_set_name("myapp")` 命名，入口函数本身不接收对象。
 - 命名后 `timeline.ndjson` 的输入行会出现 `"hit": "myapp_button"`，配合 `hit_class` 定位。
 - 名字在同一界面内保持唯一；跨应用加应用前缀，避免阅读证据时混淆。
 - 9.1 与 8.x 没有对象名，`hit` 为空，只能看 `hit_class`。
@@ -385,13 +387,33 @@ lv_timer_create(tick_cb, 16, NULL);
 - 所有 `.c` 对所有支持版本都会编译；只在 9.6+ 使用的代码必须放进版本门，否则 9.1 /
   8.x 构建会失败。
 
+### 4.8 双端共享（SiFli 导出）
+
+`sift_watch` 是双端共享示例：`user/app/sift_watch/` 是唯一源码真源，本地 headless
+直接编译，SiFli 导出时复制成自包含工程。共享代码只暴露
+`void sift_watch_create(void)`，以 LVGL 9.4 可用 API 为硬基线；`app_create`、
+`main.c` 和注册表留在目标侧，不进入共享源码。
+
+需要图片资源的共享应用统一通过 `assets.h` 契约使用：两端暴露相同图片符号和尺寸宏，
+导出端从 PNG 宽高生成宏。`user/scenarios/sift_watch.json` 声明 390x450。完整导出说明、
+raw 源收集和 EZIP/真机验证边界见
+[`chip-adapt/sifli/README.md`](../../chip-adapt/sifli/README.md)。
+
+`sift_watch/game/` 展示了另一种共享方式：游戏模块不依赖 LVGL 对象，只接收 RGB565
+framebuffer，由 `sift_watch` 和独立的 `zombie_cannon` 应用各自驱动。音效、振动、随机数
+和高分持久化通过 `zc_hooks_t` 注入；板端 `sift_watch.c` 已接好振动、进程内存档和
+audprc → audcodec DAC → AW8155 扬声器通路，`zc_synth.c` 负责程序化音效。独立
+`zombie_cannon` 场景用于 390x460 视觉预览；黄山派随 `sift_watch` 导出，游戏自动适配
+390x450 与圆角安全区。两端都支持 AI 模式：标题 12 秒或战斗中 10 秒无操作后接管；
+一旦接管，升级/结算菜单不再等待秒数，升级立即随机选卡、结算立即重开。
+
 ---
 
 ## 5. 硬约束与常见坑
 
 | 约束 | 说明 |
 |---|---|
-| 只改用户目录 | `user/app/**/*.c`、`user/scenarios/`、`user/asset/`；不要改 `core/` 或 `lvgl-src/` |
+| 只改用户目录 | `user/app/**/*.c`（含各应用自己的资源头）与 `user/scenarios/`；不要改 `core/` 或 `lvgl-src/` |
 | 不写 `main` | engine 负责初始化、tick、刷新和退出 |
 | 应用变体仅 9.6+ | 9.1 / 8.x 忽略选择，固定显示 `demo/` 的 harness |
 | 未知应用名会退出 | engine 打印 `[app] apps=...` 后 `exit(1)`，检查 `apps[]` 与场景是否一致 |
@@ -429,15 +451,14 @@ lv_timer_create(tick_cb, 16, NULL);
 - `user/app/xiaohongshu/`：另一个完整页面实现。
 - `docs/app.html`：入口、注册、选择链路的真源索引。
 - `docs/scenario-server.html`：场景格式与服务端常量的真源索引。
-- `.scratch/ai-tools/SPEC.md`：工具的设计真源与范围。
 
 ## 8. 提交前检查清单
 
-- [ ] 源文件在 `user/app/<name>/`，入口签名是 `void <name>_create(lv_obj_t * screen)`
+- [ ] 源文件在 `user/app/<name>/`，入口签名是 `void <name>_create(void)`
 - [ ] `user/app/app.c` 有 include 和 `apps[]` 注册行
 - [ ] 只在 9.6+ 使用的代码有版本门
 - [ ] 全局符号带应用前缀或为 `static`
-- [ ] 交互控件已 `app_set_name`
+- [ ] 交互控件已 `app_obj_set_name`，应用根已 `app_set_name`
 - [ ] `user/scenarios/<name>.json` 顶层写了 `"app": "<name>"`
 - [ ] 构建成功，`manifest.json` 的 `status` 为 `ok`
 - [ ] `engine.log` 有预期状态，`timeline.ndjson` 的 `hit` 指向预期控件

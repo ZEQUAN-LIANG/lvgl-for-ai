@@ -13,15 +13,22 @@ Exit codes: 0 = session finished ok; 1 = build, link or engine crash;
 2 = harness error (bad flags, scenario, protocol, missing engine).
 
 ``--no-build`` skips the source build and uses the existing ``build/`` engine;
-the default remains ``--build``. ``--app NAME`` selects
+the default remains ``--build``. Build mode is automatic: an existing
+``lvgl-src/<version>`` uses the source build, otherwise ``sdk/<version>`` is
+used through the prebuilt path; ``--prebuilt`` / ``--source`` override that
+choice. ``--app NAME`` selects
 the user app variant by setting ``LVGL_AI_DEMO``; when ``--scenario`` is used and
 the scenario declares ``app``, omitting the flag uses the scenario value.
 A scenario's optional ``display`` object sets the engine width/height; an
 explicit ``--app`` overrides only the app, not that scene's display.
 
-``--json`` prints exactly one JSON object on stdout: ``session_id``,
-``manifest_path``, ``app`` and ``error`` (``null`` on success). Diagnostics
-stay on stderr.
+``--json`` prints exactly one JSON object on stdout. The original fields
+``session_id``, ``manifest_path``, ``app`` and ``error`` (``null`` on success)
+are always present; ``session_dir``, ``status``, ``display``, ``frame_count``,
+``requested_app``, ``effective_app``, ``snapshots``, ``marks`` and ``log_tail``
+come from :func:`lvgl_ai.summarize_session` when the session evidence can be
+read. A failed read leaves the original fields in place. Diagnostics stay on
+stderr.
 """
 
 from __future__ import annotations
@@ -43,8 +50,10 @@ from lvgl_ai import (  # noqa: E402
     RuntimeCrash,
     ScenarioError,
     play_scenario,
+    summarize_session,
 )
 from lvgl_ai.control.errors import dump_error, exit_code_for  # noqa: E402
+from lvgl_ai.control.evidence import CLI_EVIDENCE_FIELDS  # noqa: E402
 from lvgl_ai.control.input import TOKEN_PATTERN, is_token  # noqa: E402
 from lvgl_ai.scenario import load_scenario  # noqa: E402
 
@@ -104,21 +113,33 @@ def build_parser() -> argparse.ArgumentParser:
         help="record frames and evidence files (default: on)",
     )
     parser.add_argument(
-        "--record-changed-only",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help=(
-            "only save frames whose pixels differ from the previous retained "
-            "frame; web live enables this by default (default: off)"
-        ),
-    )
-    parser.add_argument(
         "--build",
         action=argparse.BooleanOptionalAction,
         default=True,
         help=(
             "rebuild lvgl_engine from user/app before launch (default: on); "
             "--no-build uses an existing build/ engine"
+        ),
+    )
+    build_mode = parser.add_mutually_exclusive_group()
+    build_mode.add_argument(
+        "--prebuilt",
+        dest="build_mode",
+        action="store_const",
+        const="prebuilt",
+        help=(
+            "compile user/app against the prebuilt host SDK in sdk/<version> "
+            "instead of CMake"
+        ),
+    )
+    build_mode.add_argument(
+        "--source",
+        dest="build_mode",
+        action="store_const",
+        const="source",
+        help=(
+            "build from lvgl-src/<version> with CMake (default: auto; "
+            "prebuilt is used when the source tree is missing)"
         ),
     )
     action = parser.add_mutually_exclusive_group()
@@ -164,10 +185,11 @@ def main(argv: list[str] | None = None) -> int:
         build=args.build,
         record=args.record,
     )
+    if args.build_mode is not None:
+        runtime_kwargs["build_mode"] = args.build_mode
     if app is not None:
         runtime_kwargs["app"] = app
-    if args.record_changed_only:
-        runtime_kwargs["record_changed_only"] = True
+    runtime_kwargs["record_changed_only"] = True
     display = None if scenario is None else scenario.get("display")
     if display is not None:
         runtime_kwargs["width"] = display["width"]
@@ -242,10 +264,24 @@ def _report(error: Exception | None, *, as_json: bool, runtime: Runtime) -> None
             "app": getattr(runtime, "app", None),
             "error": dump_error(error),
         }
+        _add_evidence(payload, runtime)
         print(json.dumps(payload, ensure_ascii=False), flush=True)
         return
     if error is None and runtime.session_dir is not None:
         print(runtime.session_dir)
+
+
+def _add_evidence(payload: dict, runtime: Runtime) -> None:
+    """Add ``summarize_session`` fields; a failed read keeps what is known."""
+    if runtime.session_dir is None:
+        return
+    payload["session_dir"] = str(Path(runtime.session_dir).resolve())
+    try:
+        summary = summarize_session(runtime.session_dir)
+    except Exception:  # noqa: BLE001 - evidence is optional for the CLI
+        return
+    for field in CLI_EVIDENCE_FIELDS:
+        payload[field] = summary[field]
 
 
 if __name__ == "__main__":

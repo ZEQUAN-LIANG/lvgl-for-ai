@@ -1,8 +1,8 @@
 # 第三方许可声明
 
-LVGL AI Tools 的 C engine 静态链接 LVGL 及其内置的 lodepng。仓库包含 C engine 源码与
-Python 控制层源码，但不包含 LVGL 源码树（`lvgl-src/`）；源码构建时以用户放置的 LVGL
-源码树为准。
+LVGL AI Tools 的 C engine 静态链接 LVGL 及其内置的 lodepng，并静态链接 zlib 与 libpng。
+仓库包含 C engine 源码与 Python 控制层源码，但不包含 LVGL 源码树（`lvgl-src/`）或
+PNG 编码器源码树（`third_party/`）；源码构建时以用户获取的源码树为准。
 
 ## LVGL
 
@@ -18,10 +18,36 @@ Python 控制层源码，但不包含 LVGL 源码树（`lvgl-src/`）；源码�
 - 许可证：zlib
 - 版权：随 LVGL 9.6 分发的 `LICENSE.txt` 为 Copyright (c) 2005–2018；同一树的
   `lodepng.c` 文件头写 2005–2023；8.x 文件头为 2005–2020。条款相同，均为 zlib。
-- 用途：engine 用 lodepng 编码完整帧 PNG。
+- 用途：engine 用 lodepng 解码 reference PNG；完整帧与 snapshot 的 PNG 编码已改用
+  libpng + zlib。
 - 完整文本：`licenses/lodepng-zlib.txt`（取自 LVGL 9.6 的 `LICENSE.txt`）；源码构建时
   也可在对应 LVGL 树的 `src/libs/lodepng/LICENSE.txt`（9.x）或
   `src/extra/libs/png/lodepng.c` 文件头（8.x）中查看。
+
+## zlib
+
+- 版本：1.3.1（tag `v1.3.1`，commit `51b7f2abdade71cd9bb0e7a373ef2610ec6f9daf`）
+- 许可证：zlib
+- 版权：Copyright (C) 1995-2022 Jean-loup Gailly and Mark Adler
+- 上游：<https://github.com/madler/zlib>
+- 用途：libpng 的 deflate 压缩；engine 静态链接。
+- 完整文本：`licenses/zlib.txt`
+- 获取：`python -I core/tools/fetch_png.py --repo-root .` 安装到 `third_party/zlib/`，
+  源码树不随仓库提交。
+
+## libpng
+
+- 版本：1.6.44（tag `v1.6.44`，commit `f5e92d76973a7a53f517579bc95d61483bf108c0`）
+- 许可证：PNG Reference Library License version 2
+- 版权：Copyright (c) 1995-2024 The PNG Reference Library Authors；Copyright (c)
+  2018-2024 Cosmin Truta；Copyright (c) 2000-2002, 2004, 2006-2018 Glenn
+  Randers-Pehrson；Copyright (c) 1996-1997 Andreas Dilger；Copyright (c) 1995-1996
+  Guy Eric Schalnat, Group 42, Inc.
+- 上游：<https://github.com/pnggroup/libpng>
+- 用途：engine 编码录制帧与 snapshot 的 PNG。
+- 完整文本：`licenses/libpng.txt`
+- 获取：`python -I core/tools/fetch_png.py --repo-root .` 安装到 `third_party/libpng/`，
+  源码树不随仓库提交。
 
 ## Python 标准库
 

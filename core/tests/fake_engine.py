@@ -5,6 +5,13 @@ process boundary can be tested without compiling LVGL: ready, pointer,
 tick, wait, mark, snapshot, key, encoder and quit.
 
 Set FAKE_READY=malformed or FAKE_READY=crash to exercise error paths.
+Set FAKE_WAIT_CHANGED=never|always|flaky to include the wait ``changed`` flag
+(never = no painted refresh, always = every wait paints, flaky = alternating);
+unset omits the field like an older engine. Set FAKE_WAIT_FRAMES=hold to keep
+the reported retained ``frames`` constant across waits, modelling changed-only
+recording that retained no new frame.
+Set FAKE_UNKNOWN_ARG=1 to mimic an old engine artifact that rejects a newer
+command-line flag, prints the reason to stderr and exits 2 before ready.
 Set FAKE_DECOY=1 to print JSON-looking user log lines that must not be
 mistaken for protocol replies. Set FAKE_LOG_LINES=<n> to print that many
 log lines before ready (log-truncation tests). Set FAKE_REPLY_SEQ_OFFSET
@@ -60,6 +67,13 @@ def main() -> int:
     print(f"[fake_engine] started session={session_dir} record={record}", flush=True)
     for line_index in range(int(os.environ.get("FAKE_LOG_LINES", "0") or 0)):
         print(f"[fake_engine] log line {line_index:05d}", flush=True)
+    if os.environ.get("FAKE_UNKNOWN_ARG") == "1":
+        print(
+            "[engine] unknown argument: --record-changed-only",
+            file=sys.stderr,
+            flush=True,
+        )
+        return 2
     if mode == "crash":
         print("[fake_engine] crashing before ready", flush=True)
         return 3
@@ -110,6 +124,39 @@ def main() -> int:
     frames = 1
     t_ms = 0
     snapshots = 0
+    wait_count = 0
+    hold_frames = os.environ.get("FAKE_WAIT_FRAMES") == "hold"
+
+    def retain_frames(count: int) -> None:
+        nonlocal frames
+        if not hold_frames:
+            frames += count
+
+    def next_wait_changed() -> bool | None:
+        nonlocal wait_count
+        wait_count += 1
+        mode = os.environ.get("FAKE_WAIT_CHANGED", "")
+        if mode == "never":
+            return False
+        if mode == "always":
+            return True
+        if mode == "flaky":
+            return wait_count % 2 == 1
+        return None
+
+    def emit_wait(seq: int) -> None:
+        payload = {
+            "protocol": PROTOCOL,
+            "seq": seq,
+            "ok": True,
+            "frames": frames,
+            "t_ms": t_ms,
+        }
+        changed = next_wait_changed()
+        if changed is not None:
+            payload["changed"] = changed
+        emit(payload)
+
     seq_offset = int(os.environ.get("FAKE_REPLY_SEQ_OFFSET", "0") or 0)
     for line in sys.stdin:
         line = line.strip()
@@ -143,14 +190,14 @@ def main() -> int:
             frames += 1
             emit({"protocol": PROTOCOL, "seq": seq, "ok": True, "frames": frames, "t_ms": t_ms})
         elif verb == "wait" and len(parts) >= 4 and parts[2] == "frames":
-            frames += int(parts[3])
+            retain_frames(int(parts[3]))
             t_ms += 16 * int(parts[3])
-            emit({"protocol": PROTOCOL, "seq": seq, "ok": True, "frames": frames, "t_ms": t_ms})
+            emit_wait(seq)
         elif verb == "wait" and len(parts) >= 3:
             ms = int(parts[2])
-            frames += math.ceil(ms / 16)
+            retain_frames(math.ceil(ms / 16))
             t_ms += ms
-            emit({"protocol": PROTOCOL, "seq": seq, "ok": True, "frames": frames, "t_ms": t_ms})
+            emit_wait(seq)
         elif verb == "snapshot":
             snapshots += 1
             emit(

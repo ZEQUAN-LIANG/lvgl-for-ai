@@ -1,0 +1,284 @@
+{
+  "schema": "lvgl-ai-scenario-v1",
+  "name": "sift_watch",
+  "app": "sift_watch",
+  "display": {
+    "width": 390,
+    "height": 450
+  },
+  "steps": [
+    {
+      "type": "wait",
+      "ms": 200
+    },
+    {
+      "type": "mark",
+      "id": "watch"
+    },
+    {
+      "type": "snapshot",
+      "label": "watch"
+    },
+    {
+      "type": "drag",
+      "from": [330, 220],
+      "to": [120, 220],
+      "steps": 6,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 200
+    },
+    {
+      "type": "snapshot",
+      "label": "apps"
+    },
+    {
+      "type": "drag",
+      "from": [330, 220],
+      "to": [120, 220],
+      "steps": 6,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 200
+    },
+    {
+      "type": "snapshot",
+      "label": "timer"
+    },
+    {
+      "type": "click_at",
+      "x": 61,
+      "y": 229
+    },
+    {
+      "type": "click_at",
+      "x": 147,
+      "y": 323
+    },
+    {
+      "type": "wait",
+      "ms": 1100
+    },
+    {
+      "type": "mark",
+      "id": "timer_running"
+    },
+    {
+      "type": "snapshot",
+      "label": "timer_running"
+    },
+    {
+      "type": "drag",
+      "from": [330, 200],
+      "to": [120, 200],
+      "steps": 6,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 200
+    },
+    {
+      "type": "snapshot",
+      "label": "stopwatch"
+    },
+    {
+      "type": "click_at",
+      "x": 75,
+      "y": 337
+    },
+    {
+      "type": "wait",
+      "ms": 900
+    },
+    {
+      "type": "click_at",
+      "x": 194,
+      "y": 337
+    },
+    {
+      "type": "wait",
+      "ms": 200
+    },
+    {
+      "type": "snapshot",
+      "label": "stopwatch_running"
+    },
+    {
+      "type": "drag",
+      "from": [330, 200],
+      "to": [120, 200],
+      "steps": 6,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 200
+    },
+    {
+      "type": "snapshot",
+      "label": "weather"
+    },
+    {
+      "type": "drag",
+      "from": [330, 200],
+      "to": [120, 200],
+      "steps": 6,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 200
+    },
+    {
+      "type": "snapshot",
+      "label": "settings"
+    },
+    {
+      "type": "click_at",
+      "x": 195,
+      "y": 165
+    },
+    {
+      "type": "wait",
+      "ms": 200
+    },
+    {
+      "type": "snapshot",
+      "label": "settings_toggle"
+    },
+    {
+      "type": "drag",
+      "from": [195, 120],
+      "to": [195, 380],
+      "steps": 6,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 300
+    },
+    {
+      "type": "snapshot",
+      "label": "back_home"
+    },
+    {
+      "type": "drag",
+      "from": [195, 380],
+      "to": [195, 120],
+      "steps": 6,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 200
+    },
+    {
+      "type": "snapshot",
+      "label": "swipe_up_apps"
+    },
+    {
+      "type": "drag",
+      "from": [120, 220],
+      "to": [330, 220],
+      "steps": 6,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 200
+    },
+    {
+      "type": "snapshot",
+      "label": "swipe_right_watch"
+    },
+    {
+      "type": "drag",
+      "from": [195, 220],
+      "to": [235, 220],
+      "steps": 10,
+      "interval_ms": 30
+    },
+    {
+      "type": "wait",
+      "ms": 300
+    },
+    {
+      "type": "snapshot",
+      "label": "drag_orbit"
+    },
+    {
+      "type": "key",
+      "action": "press",
+      "key": "LEFT"
+    },
+    {
+      "type": "key",
+      "action": "release",
+      "key": "LEFT"
+    },
+    {
+      "type": "key",
+      "action": "press",
+      "key": "LEFT"
+    },
+    {
+      "type": "key",
+      "action": "release",
+      "key": "LEFT"
+    },
+    {
+      "type": "key",
+      "action": "press",
+      "key": "LEFT"
+    },
+    {
+      "type": "key",
+      "action": "release",
+      "key": "LEFT"
+    },
+    {
+      "type": "key",
+      "action": "press",
+      "key": "LEFT"
+    },
+    {
+      "type": "key",
+      "action": "release",
+      "key": "LEFT"
+    },
+    {
+      "type": "wait",
+      "ms": 400
+    },
+    {
+      "type": "snapshot",
+      "label": "tilted"
+    },
+    {
+      "type": "click_at",
+      "x": 195,
+      "y": 220
+    },
+    {
+      "type": "wait",
+      "ms": 260
+    },
+    {
+      "type": "snapshot",
+      "label": "tap_flip"
+    },
+    {
+      "type": "wait",
+      "ms": 500
+    },
+    {
+      "type": "snapshot",
+      "label": "tap_flip_done"
+    }
+  ]
+}

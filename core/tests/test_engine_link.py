@@ -10,8 +10,10 @@ from __future__ import annotations
 import json
 import queue
 import subprocess
+import tempfile
 import time
 import unittest
+from pathlib import Path
 
 from lvgl_ai import ProtocolError, RuntimeCrash
 from lvgl_ai.control.engine_link import PROTOCOL_VERSION, EngineLink
@@ -55,12 +57,14 @@ class ScriptedPipe:
 
     def __init__(self) -> None:
         self._lines: queue.Queue[object] = queue.Queue()
+        self.closed = False
 
     def feed(self, *lines: str) -> None:
         for line in lines:
             self._lines.put(line if line.endswith("\n") else line + "\n")
 
     def close(self) -> None:
+        self.closed = True
         self._lines.put(_STOP)
 
     def __iter__(self) -> ScriptedPipe:
@@ -77,6 +81,7 @@ class ScriptedStdin:
     def __init__(self, process: ScriptedProcess) -> None:
         self.process = process
         self.lines: list[str] = []
+        self.closed = False
 
     def write(self, text: str) -> int:
         self.lines.append(text)
@@ -85,6 +90,9 @@ class ScriptedStdin:
 
     def flush(self) -> None:
         pass
+
+    def close(self) -> None:
+        self.closed = True
 
 
 class BrokenStdin:
@@ -435,6 +443,14 @@ class EngineLinkTest(unittest.TestCase):
         self.assertTrue(self.process.terminated)
         self.assertNotIn("quit", [check[0] for check in self.checks])
 
+    def test_shutdown_closes_every_process_pipe(self) -> None:
+        link = self._started_link()
+        link.shutdown(send_quit=False)
+
+        self.assertTrue(self.process.stdin.closed)
+        self.assertTrue(self.process.stdout.closed)
+        self.assertTrue(self.process.stderr.closed)
+
     # ---- crash completion ---------------------------------------------
 
     def test_crash_factory_carries_exit_code_tail_and_path(self) -> None:
@@ -470,6 +486,50 @@ class EngineLinkTest(unittest.TestCase):
         if len(parts) >= 2 and parts[1] == "quit":
             self.process.stdout.feed(reply_line(int(parts[0])))
             self.process.exit(exit_code)
+
+
+class EnginePidFileTest(unittest.TestCase):
+    def test_start_writes_pid_and_shutdown_clears_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            engine = root / "lvgl_engine.exe"
+            engine.write_bytes(b"")
+            process = ScriptedProcess()
+            process.exit(0)
+            link = EngineLink(
+                [str(engine)],
+                process_factory=lambda command, env, cwd: process,
+            )
+            link.quit_timeout = 0.05
+            link.start()
+            pid_path = root / ".engine.pid"
+            self.assertTrue(pid_path.is_file())
+            payload = json.loads(pid_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["pid"], process.pid)
+            link.shutdown(send_quit=False)
+            self.assertFalse(pid_path.exists())
+
+    def test_start_writes_the_session_identity_to_the_pid_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            engine = root / "lvgl_engine.exe"
+            engine.write_bytes(b"")
+            process = ScriptedProcess()
+            process.exit(0)
+            link = EngineLink(
+                [str(engine)],
+                session_id="20260101-000000-abcd",
+                app="coffee",
+                process_factory=lambda command, env, cwd: process,
+            )
+            link.quit_timeout = 0.05
+            link.start()
+            payload = json.loads(
+                (root / ".engine.pid").read_text(encoding="utf-8")
+            )
+            self.assertEqual(payload["session_id"], "20260101-000000-abcd")
+            self.assertEqual(payload["app"], "coffee")
+            link.shutdown(send_quit=False)
 
 
 if __name__ == "__main__":

@@ -31,11 +31,16 @@ from lvgl_ai import (
     play_scenario,
 )
 from lvgl_ai import paths
+from lvgl_ai.control.evidence import CLI_EVIDENCE_FIELDS
+from session_fixtures import SESSION_NAME, make_summary_session as make_session
 
 TOOL_ROOT = Path(__file__).resolve().parent.parent
 CLI_PATH = TOOL_ROOT / "cli.py"
 SIGINT_DRIVER = Path(__file__).with_name("sigint_idle_driver.py")
 SETTINGS_SCENARIO = paths.REPO_ROOT / "user" / "scenarios" / "settings.json"
+SIFT_WATCH_SCENARIO = (
+    paths.REPO_ROOT / "user" / "scenarios" / "sift_watch.json"
+)
 
 
 def run_cli(argv: list[str]) -> tuple[int, str, str]:
@@ -90,7 +95,7 @@ class CliUnitTest(unittest.TestCase):
         code, out, err = run_cli([])
 
         factory.assert_called_once_with(
-            lvgl=None, build=True, record=True
+            lvgl=None, build=True, record=True, record_changed_only=True
         )
         self.assertEqual(code, 0)
         self.assertEqual(fake.start_calls, 1)
@@ -98,6 +103,24 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(fake.commands, [])
         self.assertEqual(out.strip(), str(fake.session_dir))
         self.assertEqual(err, "")
+
+    def test_build_mode_flags_are_forwarded(self) -> None:
+        cases = [("--prebuilt", "prebuilt"), ("--source", "source")]
+        for flag, expected in cases:
+            with self.subTest(flag=flag):
+                fake = FakeRuntime()
+                with mock.patch.object(cli, "Runtime", return_value=fake) as factory:
+                    code, _, _ = run_cli([flag])
+                self.assertEqual(code, 0)
+                factory.assert_called_once_with(
+                    lvgl=None, build=True, record=True,
+                    build_mode=expected, record_changed_only=True,
+                )
+
+    def test_prebuilt_and_source_are_mutually_exclusive(self) -> None:
+        code, _, err = run_cli(["--prebuilt", "--source"])
+        self.assertEqual(code, 2)
+        self.assertIn("not allowed with argument", err)
 
     def test_record_defaults_on_and_no_record_disables_it(self) -> None:
         cases = [([], True), (["--record"], True), (["--no-record"], False)]
@@ -108,13 +131,14 @@ class CliUnitTest(unittest.TestCase):
                     code, _, _ = run_cli(argv)
                 self.assertEqual(code, 0)
                 factory.assert_called_once_with(
-                    lvgl=None, build=True, record=expected
+                    lvgl=None, build=True, record=expected,
+                    record_changed_only=True,
                 )
 
-    def test_record_changed_only_is_opt_in(self) -> None:
+    def test_recording_always_keeps_only_changed_frames(self) -> None:
         fake = FakeRuntime()
         with mock.patch.object(cli, "Runtime", return_value=fake) as factory:
-            code, _, _ = run_cli(["--record-changed-only"])
+            code, _, _ = run_cli([])
         self.assertEqual(code, 0)
         factory.assert_called_once_with(
             lvgl=None,
@@ -132,7 +156,8 @@ class CliUnitTest(unittest.TestCase):
                     code, _, _ = run_cli(argv)
                 self.assertEqual(code, 0)
                 factory.assert_called_once_with(
-                    lvgl=None, build=expected, record=True
+                    lvgl=None, build=expected, record=True,
+                    record_changed_only=True,
                 )
 
     def test_scenario_is_played_and_json_reports_the_session(self) -> None:
@@ -159,6 +184,68 @@ class CliUnitTest(unittest.TestCase):
             ],
         )
 
+    def test_json_keeps_old_fields_and_adds_the_session_evidence(self) -> None:
+        session = make_session(
+            self.root / "sessions",
+            display={"width": 390, "height": 450},
+        )
+        fake = FakeRuntime(session_dir=session, app="coffee")
+        with mock.patch.object(cli, "Runtime", return_value=fake):
+            code, out, err = run_cli(["--json"])
+
+        self.assertEqual(code, 0)
+        self.assertEqual(err, "")
+        payload = one_json(out)
+
+        self.assertEqual(payload["session_id"], SESSION_NAME)
+        self.assertEqual(payload["manifest_path"], str(fake.manifest_path))
+        self.assertEqual(payload["app"], "coffee")
+        self.assertIsNone(payload["error"])
+        self.assertEqual(
+            set(payload),
+            {"session_id", "manifest_path", "app", "error"}
+            | set(CLI_EVIDENCE_FIELDS),
+        )
+
+        self.assertEqual(payload["session_dir"], str(session.resolve()))
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["display"], {"width": 390, "height": 450})
+        self.assertEqual(payload["frame_count"], 2)
+        self.assertEqual(payload["requested_app"], "coffee")
+        self.assertEqual(payload["effective_app"], "coffee")
+        self.assertEqual(
+            [snapshot["label"] for snapshot in payload["snapshots"]],
+            ["after_click"],
+        )
+        self.assertTrue(
+            Path(payload["snapshots"][0]["path"]).is_absolute()
+        )
+        self.assertEqual(
+            [mark["id"] for mark in payload["marks"]], ["start"]
+        )
+        self.assertIn("[app] app=coffee", payload["log_tail"])
+
+    def test_json_degrades_when_the_session_summary_cannot_be_read(self) -> None:
+        session = make_session(self.root / "sessions")
+        (session / "engine.log").unlink()
+        fake = FakeRuntime(session_dir=session)
+        with mock.patch.object(cli, "Runtime", return_value=fake):
+            code, out, err = run_cli(["--json"])
+
+        self.assertEqual(code, 0)
+        self.assertEqual(err, "")
+        payload = one_json(out)
+
+        self.assertEqual(payload["session_id"], SESSION_NAME)
+        self.assertEqual(payload["manifest_path"], str(fake.manifest_path))
+        self.assertIsNone(payload["error"])
+        self.assertEqual(payload["session_dir"], str(session.resolve()))
+        for field in CLI_EVIDENCE_FIELDS:
+            if field == "session_dir":
+                continue
+            with self.subTest(field=field):
+                self.assertNotIn(field, payload)
+
     def test_app_flag_is_forwarded_and_reported(self) -> None:
         fake, factory = self._patch_runtime(app="coffee")
         code, out, err = run_cli(["--app", "coffee", "--json"])
@@ -166,7 +253,8 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(err, "")
         factory.assert_called_once_with(
-            lvgl=None, build=True, record=True, app="coffee"
+            lvgl=None, build=True, record=True, app="coffee",
+            record_changed_only=True,
         )
         self.assertEqual(one_json(out)["app"], "coffee")
 
@@ -182,6 +270,7 @@ class CliUnitTest(unittest.TestCase):
             build=True,
             record=True,
             app="xiaohongshu",
+            record_changed_only=True,
         )
 
     def test_app_flag_overrides_the_scenario_app(self) -> None:
@@ -216,6 +305,19 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(err, "")
         self.assertEqual(factory.call_args.kwargs["width"], 640)
         self.assertEqual(factory.call_args.kwargs["height"], 480)
+
+    def test_sift_watch_scenario_forwards_the_device_display(self) -> None:
+        fake = FakeRuntime()
+        with mock.patch.object(cli, "Runtime", return_value=fake) as factory:
+            code, _, err = run_cli(
+                ["--scenario", str(SIFT_WATCH_SCENARIO)]
+            )
+
+        self.assertEqual(code, 0)
+        self.assertEqual(err, "")
+        self.assertEqual(factory.call_args.kwargs["app"], "sift_watch")
+        self.assertEqual(factory.call_args.kwargs["width"], 390)
+        self.assertEqual(factory.call_args.kwargs["height"], 450)
 
     def test_scenario_without_display_keeps_the_engine_default(self) -> None:
         fake = FakeRuntime()
@@ -407,7 +509,12 @@ class CliRealEngineIntegrationTest(unittest.TestCase):
 
     def test_cli_scenario_timeline_matches_the_library_path(self) -> None:
         library_root = self.root / "library"
-        rt = Runtime(lvgl="9.6", build=True, sessions_root=library_root)
+        rt = Runtime(
+            lvgl="9.6",
+            build=True,
+            record_changed_only=True,
+            sessions_root=library_root,
+        )
         rt.start()
         play_scenario(rt, SETTINGS_SCENARIO)
         rt.stop()

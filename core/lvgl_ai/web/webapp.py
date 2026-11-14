@@ -28,17 +28,15 @@ from urllib.parse import parse_qs, unquote, urlencode, urlparse
 from .. import apps as app_store
 from .. import paths
 from ..apps.trash import InvalidTrashId
-from ..control.errors import ScenarioError
 from ..control.input import TOKEN_PATTERN, is_token
 from ..control.recording import Recording
 from ..control.runtime import Runtime
-from ..scenario import load_scenario
-from . import page_render, replay_model
-from .annotations import AnnotationError, write_note
+from ..scenario import scenario_index
+from . import page_render, replay_model, whiteboards
+from .annotations import AnnotationError, delete_note, write_note
 from .live_session import (
     LiveError,
     LiveSession,
-    LiveStream,
     validate_live_kind,
 )
 from .urls import page_url
@@ -46,6 +44,11 @@ from .urls import page_url
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 MAX_BODY_BYTES = 1024 * 1024
+# A whiteboard payload carries a base64 PNG plus the Fabric object tree.
+WHITEBOARD_BODY_BYTES = 12 * 1024 * 1024
+# An annotation payload may carry one composed PNG per anchor frame.
+ANNOTATION_BODY_BYTES = 12 * 1024 * 1024
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 # Page tracking for --exit-on-close: the page refreshes its id every 10 s (the
 # interval lives in web/wire.py); a page unseen for two minutes is treated as
 # gone. Closing the last browser page stops the server after a short grace so a
@@ -106,6 +109,13 @@ ANNOTATION_ERROR_STATUS = {
     "internal_error": 500,
     "invalid_annotation": 400,
     "region_image_error": 400,
+    "unknown_annotation": 404,
+}
+WHITEBOARD_ERROR_STATUS = {
+    "invalid_whiteboard": 400,
+    "whiteboards_unreadable": 409,
+    "whiteboards_write_error": 500,
+    "unknown_whiteboard": 404,
 }
 CSP = (
     "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
@@ -152,6 +162,13 @@ class HttpError(Exception):
                 "detail": self.detail,
             }
         }
+
+
+def _live_http_error(exc: LiveError) -> HttpError:
+    status = LIVE_ERROR_STATUS.get(
+        exc.code, HTTPStatus.INTERNAL_SERVER_ERROR
+    )
+    return HttpError(status, exc.code, exc.message, detail=exc.detail)
 
 
 class WebApp:
@@ -248,38 +265,36 @@ class WebApp:
             return self._scenario_apps_locked()
 
     def _scenario_apps_locked(self) -> list[dict[str, Any]]:
-        root = self.scenarios_dir
-        if not root.is_dir():
-            return []
         apps: dict[str, dict[str, Any]] = {}
-        for path in sorted(root.glob("*.json")):
-            try:
-                document = load_scenario(path)
-            except ScenarioError:
+        for item in scenario_index(
+            self.repo_root,
+            scenarios_dir=self.scenarios_dir,
+            include_symlinks=True,
+        ):
+            if not item["valid"]:
                 continue
-            app = document.get("app")
+            app = item["app"]
             if not isinstance(app, str) or not app or app in apps:
                 continue
             apps[app] = {
                 "app": app,
-                "name": document.get("name") or app,
-                "scenario": path.name,
-                "display": document.get("display"),
+                "name": item["name"] or app,
+                "scenario": item["basename"],
+                "display": item["display"],
             }
         return sorted(apps.values(), key=lambda entry: (entry["name"], entry["app"]))
 
-    def _scenario_display_locked(
-        self, app: str | None
-    ) -> tuple[int, int] | None:
+    def _scenario_display(self, app: str | None) -> tuple[int, int] | None:
         """The display declared by the first sorted scenario for ``app``."""
         if app is None:
             return None
-        for entry in self._scenario_apps_locked():
-            if entry["app"] == app:
-                display = entry.get("display")
-                if display is None:
-                    return None
-                return display["width"], display["height"]
+        with self._apps_lock:
+            for entry in self._scenario_apps_locked():
+                if entry["app"] == app:
+                    display = entry.get("display")
+                    if display is None:
+                        return None
+                    return display["width"], display["height"]
         return None
 
     # ---- app management -------------------------------------------------
@@ -520,48 +535,65 @@ class WebApp:
             raise HttpError(status, exc.code, str(exc)) from exc
         return HTTPStatus.CREATED, {"annotations": document, "note": note}
 
-    # ---- live ----------------------------------------------------------
-
-    @staticmethod
-    def _live_http_error(exc: LiveError) -> HttpError:
-        status = LIVE_ERROR_STATUS.get(
-            exc.code, HTTPStatus.INTERNAL_SERVER_ERROR
-        )
-        return HttpError(status, exc.code, exc.message, detail=exc.detail)
-
-    def _live_call(self, operation: Callable[[], Any]) -> Any:
+    def delete_annotation(
+        self, session_id: str, note_id: str
+    ) -> tuple[int, dict[str, Any]]:
+        recording = self.open_recording(session_id)
         try:
-            return operation()
-        except LiveError as exc:
-            raise self._live_http_error(exc) from exc
-
-    def live_status(self) -> dict[str, Any]:
-        return self.live.status()
-
-    def open_live_stream(self) -> LiveStream:
-        """Bind one HTTP stream response to the running live session."""
-        return self._live_call(self.live.open_stream)
-
-    def start_live(
-        self, kind: str = "record", app: str | None = None
-    ) -> dict[str, Any]:
-        # Keep the old validation order: an unknown mode wins over a bad app.
-        self._live_call(lambda: validate_live_kind(kind))
-        app = _input_app(app)
-        with self._apps_lock:
-            display = self._scenario_display_locked(app)
-            return self._live_call(
-                lambda: self.live.start(kind, app, display=display)
+            document = delete_note(recording, note_id)
+        except AnnotationError as exc:
+            status = ANNOTATION_ERROR_STATUS.get(
+                exc.code, HTTPStatus.BAD_REQUEST
             )
+            raise HttpError(status, exc.code, str(exc)) from exc
+        return HTTPStatus.OK, {
+            "annotations": document,
+            "deleted": note_id,
+        }
 
-    def stop_live(self) -> dict[str, Any]:
-        return self._live_call(self.live.stop)
+    # ---- whiteboards ---------------------------------------------------
 
-    def live_pointer(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return self._live_call(lambda: self.live.pointer(payload))
+    def whiteboards_payload(self, session_id: str) -> dict[str, Any]:
+        recording = self.open_recording(session_id)
+        try:
+            return {"whiteboards": whiteboards.read_whiteboards(recording)}
+        except whiteboards.WhiteboardError as exc:
+            status = WHITEBOARD_ERROR_STATUS.get(
+                exc.code, HTTPStatus.BAD_REQUEST
+            )
+            raise HttpError(status, exc.code, str(exc)) from exc
 
-    def live_key(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return self._live_call(lambda: self.live.key(payload))
+    def save_whiteboard(
+        self, session_id: str, payload: dict[str, Any]
+    ) -> tuple[int, dict[str, Any]]:
+        recording = self.open_recording(session_id)
+        try:
+            document, item = whiteboards.save_whiteboard(recording, payload)
+        except whiteboards.WhiteboardError as exc:
+            status = WHITEBOARD_ERROR_STATUS.get(
+                exc.code, HTTPStatus.BAD_REQUEST
+            )
+            raise HttpError(status, exc.code, str(exc)) from exc
+        return HTTPStatus.CREATED, {
+            "whiteboards": document,
+            "whiteboard": item,
+        }
+
+    def delete_whiteboard(
+        self, session_id: str, whiteboard_id: str
+    ) -> tuple[int, dict[str, Any]]:
+        recording = self.open_recording(session_id)
+        try:
+            document = whiteboards.delete_whiteboard(recording, whiteboard_id)
+        except whiteboards.WhiteboardError as exc:
+            status = WHITEBOARD_ERROR_STATUS.get(
+                exc.code, HTTPStatus.BAD_REQUEST
+            )
+            raise HttpError(status, exc.code, str(exc)) from exc
+        return HTTPStatus.OK, {
+            "whiteboards": document,
+            "deleted": whiteboard_id,
+        }
 
     # ---- browser page tracking ----------------------------------------
 
@@ -609,8 +641,8 @@ class WebApp:
         if self.live.is_starting():
             return
         try:
-            self.stop_live()
-        except HttpError:
+            self.live.stop()
+        except LiveError:
             pass
 
 
@@ -639,6 +671,9 @@ class _WebHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         self._dispatch("POST")
 
+    def do_DELETE(self) -> None:
+        self._dispatch("DELETE")
+
     # ---- dispatch ------------------------------------------------------
 
     def _dispatch(self, method: str) -> None:
@@ -649,6 +684,9 @@ class _WebHandler(BaseHTTPRequestHandler):
             self._route(method, path, query)
         except HttpError as exc:
             self._send_json(exc.status, exc.payload())
+        except LiveError as exc:
+            error = _live_http_error(exc)
+            self._send_json(error.status, error.payload())
         except (BrokenPipeError, ConnectionResetError):
             pass
         except Exception as exc:  # noqa: BLE001 - keep the server alive
@@ -677,9 +715,13 @@ class _WebHandler(BaseHTTPRequestHandler):
                 HTTPStatus.OK, {"sessions": self.app.sessions()}
             )
 
+        if path == "/static/fabric.min.js":
+            self._require(method, ("GET",))
+            return self._serve_static("fabric.min.js")
+
         if path == "/api/live":
             self._require(method, ("GET",))
-            return self._send_json(HTTPStatus.OK, self.app.live_status())
+            return self._send_json(HTTPStatus.OK, self.app.live.status())
 
         if path == "/api/live/stream":
             self._require(method, ("GET",))
@@ -687,28 +729,24 @@ class _WebHandler(BaseHTTPRequestHandler):
 
         if path == "/api/live/start":
             self._require(method, ("POST",))
-            mode = (query.get("mode") or ["record"])[0]
-            app = (query.get("app") or [None])[0]
-            return self._send_json(
-                HTTPStatus.OK, self.app.start_live(mode, app)
-            )
+            return self._start_live(query)
 
         if path == "/api/live/stop":
             self._require(method, ("POST",))
-            return self._send_json(HTTPStatus.OK, self.app.stop_live())
+            return self._send_json(HTTPStatus.OK, self.app.live.stop())
 
         if path == "/api/live/pointer":
             self._require(method, ("POST",))
             return self._send_json(
                 HTTPStatus.OK,
-                self.app.live_pointer(self._read_json_body()),
+                self.app.live.pointer(self._read_json_body()),
             )
 
         if path == "/api/live/key":
             self._require(method, ("POST",))
             return self._send_json(
                 HTTPStatus.OK,
-                self.app.live_key(self._read_json_body()),
+                self.app.live.key(self._read_json_body()),
             )
 
         if path == "/api/apps":
@@ -791,8 +829,25 @@ class _WebHandler(BaseHTTPRequestHandler):
                             self.app.annotations_payload(session_id),
                         )
                     if method == "POST":
-                        body = self._read_json_body()
+                        body = self._read_json_body(ANNOTATION_BODY_BYTES)
                         status, payload = self.app.add_annotation(
+                            session_id, body
+                        )
+                        return self._send_json(status, payload)
+                    raise HttpError(
+                        HTTPStatus.METHOD_NOT_ALLOWED,
+                        "method_not_allowed",
+                        f"{method} is not allowed here",
+                    )
+                if sub == "whiteboards":
+                    if method == "GET":
+                        return self._send_json(
+                            HTTPStatus.OK,
+                            self.app.whiteboards_payload(session_id),
+                        )
+                    if method == "POST":
+                        body = self._read_json_body(WHITEBOARD_BODY_BYTES)
+                        status, payload = self.app.save_whiteboard(
                             session_id, body
                         )
                         return self._send_json(status, payload)
@@ -815,6 +870,23 @@ class _WebHandler(BaseHTTPRequestHandler):
                     )
                 self._require(method, ("GET",))
                 return self._send_json(HTTPStatus.OK, handler(session_id))
+            if len(parts) == 5:
+                session_id, sub = parts[2], parts[3]
+                if sub == "annotations":
+                    self._require(method, ("DELETE",))
+                    status, payload = self.app.delete_annotation(
+                        session_id, unquote(parts[4])
+                    )
+                    return self._send_json(status, payload)
+                if sub == "whiteboards":
+                    self._require(method, ("DELETE",))
+                    status, payload = self.app.delete_whiteboard(
+                        session_id, unquote(parts[4])
+                    )
+                    return self._send_json(status, payload)
+                raise HttpError(
+                    HTTPStatus.NOT_FOUND, "not_found", f"unknown path: {path}"
+                )
             raise HttpError(
                 HTTPStatus.NOT_FOUND, "not_found", f"unknown path: {path}"
             )
@@ -823,6 +895,7 @@ class _WebHandler(BaseHTTPRequestHandler):
             path.startswith("/frames/")
             or path.startswith("/snapshots/")
             or path.startswith("/regions/")
+            or path.startswith("/whiteboards/")
         ):
             self._require(method, ("GET",))
             kind = path.strip("/").split("/")[0]
@@ -835,6 +908,17 @@ class _WebHandler(BaseHTTPRequestHandler):
 
         raise HttpError(
             HTTPStatus.NOT_FOUND, "not_found", f"unknown path: {path}"
+        )
+
+    def _start_live(self, query: dict[str, list[str]]) -> None:
+        mode = (query.get("mode") or ["record"])[0]
+        app = (query.get("app") or [None])[0]
+        # Keep the old validation order: an unknown mode wins over a bad app.
+        validate_live_kind(mode)
+        app = _input_app(app)
+        display = self.app._scenario_display(app)
+        return self._send_json(
+            HTTPStatus.OK, self.app.live.start(mode, app, display=display)
         )
 
     @staticmethod
@@ -879,7 +963,9 @@ class _WebHandler(BaseHTTPRequestHandler):
         if 0 <= length <= MAX_DRAIN_BYTES:
             self._discard_body(length)
 
-    def _read_json_body(self) -> dict[str, Any]:
+    def _read_json_body(
+        self, limit: int = MAX_BODY_BYTES
+    ) -> dict[str, Any]:
         raw_length = self.headers.get("Content-Length")
         if raw_length is None:
             raise HttpError(
@@ -901,13 +987,13 @@ class _WebHandler(BaseHTTPRequestHandler):
                 "invalid_content_length",
                 "Content-Length must not be negative",
             )
-        if length > MAX_BODY_BYTES:
+        if length > limit:
             if length <= MAX_DRAIN_BYTES:
                 self._discard_body(length)
             raise HttpError(
                 HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
                 "payload_too_large",
-                f"body must be at most {MAX_BODY_BYTES} bytes",
+                f"body must be at most {limit} bytes",
             )
         data = self.rfile.read(length)
         try:
@@ -949,7 +1035,7 @@ class _WebHandler(BaseHTTPRequestHandler):
         thread and never holds the live lock; the stream handle keeps this
         response bound to the session that was running when it connected.
         """
-        stream = self.app.open_live_stream()
+        stream = self.app.live.open_stream()
         self.close_connection = True
         try:
             self.connection.settimeout(10.0)
@@ -978,6 +1064,25 @@ class _WebHandler(BaseHTTPRequestHandler):
                 sent = frame.seq
         except Exception:  # noqa: BLE001 - headers are already streaming
             return
+
+    def _serve_static(self, name: str) -> None:
+        path = STATIC_DIR / name
+        if not path.is_file():
+            raise HttpError(
+                HTTPStatus.NOT_FOUND, "not_found", "file not found"
+            )
+        try:
+            data = path.read_bytes()
+        except OSError as exc:
+            raise HttpError(
+                HTTPStatus.INTERNAL_SERVER_ERROR, "read_error", str(exc)
+            ) from exc
+        self._send(
+            HTTPStatus.OK,
+            data,
+            "text/javascript; charset=utf-8",
+            cache_control="public, max-age=31536000, immutable",
+        )
 
     def _serve_png(self, kind: str, session_id: str, filename: str) -> None:
         session_dir = self.app.session_path(session_id)

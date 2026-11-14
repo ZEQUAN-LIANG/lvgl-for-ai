@@ -31,6 +31,8 @@ typedef struct {
     uint8_t * framebuffer;
     uint32_t width;
     uint32_t height;
+    /** The display flush callback ran during the latest adapter_refresh(). */
+    bool refresh_painted;
 
     /** Which standard indevs the version primitive created. */
     bool has_pointer;
@@ -117,20 +119,6 @@ void adapter_prim_tick_inc(uint32_t ms);
 
 /** Run ``lv_timer_handler`` once. */
 void adapter_prim_timer_handler(void);
-
-/**
- * Encode RGBA8888 pixels as an RGB PNG into a lodepng-owned buffer. On
- * success the caller releases ``*png`` with adapter_prim_png_free().
- * Returns 0 on success.
- */
-int adapter_prim_png_encode(const unsigned char * rgba,
-                            uint32_t width,
-                            uint32_t height,
-                            unsigned char ** png,
-                            size_t * png_size);
-
-/** Release a buffer returned by adapter_prim_png_encode(). */
-void adapter_prim_png_free(unsigned char * png);
 
 /**
  * Decode PNG bytes into packed B, G, R, X pixels (framebuffer layout)

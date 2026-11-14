@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Record and compare the external behavior contract of the LVGL AI tools.
 
-The refactor work in ``.scratch/ai-tools/issues/14-architecture-deepening.md``
-must not change any user-visible behavior.  This tool captures the six
-contracts that refactors may not drift:
+The snapshot is behavior-equivalence evidence for refactors.  The historical
+ticket ``14-architecture-deepening.md`` is not current guidance.  This tool
+captures the six contracts that refactors may not drift:
 
 - ``http``: routes, methods, status codes and JSON key shapes
 - ``cli``: ``cli.py`` / ``web.py`` / ``tools/new_app.py`` parsers, help text,
@@ -373,8 +373,10 @@ def main():
         elif verb == "wait" and len(parts) >= 4 and parts[2] == "frames":
             frames += int(parts[3])
             t_ms += 16 * int(parts[3])
+            extra = {"changed": False}
         elif verb == "wait" and len(parts) >= 3:
             t_ms += int(parts[2])
+            extra = {"changed": False}
         payload = reply(seq, frames, t_ms, extra)
         if REPLY_OMIT:
             omit_verb, _, omit_field = REPLY_OMIT.partition(":")
@@ -1012,10 +1014,8 @@ def _session_section(
 
     required_files: list[str] = []
     optional_files: list[str] = []
-    for relative in file_set:
-        probe = workspace / "file-probe"
-        if probe.exists():
-            shutil.rmtree(probe)
+    for index, relative in enumerate(file_set):
+        probe = workspace / f"file-probe-{index}"
         shutil.copytree(session_dir, probe)
         (probe / relative).unlink()
         try:
@@ -1027,10 +1027,8 @@ def _session_section(
 
     required_fields: list[str] = []
     optional_fields: list[str] = []
-    manifest_probe = workspace / "manifest-probe"
     for field in sorted(manifest):
-        if manifest_probe.exists():
-            shutil.rmtree(manifest_probe)
+        manifest_probe = workspace / f"manifest-probe-{field}"
         shutil.copytree(session_dir, manifest_probe)
         path = manifest_probe / "manifest.json"
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -1043,7 +1041,6 @@ def _session_section(
         else:
             optional_fields.append(field)
 
-    status_probe = workspace / "status-probe"
     accepted_statuses: list[str] = []
     rejected_statuses: list[str] = []
     for status in (
@@ -1056,8 +1053,7 @@ def _session_section(
         "fail",
         "unverified",
     ):
-        if status_probe.exists():
-            shutil.rmtree(status_probe)
+        status_probe = workspace / f"status-probe-{status}"
         shutil.copytree(session_dir, status_probe)
         path = status_probe / "manifest.json"
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -1070,11 +1066,9 @@ def _session_section(
         else:
             accepted_statuses.append(status)
 
-    type_probe = workspace / "type-probe"
     timeline_types: dict[str, bool] = {}
     for row_type in ("frame", "input", "wait", "mark", "snapshot", "end", "other"):
-        if type_probe.exists():
-            shutil.rmtree(type_probe)
+        type_probe = workspace / f"type-probe-{row_type}"
         shutil.copytree(session_dir, type_probe)
         (type_probe / "timeline.ndjson").write_text(
             json.dumps(
@@ -1470,6 +1464,25 @@ class _LiveStub:
             "ok": True,
             "delivered": True,
             "key": key,
+        }
+
+    def encoder(self, action: str, diff: int) -> dict[str, Any]:
+        return {
+            "protocol": "lvgl-ai-engine-v1",
+            "seq": 1,
+            "ok": True,
+            "delivered": True,
+        }
+
+    def mark(self, mark_id: str) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def snapshot(self, label: str) -> dict[str, Any]:
+        return {
+            "protocol": "lvgl-ai-engine-v1",
+            "seq": 1,
+            "ok": True,
+            "file": f"snapshots/001_{label}.png",
         }
 
     def wait(self, ms: int | None = None, *, frames: int | None = None):
@@ -2013,25 +2026,69 @@ def _json_contract(result: subprocess.CompletedProcess[str]) -> dict[str, Any]:
     }
 
 
+class _FakeRuntime:
+    """Scripted Runtime surface used by the CLI contract probes."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        self.session_id: str | None = "stub-session"
+        self.session_dir: Path | None = None
+        self.engine_log_path: Path | None = None
+        self.manifest_path: Path | None = None
+        self.ready: dict[str, Any] | None = {"ready": True, "mode": "headless"}
+        self.app: str | None = kwargs.get("app")
+        self.mode = "headless"
+        self.frame_count = 0
+        self.t_ms = 0
+        self.pid: int | None = None
+        self.exit_code: int | None = None
+        self.is_running = False
+
+    def start(self) -> _FakeRuntime:
+        self.is_running = True
+        self.pid = 4242
+        return self
+
+    def stop(self) -> None:
+        self.is_running = False
+        self.pid = None
+
+    def log_tail(self, n: int = 40) -> list[str]:
+        return []
+
+    def record_error(self, error: BaseException) -> None:
+        pass
+
+    def tick(self, ms: int, *, track_check: bool = True) -> dict[str, Any]:
+        self.t_ms += int(ms)
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def wait(
+        self, ms: int | None = None, *, frames: int | None = None
+    ) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def pointer(self, action: str, x: int, y: int) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def key(self, action: str, key: str) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def encoder(self, action: str, diff: int) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def mark(self, mark_id: str) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+    def snapshot(self, label: str) -> dict[str, Any]:
+        return {"protocol": "lvgl-ai-engine-v1", "seq": 1, "ok": True}
+
+
 def _cli_section(workspace: Path) -> dict[str, Any]:
     cli_module = _load_module("contract_snapshot_cli", TOOL_ROOT / "cli.py")
     web_module = _load_module("contract_snapshot_web", TOOL_ROOT / "web.py")
     new_app_module = _load_module(
         "contract_snapshot_new_app", TOOL_ROOT / "tools" / "new_app.py"
     )
-
-    class _FakeRuntime:
-        def __init__(self, **kwargs: Any) -> None:
-            self.session_id = "stub-session"
-            self.session_dir = None
-            self.manifest_path = None
-            self.app = kwargs.get("app")
-
-        def start(self) -> _FakeRuntime:
-            return self
-
-        def stop(self) -> None:
-            pass
 
     output = io.StringIO()
     original_runtime = cli_module.Runtime
@@ -2048,9 +2105,12 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
 
     sessions_root = workspace / "cli-sessions"
     missing_lvgl = workspace / "missing-lvgl-src"
+    # Force the source path: without --source, auto selection may use an
+    # exported sdk/<version> and the probe would no longer capture the
+    # missing-LVGL-source build error.
     build_error = _run_python(
         TOOL_ROOT / "cli.py",
-        ["--json", "--lvgl", "9.6"],
+        ["--json", "--lvgl", "9.6", "--source"],
         env={
             "LVGL_AI_SESSIONS_ROOT": str(sessions_root),
             "LVGL_AI_LVGL_SRC": str(missing_lvgl),

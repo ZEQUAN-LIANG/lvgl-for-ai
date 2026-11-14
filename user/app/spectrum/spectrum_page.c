@@ -816,6 +816,7 @@ static void build_transport(lv_obj_t * screen)
     lv_obj_add_event_cb(like_button, like_event_cb, LV_EVENT_CLICKED, NULL);
     like_icon = spectrum_icon_obj(like_button, SPECTRUM_ICON_HEART,
                                   8, 7, 15, SP_DIM);
+    lv_obj_center(like_icon);
 
     spectrum_icon_obj(screen, SPECTRUM_ICON_VOLUME, 533, 552, 13, SP_DIM);
     lv_obj_t * vol_track = spectrum_box(screen, VOL_X, VOL_Y, VOL_W, 2);
@@ -833,8 +834,9 @@ static void build_transport(lv_obj_t * screen)
     lv_obj_add_event_cb(vol_hit, volume_event_cb, LV_EVENT_PRESSING, NULL);
 }
 
-void spectrum_create(lv_obj_t * screen)
+void spectrum_create(void)
 {
+    lv_obj_t * screen = lv_screen_active();
     spectrum_sim.playing = true;
     spectrum_sim.time = 0.0f;
     spectrum_state.track_index = 0;

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -20,12 +21,14 @@ from pathlib import Path
 from unittest import mock
 
 from fake_runtime import FAKE_PID, FakeRuntime
-from lvgl_ai import Recording, Runtime, RuntimeCrash, ScenarioError
+from lvgl_ai import BuildError, Recording, Runtime, RuntimeCrash, ScenarioError
 from lvgl_ai.web.live_session import LiveError, LiveSession
 from lvgl_ai.web.wire import page_config
+from support import symlinked_file
 from web_support import SESSION_ID, WebHarness, make_web_session
 
 SIGINT_DRIVER = Path(__file__).with_name("web_sigint_driver.py")
+APP_C = Path(__file__).resolve().parent.parent.parent / "user" / "app" / "app.c"
 
 
 class SessionFakeRuntime(FakeRuntime):
@@ -371,6 +374,51 @@ class LiveSessionTest(unittest.TestCase):
             self.assertEqual(captured["height"], 480)
             session.stop()
 
+    def test_default_runtime_receives_exactly_the_live_options(self) -> None:
+        captured: dict[str, object] = {}
+
+        class CapturingRuntime(FakeRuntime):
+            def __init__(self, **kwargs: object) -> None:
+                captured.update(kwargs)
+                super().__init__(**kwargs)
+
+        with mock.patch(
+            "lvgl_ai.web.live_session.Runtime", CapturingRuntime
+        ):
+            session = LiveSession(self.root / "sessions")
+            self.addCleanup(_quiet_stop_session, session)
+            session.start("test", "coffee", display=(640, 480))
+
+        self.assertEqual(
+            set(captured),
+            {
+                "lvgl",
+                "app",
+                "build",
+                "record",
+                "live_frame",
+                "record_changed_only",
+                "headless",
+                "sessions_root",
+                "width",
+                "height",
+            },
+        )
+        self.assertIs(captured["record"], False)
+        self.assertEqual((captured["width"], captured["height"]), (640, 480))
+
+    def test_start_requires_a_runtime_tick(self) -> None:
+        class NoTickRuntime(FakeRuntime):
+            @property
+            def tick(self):
+                raise AttributeError("tick")
+
+        session = self._session(lambda: NoTickRuntime())
+        with self.assertRaises(LiveError) as raised:
+            session.start("record", None)
+        self.assertEqual(raised.exception.code, "live_start_error")
+        self.assertEqual(session.state, "idle")
+
     def test_start_failure_discards_the_test_root_and_closes_the_stream(
         self,
     ) -> None:
@@ -660,6 +708,35 @@ class LiveHttpTest(unittest.TestCase):
         self.assertEqual(factory.calls, 2)
         harness.json("POST", "/api/live/stop")
 
+    def test_build_failure_detail_keeps_log_tail_and_last_error(self) -> None:
+        error = BuildError(
+            "build failed: ninja: build stopped",
+            log_text="# phase: build\napp.c:3:5: error: boom\n",
+            command=["ninja"],
+        )
+        factory = Factory(lambda index: FakeRuntime(start_error=error))
+        harness = self._harness(factory)
+
+        status, _, payload = harness.json(
+            "POST", "/api/live/start?mode=test"
+        )
+        self.assertEqual(status, 500, payload)
+        detail = payload["error"]["detail"]["error"]["detail"]
+        self.assertEqual(
+            detail["log_tail"],
+            ["# phase: build", "app.c:3:5: error: boom"],
+        )
+        self.assertEqual(detail["command"], ["ninja"])
+
+        status, _, live = harness.json("GET", "/api/live")
+        self.assertEqual(status, 200)
+        self.assertIsNotNone(live["last_error"])
+        self.assertEqual(live["last_error"]["code"], "build_error")
+        self.assertIsNone(live["session_id"])
+        self.assertIsNone(live["session_dir"])
+
+        harness.json("POST", "/api/live/stop")
+
     def test_live_start_does_not_spawn_a_process(self) -> None:
         """The web adapter reaches the engine only through the Runtime seam."""
         factory = Factory(lambda index: FakeRuntime())
@@ -754,6 +831,59 @@ class LiveHttpTest(unittest.TestCase):
             by_app["coffee"]["display"], {"width": 640, "height": 480}
         )
         self.assertIsNone(by_app["plain"]["display"])
+
+    def test_symlinked_scenarios_stay_in_the_picker_and_live_display(
+        self,
+    ) -> None:
+        scenarios = Path(
+            tempfile.mkdtemp(prefix="linked-scenarios-", dir=self.root)
+        )
+        target = Path(
+            tempfile.mkdtemp(prefix="linked-target-", dir=self.root)
+        ) / "coffee.json"
+        target.write_text(
+            json.dumps({
+                "schema": "lvgl-ai-scenario-v1",
+                "name": "coffee",
+                "app": "coffee",
+                "display": {"width": 640, "height": 480},
+                "steps": [{"type": "wait", "ms": 16}],
+            }),
+            encoding="utf-8",
+        )
+        symlinked_file(self, scenarios / "coffee.json", target)
+
+        captured: dict[str, object] = {}
+
+        class CapturingRuntime(FakeRuntime):
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+                super().__init__(**kwargs)
+
+        with mock.patch("lvgl_ai.web.live_session.Runtime", CapturingRuntime):
+            harness = WebHarness(
+                self.root, scenarios_dir=scenarios, repo_root=self.root
+            )
+            self.addCleanup(harness.close)
+            self.addCleanup(lambda: _quiet_stop(harness))
+
+            by_app = {
+                entry["app"]: entry
+                for entry in harness.server.app.scenario_apps()
+            }
+            self.assertIn("coffee", by_app)
+            self.assertEqual(by_app["coffee"]["scenario"], "coffee.json")
+            self.assertEqual(
+                by_app["coffee"]["display"], {"width": 640, "height": 480}
+            )
+
+            status, _, live = harness.json(
+                "POST", "/api/live/start?app=coffee"
+            )
+            self.assertEqual(status, 200, live)
+            self.assertEqual(captured["width"], 640)
+            self.assertEqual(captured["height"], 480)
+            harness.json("POST", "/api/live/stop")
 
     def test_live_start_forwards_the_scenario_display(self) -> None:
         captured: dict[str, object] = {}
@@ -947,11 +1077,11 @@ class LiveHttpTest(unittest.TestCase):
         status, _, live = harness.json("POST", "/api/live/start")
         self.assertEqual(status, 200, live)
         self.assertTrue(runtime.tick_event.wait(2.0), "live ticker did not tick")
-        self.assertIn(("tick", 100, False), runtime.commands)
+        self.assertIn(("tick", 33, False), runtime.commands)
 
         status, _, current = harness.json("GET", "/api/live")
         self.assertEqual(status, 200)
-        self.assertGreaterEqual(current["t_ms"], 100)
+        self.assertGreaterEqual(current["t_ms"], 33)
 
         calls = runtime.tick_calls
         status, _, _ = harness.json("POST", "/api/live/stop")
@@ -1059,6 +1189,123 @@ class LiveHttpTest(unittest.TestCase):
 
         harness.json("POST", "/api/live/stop")
 
+    def test_apps_stay_available_while_live_start_is_building(self) -> None:
+        repo = self.root / "repo"
+        (repo / "user" / "app").mkdir(parents=True)
+        (repo / "user" / "scenarios").mkdir(parents=True)
+        shutil.copy2(APP_C, repo / "user" / "app" / "app.c")
+
+        runtime = BlockingRuntime(self.session)
+        harness = WebHarness(
+            self.root,
+            runtime_factory=Factory(lambda index: runtime),
+            repo_root=repo,
+            scenarios_dir=repo / "user" / "scenarios",
+        )
+        self.addCleanup(harness.close)
+        self.addCleanup(lambda: _quiet_stop(harness))
+
+        started: list[tuple[int, dict]] = []
+        errors: list[BaseException] = []
+
+        def start_live() -> None:
+            try:
+                status, _, payload = harness.json(
+                    "POST", "/api/live/start", timeout=30.0
+                )
+                started.append((status, payload))
+            except BaseException as exc:  # noqa: BLE001 - reported below
+                errors.append(exc)
+
+        starter = threading.Thread(
+            target=start_live, name="test-live-http-start"
+        )
+        starter.start()
+        try:
+            self.assertTrue(
+                runtime.start_entered.wait(2.0),
+                "the live start never reached Runtime.start()",
+            )
+            self.assertTrue(harness.server.app.live.is_starting())
+            status, _, payload = harness.json(
+                "GET", "/api/apps", timeout=1.0
+            )
+            self.assertEqual(status, 200, payload)
+            self.assertIn("coffee", {entry["name"] for entry in payload["apps"]})
+            self.assertIn("trash", payload)
+        finally:
+            runtime.start_release.set()
+            starter.join(10.0)
+            runtime.stop_release.set()
+            _quiet_stop(harness)
+
+        self.assertFalse(starter.is_alive())
+        self.assertEqual(errors, [])
+        self.assertEqual(len(started), 1)
+        self.assertEqual(started[0][0], 200, started[0][1])
+        self.assertTrue(started[0][1]["running"])
+
+    def test_live_errors_keep_http_status_and_json_shape(self) -> None:
+        harness = self._harness(Factory(lambda index: FakeRuntime()))
+        cases = [
+            ("GET", "/api/live", "status", (), 409, "live_not_running"),
+            ("POST", "/api/live/stop", "stop", (), 409, "live_starting"),
+            ("POST", "/api/live/stop", "stop", (), 500, "live_stop_error"),
+            (
+                "POST",
+                "/api/live/pointer",
+                "pointer",
+                ({"action": "down", "x": 1, "y": 2},),
+                400,
+                "invalid_input",
+            ),
+            (
+                "POST",
+                "/api/live/key",
+                "key",
+                ({"action": "press", "key": "ENTER"},),
+                500,
+                "live_input_error",
+            ),
+            (
+                "POST",
+                "/api/live/start?mode=record&app=coffee",
+                "start",
+                ("record", "coffee"),
+                409,
+                "live_running",
+            ),
+        ]
+        for method, path, name, args, expected_status, code in cases:
+            with self.subTest(code=code):
+                error = LiveError(code, f"{code} message", detail={"why": code})
+                with mock.patch.object(
+                    harness.server.app.live, name, side_effect=error
+                ):
+                    if method == "POST" and path.endswith(
+                        ("/pointer", "/key")
+                    ):
+                        status, _, payload = harness.json(
+                            method, path, payload=args[0]
+                        )
+                    else:
+                        status, _, payload = harness.json(method, path)
+                self.assertEqual(status, expected_status, payload)
+                self.assertEqual(
+                    set(payload),
+                    {"error"},
+                    payload,
+                )
+                self.assertEqual(
+                    set(payload["error"]),
+                    {"code", "message", "detail"},
+                    payload,
+                )
+                self.assertEqual(payload["error"]["code"], code)
+                self.assertEqual(
+                    payload["error"]["detail"], {"why": code}
+                )
+
     def test_shutdown_stops_the_running_live_runtime(self) -> None:
         factory = Factory(lambda index: SessionFakeRuntime(self.session))
         harness = self._harness(factory)
@@ -1114,7 +1361,7 @@ class LiveIndependentEngineTest(unittest.TestCase):
         self.assertEqual(recording.manifest["status"], "ok")
 
         other = Runtime(
-            lvgl="9.6", build=True, sessions_root=self.root / "other"
+            lvgl="9.6", build=False, sessions_root=self.root / "other"
         )
         self.addCleanup(other.stop)
         other.start()
@@ -1173,7 +1420,7 @@ class LiveShutdownIntegrationTest(unittest.TestCase):
 
 def _quiet_stop(harness: WebHarness) -> None:
     try:
-        harness.server.app.stop_live()
+        harness.server.app.live.stop()
     except Exception:  # noqa: BLE001 - cleanup must never mask the test result
         pass
 

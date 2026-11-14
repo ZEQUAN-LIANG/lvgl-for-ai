@@ -52,6 +52,8 @@ typedef struct {
     bool record;
     bool live;
     bool record_changed_only;
+    bool async_encode;
+    uint64_t encode_budget_bytes;
     long max_frames;
     int diff_threshold;
     /** Borrowed XRGB8888 reference pixels; NULL when no reference was given. */
@@ -94,14 +96,14 @@ void session_refresh_frame(session_t * session);
 /** tick <ms>: lv_tick_inc -> lv_timer_handler -> refresh -> record. */
 void session_tick(session_t * session, uint32_t ms);
 
-/** wait <ms>: tick in 16 ms steps, then write the timeline wait row. */
-void session_wait_ms(session_t * session,
+/** wait <ms>: tick in 16 ms steps and write the wait row; true when painted. */
+bool session_wait_ms(session_t * session,
                      unsigned long ms,
                      session_service_fn service,
                      void * service_user);
 
-/** wait frames <n>: n ticks of 16 ms, then the timeline wait row. */
-void session_wait_frames(session_t * session,
+/** wait frames <n>: n 16 ms ticks and the wait row; true when painted. */
+bool session_wait_frames(session_t * session,
                          unsigned long frames,
                          session_service_fn service,
                          void * service_user);
@@ -134,6 +136,12 @@ int session_snapshot(session_t * session,
                      const char * label,
                      char * relative,
                      size_t relative_size);
+
+/** Wait until the background encoder has published every queued frame. */
+void session_drain_encoding(session_t * session);
+
+/** True when the background encoder failed. */
+bool session_encoder_failed(session_t * session);
 
 /** Write the timeline end row once; safe to call more than once. */
 void session_end(session_t * session);

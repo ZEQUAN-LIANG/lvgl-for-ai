@@ -95,20 +95,30 @@ class ReplayPageTest(unittest.TestCase):
         self.assertIsNone(VERDICT_ZH_RE.search(html))
         self.assertIn("仅证据", html)
 
-    def test_annotation_form_has_drag_wiring_and_save(self) -> None:
+    def test_annotation_board_has_tools_and_save(self) -> None:
         _, _, html = self.harness.html("/")
         for needle in (
             'id="annotation-form"',
             'id="annotation-save"',
-            'id="annotation-tags"',
             'id="annotation-text"',
-            'id="annotation-layer"',
-            "pointerdown",
-            "pointermove",
-            "pointerup",
+            'id="draw-canvas"',
+            'id="draw-tools"',
+            'id="draw-colors"',
+            'id="wb-colors"',
+            'data-draw-color="#00c8ff"',
+            'id="range-start"',
+            'id="range-start-chip"',
+            'data-draw-tool="paint"',
+            'src="/static/fabric.min.js"',
+            'id="whiteboard"',
+            'id="wb-save"',
+            'id="wb-ref-list"',
+            'id="snapshots"',
             f"/api/sessions/{SESSION_ID}/annotations",
         ):
             self.assertIn(needle, html)
+        self.assertNotIn('id="annotation-tags"', html)
+        self.assertNotIn('id="wb-confirm"', html)
 
     def test_engine_log_is_not_rendered_in_the_page(self) -> None:
         _, _, html = self.harness.html("/")
@@ -394,8 +404,10 @@ class SharedReplayModelTest(unittest.TestCase):
             "the page must render each note exactly once",
         )
         self.assertIn(
-            f'href="/regions/{SESSION_ID}/001_region.png"', html
+            f'/frames/{SESSION_ID}/000002.png', html
         )
+        self.assertIn('class="note-frame"', html)
+        self.assertIn('class="note-delete"', html)
 
 
 class NotesSingleRendererTest(unittest.TestCase):
@@ -445,7 +457,6 @@ class NotesSingleRendererTest(unittest.TestCase):
         filename = image.rsplit("/", 1)[-1]
         self.assertIn(f'href="/regions/{SESSION_ID}/{filename}"', html)
         self.assertIn('class="note-crop"', html)
-        self.assertIn('alt="标注区域图"', html)
 
 
 class ReplayDegradationTest(unittest.TestCase):

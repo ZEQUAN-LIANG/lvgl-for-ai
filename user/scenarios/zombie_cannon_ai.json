@@ -1,0 +1,16 @@
+{
+  "schema": "lvgl-ai-scenario-v1",
+  "name": "zombie_cannon_ai",
+  "app": "zombie_cannon",
+  "display": {
+    "width": 390,
+    "height": 460
+  },
+  "steps": [
+    {"type": "wait", "ms": 12500},
+    {"type": "mark", "id": "ai_start"},
+    {"type": "snapshot", "label": "ai_start"},
+    {"type": "wait", "ms": 3000},
+    {"type": "snapshot", "label": "ai_playing"}
+  ]
+}

@@ -59,6 +59,8 @@ class ChangedFramesTest(unittest.TestCase):
         rt.pointer("up", *BUTTON_CENTER)
         rt.wait(ms=64)
         self.assertGreater(rt.frame_count, 1)
+        # The engine's reserved-frame count; the manifest counts drained PNGs.
+        reserved = rt.frame_count
 
         rt.stop()
         recording = Recording.open(rt.session_dir)
@@ -92,6 +94,7 @@ class ChangedFramesTest(unittest.TestCase):
 
         manifest = recording.manifest
         self.assertEqual(manifest["frame_count"], len(frames))
+        self.assertEqual(manifest["frame_count"], reserved)
         self.assertIs(manifest["record_changed_only"], True)
         self.assertIs(manifest["truncated"], False)
         self.assertTrue(list((rt.session_dir / "snapshots").glob("*.png")))
@@ -109,10 +112,15 @@ class ChangedFramesTest(unittest.TestCase):
         changed = rt.tick(16)
         self.assertIs(changed["truncated"], True)
         self.assertEqual(rt.frame_count, 1)
+        reserved = rt.frame_count
 
         rt.stop()
         recording = Recording.open(rt.session_dir)
         self.assertEqual(recording.manifest["frame_count"], 1)
+        self.assertEqual(recording.manifest["frame_count"], reserved)
+        self.assertEqual(
+            recording.manifest["frame_count"], len(recording.frames)
+        )
         self.assertIs(recording.manifest["truncated"], True)
         self.assertEqual(len(recording.frames), 1)
 
@@ -173,7 +181,7 @@ class ChangedFramesTest(unittest.TestCase):
     def test_changed_only_keeps_reference_rows_aligned_with_retained_frames(
         self,
     ) -> None:
-        baseline = self._runtime(build=True)
+        baseline = self._runtime(build=True, record_changed_only=False)
         baseline.start()
         baseline.wait(16)
         baseline.stop()
@@ -243,9 +251,11 @@ class ChangedFramesTest(unittest.TestCase):
         self.assertNotEqual(
             hashlib.sha256(live_path.read_bytes()).hexdigest(), before
         )
-        self.assertGreaterEqual(len(list((rt.session_dir / "frames").glob("*.png"))), 2)
 
         rt.stop()
+        self.assertGreaterEqual(
+            len(list((rt.session_dir / "frames").glob("*.png"))), 2
+        )
         self.assertFalse(live_path.exists())
         self.assertTrue(frame_path.is_file())
         recording = Recording.open(rt.session_dir)

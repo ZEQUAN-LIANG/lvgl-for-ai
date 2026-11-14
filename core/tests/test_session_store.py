@@ -417,6 +417,24 @@ class SessionStoreTest(unittest.TestCase):
         store.write_manifest(SessionOutcome.ok())
         self.assertFalse(self.sessions_root.exists())
 
+    def test_ready_and_mode_are_written_back_to_the_store(self) -> None:
+        store = self.make_store(mode="window")
+        self.assertIsNone(store.ready)
+
+        store.note_ready({"mode": "headless", "frames": 1})
+        store.note_mode("headless")
+
+        self.assertEqual(store.mode, "headless")
+        self.assertEqual(store.ready["mode"], "headless")
+        self.assertEqual(store.ready["frames"], 1)
+
+    def test_session_options_keep_their_public_names(self) -> None:
+        store = self.make_store(
+            retention=3, lvgl_src=self.root / "lvgl-src" / "9.6"
+        )
+        self.assertEqual(store.session_retention, 3)
+        self.assertEqual(store.lvgl_src, self.root / "lvgl-src" / "9.6")
+
 
 class SessionSchemaTest(unittest.TestCase):
     def setUp(self) -> None:

@@ -12,6 +12,8 @@
 | `coffee`（默认） | AURELIA C9 咖啡机，`coffee/` | LVGL 9.6 |
 | `xiaohongshu` / `xhs` | 小红书复刻，`xiaohongshu/` | LVGL 9.6 |
 | `spectrum` | ORBITAL 频谱播放器，`spectrum/` | LVGL 9.6 |
+| `sift_watch` | 390x450 像素手表 OS，含 ZOMBIE 无尽尸潮应用，`sift_watch/` | LVGL 9.6 / 导出 9.4 |
+| `zombie_cannon` | 390x460 无尽尸潮独立预览，`zombie_cannon/` | LVGL 9.6 |
 | 未设置 | `coffee` | LVGL 9.6 |
 | 任意值 | 旧版本忽略选择，显示 `demo/` 的 harness | 9.1 / 8.x |
 
@@ -25,6 +27,10 @@
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/coffee.json
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/xiaohongshu.json
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/spectrum.json
+python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch.json
+python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch_zombie.json
+python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/zombie_cannon.json
+python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/zombie_cannon_ai.json
 ```
 
 没有 scenario 时用 `--app`；`--idle` 保持会话直到 Ctrl+C（headless）：
@@ -33,6 +39,8 @@ python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/spectrum.json
 python -I core/cli.py --lvgl 9.6 --app coffee --idle
 python -I core/cli.py --lvgl 9.6 --app xiaohongshu --idle
 python -I core/cli.py --lvgl 9.6 --app spectrum --idle
+python -I core/cli.py --lvgl 9.6 --app sift_watch --idle
+python -I core/cli.py --lvgl 9.6 --app zombie_cannon --idle
 ```
 
 网页端顶部「应用」下拉会列出 `user/scenarios/*.json` 中声明了 `app` 的选项；
@@ -43,11 +51,13 @@ python -I core/cli.py --lvgl 9.6 --app spectrum --idle
 
 ## C 代码结构
 
-每个应用暴露同一个签名：
+每个应用暴露同一个签名，不接收对象：
 
 ```c
-void <name>_create(lv_obj_t * screen);
+void <name>_create(void);
 ```
+
+入口内部用 `lv_screen_active()` 取活动屏幕；应用根用 `app_set_name("<name>")` 命名，控件用 `app_obj_set_name(obj, "...")` 命名。
 
 `app.c` 用 `apps[]` 表把名字映射到函数：
 
@@ -80,7 +90,7 @@ python -I core/tools/new_app.py <name>             # 生成并注册
 
 手工步骤：
 
-1. 新建 `user/app/<name>/`，实现 `void <name>_create(lv_obj_t * screen)`。
+1. 新建 `user/app/<name>/`，实现 `void <name>_create(void)`；入口内用 `lv_screen_active()` 取屏幕。
 2. 在 `app.c` 的 `apps[]` 中加一行 `{"<name>", <name>_create}`。
 3. 在 `user/scenarios/<name>.json` 顶层写 `"app": "<name>"`。
 4. 需要非默认分辨率时，再写可选 `"display": {"width": W, "height": H}`（`1..4096`）；
