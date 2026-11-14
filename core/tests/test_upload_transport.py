@@ -339,6 +339,54 @@ class UploadTransportTest(unittest.TestCase):
         self.assertEqual(patch_form["body"], ["updated"])
         self.assertEqual(patch_form["target_commitish"], ["dev"])
 
+    def test_gitee_update_without_notes_reuses_the_online_body(self) -> None:
+        def responder(method, path, body):
+            route, _query = split(path)
+            if (
+                method == "GET"
+                and route == "/repos/acme/repo/releases/tags/v0.2.0"
+            ):
+                return 200, {"id": 9, "body": "online body"}
+            if method == "PATCH" and route == "/repos/acme/repo/releases/9":
+                return 200, {"id": 9}
+            if (
+                method == "GET"
+                and route == "/repos/acme/repo/releases/9/attach_files"
+            ):
+                return 200, []
+            if (
+                method == "POST"
+                and route == "/repos/acme/repo/releases/9/attach_files"
+            ):
+                return 201, {"id": 4}
+            raise AssertionError(f"unexpected {method} {path}")
+
+        service = FakeService(responder)
+        self.addCleanup(service.close)
+        _directory, asset = self.make_asset()
+
+        upload_release.upload_gitee(
+            repo="acme/repo",
+            tag="v0.2.0",
+            version="0.2.0",
+            notes=None,
+            target_commitish=None,
+            assets=[asset],
+            token=TOKEN,
+            replace=False,
+            dry_run=False,
+            api_base=service.base,
+        )
+
+        self.assertEqual(
+            [method for method, _path, _body, _headers in service.requests],
+            ["GET", "PATCH", "GET", "POST"],
+        )
+        patch_form = urllib.parse.parse_qs(
+            service.requests[1][2].decode("utf-8")
+        )
+        self.assertEqual(patch_form["body"], ["online body"])
+
 
 class TransportInjectionTest(unittest.TestCase):
     def test_custom_transport_receives_the_requests(self) -> None:

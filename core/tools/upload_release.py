@@ -417,9 +417,14 @@ def upload_gitee(
     else:
         if not release.get("id"):
             raise UploadError("Gitee did not return a release with an id")
-        patch = {"tag_name": tag, "name": name}
-        if notes is not None:
-            patch["body"] = notes
+        # Gitee requires ``body`` on PATCH. When no notes file was given,
+        # resend the online body so the release text is preserved.
+        body = notes if notes is not None else release.get("body")
+        patch = {
+            "tag_name": tag,
+            "name": name,
+            "body": body if isinstance(body, str) else "",
+        }
         if target_commitish:
             patch["target_commitish"] = target_commitish
         form = urllib.parse.urlencode(patch).encode("utf-8")
