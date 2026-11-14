@@ -45,7 +45,7 @@ _BOOTSTRAP_TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(_BOOTSTRAP_TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(_BOOTSTRAP_TOOL_ROOT))
 
-from lvgl_ai import paths  # noqa: E402
+from lvgl_ai import paths, versions  # noqa: E402
 from lvgl_ai.control.build_plan import BuildPlan  # noqa: E402
 from lvgl_ai.control.errors import BuildError  # noqa: E402
 from lvgl_ai.control.prebuilt import HostSdk, resolve_compiler  # noqa: E402
@@ -62,7 +62,7 @@ import export_sdk  # noqa: E402
 PACKAGE_DIR_NAME = "lvgl-verify-loop"
 RELEASE_SCHEMA = "lvgl-ai-release-v1"
 VERSION_SCHEMA = "lvgl-ai-version-v1"
-DEFAULT_LVGL = paths.DEFAULT_LVGL_VERSION
+DEFAULT_LVGL = versions.default()
 SMOKE_SCENARIO = Path("user") / "scenarios" / "intro.json"
 RELEASE_INTRO_APP = "intro"
 RELEASE_SCENARIOS = ("intro.json",)
@@ -191,6 +191,22 @@ def write_version_file(
         encoding="utf-8",
     )
     return payload
+
+
+def write_package_versions(package: Path, *, tool_version: str) -> dict[str, Any]:
+    """Write the release metadata into the package copy of ``versions.json``.
+
+    The source index is read-only during a release: only the copied file under
+    ``<package>/meta/`` carries the tool version being built.
+    """
+    path = package / RELEASE_META_DIR / "versions.json"
+    index = json.loads(path.read_text(encoding="utf-8"))
+    index["core"] = {"version": tool_version, "platform": "win64"}
+    path.write_text(
+        json.dumps(index, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return index
 
 
 def check_hygiene(package: Path, repo_root: Path) -> None:
@@ -488,6 +504,7 @@ def stage_package(
     versions_target = package / RELEASE_META_DIR / "versions.json"
     versions_target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(versions_source, versions_target)
+    write_package_versions(package, tool_version=tool_version)
     copy_tree(
         repo_root / "core", package / "core",
         exclude_dirs=CORE_EXCLUDE_DIRS,

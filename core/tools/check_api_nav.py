@@ -30,9 +30,9 @@ TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
-from lvgl_ai import paths  # noqa: E402
+from lvgl_ai import paths, versions  # noqa: E402
 
-VERSIONS = ("9.6", "9.5", "9.4", "9.1", "8.4", "8.3")
+VERSIONS = versions.supported()
 
 SECTIONS = (
     "版本与源码路径",

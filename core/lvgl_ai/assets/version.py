@@ -6,9 +6,11 @@ import os
 import re
 from pathlib import Path
 
-from lvgl_ai import paths
+from lvgl_ai import versions
 
-SUPPORTED_VERSIONS = ("8.3", "8.4", "9.1", "9.4", "9.5", "9.6")
+# Kept as a module constant for ``core/assets.py`` and the package exports;
+# the content is the index order, not a second source of truth.
+SUPPORTED_VERSIONS = versions.supported()
 
 _VERSION_RE = re.compile(r"^(\d+)\.(\d+)$")
 
@@ -21,12 +23,12 @@ def parse_version(text: str) -> tuple[int, int]:
     return int(match.group(1)), int(match.group(2))
 
 
-def _supported(version: str) -> bool:
+def _supported(version: str, repo_root: Path | None = None) -> bool:
     try:
         parse_version(version)
     except ValueError:
         return False
-    return version in SUPPORTED_VERSIONS
+    return versions.is_supported(version, repo_root)
 
 
 def available_versions(repo_root: Path) -> list[str]:
@@ -36,7 +38,7 @@ def available_versions(repo_root: Path) -> list[str]:
         if not parent.is_dir():
             continue
         for child in parent.iterdir():
-            if child.is_dir() and _supported(child.name):
+            if child.is_dir() and _supported(child.name, repo_root):
                 found.add(child.name)
     return sorted(found, key=parse_version)
 
@@ -45,11 +47,11 @@ def resolve_lvgl_version(repo_root: Path, requested: str = "auto") -> str:
     """Resolve ``--lvgl``.
 
     Precedence for ``auto``: ``LVGL_AI_LVGL_VERSION`` > the highest supported
-    directory under ``sdk/`` or ``lvgl-src/`` > ``paths.DEFAULT_LVGL_VERSION``.
+    directory under ``sdk/`` or ``lvgl-src/`` > the index default.
     """
     if requested != "auto":
-        if not _supported(requested):
-            choices = ", ".join(SUPPORTED_VERSIONS)
+        if not _supported(requested, repo_root):
+            choices = ", ".join(versions.supported(repo_root))
             raise ValueError(
                 f"unsupported --lvgl {requested!r}; choose one of {choices} or auto"
             )
@@ -57,8 +59,8 @@ def resolve_lvgl_version(repo_root: Path, requested: str = "auto") -> str:
 
     env_version = os.environ.get("LVGL_AI_LVGL_VERSION")
     if env_version:
-        if not _supported(env_version):
-            choices = ", ".join(SUPPORTED_VERSIONS)
+        if not _supported(env_version, repo_root):
+            choices = ", ".join(versions.supported(repo_root))
             raise ValueError(
                 f"LVGL_AI_LVGL_VERSION={env_version!r} is unsupported; "
                 f"choose one of {choices}"
@@ -68,7 +70,7 @@ def resolve_lvgl_version(repo_root: Path, requested: str = "auto") -> str:
     present = available_versions(repo_root)
     if present:
         return max(present, key=parse_version)
-    return paths.DEFAULT_LVGL_VERSION
+    return versions.default(repo_root)
 
 
 def version_available(repo_root: Path, version: str) -> bool:

@@ -28,7 +28,7 @@ _BOOTSTRAP_TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(_BOOTSTRAP_TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(_BOOTSTRAP_TOOL_ROOT))
 
-from lvgl_ai import paths  # noqa: E402
+from lvgl_ai import paths, versions  # noqa: E402
 from lvgl_ai.control.errors import BuildError  # noqa: E402
 
 _TOOLS_DIR = Path(__file__).resolve().parent
@@ -38,11 +38,19 @@ if str(_TOOLS_DIR) not in sys.path:
 import export_sdk  # noqa: E402
 import release as release_tool  # noqa: E402
 
-VERSIONS = ("9.6", "9.5", "9.4", "9.1", "8.4", "8.3")
-INTRO_VERSIONS = frozenset(("9.6", "9.5", "9.4"))
-LEGACY_VERSIONS = frozenset(("9.1", "8.4", "8.3"))
 FULL_ASSET = "lvgl-verify-loop-{version}-full-win64.zip"
 FULL_SIFLI_ASSET = "lvgl-verify-loop-{version}-full-sifli-win64.zip"
+
+
+def version_plan(repo_root: Path) -> dict[str, Any]:
+    """Render the version index for the two bundle builds."""
+    return {
+        "supported": versions.supported(repo_root),
+        "default": versions.default(repo_root),
+        "intro": versions.intro(repo_root),
+        "legacy": versions.legacy(repo_root),
+        "bundled": versions.bundled(repo_root),
+    }
 
 
 def _run(
@@ -245,24 +253,6 @@ def _smoke(
         }
 
 
-def _update_versions(repo: Path, tool_version: str) -> None:
-    path = repo / "meta" / "versions.json"
-    if not path.is_file():
-        path = repo / "versions.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    index = json.loads(path.read_text(encoding="utf-8"))
-    index["core"] = {"version": tool_version, "platform": "win64"}
-    for version, entry in index["versions"].items():
-        entry["sdk"] = True
-        entry["bundled"] = True
-        entry["legacy"] = version in LEGACY_VERSIONS
-        entry.pop("pack", None)
-    path.write_text(
-        json.dumps(index, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-
-
 def _copy_engine(package: Path, repo: Path, version: str) -> None:
     build_dir = _release_build_dir(repo, version)
     engine = build_dir / paths.engine_filename()
@@ -288,25 +278,26 @@ def _stage_full_package(
     tool_version: str,
     smoke: bool,
     force_build: bool,
+    plan: dict[str, Any],
 ) -> dict[str, Any]:
+    supported = tuple(plan["supported"])
+    base_version = str(plan["default"])
+    intro_versions = set(plan["intro"])
+    legacy_versions = set(plan["legacy"])
     engines: dict[str, dict[str, Any]] = {}
-    for version in VERSIONS:
+    for version in supported:
         _ensure_sdk(repo, version)
-    # Engines for 9.5/9.4 are intro-only; legacy engines keep the demo harness.
-    for version in ("9.5", "9.4"):
+    # Non-default intro engines use the intro-only app; legacy engines keep
+    # the demo harness.
+    for version in supported:
+        if version == base_version:
+            continue
         with tempfile.TemporaryDirectory(prefix=f"lvgl-{version}-app-") as raw:
             app_dir = Path(raw) / "app"
-            _stage_intro_app(repo, app_dir)
-            engines[version] = _build_engine(
-                repo,
-                version,
-                user_app_dir=app_dir,
-                force=force_build,
-            )
-    for version in ("9.1", "8.4", "8.3"):
-        with tempfile.TemporaryDirectory(prefix=f"lvgl-{version}-app-") as raw:
-            app_dir = Path(raw) / "app"
-            _stage_legacy_app(repo, app_dir)
+            if version in legacy_versions:
+                _stage_legacy_app(repo, app_dir)
+            else:
+                _stage_intro_app(repo, app_dir)
             engines[version] = _build_engine(
                 repo,
                 version,
@@ -317,37 +308,31 @@ def _stage_full_package(
     staged = release_tool.stage_package(
         repo_root=repo,
         package=package,
-        sdk_dir=repo / "sdk" / "9.6",
-        lvgl_version="9.6",
+        sdk_dir=repo / "sdk" / base_version,
+        lvgl_version=base_version,
         tool_version=tool_version,
-        host_sdks=list(VERSIONS),
+        host_sdks=list(supported),
         force_build=force_build,
     )
-    engines["9.6"] = staged["engine"]
-    for version in VERSIONS:
-        if version == "9.6":
+    engines[base_version] = staged["engine"]
+    for version in supported:
+        if version == base_version:
             continue
         shutil.copytree(
             repo / "sdk" / version,
             package / "sdk" / version,
         )
         _copy_engine(package, repo, version)
-    release_tool.clean_build_dir(package, "9.6")
+    release_tool.clean_build_dir(package, base_version)
 
-    shared = release_tool.share_sdk_payload(package, VERSIONS)
+    shared = release_tool.share_sdk_payload(package, supported)
     release_tool.strip_build_runtime_dlls(package)
 
     if smoke:
         with tempfile.TemporaryDirectory(prefix="lvgl-release-smoke-") as raw:
             smoke_root = Path(raw)
-            for version in VERSIONS:
-                if version in INTRO_VERSIONS:
-                    scenario = package / "user" / "scenarios" / "intro.json"
-                    markers = (
-                        "[app] app=intro",
-                        "[index] ui created",
-                    )
-                else:
+            for version in supported:
+                if version in legacy_versions:
                     # Keep the legacy smoke fixture out of the shipped package.
                     scenario = smoke_root / f"legacy_{version}.json"
                     shutil.copy2(
@@ -355,6 +340,12 @@ def _stage_full_package(
                         scenario,
                     )
                     markers = ("[app] demo_button clicked",)
+                else:
+                    scenario = package / "user" / "scenarios" / "intro.json"
+                    markers = (
+                        "[app] app=intro",
+                        "[index] ui created",
+                    )
                 _smoke(package, version, scenario, markers=markers)
 
     release_tool.purge_caches(package)
@@ -517,7 +508,7 @@ def build_release(
     out.mkdir(parents=True, exist_ok=True)
     _clean_output(out)
     launcher = _ensure_launchers(repo, force=force_build)
-    _update_versions(repo, tool_version)
+    plan = version_plan(repo)
 
     with tempfile.TemporaryDirectory(prefix="lvgl-release-full-") as raw:
         root = Path(raw)
@@ -528,6 +519,7 @@ def build_release(
             tool_version=tool_version,
             smoke=smoke,
             force_build=force_build,
+            plan=plan,
         )
         full_zip = out / FULL_ASSET.format(version=tool_version)
         full_sha = release_tool.build_zip(package, full_zip)
@@ -541,7 +533,7 @@ def build_release(
     return {
         "schema": "lvgl-verify-loop-release-v2",
         "tool_version": tool_version,
-        "versions": list(VERSIONS),
+        "versions": list(plan["supported"]),
         "full": {
             "zip": str(full_zip),
             "sha256": full_sha,
