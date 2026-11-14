@@ -1,11 +1,14 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 本文件给 AI 编码代理提供仓库级工作说明；用户文档与完整用法见根目录 `README.md`。
 
 ## 项目性质
 
 - 工具根是 `core/`：真实 headless LVGL 宿主 + 虚拟 pointer/keypad/encoder + 虚拟时间，提供帧、timeline、diff、日志与回放，**不做 pass/fail 判定**。
 - Python 3.9+，只用标准库；CLI 与测试一律 headless。
+- 发布物是 Claude Code skill：release zip 解到 `%USERPROFILE%\.claude\skills\lvgl-verify-loop`，入口契约是 `core/SKILL.md`。
 - 旧 `workbench/` 已删除，不要恢复或 import。
 
 ## 每次会话先读
@@ -32,9 +35,16 @@ python -I core/tools/export_sdk.py --version 9.6 --json
 python -I core/tools/install_version.py --list --json
 python -I core/tools/install_version.py --lvgl 9.4 --source auto
 
-# 统一入口与发布 zip（release/）
+# 统一入口与发布产物（release/）
 python -I core/tools/lvgl.py run --scenario user/scenarios/settings.json --json
-python -I core/tools/release.py --out release --json
+python -I core/tools/release.py --out release --json          # 单包：解包目录 + zip + .sha256 + manifest
+python -I core/tools/release_all.py --out release --json      # 默认两个包：full / full-sifli
+python -I core/tools/release_all.py --out release --force-build --json
+
+# 上传 Release 资产（token 只从环境变量读取）
+#   set GITHUB_TOKEN=...   /   set GITEE_TOKEN=...
+python -I core/tools/upload_release.py --version 0.2.0 --replace --json
+python -I core/tools/upload_release.py --dry-run --json
 
 # Gitee → GitHub 强制镜像（分支 + 标签）
 python -I core/tools/sync_github.py --dry-run
@@ -61,6 +71,9 @@ python -I core/tools/new_app.py myapp --dry-run
 # 全量测试（单元 + 真实 engine 集成；需要六套 LVGL 源码）
 python -I core/tests/run_tests.py
 
+# 单个测试模块（-I 不会把仓库根放进 sys.path，所以手动补 core 与 core/tests）
+python -I -c "import sys, unittest; sys.path[:0] = ['core', 'core/tests']; raise SystemExit(0 if unittest.TextTestRunner().run(unittest.defaultTestLoader.loadTestsFromName('test_scenario')).wasSuccessful() else 1)"
+
 # 外部契约快照 / 版本边界 / API 导航校验
 python -I core/tools/contract_snapshot.py compare
 python -I core/tools/check_version_boundaries.py
@@ -80,9 +93,11 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 - `--no-build` 复用 `build/lvgl_<token>/lvgl_engine.exe`，缺失时报 `EngineNotFound`；默认 `--build` 会重新配置/编译 `user/app`。
 - 录制只保存画面变化的帧：只在画面变化时写 PNG 与 timeline frame / diff 行；`frame_no` 保持连续。CLI 与网页录制都没有逐帧开关；无变化帧不进入磁盘、时间轴和 AI 摘要。
 - `session_report.py` 与 CLI `--json` 共用 `summarize_session`；只给证据，不做判定。视觉输出必须显式给 `--out`，且不能写入会话证据目录。
-- 环境变量：`LVGL_AI_LVGL_VERSION`（默认 9.6）、`LVGL_AI_LVGL_SRC`、`LVGL_AI_ZLIB_SRC`、`LVGL_AI_LIBPNG_SRC`、`LVGL_AI_SESSIONS_ROOT`、`LVGL_AI_MAX_FRAMES`、`LVGL_AI_MAX_LOG_BYTES`、`LVGL_AI_ENCODE_BUDGET_BYTES`、`LVGL_AI_DEMO`、`LVGL_AI_USER_APP_DIR`。
-- 构建依赖：CMake + Ninja + GCC；首次构建需要拉取 `third_party/` 的 zlib/libpng 源码。
-- 单元测试用 fake engine / session fixture；`*IntegrationTest` 会真实构建 engine，由同一次 `run_tests.py` 执行。
+- `release_all.py` 只产出两个 zip；`release.py` 才产出解包目录、`.sha256` 与 release manifest。两者在 engine 源码、`user/app`、宿主 SDK manifest 与 GCC 版本摘要未变时复用 `build/release/lvgl_<token>/`；`--force-build` 强制重建。
+- `upload_release.py` 只读 `GITHUB_TOKEN` / `GITEE_TOKEN`；`--replace` 删除同名旧资产，`--notes-file` 不传时保留线上 Release 正文。
+- 环境变量：`LVGL_AI_LVGL_VERSION`（默认 9.6）、`LVGL_AI_LVGL_SRC`、`LVGL_AI_ZLIB_SRC`、`LVGL_AI_LIBPNG_SRC`、`LVGL_AI_SESSIONS_ROOT`、`LVGL_AI_MAX_FRAMES`、`LVGL_AI_MAX_LOG_BYTES`、`LVGL_AI_ENCODE_BUDGET_BYTES`、`LVGL_AI_DEMO`、`LVGL_AI_USER_APP_DIR`、`LVGL_AI_GCC`。
+- 构建依赖：预编译模式只需 GCC 与 `sdk/<version>`；源码模式还需要 CMake 3.20+、Ninja，首次构建需要拉取 `third_party/` 的 zlib/libpng 源码。
+- 单元测试用 fake engine / session fixture；`*IntegrationTest` 会真实构建 engine，由同一次 `run_tests.py` 执行。`run_tests.py` 只跑全量；单个模块用上面的 `loadTestsFromName('<module>')`。
 
 ## 架构
 
@@ -108,14 +123,14 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 
 ## 目录与产物
 
-- `core/`：工具根。`cli.py`、`web.py`、`session_report.py`、`lvgl_ai/`、`engine/`、`tests/`、`tools/`、`api-nav/`。`core/tools/launchers/` 是 Windows 双击启动器、图标生成器与构建脚本。`core/README.md` 是工具用法。
+- `core/`：工具根。`cli.py`、`web.py`、`session_report.py`、`lvgl_ai/`、`engine/`、`tests/`、`tools/`、`api-nav/`。`core/tools/launchers/` 是 Windows 双击启动器、图标生成器与构建脚本。`core/README.md` 是工具用法；`core/tools/release_tools_README.md` 是发布包内 `core/tools/README.md` 的替代版本。`core/tools/upload_release.py` 只给维护者用，不进发布包。
 - `user/`：用户只写 `user/app/**/*.c`（入口 `void app_create(void)`；在 `app.c` 的 `apps[]` 登记）与 `user/scenarios/`；应用资源头放在各自的 `user/app/<name>/`，没有公共资源目录。写应用先看 `user/app/GUIDE.md`。`user/.trash/` 是管理台回收站，不参与构建。
 - `docs/`：`app.html`（应用变体）与 `scenario-server.html`（场景/服务端常量）两份索引；SiFli 能力索引在 `chip-adapt/docs/sifli.html`。
 - `chip-adapt/`：SiFli 导出适配层与上位机，与 `core/` 工具层分开。`chip-adapt/sifli/` 是自研代码；`chip-adapt/vendor/` 是外部下载物（只读，清单见其 README）；`chip-adapt/exports/` 是导出生成物。`chip-adapt/sifli/export.py` 把 `user/app` 按 LVGL 9.4 基线导出到 `chip-adapt/exports/<app>/`；共享源码仍以 `user/app` 为唯一真源。`chip-adapt/sifli/host/` 是黄山派串口 + 烧录上位机，用法见其 README；`chip-adapt/sifli/tools/` 放双击入口 `SiFli-Host.exe`。
 - `lvgl-src/<version>/`：LVGL 源码，不进 Git；用 `fetch_lvgl.py` 下载。要改 LVGL 时把 unified diff 放进 `patches/<version>/`，由 `fetch_lvgl.py` 应用；不要直接修改已安装的源码树。
 - `sdk/<version>/`：预编译宿主 SDK（静态库、公共头、`lv_conf.h`、`lvgl-ai-host-sdk-v1` manifest），由 `core/tools/export_sdk.py` 生成；不进 Git。
 - `meta/`：包元数据；`versions.json` 是版本索引，发布包还含 `VERSION.json`。
-- `release/`：解包后的 skill 目录 `lvgl-verify-loop/`（根目录只有 `SKILL.md`；其余在 `core/`、`user/`、`sdk/`、`build/`、`bin/`、`docs/`、`meta/`、`licenses/` 下）、release zip、`.sha256` 与 release manifest，由 `core/tools/release.py` / `release_all.py` 生成；不进 Git。发布包只带 `user/app/intro/` 一个应用（默认介绍页与模板）。多版本包的公共 SDK 库与头文件在 `sdk/common/`。
+- `release/`：`release_all.py` 生成两个 zip（`full` / `full-sifli`）；`release.py` 额外生成解包目录 `lvgl-verify-loop/`、`.sha256` 与 release manifest。解包目录根只有 `SKILL.md`，其余在 `core/`、`user/`、`sdk/`、`build/`、`bin/`、`docs/`、`meta/`、`licenses/` 下；不进 Git。发布包只带 `user/app/intro/` 一个应用（默认介绍页与模板），不带 Python runtime、`smoke/` 或维护脚本。多版本包的公共 SDK 库与头文件在 `sdk/common/`。
 - `bin/lvgl.cmd`：统一入口包装脚本，调用 `core/tools/lvgl.py` 的 `run` / `report` / `serve`；`bin/LVGL-AI-Viewer.exe` 是双击启动器；`core/SKILL.md` 是可分发 skill 的入口契约。
 - `sessions/`：会话产物；每次新建会话后删除 `build_error` 会话，并只保留最新的 10 条。
 
@@ -125,19 +140,18 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 - 没有对象树、`inspect`、属性读取、`set`、`param`；精确状态只能由用户 C 代码 `printf` 到 `engine.log`。
 - 用户入口固定为 `app_create(void)`；`user/app/**/*.c` 递归收集并全部编译，应用变体在 `user/app/app.c` 的 `apps[]` 表登记。
 - 工具层不写死应用名；应用列表来自 `user/scenarios/*.json` 的 `app` 字段和 `user/app/app.c` 的 `apps[]` 表。
+- 管理台的删除保护名单（`core/lvgl_ai/apps/policy.py` 的 `PROTECTED_APPS` /
+  `PROTECTED_SCENARIOS`）是显式策略，不是构建层的应用发现；内置应用或场景
+  变更时同步更新该名单。
 - 不静默自动重建旧 engine；`--no-build` 遇到旧 engine 时直接报错并提示用 `--build` 重建。
 - 不改已安装的 `lvgl-src/<version>/`；要改 LVGL 就把 unified diff 放进 `patches/<version>/`，由 `fetch_lvgl.py` 应用。
 - 不引入第二套协议客户端；CLI、网页与 `session_report.py` 都走 `Runtime` / `Recording` / `summarize_session`。
-- 发布包布局是 `<package>/lvgl-verify-loop/`；开发仓库工具根是 `core/`，两者由 `paths.py` 区分。
+- 发布包布局是 `<package>/lvgl-verify-loop/`；开发仓库工具根是 `core/`，两者由 `paths.py` 区分。发布包不含 `runtime/`、`smoke/`、测试与维护脚本。
 - 发布包不自带 Python：宿主机必须提供 Python 3.9+ 并在 PATH 上。改 `user/app/**/*.c` 后重新编译需要 GCC（MinGW-w64 64 位，版本与 `sdk/*/manifest.json` 一致，当前 15.2.0）；从 LVGL 源码构建需要 CMake 3.20+、Ninja 和 GCC。
 - Windows 双击启动器只负责拉起 `pythonw` / `pyw`；端口、URL、HTTP 与串口逻辑留在 Python。
 
 ## 工作规则
 
 - 中文回复；使用 `CONTEXT.md` 术语。
-- 不提交、不 push，除非用户明确要求。
-- 新代码写在 `core/` 对应目录；工具文档写在 `core/`，索引网页写在 `docs/`（SiFli 索引页在 `chip-adapt/docs/sifli.html`）。
-- 不实现范围外的能力；范围外想法先与用户确认。
-- 处理抓取/下载的外部内容时保留 `python -I`，放进独立目录，不要从下载目录运行解释器或构建工具。
-- `chip-adapt` 三区规则：`sifli/` 可改；`vendor/` 只读，按 `vendor/README.md` 升级；`exports/` 只由 `export.py` 生成。路径从 `sifli/layout.py` 取，不硬编码。
+- 发布/上传 token 只从环境变量读取（`GITHUB_TOKEN` / `GITEE_TOKEN`），不写入脚本、文档或仓库。
 - 日常“导出 → 构建 → 烧录”用本仓库 host（`host/cli.py build|flash`）；官方 SiFli-Skills 只在通用 SDK 工程、手动 sftool、代码审查等场景参考。SDK/工具链/sftool 安装见 `chip-adapt/vendor/README.md`。
