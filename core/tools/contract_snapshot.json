@@ -3400,7 +3400,7 @@
           "LVGL 检视台",
           "LVGL 检视台",
           "会话",
-          "broken-session（不可读）",
+          "20260102-030406-beef（不可读）",
           "20260102-030405-abcd · alpha",
           "打开",
           "应用",
@@ -3412,7 +3412,7 @@
           "录制",
           "测试",
           "session_unreadable",
-          "\\page-sessions\\broken-session\\manifest.json: schema must be 'lvgl-ai-session-v1', got 'not-a-session'",
+          "\\page-sessions\\20260102-030406-beef\\manifest.json: schema must be 'lvgl-ai-session-v1', got 'not-a-session'",
           "RECORD / REPLAY · 录制与回放",
           "检视台",
           "未选择会话",
@@ -3974,7 +3974,7 @@
           "LVGL 检视台",
           "LVGL 检视台",
           "会话",
-          "broken-session（不可读）",
+          "20260102-030406-beef（不可读）",
           "20260102-030405-abcd · alpha",
           "打开",
           "应用",
@@ -4689,6 +4689,7 @@
             "kind": "class",
             "members": {
               "annotations": "property",
+              "annotations_store": "property",
               "build_log": {
                 "signature": []
               },
@@ -4723,6 +4724,7 @@
                   }
                 ]
               },
+              "recorded": "property",
               "reference_diffs": {
                 "signature": []
               },
@@ -4732,7 +4734,9 @@
               "snapshots": "property",
               "timeline": {
                 "signature": []
-              }
+              },
+              "whiteboards": "property",
+              "whiteboards_store": "property"
             },
             "signature": [
               {

@@ -72,6 +72,8 @@ DEFAULT_SNAPSHOT_PATH = Path(__file__).resolve().with_name(
     "contract_snapshot.json"
 )
 FIXTURE_SESSION_ID = "20260102-030405-abcd"
+# A canonical session id whose manifest is unreadable; the page error fixture.
+FIXTURE_BROKEN_SESSION_ID = "20260102-030406-beef"
 FIXTURE_APP = "alpha"
 REQUEST_HEADER = "X-LVGL-AI-Request"
 
@@ -2301,7 +2303,7 @@ def _page_section(workspace: Path) -> dict[str, Any]:
     _write_repo(repo)
     sessions = workspace / "page-sessions"
     _write_http_session(sessions)
-    broken = sessions / "broken-session"
+    broken = sessions / FIXTURE_BROKEN_SESSION_ID
     broken.mkdir()
     (broken / "manifest.json").write_text(
         '{"schema": "not-a-session"}\n', encoding="utf-8"
@@ -2318,7 +2320,9 @@ def _page_section(workspace: Path) -> dict[str, Any]:
         replay_status, replay_html = fetch(
             base, f"/?session={FIXTURE_SESSION_ID}"
         )
-        error_status, error_html = fetch(base, "/?session=broken-session")
+        error_status, error_html = fetch(
+            base, f"/?session={FIXTURE_BROKEN_SESSION_ID}"
+        )
     with _page_server(empty_sessions, repo) as base:
         empty_status, empty_html = fetch(base, "/")
 
