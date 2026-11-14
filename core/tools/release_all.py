@@ -37,6 +37,7 @@ if str(_TOOLS_DIR) not in sys.path:
 
 import export_sdk  # noqa: E402
 import release as release_tool  # noqa: E402
+import release_bundle  # noqa: E402
 
 FULL_ASSET = "lvgl-verify-loop-{version}-full-win64.zip"
 FULL_SIFLI_ASSET = "lvgl-verify-loop-{version}-full-sifli-win64.zip"
@@ -350,7 +351,13 @@ def _stage_full_package(
 
     release_tool.purge_caches(package)
     release_tool.check_hygiene(package, repo)
-    return {"engine": staged["engine"], "shared": shared, "engines": engines}
+    return {
+        "engine": staged["engine"],
+        "shared": shared,
+        "engines": engines,
+        "sdk_manifest": staged["sdk_manifest"],
+        "version": staged["version"],
+    }
 
 
 def _overlay_sifli(package: Path, repo: Path, tool_version: str) -> None:
@@ -521,32 +528,63 @@ def build_release(
             force_build=force_build,
             plan=plan,
         )
+        base_version = str(plan["default"])
         full_zip = out / FULL_ASSET.format(version=tool_version)
-        full_sha = release_tool.build_zip(package, full_zip)
+        full_sha = release_bundle.build_zip(package, full_zip)
+        full_sha_path = release_bundle.write_checksum(full_zip, full_sha)
+        _full_manifest, full_manifest_path = release_bundle.write_manifest(
+            package,
+            full_zip,
+            tool_version=tool_version,
+            git_commit=staged["version"]["git_commit"],
+            lvgl_version=base_version,
+            gcc_version=str(staged["version"]["gcc"]["version"]),
+            adapters=[],
+            digest=full_sha,
+            sdk_manifest=staged["sdk_manifest"],
+        )
 
-        sifli_package = root / "sifli" / release_tool.PACKAGE_DIR_NAME
+        sifli_package = root / "sifli" / release_bundle.PACKAGE_DIR_NAME
         shutil.copytree(package, sifli_package)
         _overlay_sifli(sifli_package, repo, tool_version)
         sifli_zip = out / FULL_SIFLI_ASSET.format(version=tool_version)
-        sifli_sha = release_tool.build_zip(sifli_package, sifli_zip)
+        sifli_sha = release_bundle.build_zip(sifli_package, sifli_zip)
+        sifli_sha_path = release_bundle.write_checksum(sifli_zip, sifli_sha)
+        _sifli_manifest, sifli_manifest_path = release_bundle.write_manifest(
+            sifli_package,
+            sifli_zip,
+            tool_version=tool_version,
+            git_commit=staged["version"]["git_commit"],
+            lvgl_version=base_version,
+            gcc_version=str(staged["version"]["gcc"]["version"]),
+            adapters=[],
+            digest=sifli_sha,
+            sdk_manifest=staged["sdk_manifest"],
+        )
 
-    return {
-        "schema": "lvgl-verify-loop-release-v2",
+    summary = {
+        "schema": release_bundle.BUNDLE_SCHEMA,
         "tool_version": tool_version,
         "versions": list(plan["supported"]),
         "full": {
             "zip": str(full_zip),
             "sha256": full_sha,
             "bytes": full_zip.stat().st_size,
+            "sha256_file": str(full_sha_path),
+            "manifest": str(full_manifest_path),
         },
         "full_sifli": {
             "zip": str(sifli_zip),
             "sha256": sifli_sha,
             "bytes": sifli_zip.stat().st_size,
+            "sha256_file": str(sifli_sha_path),
+            "manifest": str(sifli_manifest_path),
         },
         "engines": staged["engines"],
         "launcher": launcher,
     }
+    release_bundle.write_summary(out, summary)
+    return summary
 
 
 def build_parser() -> argparse.ArgumentParser:

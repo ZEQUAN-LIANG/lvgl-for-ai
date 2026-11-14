@@ -37,7 +37,6 @@ import tempfile
 import threading
 import time
 import urllib.request
-import zipfile
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -58,10 +57,11 @@ if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
 import export_sdk  # noqa: E402
+import release_bundle  # noqa: E402
 
-PACKAGE_DIR_NAME = "lvgl-verify-loop"
-RELEASE_SCHEMA = "lvgl-ai-release-v1"
-VERSION_SCHEMA = "lvgl-ai-version-v1"
+PACKAGE_DIR_NAME = release_bundle.PACKAGE_DIR_NAME
+RELEASE_SCHEMA = release_bundle.RELEASE_SCHEMA
+VERSION_SCHEMA = release_bundle.VERSION_SCHEMA
 DEFAULT_LVGL = versions.default()
 SMOKE_SCENARIO = Path("user") / "scenarios" / "intro.json"
 RELEASE_INTRO_APP = "intro"
@@ -147,20 +147,6 @@ def copy_tree(
         destination = target_path / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, destination)
-
-
-def _git_commit(repo_root: Path) -> str:
-    try:
-        result = subprocess.run(
-            ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return "unknown"
-    text = result.stdout.strip()
-    return text if result.returncode == 0 and text else "unknown"
 
 
 def write_version_file(
@@ -567,7 +553,7 @@ def stage_package(
         tool_version=tool_version,
         lvgl_version=lvgl_version,
         gcc_version=str(sdk_manifest["compiler"]["version"]),
-        git_commit=_git_commit(repo_root),
+        git_commit=release_bundle.git_commit(repo_root),
         adapters=[],
         host_sdks=host_sdks,
     )
@@ -976,35 +962,7 @@ def smoke_package(package: Path, lvgl_version: str) -> dict[str, Any]:
         }
 
 
-def build_zip(package: Path, zip_path: Path) -> str:
-    """Write a deterministic zip; return its sha256."""
-    zip_path.parent.mkdir(parents=True, exist_ok=True)
-    files = sorted(
-        (path for path in package.rglob("*") if path.is_file()),
-        key=lambda path: path.relative_to(package).as_posix(),
-    )
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
-        for path in files:
-            relative = path.relative_to(package).as_posix()
-            info = zipfile.ZipInfo(
-                f"{PACKAGE_DIR_NAME}/{relative}",
-                date_time=(1980, 1, 1, 0, 0, 0),
-            )
-            info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = (0o644 & 0xFFFF) << 16
-            archive.writestr(info, path.read_bytes())
-    return sha256_file(zip_path)
-
-
-def _file_hashes(package: Path) -> dict[str, str]:
-    paths = sorted(
-        (path for path in package.rglob("*") if path.is_file()),
-        key=lambda path: path.relative_to(package).as_posix(),
-    )
-    return {
-        path.relative_to(package).as_posix(): sha256_file(path)
-        for path in paths
-    }
+build_zip = release_bundle.build_zip
 
 
 def release(
@@ -1068,48 +1026,18 @@ def release(
             asset_name
             or f"{PACKAGE_DIR_NAME}-{tool_version}-{lvgl_version}.zip"
         )
-        zip_hash = build_zip(package, zip_path)
-        hashes = _file_hashes(package)
-        files = sorted(package.rglob("*"))
-        file_count = sum(1 for path in files if path.is_file())
-        unpacked = sum(
-            path.stat().st_size for path in files if path.is_file()
-        )
-        sdk_manifest_sha256 = sha256_file(
-            package / "sdk" / lvgl_version / "manifest.json"
-        )
-    sha_path = zip_path.with_name(zip_path.name + ".sha256")
-    sha_path.write_text(f"{zip_hash}  {zip_path.name}\n", encoding="utf-8")
-    sdk_manifest = staged["sdk_manifest"]
-    manifest = {
-        "schema": RELEASE_SCHEMA,
-        "tool_version": tool_version,
-        "git_commit": staged["version"]["git_commit"],
-        "lvgl_version": lvgl_version,
-        "sdk": {
-            "schema": sdk_manifest.get("schema"),
-            "lvgl_version": sdk_manifest.get("lvgl_version"),
-            "lvgl_tag": sdk_manifest.get("lvgl_tag"),
-            "manifest_sha256": sdk_manifest_sha256,
-            "compiler": sdk_manifest.get("compiler"),
-            "libs": sdk_manifest.get("libs"),
-            "sha256": sdk_manifest.get("sha256"),
-        },
-        "gcc": {"version": staged["version"]["gcc"]["version"]},
-        "adapters": [],
-        "package": {
-            "root": PACKAGE_DIR_NAME,
-            "file_count": file_count,
-            "unpacked_bytes": unpacked,
-            "archive_bytes": zip_path.stat().st_size,
-        },
-        "sha256": zip_hash,
-        "files": hashes,
-    }
-    manifest_path = out_dir / f"{zip_path.stem}.release.json"
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
+        zip_hash = release_bundle.build_zip(package, zip_path)
+    sha_path = release_bundle.write_checksum(zip_path, zip_hash)
+    _manifest, manifest_path = release_bundle.write_manifest(
+        package,
+        zip_path,
+        tool_version=tool_version,
+        git_commit=staged["version"]["git_commit"],
+        lvgl_version=lvgl_version,
+        gcc_version=str(staged["version"]["gcc"]["version"]),
+        adapters=[],
+        digest=zip_hash,
+        sdk_manifest=staged["sdk_manifest"],
     )
     return {
         "package": str(package),
