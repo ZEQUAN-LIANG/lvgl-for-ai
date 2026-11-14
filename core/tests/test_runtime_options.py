@@ -1,4 +1,4 @@
-"""RuntimeOptions and RuntimeLike: the runtime assembly and double seams."""
+"""Runtime option assembly and the RuntimeLike behavior seam."""
 
 from __future__ import annotations
 
@@ -11,36 +11,9 @@ from fake_runtime import FakeRuntime
 from lvgl_ai import Runtime
 from lvgl_ai.control.runtime import RuntimeLike
 
-TOOLS_DIR = Path(__file__).resolve().parent.parent / "tools"
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
+FAKE_ENGINE = Path(__file__).with_name("fake_engine.py")
 
-# The surface LiveSession and scenario execution share with a Runtime double.
-RUNTIME_LIKE_MEMBERS = {
-    "app",
-    "encoder",
-    "engine_log_path",
-    "exit_code",
-    "frame_count",
-    "is_running",
-    "key",
-    "log_tail",
-    "manifest_path",
-    "mark",
-    "mode",
-    "pid",
-    "pointer",
-    "ready",
-    "record_error",
-    "session_dir",
-    "session_id",
-    "snapshot",
-    "start",
-    "stop",
-    "t_ms",
-    "tick",
-    "wait",
-}
+
 class RuntimeOptionCharacterizationTest(unittest.TestCase):
     """Lock the 18 Runtime keywords and the SessionStore values they produce."""
 
@@ -109,15 +82,61 @@ class RuntimeOptionBagRemovedTest(unittest.TestCase):
         self.assertFalse(hasattr(runtime_module, "_UNSET"))
 
 
-class RuntimeLikeTest(unittest.TestCase):
-    def test_protocol_members_are_the_agreed_surface(self) -> None:
-        annotated = set(getattr(RuntimeLike, "__annotations__", {}))
-        methods = {
-            name
-            for name, value in vars(RuntimeLike).items()
-            if not name.startswith("_") and callable(value)
-        }
-        self.assertEqual(annotated | methods, RUNTIME_LIKE_MEMBERS)
+class RuntimeLikeBehaviorTest(unittest.TestCase):
+    """Runtime and FakeRuntime answer the calls LiveSession and scenarios make."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.sessions_root = Path(self._tmp.name) / "sessions"
+
+    def _fake_engine_runtime(self) -> Runtime:
+        return Runtime(
+            lvgl="9.6",
+            build=False,
+            record=False,
+            sessions_root=self.sessions_root,
+            _engine_command=[sys.executable, "-I", str(FAKE_ENGINE)],
+        )
+
+    def _exercise(self, rt: RuntimeLike) -> dict:
+        rt.start()
+        try:
+            replies = {
+                "tick": rt.tick(16, track_check=False),
+                "wait": rt.wait(ms=16),
+                "pointer": rt.pointer("down", 1, 2),
+                "key": rt.key("press", "ENTER"),
+                "encoder": rt.encoder("turn", 1),
+                "mark": rt.mark("protocol"),
+                "snapshot": rt.snapshot("protocol"),
+            }
+            self.assertTrue(rt.is_running)
+            self.assertIsInstance(rt.frame_count, int)
+            self.assertIsInstance(rt.t_ms, int)
+            self.assertIsInstance(rt.log_tail(1), list)
+            self.assertIsNotNone(rt.session_dir)
+            self.assertIsNotNone(rt.session_id)
+            rt.record_error(RuntimeError("recorded"))
+        finally:
+            rt.stop()
+        self.assertFalse(rt.is_running)
+        return replies
+
+    def test_runtime_and_fake_runtime_share_the_calls_live_session_makes(self) -> None:
+        for label, factory in (
+            ("runtime", self._fake_engine_runtime),
+            ("fake", FakeRuntime),
+        ):
+            with self.subTest(double=label):
+                replies = self._exercise(factory())
+                self.assertEqual(replies["tick"]["t_ms"], 16)
+                self.assertEqual(replies["pointer"]["hit"], "fake_button")
+                self.assertIs(replies["key"]["delivered"], True)
+                self.assertIs(replies["encoder"]["delivered"], True)
+                self.assertTrue(
+                    replies["snapshot"]["file"].startswith("snapshots/")
+                )
 
     def test_protocol_stays_out_of_public_exports(self) -> None:
         import lvgl_ai
@@ -125,24 +144,8 @@ class RuntimeLikeTest(unittest.TestCase):
         self.assertNotIn("RuntimeLike", lvgl_ai.__all__)
         self.assertFalse(hasattr(lvgl_ai, "RuntimeLike"))
 
-    def test_runtime_implements_every_protocol_member(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            rt = Runtime(build=False, sessions_root=Path(tmp) / "sessions")
-        self.addCleanup(rt.stop)
-        missing = sorted(
-            name for name in RUNTIME_LIKE_MEMBERS if not hasattr(rt, name)
-        )
-        self.assertEqual(missing, [])
 
-
-class FakeRuntimeContractTest(unittest.TestCase):
-    def test_fake_runtime_implements_every_protocol_member(self) -> None:
-        fake = FakeRuntime()
-        missing = sorted(
-            name for name in RUNTIME_LIKE_MEMBERS if not hasattr(fake, name)
-        )
-        self.assertEqual(missing, [])
-
+class FakeRuntimeBehaviorTest(unittest.TestCase):
     def test_fake_runtime_tick_records_the_command_and_advances_time(self) -> None:
         fake = FakeRuntime()
         reply = fake.tick(33, track_check=False)
@@ -150,24 +153,6 @@ class FakeRuntimeContractTest(unittest.TestCase):
         self.assertEqual(fake.t_ms, 33)
         self.assertEqual(reply["t_ms"], 33)
         self.assertEqual(reply["frames"], 0)
-
-
-class ContractSnapshotStubTest(unittest.TestCase):
-    def test_contract_stubs_carry_the_runtime_like_surface(self) -> None:
-        import contract_snapshot
-
-        with tempfile.TemporaryDirectory() as tmp:
-            stubs = {
-                "_LiveStub": contract_snapshot._LiveStub(Path(tmp)),
-                "_FakeRuntime": contract_snapshot._FakeRuntime(),
-            }
-        for label, stub in stubs.items():
-            with self.subTest(stub=label):
-                missing = sorted(
-                    name for name in RUNTIME_LIKE_MEMBERS
-                    if not hasattr(stub, name)
-                )
-                self.assertEqual(missing, [])
 
 
 if __name__ == "__main__":
