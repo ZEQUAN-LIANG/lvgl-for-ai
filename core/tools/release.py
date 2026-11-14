@@ -11,9 +11,11 @@ licenses in ``licenses/`` and documentation assets in ``docs/``.  LVGL source,
 third-party source, sessions, tests and chip adapter trees never enter the
 package.
 
-Smoke runs inside the staging directory from an unrelated working directory
-before the zip is written: ``--no-build``, a prebuilt build, and the web
-server.  ``--skip-smoke`` exists only for development.
+Prebuilt engines are cached under ``build/release/lvgl_<token>/`` and reused
+until their source, host SDK or compiler digest changes; ``--force-build``
+rebuilds them.  Smoke runs inside the staging directory from an unrelated
+working directory before the zip is written: ``--no-build``, a prebuilt build,
+and the web server.  ``--skip-smoke`` exists only for development.
 
 Usage::
 
@@ -24,6 +26,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -45,6 +48,7 @@ if str(_BOOTSTRAP_TOOL_ROOT) not in sys.path:
 from lvgl_ai import paths  # noqa: E402
 from lvgl_ai.control.build_plan import BuildPlan  # noqa: E402
 from lvgl_ai.control.errors import BuildError  # noqa: E402
+from lvgl_ai.control.prebuilt import HostSdk, resolve_compiler  # noqa: E402
 from lvgl_ai.digest import sha256_file  # noqa: E402
 
 TOOL_ROOT = paths.TOOL_ROOT
@@ -65,6 +69,7 @@ RELEASE_SCENARIOS = ("intro.json",)
 RELEASE_APP_FILES = ("app.h", "lvgl_compat.h", "README.md", "GUIDE.md")
 RELEASE_APP_DIRS = (RELEASE_INTRO_APP,)
 RELEASE_USER_README = TOOLS_DIR / "release_user_app_README.md"
+RELEASE_TOOLS_README = TOOLS_DIR / "release_tools_README.md"
 CORE_RELEASE_EXCLUDE_FILES = (
     "README.md",
     "CONTRACT_SNAPSHOT.md",
@@ -72,8 +77,20 @@ CORE_RELEASE_EXCLUDE_FILES = (
     "engine/freetype/README.md",
     "lvgl_ai/assets/vendor/README.md",
     "tools/release_user_app_README.md",
+    "tools/release_tools_README.md",
+    "tools/release.py",
+    "tools/release_all.py",
+    "tools/release_app.c",
     "tools/upload_release.py",
+    "tools/sync_github.py",
+    "tools/contract_snapshot.py",
+    "tools/contract_snapshot.json",
+    "tools/check_api_nav.py",
+    "tools/check_version_boundaries.py",
 )
+RELEASE_ENGINE_CACHE_DIR = Path("build") / "release"
+RELEASE_ENGINE_SCHEMA = "lvgl-ai-release-engine-v1"
+RELEASE_ENGINE_SOURCE_SUFFIXES = frozenset({".c", ".h"})
 RELEASE_VIEWER = "LVGL-AI-Viewer.exe"
 RELEASE_VIEWER_PATH = Path("bin") / RELEASE_VIEWER
 RELEASE_DEMO_GIF = "intro-demo.gif"
@@ -240,6 +257,167 @@ def check_hygiene(package: Path, repo_root: Path) -> None:
                 )
 
 
+def tree_digest(root: Path, suffixes: frozenset[str]) -> str:
+    """Hash the names and contents of matching files below ``root``."""
+    digest = hashlib.sha256()
+    if not root.is_dir():
+        return digest.hexdigest()
+    for path in sorted(root.rglob("*")):
+        if not path.is_file() or path.suffix.lower() not in suffixes:
+            continue
+        digest.update(path.relative_to(root).as_posix().encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def release_engine_inputs_digest(
+    *,
+    version: str,
+    engine_dir: Path,
+    user_app_dir: Path,
+    sdk_dir: Path,
+    compiler_version: str,
+) -> str:
+    """Hash the inputs that decide the bytes of one prebuilt release engine."""
+    digest = hashlib.sha256()
+    digest.update(RELEASE_ENGINE_SCHEMA.encode("utf-8"))
+    digest.update(b"\0")
+    digest.update(version.encode("utf-8"))
+    digest.update(b"\0")
+    digest.update(
+        tree_digest(engine_dir, RELEASE_ENGINE_SOURCE_SUFFIXES).encode("ascii")
+    )
+    digest.update(b"\0")
+    digest.update(
+        tree_digest(user_app_dir, RELEASE_ENGINE_SOURCE_SUFFIXES).encode("ascii")
+    )
+    digest.update(b"\0")
+    digest.update(compiler_version.encode("utf-8"))
+    digest.update(b"\0")
+    manifest = sdk_dir / "manifest.json"
+    if manifest.is_file():
+        digest.update(manifest.read_bytes())
+    return digest.hexdigest()
+
+
+def _release_engine_cache_matches(
+    cache_engine: Path,
+    cache_meta: Path,
+    digest: str,
+) -> bool:
+    """A cache hit needs the same inputs and the exact cached engine bytes."""
+    if not cache_engine.is_file() or not cache_meta.is_file():
+        return False
+    try:
+        meta = json.loads(cache_meta.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return (
+        meta.get("schema") == RELEASE_ENGINE_SCHEMA
+        and meta.get("inputs_digest") == digest
+        and meta.get("engine_bytes") == cache_engine.stat().st_size
+        and meta.get("engine_sha256") == sha256_file(cache_engine)
+    )
+
+
+def ensure_release_engine(
+    *,
+    repo_root: Path,
+    version: str,
+    engine_dir: Path,
+    user_app_dir: Path,
+    sdk_dir: Path,
+    build_dir: Path,
+    compiler: str | None = None,
+    compiler_version: str | None = None,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Build a prebuilt engine once per input digest; reuse its cached bytes.
+
+    The cache lives under ``build/release/lvgl_<token>/`` and is independent
+    of the daily ``build/lvgl_<token>/`` tree.  A hit still copies the engine
+    into ``build_dir`` so callers keep the same staging shape.
+    """
+    compiler_path, resolved_version = resolve_compiler(
+        override=compiler, version=compiler_version
+    )
+    digest = release_engine_inputs_digest(
+        version=version,
+        engine_dir=engine_dir,
+        user_app_dir=user_app_dir,
+        sdk_dir=sdk_dir,
+        compiler_version=resolved_version,
+    )
+    cache_dir = (
+        repo_root
+        / RELEASE_ENGINE_CACHE_DIR
+        / f"lvgl_{paths.version_token(version)}"
+    )
+    cache_engine = cache_dir / paths.engine_filename()
+    cache_meta = cache_dir / "release-engine.json"
+    engine = build_dir / paths.engine_filename()
+    if not force and _release_engine_cache_matches(
+        cache_engine, cache_meta, digest
+    ):
+        build_dir.mkdir(parents=True, exist_ok=True)
+        if cache_engine.resolve() != engine.resolve():
+            shutil.copy2(cache_engine, engine)
+        sdk = HostSdk.load(sdk_dir, expected_version=version)
+        for source in sdk.runtime_dll_paths:
+            shutil.copy2(source, build_dir / source.name)
+        return {
+            "cache": str(cache_engine),
+            "status": "reused",
+            "digest": digest,
+            "compiler": compiler_path,
+            "compiler_version": resolved_version,
+        }
+    plan = BuildPlan(
+        version,
+        lvgl_src=repo_root / "lvgl-src" / version,
+        build_dir=build_dir,
+        engine_dir=engine_dir,
+        user_app_dir=user_app_dir,
+        sdk_dir=sdk_dir,
+        build_mode="prebuilt",
+        compiler=compiler,
+        compiler_version=compiler_version,
+    )
+    plan.execute(build=True)
+    if not engine.is_file():
+        raise BuildError(f"release: prebuilt engine was not produced: {engine}")
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    if cache_engine.resolve() != engine.resolve():
+        shutil.copy2(engine, cache_engine)
+    cache_meta.write_text(
+        json.dumps(
+            {
+                "schema": RELEASE_ENGINE_SCHEMA,
+                "version": version,
+                "inputs_digest": digest,
+                "engine_sha256": sha256_file(cache_engine),
+                "engine_bytes": cache_engine.stat().st_size,
+                "compiler": compiler_path,
+                "compiler_version": resolved_version,
+                "build_mode": "prebuilt",
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return {
+        "cache": str(cache_engine),
+        "status": "built",
+        "digest": digest,
+        "compiler": compiler_path,
+        "compiler_version": resolved_version,
+    }
+
+
 def stage_user_tree(repo_root: Path, package: Path) -> None:
     """Copy the intro app and the scenario the package needs."""
     source = repo_root / "user"
@@ -290,8 +468,9 @@ def stage_package(
     compiler: str | None = None,
     compiler_version: str | None = None,
     host_sdks: list[str] | None = None,
+    force_build: bool = False,
 ) -> dict[str, Any]:
-    """Copy the allowlisted tree and build the package's engine."""
+    """Copy the allowlisted tree and build or reuse the package's engine."""
     package.mkdir(parents=True)
     skill_source = repo_root / "core" / "SKILL.md"
     if skill_source.is_file():
@@ -318,6 +497,9 @@ def stage_package(
         path = package / "core" / name
         if path.is_file():
             path.unlink()
+    if not RELEASE_TOOLS_README.is_file():
+        raise BuildError("release: core/tools/release_tools_README.md is missing")
+    shutil.copy2(RELEASE_TOOLS_README, package / "core" / "tools" / "README.md")
     stage_user_tree(repo_root, package)
     copy_tree(repo_root / "licenses", package / "licenses")
     copy_tree(repo_root / "bin", package / "bin")
@@ -348,21 +530,17 @@ def stage_package(
 
     token = paths.version_token(lvgl_version)
     build_dir = package / "build" / f"lvgl_{token}"
-    plan = BuildPlan(
-        lvgl_version,
-        lvgl_src=repo_root / "lvgl-src" / lvgl_version,
-        build_dir=build_dir,
+    engine_result = ensure_release_engine(
+        repo_root=repo_root,
+        version=lvgl_version,
         engine_dir=package / "core" / "engine",
         user_app_dir=package / "user" / "app",
         sdk_dir=sdk_target,
-        build_mode="prebuilt",
+        build_dir=build_dir,
         compiler=compiler,
         compiler_version=compiler_version,
+        force=force_build,
     )
-    plan.execute(build=True)
-    engine = build_dir / paths.engine_filename()
-    if not engine.is_file():
-        raise BuildError(f"release: prebuilt engine was not produced: {engine}")
 
     sdk_manifest = json.loads(
         (sdk_target / "manifest.json").read_text(encoding="utf-8")
@@ -377,7 +555,7 @@ def stage_package(
         host_sdks=host_sdks,
     )
     return {
-        "engine": engine,
+        "engine": engine_result,
         "sdk_manifest": sdk_manifest,
         "version": version,
     }
@@ -825,6 +1003,7 @@ def release(
     compiler_version: str | None = None,
     host_sdks: list[str] | None = None,
     asset_name: str | None = None,
+    force_build: bool = False,
 ) -> dict[str, Any]:
     repo_root = repo_root.resolve()
     out_dir = out_dir.resolve()
@@ -851,6 +1030,7 @@ def release(
             compiler=compiler,
             compiler_version=compiler_version,
             host_sdks=host_sdks,
+            force_build=force_build,
         )
         if smoke:
             smoke_package(staging_package, lvgl_version)
@@ -920,6 +1100,7 @@ def release(
         "sha256": zip_hash,
         "sha256_file": str(sha_path),
         "manifest": str(manifest_path),
+        "engine": staged["engine"],
     }
 
 
@@ -963,6 +1144,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="skip the staging-directory smoke (development only)",
     )
     parser.add_argument(
+        "--force-build",
+        action="store_true",
+        help="rebuild the prebuilt engine even when its inputs are unchanged",
+    )
+    parser.add_argument(
         "--asset-name",
         default=None,
         help="override the zip file name (default: <package>-<version>-<lvgl>.zip)",
@@ -996,6 +1182,7 @@ def main(argv: list[str] | None = None) -> int:
             export_sdk_if_missing=not args.no_export_sdk,
             smoke=not args.skip_smoke,
             asset_name=args.asset_name,
+            force_build=args.force_build,
         )
     except BuildError as exc:
         print(f"[release] {exc}", file=sys.stderr)

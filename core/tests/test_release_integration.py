@@ -177,6 +177,12 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
 
             with zipfile.ZipFile(zip_path) as archive:
                 names = archive.namelist()
+                tools_readme = archive.read(
+                    "lvgl-verify-loop/core/tools/README.md"
+                ).decode("utf-8")
+            self.assertIn("install_version.py", tools_readme)
+            self.assertNotIn("release_all.py", tools_readme)
+            self.assertNotIn("sync_github.py", tools_readme)
             for forbidden in (
                 "lvgl-src/",
                 "third_party/",
@@ -194,6 +200,15 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 "runtime/",
                 "smoke/",
                 "licenses/Python-3.11.txt",
+                "core/tools/release.py",
+                "core/tools/release_all.py",
+                "core/tools/release_app.c",
+                "core/tools/release_tools_README.md",
+                "core/tools/sync_github.py",
+                "core/tools/contract_snapshot.py",
+                "core/tools/contract_snapshot.json",
+                "core/tools/check_api_nav.py",
+                "core/tools/check_version_boundaries.py",
                 "__pycache__/",
                 "/.git/",
             ):

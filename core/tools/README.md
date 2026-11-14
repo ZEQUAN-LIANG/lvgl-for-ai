@@ -3,6 +3,8 @@
 工具脚本按链路分组；每个脚本的参数、默认值与输出以 `--help` 和模块 docstring
 为准，本页只做入口路由。
 
+> 发布包内的本页由 `release_tools_README.md` 覆盖，只列出随包脚本。
+
 ## 发布与打包
 
 ```text
@@ -15,6 +17,11 @@ export_sdk.py   →  从 lvgl-src/<version> 导出 sdk/<version>/
 发布包根目录只有 `SKILL.md`；元数据在 `meta/`，许可证在 `licenses/`，
 演示图与 `SIFLI.md` 在 `docs/`，双击启动器在 `bin/`。多版本包会把各 SDK 中
 完全相同的 FreeType DLL、导入库和公共头文件收到 `sdk/common/`。
+
+`release_all.py` / `release.py` 按 engine 输入摘要复用
+`build/release/lvgl_<token>/` 下的预编译 engine；engine / 用户应用源码、宿主 SDK
+manifest 或 GCC 版本未变时不再重编，只重新打包。`--force-build` 强制重建，
+启动器同样按源码摘要复用。
 
 `release_app.c` 是发布包内 `user/app/app.c` 的替代入口，只注册 `intro`。
 

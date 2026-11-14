@@ -147,8 +147,10 @@ frame_diffs；`--no-build` 不重新编译。`status=ok` 只表示会话正常�
 
 ```bat
 bin\lvgl.cmd run --lvgl 9.4 --scenario user\scenarios\intro.json --json
-bin\lvgl.cmd run --lvgl 8.3 --scenario smoke\8.3\legacy_smoke.json --json
 ```
+
+9.1 / 8.x 的 engine 内置 legacy harness，不依赖 `intro` 应用变体；包内不提供
+额外的 legacy 场景文件，取证仍用同一套会话证据格式。
 
 `meta/versions.json` 只记录版本与 `bundled` 状态。场景可选 `"lvgl": "9.4"`；优先级是
 `--lvgl` > 场景 `lvgl` > `LVGL_AI_LVGL_VERSION` > 默认 9.6。`install_version.py`

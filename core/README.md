@@ -257,6 +257,10 @@ python -I core/tools/lvgl.py assets doctor --json
 python -I core/tools/release_all.py --out release --json
 ```
 
+发布脚本按 engine 输入摘要复用 `build/release/lvgl_<token>/` 下的预编译 engine：
+engine / 用户应用源码、宿主 SDK manifest 或 GCC 版本未变时不再重编，只重新打包；
+`--force-build` 强制重建。Windows 双击启动器同样只在其源码摘要变化时重建。
+
 也可以只用 `release.py` 打单版本包（产出 skill zip、`.sha256` 和 release manifest）：
 
 ```bash
