@@ -20,11 +20,7 @@
       "description": "host preview",
       "sdk": true,
       "legacy": false,
-      "pack": {
-        "gitee": "https://gitee.com/liang-zequan/lvgl-for-ai/releases/download/v0.2.0/lvgl-verify-loop-0.2.0-sdk-9.5-win64.zip",
-        "github": "https://github.com/ZEQUAN-LIANG/lvgl-for-ai/releases/download/v0.2.0/lvgl-verify-loop-0.2.0-sdk-9.5-win64.zip",
-        "sha256": "4c17840b49aa83a9a1d68029fb58e925d0558383db4d77cbbc34a39ac4ea4571"
-      }
+      "bundled": true
     },
     "9.4": {
       "tag": "v9.4.0",
@@ -32,11 +28,7 @@
       "description": "device baseline",
       "sdk": true,
       "legacy": false,
-      "pack": {
-        "gitee": "https://gitee.com/liang-zequan/lvgl-for-ai/releases/download/v0.2.0/lvgl-verify-loop-0.2.0-sdk-9.4-win64.zip",
-        "github": "https://github.com/ZEQUAN-LIANG/lvgl-for-ai/releases/download/v0.2.0/lvgl-verify-loop-0.2.0-sdk-9.4-win64.zip",
-        "sha256": "27cef3280b51788c51995ee6c372366f271961d50eb026abe296929ab5bd35cb"
-      }
+      "bundled": true
     },
     "9.1": {
       "tag": "v9.1.0",
@@ -44,11 +36,7 @@
       "description": "legacy event-semantics check",
       "sdk": true,
       "legacy": true,
-      "pack": {
-        "gitee": "https://gitee.com/liang-zequan/lvgl-for-ai/releases/download/v0.2.0/lvgl-verify-loop-0.2.0-legacy-9.1-win64.zip",
-        "github": "https://github.com/ZEQUAN-LIANG/lvgl-for-ai/releases/download/v0.2.0/lvgl-verify-loop-0.2.0-legacy-9.1-win64.zip",
-        "sha256": "1091067aa556c63288595374b3e9b2f6f75395cacfedcfa6e94c90784e695497"
-      }
+      "bundled": true
     },
     "8.4": {
       "tag": "v8.4.0",
@@ -56,11 +44,7 @@
       "description": "legacy event-semantics check",
       "sdk": true,
       "legacy": true,
-      "pack": {
-        "gitee": "https://gitee.com/liang-zequan/lvgl-for-ai/releases/download/v0.2.0/lvgl-verify-loop-0.2.0-legacy-8.4-win64.zip",
-        "github": "https://github.com/ZEQUAN-LIANG/lvgl-for-ai/releases/download/v0.2.0/lvgl-verify-loop-0.2.0-legacy-8.4-win64.zip",
-        "sha256": "e01f2c86fb104ca002a8cf683d757e003cd81b4fc5b17648305ddc208372e972"
-      }
+      "bundled": true
     },
     "8.3": {
       "tag": "v8.3.11",
@@ -68,11 +52,7 @@
       "description": "legacy event-semantics check",
       "sdk": true,
       "legacy": true,
-      "pack": {
-        "gitee": "https://gitee.com/liang-zequan/lvgl-for-ai/releases/download/v0.2.0/lvgl-verify-loop-0.2.0-legacy-8.3-win64.zip",
-        "github": "https://github.com/ZEQUAN-LIANG/lvgl-for-ai/releases/download/v0.2.0/lvgl-verify-loop-0.2.0-legacy-8.3-win64.zip",
-        "sha256": "2b630833e2cafba8dba9061fb2e0bfd91c2e3e3e094bc2a79cf8431492508c61"
-      }
+      "bundled": true
     }
   }
 }

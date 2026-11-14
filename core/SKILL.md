@@ -128,50 +128,41 @@ frame_diffs；`--no-build` 不重新编译。`status=ok` 只表示会话正常�
 - 设备应用按 LVGL **9.4** 基线编写；设备对齐用 `--lvgl 9.4`。
 - 导出只做兼容性检查并拒绝 9.5/9.6-only API，不自动改写源码。
 
-## 版本安装
+## 版本
 
-core 包只带 `sdk/9.6` 和 9.6 engine；其他版本是同一 Release 里的预编译 pack。
-第一次运行缺失版本时会询问是否下载；`--yes` 跳过询问，`--offline` 禁止联网：
+默认只发布两个完整包，里面都带齐六个版本：
+
+- `lvgl-verify-loop-<version>-full-win64.zip`：core、intro、viewer、Python 3.11，
+  以及 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3 的 SDK 与 engine。
+- `lvgl-verify-loop-<version>-full-sifli-win64.zip`：上面的完整包再加上自研 SiFli
+  导出/上位机层和 `sift_watch` 源码/示例。
+
+不需要安装其他版本，也没有下载步骤：
 
 ```bat
 bin\lvgl.cmd run --lvgl 9.4 --scenario user\scenarios\intro.json --json
-bin\lvgl.cmd run --lvgl 9.4 --yes --scenario ... --json
-bin\lvgl.cmd run --lvgl 9.4 --offline --scenario ... --json
+bin\lvgl.cmd run --lvgl 8.3 --scenario smoke\8.3\legacy_smoke.json --json
 ```
 
-也可以显式安装：
-
-```bat
-python -I core\tools\install_version.py --list
-python -I core\tools\install_version.py --lvgl 9.4 --mode pack
-python -I core\tools\install_version.py --lvgl 9.4 --mode source
-```
-
-- **pack 模式**：从 `versions.json` 下载并校验 sha256，解包 `sdk/<version>`、
-  `build/lvgl_<token>/lvgl_engine` 和 legacy 的 `smoke/`；不需要 CMake/Ninja，
-  修改用户 C 代码仍需要 GCC。
-- **源码模式**：下载 `lvgl-src/<version>` 与 `third_party/`，导出 SDK 后用
-  CMake/Ninja/GCC 构建 engine。
-- pack 的 `pack.json` 记录 `core_version`；版本不匹配会明确报错。
-- 场景可选 `"lvgl": "9.4"`；优先级是 `--lvgl` > 场景 `lvgl` >
-  `LVGL_AI_LVGL_VERSION` > 默认 9.6。
+`versions.json` 只记录版本与 `bundled` 状态。场景可选 `"lvgl": "9.4"`；优先级是
+`--lvgl` > 场景 `lvgl` > `LVGL_AI_LVGL_VERSION` > 默认 9.6。`install_version.py`
+仍可用于自定义源码安装，但默认包不需要它。
 
 ## SiFli 工作流
 
-SiFli 链路在单独的 **`sifli-tools`** 资产里，不塞进 core。把 core zip 和
-`sifli-tools` zip 解压到同一父目录即可合并；资产内默认 demo 是 `sift_watch`：
+SiFli 只在 `full-sifli` 包里，默认 demo 是 `sift_watch`：
 
 ```bat
 bin\sifli.cmd
-python -I chip-adapt\sifli\export.py sift_watch --dry-run --force
-python -I chip-adapt\sifli\host\cli.py build --app sift_watch --actor ai --json
-python -I chip-adapt\sifli\host\cli.py flash --app sift_watch --actor ai --json
+runtime\python\python.exe -I chip-adapt\sifli\export.py sift_watch --dry-run --force
+runtime\python\python.exe -I chip-adapt\sifli\host\cli.py build --app sift_watch --actor ai --json
+runtime\python\python.exe -I chip-adapt\sifli\host\cli.py flash --app sift_watch --actor ai --json
 ```
 
-资产包含自研 `chip-adapt/sifli/`、`SiFli-Host.exe`、pyserial/xterm、
-`user/app/sift_watch/` 源码和导出示例；**不包含** SiFli SDK、ARM 工具链、sftool、
-驱动或固件。构建/烧录前按 `chip-adapt/vendor/README.md` 安装官方依赖；没有开发板
-时只能停在导出 dry-run 或 fake serial 测试，不得声称设备已验证。
+包含自研 `chip-adapt/sifli/`、`SiFli-Host.exe`、pyserial/xterm、
+`user/app/sift_watch/` 和导出示例；**不包含** SiFli SDK、ARM 工具链、sftool、驱动
+或固件。构建/烧录前按 `chip-adapt/vendor/README.md` 安装官方依赖；没有开发板时
+只能停在导出 dry-run 或 fake serial 测试，不得声称设备已验证。
 
 ## 硬规则
 

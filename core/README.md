@@ -21,10 +21,9 @@
 - `tools/fetch_png.py`：下载 pin 的 zlib / libpng 源码到 `third_party/`，供 engine 编码 PNG。
 - `tools/new_app.py`：生成应用变体的源文件与场景，并注册到 `user/app/app.c`。
 - `tools/export_sdk.py`：从 `lvgl-src/<version>` 导出宿主预编译 SDK 到 `sdk/<version>`。
-- `tools/install_version.py`：安装其他 LVGL 版本（源码或预编译版本包），读取根目录 `versions.json`；含首次下载确认。
-- `tools/pack.py`：生成一个版本的预编译 pack（SDK + engine + `pack.json` + legacy smoke）。
-- `tools/release.py`：生成可分发的 skill zip、`.sha256` 与 release manifest。
-- `tools/release_all.py`：构建 0.2.0 的 core、五个 pack 与 `sifli-tools` 资产。
+- `tools/install_version.py`：安装其他 LVGL 版本（源码或自定义版本包），读取根目录 `versions.json`。
+- `tools/release.py`：生成单个可分发 skill zip、`.sha256` 与 release manifest。
+- `tools/release_all.py`：构建默认的两个完整包：`full` 与 `full-sifli`。
 - `tools/sync_github.py`：把 Gitee（`origin`）的分支与标签强制镜像到 GitHub（`github`）。
 - `tools/lvgl.py`：统一入口，分发 `run` / `report` / `serve` / `assets`。
 - `tools/contract_snapshot.py`：记录/对比六类外部契约快照，用于重构行为冻结；用法见
@@ -145,7 +144,7 @@ python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --source auto
 - 首次构建会编译整个 LVGL，通常需要数分钟；工具对 configure / build 每个阶段设置 600 秒硬超时。
 - CLI 成功退出码为 `0`，stdout 最后一行是会话目录；会话 `manifest.json` 的 `status` 应为 `ok`。
 - 网页端默认地址 `http://127.0.0.1:8765/`；端口冲突时用 `--port 0` 或 `--port 8766`，Ctrl+C 停止。
-- Windows 无控制台启动可双击仓库根的 `LVGL-AI-Viewer.exe`（需要 `pythonw.exe` 或 `pyw.exe` 在 PATH 中；用 `python -I core/tools/launchers/build.py` 重新生成）。
+- Windows 无控制台启动可双击仓库根的 `LVGL-AI-Viewer.exe`（需要 `pythonw.exe` 或 `pyw.exe` 在 PATH 中；该 exe 不随 Git 提交，用 `python -I core/tools/launchers/build.py` 生成）。
 
 ## 准备 LVGL 源码
 

@@ -111,7 +111,12 @@ python -I core/web.py --open
 
 成功时退出码为 `0`，stdout 最后一行是会话目录，`manifest.json` 的 `status` 为 `ok`。默认 `--source auto` 会先试 GitHub codeload，再试 Gitee 镜像；Gitee 的 LVGL 镜像可能返回 HTML/400，失败时请使用默认值或预编译版本包。
 
-预编译 0.2.0 发布包：从同一个 Release 下载 `lvgl-verify-loop-0.2.0-core-win64.zip` 和可选的版本 pack。解压 core 后双击 `LVGL-AI-Viewer.exe`，不需要 Python、GCC 或 CMake。运行 `bin\lvgl.cmd run --lvgl 9.4 ...` 会先询问一次是否下载 9.4 pack；`--yes` 跳过询问，`--offline` 禁止下载。`sifli-tools` 是独立资产，顶层同样是 `lvgl-verify-loop/`；把两个 zip 解压到同一个父目录即可合并。
+预编译 0.2.0 发布包只有两个：
+
+- `lvgl-verify-loop-0.2.0-full-win64.zip`：六个 LVGL 版本、内嵌 Python 3.11 和 viewer。
+- `lvgl-verify-loop-0.2.0-full-sifli-win64.zip`：上面的完整包再加 SiFli 工具。
+
+解压后双击 `LVGL-AI-Viewer.exe`，不需要 Python、GCC 或 CMake；所有支持版本都已经在包里，没有下载步骤。
 
 要让 AI 接手，把这个仓库交给 Claude Code、Cursor 等 harness，它会读取 `core/SKILL.md` 与 `CLAUDE.md`，从 `user/app/**/*.c` 开始写。Claude Code 里的 skill 名是 `lvgl-verify-loop`。
 
@@ -146,23 +151,21 @@ AI 的结论必须指向这些文件。`status: ok` 表示会话正常结束；�
 ## 版本与真机
 
 - 宿主默认 LVGL 9.6，用于日常预览与取证；发布包里的 `intro` 应用按 9.4+ 编写。
-- 0.2.0 发布一个 core 包，以及 9.5 / 9.4 / 9.1 / 8.4 / 8.3 的预编译 pack。core 包内置
-  Python 3.11 和 9.6 engine；缺失版本首次运行会先确认再下载。
+- 0.2.0 只发布两个 zip：`full` 带全部六个 LVGL 版本和 engine；`full-sifli` 再加
+  SiFli 工具。两者都内置 Python 3.11，没有逐版本下载步骤。
 - 设备应用按 LVGL 9.4 基线编写；导出只做兼容性检查，不自动改写源码。
-- 查看或安装版本：
+- 查看版本，或只在自定义构建时使用源码安装：
 
   ```bash
   python -I core/tools/install_version.py --list
-  python -I core/tools/install_version.py --lvgl 9.4 --mode pack
   python -I core/tools/install_version.py --lvgl 9.4 --mode source
   ```
 
-  pack 模式校验 sha256，不需要 CMake/Ninja；源码模式需要 CMake/Ninja/GCC。
-  场景可选 `"lvgl": "9.4"`；`--lvgl` 优先于场景，场景优先于 `LVGL_AI_LVGL_VERSION`。
-  `--offline` 禁止下载；`--yes` 跳过确认。
-- SiFli 在单独的 `sifli-tools` 资产里：包含自研导出/上位机层、`SiFli-Host.exe`、
-  pyserial/xterm 和 `sift_watch` 导出示例；不包含 SiFli SDK、ARM 工具链、sftool 或
-  固件。SDK、工具链与 sftool 安装见 `chip-adapt/vendor/README.md`。
+  源码模式需要 CMake/Ninja/GCC。场景可选 `"lvgl": "9.4"`；`--lvgl` 优先于场景，
+  场景优先于 `LVGL_AI_LVGL_VERSION`。
+- SiFli 只在 `full-sifli` 里：自研导出/上位机层、`SiFli-Host.exe`、pyserial/xterm、
+  `sift_watch` 源码和导出示例；不包含 SiFli SDK、ARM 工具链、sftool 或固件。
+  SDK、工具链与 sftool 安装见 `chip-adapt/vendor/README.md`。
 
 ## 环境依赖
 

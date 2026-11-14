@@ -111,7 +111,12 @@ python -I core/web.py --open
 
 On success the exit code is `0`, the last stdout line is the session directory, and `manifest.json` has `status: ok`. The default `--source auto` tries GitHub codeload first and the Gitee mirror second; the Gitee LVGL mirror can return HTML/400, so use the default or a version pack when that happens.
 
-For the prebuilt 0.2.0 release, download `lvgl-verify-loop-0.2.0-core-win64.zip` and the optional version packs from the same Release page. Extract the core zip and double-click `LVGL-AI-Viewer.exe`; no Python, GCC or CMake is required. Running `bin\lvgl.cmd run --lvgl 9.4 ...` prompts once before downloading the 9.4 pack; `--yes` skips the prompt and `--offline` forbids it. `sifli-tools` is a separate asset with the same `lvgl-verify-loop/` top-level folder: extract both zips into the same parent to merge them.
+For the prebuilt 0.2.0 release, download one of two bundles:
+
+- `lvgl-verify-loop-0.2.0-full-win64.zip`: all six LVGL versions, embedded Python 3.11 and the viewer.
+- `lvgl-verify-loop-0.2.0-full-sifli-win64.zip`: the same full bundle plus the SiFli tools.
+
+Extract the zip and double-click `LVGL-AI-Viewer.exe`; no Python, GCC or CMake is required. There is no version download step: every supported version is already in the bundle.
 
 To hand the work to AI, give this repository to a harness such as Claude Code or Cursor; it reads `core/SKILL.md` and `CLAUDE.md` and starts writing from `user/app/**/*.c`. The Claude Code skill is named `lvgl-verify-loop`.
 
@@ -146,23 +151,21 @@ AI conclusions must point at these files. `status: ok` means the session ended n
 ## Versions and real hardware
 
 - Host default is LVGL 9.6, for daily preview and evidence collection; the package's `intro` app targets 9.4+.
-- The 0.2.0 release publishes one core zip plus precompiled packs for 9.5 / 9.4 / 9.1 / 8.4 / 8.3. The core zip contains Python 3.11 and the 9.6 engine; missing versions are downloaded on first use after a confirmation.
+- The 0.2.0 release publishes exactly two zips: `full` contains all six LVGL versions and their engines; `full-sifli` adds the SiFli tools. Both include Python 3.11; there is no per-version download step.
 - Device apps are written against the LVGL 9.4 baseline; export only checks compatibility and never rewrites sources.
-- Install or inspect versions with:
+- Inspect versions or use source installation only for a custom build:
 
   ```bash
   python -I core/tools/install_version.py --list
-  python -I core/tools/install_version.py --lvgl 9.4 --mode pack
   python -I core/tools/install_version.py --lvgl 9.4 --mode source
   ```
 
-  Pack mode verifies sha256 and needs no CMake/Ninja; source mode needs CMake/Ninja/GCC.
-  A scenario may set `"lvgl": "9.4"`; `--lvgl` wins over the scenario, then
-  `LVGL_AI_LVGL_VERSION`. `--offline` forbids downloads; `--yes` skips the prompt.
-- SiFli lives in a separate `sifli-tools` asset. It includes the self-developed
-  export/host layer, `SiFli-Host.exe`, pyserial/xterm and a `sift_watch` export
-  example; it does not include the SiFli SDK, ARM toolchain, sftool or firmware.
-  SDK, toolchain and sftool installation are in `chip-adapt/vendor/README.md`.
+  Source mode needs CMake/Ninja/GCC. A scenario may set `"lvgl": "9.4"`;
+  `--lvgl` wins over the scenario, then `LVGL_AI_LVGL_VERSION`.
+- SiFli is only in `full-sifli`: the self-developed export/host layer,
+  `SiFli-Host.exe`, pyserial/xterm, `sift_watch` source and an exported example.
+  It does not include the SiFli SDK, ARM toolchain, sftool or firmware. SDK,
+  toolchain and sftool installation are in `chip-adapt/vendor/README.md`.
 
 ## Requirements
 
