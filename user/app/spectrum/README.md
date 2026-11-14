@@ -66,10 +66,12 @@ bin\lvgl.cmd assets font --app spectrum --font C:\Windows\Fonts\consola.ttf ^
   --size 7 --bpp 4 --range 0x20-0x7E --name spectrum_mono_7
 ```
 
-封面层可用已提交的 `covers_src/*.png` 直接转换：
+封面层来自已提交的 `covers_src/` PNG；`spectrum_covers.h` 是旧生成器产出的合并头，已冻结，
+不再由内置转换器重建。`assets.json` 的 `spectrum_covers.source_hashes` 记录全部 63 个源文件
+的 SHA256，改动 PNG 时需要同步更新。单层预览可用内置转换器生成独立头：
 
 ```bat
-bin\lvgl.cmd assets image --app spectrum --input user\app\spectrum\covers_src\cover_01.png --cf ARGB8888
+bin\lvgl.cmd assets image --app spectrum --input user\app\spectrum\covers_src\cover_t0_p0_base.png --cf ARGB8888
 ```
 
 图标与光晕是程序化绘制的，当前以提交的 `spectrum_icons.h` / `spectrum_glow.h` 为准；
