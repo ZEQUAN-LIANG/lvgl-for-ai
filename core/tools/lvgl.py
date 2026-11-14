@@ -20,6 +20,8 @@ TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
+from lvgl_ai import paths  # noqa: E402
+
 COMMANDS = {
     "run": ("cli", "build and play a scenario, then print the session summary"),
     "report": ("session_report", "read a finished session's evidence"),
@@ -49,7 +51,7 @@ def _usage() -> str:
 
 def _packaged_bundle() -> bool:
     """Return true when this is the release package with embedded Python."""
-    version_path = Path(__file__).resolve().parent.parent.parent / "VERSION.json"
+    version_path = paths.metadata_file("VERSION.json")
     try:
         payload = json.loads(version_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):

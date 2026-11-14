@@ -48,6 +48,48 @@ def _string_list(value: Any, field: str) -> list[str]:
     return list(value)
 
 
+def _relative_entry(value: str, field: str) -> Path:
+    candidate = Path(value)
+    if candidate.is_absolute() or ".." in candidate.parts:
+        raise BuildError(f"host SDK {field} must be relative: {value!r}")
+    return candidate
+
+
+def _basename(value: str, field: str) -> str:
+    candidate = Path(value)
+    if (
+        candidate.is_absolute()
+        or len(candidate.parts) != 1
+        or value in ("", ".", "..")
+    ):
+        raise BuildError(f"host SDK {field} must be a file name: {value!r}")
+    return value
+
+
+def _validate_sdk_lib(
+    lib_dir: Path, name: str, hashes: dict[str, Any]
+) -> None:
+    _basename(name, "libs")
+    path = lib_dir / name
+    if not path.is_file():
+        raise BuildError(f"host SDK library not found: {path}")
+    expected = hashes.get(name)
+    if not isinstance(expected, str):
+        raise BuildError(f"host SDK manifest has no sha256 for {name}")
+    actual = sha256_file(path)
+    if actual != expected:
+        raise BuildError(
+            f"host SDK hash mismatch for {name}: expected {expected}, "
+            f"found {actual}"
+        )
+
+
+def _validate_runtime_dll(lib_dir: Path, name: str) -> None:
+    _basename(name, "runtime_dlls")
+    if not (lib_dir / name).is_file():
+        raise BuildError(f"host SDK runtime DLL not found: {lib_dir / name}")
+
+
 def _version_tuple(text: str) -> tuple[int, ...]:
     numbers = tuple(int(part) for part in re.findall(r"\d+", text)[:3])
     return numbers + (0,) * (3 - len(numbers))
@@ -73,11 +115,20 @@ class HostSdk:
         manifest: dict[str, Any],
         manifest_sha256: str,
         runtime_dlls: list[str] | None = None,
+        *,
+        shared_root: Path | None = None,
+        shared_libs: list[str] | None = None,
+        shared_include_dirs: list[str] | None = None,
+        shared_runtime_dlls: list[str] | None = None,
     ) -> None:
         self.root = root
         self.manifest = manifest
         self.manifest_sha256 = manifest_sha256
         self.runtime_dlls = list(runtime_dlls or [])
+        self.shared_root = shared_root
+        self.shared_libs = list(shared_libs or [])
+        self.shared_include_dirs = list(shared_include_dirs or [])
+        self.shared_runtime_dlls = list(shared_runtime_dlls or [])
 
     @classmethod
     def load(
@@ -127,49 +178,71 @@ class HostSdk:
             if "runtime_dlls" in manifest
             else []
         )
+        shared_root_name = manifest.get("shared_root")
+        shared_root: Path | None = None
+        if shared_root_name is not None:
+            if not isinstance(shared_root_name, str):
+                raise BuildError(
+                    f"host SDK shared_root must be a string: {manifest_path}"
+                )
+            shared_root = (root.parent / _basename(
+                shared_root_name, "shared_root"
+            )).resolve()
+            if not shared_root.is_dir():
+                raise BuildError(
+                    f"host SDK shared root not found: {shared_root}"
+                )
+        shared_include_dirs = _string_list(
+            manifest.get("shared_include_dirs", []), "shared_include_dirs"
+        )
+        shared_libs = _string_list(
+            manifest.get("shared_libs", []), "shared_libs"
+        )
+        shared_runtime_dlls = _string_list(
+            manifest.get("shared_runtime_dlls", []), "shared_runtime_dlls"
+        )
+        if (
+            shared_include_dirs or shared_libs or shared_runtime_dlls
+        ) and shared_root is None:
+            raise BuildError(
+                "host SDK manifest uses shared_* fields without shared_root: "
+                f"{manifest_path}"
+            )
         hashes = manifest.get("sha256")
         if not isinstance(hashes, dict):
             raise BuildError(f"host SDK manifest is missing sha256: {manifest_path}")
 
+        all_libs = [*libs, *shared_libs]
         for name in REQUIRED_LIBS:
-            if name not in libs:
+            if name not in all_libs:
                 raise BuildError(
                     f"host SDK manifest is missing required library {name}: "
                     f"{manifest_path}"
                 )
-        if len(libs) != len(set(libs)):
+        if len(all_libs) != len(set(all_libs)):
             raise BuildError(f"host SDK manifest lists a library twice: {manifest_path}")
         for rel in include_dirs:
-            candidate = Path(rel)
-            if candidate.is_absolute() or ".." in candidate.parts:
-                raise BuildError(
-                    f"host SDK include_dirs must be relative to the SDK root: {rel!r}"
-                )
+            candidate = _relative_entry(rel, "include_dirs")
             if not (root / candidate).is_dir():
                 raise BuildError(f"host SDK include directory not found: {root / candidate}")
+        if shared_root is not None:
+            for rel in shared_include_dirs:
+                candidate = _relative_entry(rel, "shared_include_dirs")
+                if not (shared_root / candidate).is_dir():
+                    raise BuildError(
+                        "host SDK shared include directory not found: "
+                        f"{shared_root / candidate}"
+                    )
         for name in libs:
-            path = root / "lib" / name
-            if not path.is_file():
-                raise BuildError(f"host SDK library not found: {path}")
-            expected = hashes.get(name)
-            if not isinstance(expected, str):
-                raise BuildError(f"host SDK manifest has no sha256 for {name}")
-            actual = sha256_file(path)
-            if actual != expected:
-                raise BuildError(
-                    f"host SDK hash mismatch for {name}: expected {expected}, "
-                    f"found {actual}"
-                )
+            _validate_sdk_lib(root / "lib", name, hashes)
+        if shared_root is not None:
+            for name in shared_libs:
+                _validate_sdk_lib(shared_root / "lib", name, hashes)
         for rel in runtime_dlls:
-            candidate = Path(rel)
-            if candidate.is_absolute() or ".." in candidate.parts:
-                raise BuildError(
-                    f"host SDK runtime_dlls must be relative to lib/: {rel!r}"
-                )
-            if not (root / "lib" / candidate).is_file():
-                raise BuildError(
-                    f"host SDK runtime DLL not found: {root / 'lib' / candidate}"
-                )
+            _validate_runtime_dll(root / "lib", rel)
+        if shared_root is not None:
+            for rel in shared_runtime_dlls:
+                _validate_runtime_dll(shared_root / "lib", rel)
         lv_conf_hash = manifest.get("lv_conf_sha256")
         if isinstance(lv_conf_hash, str):
             lv_conf = root / "lv_conf.h"
@@ -179,7 +252,16 @@ class HostSdk:
                 raise BuildError(
                     f"host SDK lv_conf.h hash mismatch: {lv_conf}"
                 )
-        return cls(root, manifest, sha256_bytes(data), runtime_dlls)
+        return cls(
+            root,
+            manifest,
+            sha256_bytes(data),
+            runtime_dlls,
+            shared_root=shared_root,
+            shared_libs=shared_libs,
+            shared_include_dirs=shared_include_dirs,
+            shared_runtime_dlls=shared_runtime_dlls,
+        )
 
     @property
     def lvgl_version(self) -> str:
@@ -211,15 +293,31 @@ class HostSdk:
 
     @property
     def lib_paths(self) -> list[Path]:
-        return [self.root / "lib" / name for name in self.lib_names]
+        paths = [self.root / "lib" / name for name in self.lib_names]
+        if self.shared_root is not None:
+            paths.extend(
+                self.shared_root / "lib" / name for name in self.shared_libs
+            )
+        return paths
 
     @property
     def runtime_dll_paths(self) -> list[Path]:
-        return [self.root / "lib" / name for name in self.runtime_dlls]
+        paths = [self.root / "lib" / name for name in self.runtime_dlls]
+        if self.shared_root is not None:
+            paths.extend(
+                self.shared_root / "lib" / name
+                for name in self.shared_runtime_dlls
+            )
+        return paths
 
     @property
     def include_paths(self) -> list[Path]:
-        return [self.root / rel for rel in self.include_dirs]
+        paths = [self.root / rel for rel in self.include_dirs]
+        if self.shared_root is not None:
+            paths.extend(
+                self.shared_root / rel for rel in self.shared_include_dirs
+            )
+        return paths
 
 
 def _bundled_compiler() -> Path:
@@ -364,6 +462,8 @@ class PrebuiltBuild:
             str(self.user_app_dir),
             str(self.engine_dir),
         }
+        if self.sdk.shared_root is not None:
+            roots.add(str(self.sdk.shared_root))
         return [f"-ffile-prefix-map={root}=." for root in sorted(roots)]
 
     def _step(self, source: Path, *, role: str) -> CompileStep:

@@ -375,14 +375,54 @@ class Runtime:
         # to the manifest status instead of reporting "ok".
         self._failure: BaseException | None = None
 
-    def __getattr__(self, name: str) -> Any:
-        if name in _SESSION_OPTIONS:
-            store = self.__dict__.get("_store")
-            if store is not None:
-                return getattr(store, name)
-        raise AttributeError(
-            f"{type(self).__name__!r} object has no attribute {name!r}"
-        )
+    # ---- session options (owned by SessionStore) -----------------------
+    #
+    # These used to be forwarded by ``__getattr__``.  Explicit properties keep
+    # the origin of every option visible to readers and static analysis.
+
+    @property
+    def app(self) -> str | None:
+        return self._store.app
+
+    @property
+    def build(self) -> bool:
+        return self._store.build
+
+    @property
+    def record(self) -> bool:
+        return self._store.record
+
+    @property
+    def live_frame(self) -> bool:
+        return self._store.live_frame
+
+    @property
+    def record_changed_only(self) -> bool:
+        return self._store.record_changed_only
+
+    @property
+    def mode(self) -> str:
+        return self._store.mode
+
+    @property
+    def lvgl_src(self) -> Path | None:
+        return self._store.lvgl_src
+
+    @property
+    def sessions_root(self) -> Path:
+        return self._store.sessions_root
+
+    @property
+    def max_log_bytes(self) -> int:
+        return self._store.max_log_bytes
+
+    @property
+    def session_retention(self) -> int | None:
+        return self._store.session_retention
+
+    @property
+    def ready(self) -> dict[str, Any] | None:
+        return self._store.ready
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name in _SESSION_OPTIONS:
@@ -744,6 +784,13 @@ class Runtime:
         env = os.environ.copy()
         if self.app is not None:
             env["LVGL_AI_DEMO"] = self.app
+        # A multi-version release stores the FreeType DLL once under
+        # ``sdk/common/lib`` instead of next to every engine.  Windows finds
+        # it through PATH for ``--no-build`` runs; rebuilt engines also get a
+        # local copy from ``install_runtime_dlls``.
+        shared_lib = paths.shared_sdk_lib_dir()
+        if shared_lib is not None:
+            env["PATH"] = str(shared_lib) + os.pathsep + env.get("PATH", "")
         return env
 
     def _command(

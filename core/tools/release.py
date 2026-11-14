@@ -5,9 +5,11 @@ One command produces the package directory, zip, ``.sha256`` and release
 manifest.  The unpacked skill directory stays under the output directory
 (``release/lvgl-verify-loop/``) next to the zip, so it can be inspected or run
 without extracting.  The default package is host-only: tool layer, ``user/``,
-the prebuilt host SDK, a prebuilt engine, ``bin/lvgl.cmd``, ``SKILL.md`` and
-``CONTEXT.md``.  LVGL source, third-party source, sessions, tests and chip
-adapter trees never enter the package.
+the prebuilt host SDK, a prebuilt engine, ``bin/lvgl.cmd`` and ``SKILL.md``.
+The skill root contains only ``SKILL.md``: metadata lives in ``meta/``,
+licenses in ``licenses/`` and documentation assets in ``docs/``.  LVGL source,
+third-party source, sessions, tests and chip adapter trees never enter the
+package.
 
 Smoke runs inside the staging directory from an unrelated working directory
 before the zip is written: ``--no-build``, a prebuilt build, and the web
@@ -75,8 +77,12 @@ CORE_RELEASE_EXCLUDE_FILES = (
     "tools/release_user_app_README.md",
 )
 RELEASE_VIEWER = "LVGL-AI-Viewer.exe"
+RELEASE_VIEWER_PATH = Path("bin") / RELEASE_VIEWER
 RELEASE_DEMO_GIF = "intro-demo.gif"
 RELEASE_DEMO_SOURCE = Path("docs") / "img" / RELEASE_DEMO_GIF
+RELEASE_META_DIR = Path("meta")
+RELEASE_DOCS_DIR = Path("docs")
+RELEASE_LICENSE = Path("licenses") / "LICENSE"
 FORBIDDEN_TOP_LEVEL = {
     ".git", "chip-adapt", "release", "lvgl-src", "patches", "sessions",
     "tests", "third_party", ".scratch",
@@ -207,7 +213,9 @@ def write_version_file(
         "git_commit": git_commit,
         "adapters": list(adapters or []),
     }
-    (package / "VERSION.json").write_text(
+    version_path = package / RELEASE_META_DIR / "VERSION.json"
+    version_path.parent.mkdir(parents=True, exist_ok=True)
+    version_path.write_text(
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
@@ -221,6 +229,11 @@ def check_hygiene(package: Path, repo_root: Path) -> None:
         if child.name in FORBIDDEN_TOP_LEVEL:
             raise BuildError(
                 f"release hygiene: forbidden top-level entry {child.name!r}"
+            )
+        if child.is_file() and child.name != "SKILL.md":
+            raise BuildError(
+                "release hygiene: the package root may only contain SKILL.md, "
+                f"found {child.name!r}"
             )
     for path in package.rglob("*"):
         if path.name in FORBIDDEN_ANY_LEVEL:
@@ -238,11 +251,12 @@ def check_hygiene(package: Path, repo_root: Path) -> None:
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        runtime_dlls = manifest.get("runtime_dlls", [])
-        if isinstance(runtime_dlls, list):
-            allowed_build_files.update(
-                name for name in runtime_dlls if isinstance(name, str)
-            )
+        for field in ("runtime_dlls", "shared_runtime_dlls"):
+            runtime_dlls = manifest.get(field, [])
+            if isinstance(runtime_dlls, list):
+                allowed_build_files.update(
+                    name for name in runtime_dlls if isinstance(name, str)
+                )
     if build_root.is_dir():
         for path in build_root.rglob("*"):
             if path.is_file() and path.name not in allowed_build_files:
@@ -326,17 +340,20 @@ def stage_package(
 ) -> dict[str, Any]:
     """Copy the allowlisted tree and build the package's engine."""
     package.mkdir(parents=True)
-    for name in ("CONTEXT.md", "LICENSE"):
-        source = repo_root / name
-        if source.is_file():
-            shutil.copy2(source, package / name)
     skill_source = repo_root / "core" / "SKILL.md"
     if skill_source.is_file():
         shutil.copy2(skill_source, package / "SKILL.md")
+    license_source = repo_root / "LICENSE"
+    if license_source.is_file():
+        license_target = package / RELEASE_LICENSE
+        license_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(license_source, license_target)
     versions_source = repo_root / "versions.json"
     if not versions_source.is_file():
         raise BuildError("release: versions.json is missing")
-    shutil.copy2(versions_source, package / "versions.json")
+    versions_target = package / RELEASE_META_DIR / "versions.json"
+    versions_target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(versions_source, versions_target)
     copy_tree(
         repo_root / "core", package / "core",
         exclude_dirs=CORE_EXCLUDE_DIRS,
@@ -356,13 +373,15 @@ def stage_package(
         python_source = "bundled"
     if not (repo_root / "bin" / "lvgl.cmd").is_file():
         raise BuildError("release: bin/lvgl.cmd is missing")
-    viewer = repo_root / RELEASE_VIEWER
+    viewer = repo_root / RELEASE_VIEWER_PATH
     if not viewer.is_file():
         raise BuildError(
-            f"release: {RELEASE_VIEWER} is missing; "
+            f"release: {RELEASE_VIEWER_PATH.as_posix()} is missing; "
             "run core/tools/launchers/build.py first"
         )
-    shutil.copy2(viewer, package / RELEASE_VIEWER)
+    viewer_target = package / RELEASE_VIEWER_PATH
+    viewer_target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(viewer, viewer_target)
     demo_gif = repo_root / RELEASE_DEMO_SOURCE
     if not demo_gif.is_file():
         demo_gif = repo_root / RELEASE_DEMO_GIF
@@ -371,7 +390,9 @@ def stage_package(
             f"release: {RELEASE_DEMO_SOURCE.as_posix()} or "
             f"{RELEASE_DEMO_GIF} is missing; record user/scenarios/intro.json first"
         )
-    shutil.copy2(demo_gif, package / RELEASE_DEMO_GIF)
+    docs_target = package / RELEASE_DOCS_DIR
+    docs_target.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(demo_gif, docs_target / RELEASE_DEMO_GIF)
     sdk_target = package / "sdk" / lvgl_version
     shutil.copytree(sdk_dir, sdk_target)
 
@@ -467,6 +488,127 @@ def clean_build_dir(package: Path, lvgl_version: str) -> Path:
     # Other version directories in build/ are kept: a multi-version package
     # uses one engine per version and must not delete its siblings.
     return engine
+
+
+def _prune_empty_dirs(root: Path) -> None:
+    if not root.is_dir():
+        return
+    for path in sorted(root.rglob("*"), key=lambda item: len(item.parts), reverse=True):
+        if path.is_dir() and not any(path.iterdir()):
+            path.rmdir()
+
+
+def share_sdk_payload(package: Path, versions: Iterable[str]) -> dict[str, Any]:
+    """Move SDK files that are identical in every version to ``sdk/common``.
+
+    The shipped package keeps one FreeType DLL and one copy of the shared
+    zlib/libpng/FreeType headers instead of six copies.  Each version manifest
+    gains ``shared_root`` plus the ``shared_*`` lists consumed by
+    :class:`lvgl_ai.control.prebuilt.HostSdk`.
+    """
+    versions = list(versions)
+    summary: dict[str, Any] = {
+        "versions": versions,
+        "shared_files": [],
+        "saved_bytes": 0,
+    }
+    if len(versions) < 2:
+        return summary
+    sdk_root = package / "sdk"
+    files_by_version: dict[str, dict[str, Path]] = {}
+    for version in versions:
+        root = sdk_root / version
+        if not (root / "manifest.json").is_file():
+            raise BuildError(f"release: SDK manifest is missing for {version}")
+        files: dict[str, Path] = {}
+        for sub in ("include", "lib"):
+            base = root / sub
+            if not base.is_dir():
+                continue
+            for path in base.rglob("*"):
+                if path.is_file():
+                    files[path.relative_to(root).as_posix()] = path
+        files_by_version[version] = files
+
+    common = sdk_root / "common"
+    shared_rels: list[str] = []
+    shared_libs: set[str] = set()
+    shared_dlls: set[str] = set()
+    shared_include = False
+    for rel in sorted(set.intersection(*(set(files) for files in files_by_version.values()))):
+        first = files_by_version[versions[0]][rel]
+        digest = sha256_file(first)
+        if any(
+            sha256_file(files_by_version[version][rel]) != digest
+            for version in versions[1:]
+        ):
+            continue
+        size = first.stat().st_size
+        target = common / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(first, target)
+        for version in versions:
+            files_by_version[version][rel].unlink()
+        shared_rels.append(rel)
+        summary["saved_bytes"] += size * (len(versions) - 1)
+        if rel.startswith("include/"):
+            shared_include = True
+        elif rel.startswith("lib/") and "/" not in rel[len("lib/"):]:
+            name = Path(rel).name
+            if name.lower().endswith(".dll"):
+                shared_dlls.add(name)
+            else:
+                shared_libs.add(name)
+
+    if not shared_rels:
+        shutil.rmtree(common, ignore_errors=True)
+        return summary
+
+    shared_lib_list = sorted(shared_libs)
+    shared_dll_list = sorted(shared_dlls)
+    for version in versions:
+        root = sdk_root / version
+        _prune_empty_dirs(root / "include")
+        _prune_empty_dirs(root / "lib")
+        manifest_path = root / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        include_dirs = [
+            rel
+            for rel in manifest.get("include_dirs", [])
+            if rel == "." or (root / rel).is_dir()
+        ]
+        manifest["include_dirs"] = include_dirs
+        manifest["libs"] = [
+            name for name in manifest.get("libs", [])
+            if name not in shared_libs
+        ]
+        manifest["runtime_dlls"] = [
+            name for name in manifest.get("runtime_dlls", [])
+            if name not in shared_dlls
+        ]
+        manifest["shared_root"] = "common"
+        if shared_include:
+            manifest["shared_include_dirs"] = ["include"]
+        if shared_lib_list:
+            manifest["shared_libs"] = shared_lib_list
+        if shared_dll_list:
+            manifest["shared_runtime_dlls"] = shared_dll_list
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    summary["shared_files"] = shared_rels
+    return summary
+
+
+def strip_build_runtime_dlls(package: Path) -> None:
+    """Delete per-engine DLL copies; they are loaded from ``sdk/common``."""
+    build_root = package / "build"
+    if not build_root.is_dir():
+        return
+    for path in build_root.rglob("*.dll"):
+        if path.is_file():
+            path.unlink()
 
 
 def _cli_command(package: Path, lvgl_version: str, *args: str) -> list[str]:

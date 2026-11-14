@@ -3,7 +3,7 @@ import sys
 import unittest
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parent.parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 

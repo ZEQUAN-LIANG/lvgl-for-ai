@@ -25,11 +25,11 @@ LAUNCHERS = (
     {
         "name": "lvgl-ai-viewer",
         "title": "LVGL AI Viewer",
-        "target": r"core\web.pyw",
-        "cwd": ".",
+        "target": r"..\core\web.pyw",
+        "cwd": r"..",
         "args": (),
-        "python": r"runtime\python\pythonw.exe",
-        "output": REPO_ROOT / "LVGL-AI-Viewer.exe",
+        "python": r"..\runtime\python\pythonw.exe",
+        "output": REPO_ROOT / "bin" / "LVGL-AI-Viewer.exe",
     },
     {
         "name": "sifli-host",

@@ -27,6 +27,7 @@
 #include "textarea_evidence/textarea_evidence.h"
 #include "sift_watch/sift_watch.h"
 #include "zombie_cannon/zombie_cannon.h"
+#include "index/index.h"
 #include "intro/intro.h"
 #endif
 
@@ -49,6 +50,7 @@ static const app_entry_t apps[] = {
     {"textarea_evidence", textarea_evidence_create},
     {"sift_watch", sift_watch_create},
     {"zombie_cannon", zombie_cannon_create},
+    {"index", index_create},
     {"intro", intro_create},
     {"asset_probe", asset_probe_create},
 };

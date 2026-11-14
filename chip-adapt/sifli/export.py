@@ -30,6 +30,9 @@ ADAPTER_SCHEMA = "lvgl-ai-chip-adapter-v1"
 EXPORT_SCHEMA = "lvgl-ai-export-v1"
 SDK_INCLUDE = '#include "lvgl_ai_sdk.h"\n'
 TEXT_SUFFIXES = {".c", ".h"}
+# Browser prototypes and source art are true sources for `core/assets.py`, not
+# firmware inputs; copying them would only bloat the exported project.
+EXCLUDED_SOURCE_DIRS = {"design", "covers_src"}
 INCOMPATIBLE_APIS = {
     "lv_obj_set_clickable": (
         "LVGL 9.6 API; use lv_obj_add_flag/lv_obj_remove_flag "
@@ -228,6 +231,8 @@ def _build_plan(
         if not path.is_file() or "__pycache__" in path.parts:
             continue
         if path.name.startswith("ccheck_tmp_") or path.suffix == ".dump":
+            continue
+        if EXCLUDED_SOURCE_DIRS & set(path.relative_to(source_dir).parts):
             continue
         relative = path.relative_to(source_dir).as_posix()
         label = f"user/app/{app}/{relative}"

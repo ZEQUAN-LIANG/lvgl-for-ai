@@ -254,6 +254,49 @@ class ManifestTest(PrebuiltCase):
             self.plan().preflight()
         self.assertIn("no C sources", str(caught.exception))
 
+    def test_shared_sdk_payload_is_resolved(self) -> None:
+        common = self.root / "sdk" / "common"
+        (common / "lib").mkdir(parents=True)
+        (common / "include").mkdir(parents=True)
+        (common / "include" / "shared.h").write_text(
+            "#define SHARED 1\n", encoding="utf-8"
+        )
+        (self.sdk_dir / "lib" / "libfreetype.dll.a").replace(
+            common / "lib" / "libfreetype.dll.a"
+        )
+        (common / "lib" / "libfreetype.dll").write_bytes(b"dll")
+        path = self.sdk_dir / "manifest.json"
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        manifest["libs"] = [
+            name for name in manifest["libs"] if name != "libfreetype.dll.a"
+        ]
+        manifest["runtime_dlls"] = []
+        manifest["shared_root"] = "common"
+        manifest["shared_libs"] = ["libfreetype.dll.a"]
+        manifest["shared_runtime_dlls"] = ["libfreetype.dll"]
+        manifest["shared_include_dirs"] = ["include"]
+        path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        sdk = prebuilt.HostSdk.load(self.sdk_dir, expected_version="9.6")
+        self.assertIn(
+            common / "lib" / "libfreetype.dll.a", sdk.lib_paths
+        )
+        self.assertIn(
+            common / "lib" / "libfreetype.dll", sdk.runtime_dll_paths
+        )
+        self.assertIn(common / "include", sdk.include_paths)
+        self.assertTrue(sdk.manifest_sha256)
+
+    def test_shared_root_cannot_escape_the_sdk_parent(self) -> None:
+        path = self.sdk_dir / "manifest.json"
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        manifest["shared_root"] = ".."
+        manifest["shared_libs"] = ["libfreetype.dll.a"]
+        path.write_text(json.dumps(manifest), encoding="utf-8")
+        with self.assertRaises(BuildError) as caught:
+            prebuilt.HostSdk.load(self.sdk_dir, expected_version="9.6")
+        self.assertIn("must be a file name", str(caught.exception))
+
 
 class CompilerResolutionTest(unittest.TestCase):
     def test_bundled_compiler_wins_over_env_and_path(self) -> None:

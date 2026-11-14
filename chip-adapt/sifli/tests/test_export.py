@@ -10,7 +10,7 @@ import zlib
 from pathlib import Path
 from unittest import mock
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parent.parent
 REPO = HERE.parents[1]
 
 _spec = importlib.util.spec_from_file_location("sifli_export", HERE / "export.py")

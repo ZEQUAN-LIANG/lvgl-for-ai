@@ -16,3 +16,4 @@ python -I core/tools/launchers/build.py
 ```
 
 `SiFli-Host.exe` 是构建产物，不要手改；图标由 `core/tools/launchers/icons.py` 生成。
+两个双击启动器都不进 Git，首次构建或清理后重新运行上面的命令即可。

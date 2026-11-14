@@ -116,7 +116,7 @@ python -I core/web.py --open
 - `lvgl-verify-loop-0.2.0-full-win64.zip`：六个 LVGL 版本、内嵌 Python 3.11 和 viewer。
 - `lvgl-verify-loop-0.2.0-full-sifli-win64.zip`：上面的完整包再加 SiFli 工具。
 
-解压后双击 `LVGL-AI-Viewer.exe`，不需要 Python、GCC 或 CMake；所有支持版本都已经在包里，没有下载步骤。
+解压后双击 `bin\LVGL-AI-Viewer.exe`，不需要 Python、GCC 或 CMake；所有支持版本都已经在包里，没有下载步骤。
 
 要让 AI 接手，把这个仓库交给 Claude Code、Cursor 等 harness，它会读取 `core/SKILL.md` 与 `CLAUDE.md`，从 `user/app/**/*.c` 开始写。Claude Code 里的 skill 名是 `lvgl-verify-loop`。
 

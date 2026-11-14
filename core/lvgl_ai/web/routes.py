@@ -232,7 +232,6 @@ def route(web: Any, method: str, path: str, query: dict[str, list[str]]) -> None
     )
 
 
-
 def _start_live(web: Any, query: dict[str, list[str]]) -> None:
     mode = (query.get("mode") or ["record"])[0]
     app = (query.get("app") or [None])[0]
@@ -243,4 +242,3 @@ def _start_live(web: Any, query: dict[str, list[str]]) -> None:
     return web._send_json(
         HTTPStatus.OK, web.app.live.start(mode, app, display=display)
     )
-

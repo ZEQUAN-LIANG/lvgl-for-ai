@@ -20,7 +20,8 @@ when it does. Pack mode installs a release asset that already contains
 unless the user later changes C code.
 
 All paths are resolved from ``--repo-root`` (default: the detected workspace
-root). ``versions.json`` at the workspace root lists the supported versions,
+root). ``versions.json`` lists the supported versions (``meta/versions.json``
+in a release package, the workspace root in a development checkout),
 the default and whether the shipped intro app supports that version.
 """
 
@@ -69,11 +70,17 @@ def _repo_root(value: Path | None) -> Path:
     return root
 
 
+def _metadata_file(repo: Path, name: str) -> Path:
+    """Resolve package metadata for both release and development layouts."""
+    meta = repo / "meta" / name
+    return meta if meta.is_file() else repo / name
+
+
 def _load_index(repo: Path) -> dict[str, Any]:
-    path = repo / INDEX_NAME
+    path = _metadata_file(repo, INDEX_NAME)
     if not path.is_file():
         raise InstallError(
-            f"{path} is missing; the package should ship versions.json"
+            f"{path} is missing; the package should ship meta/versions.json"
         )
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -119,7 +126,7 @@ def _version_entry(index: dict[str, Any], version: str) -> dict[str, Any]:
 
 
 def _core_version(repo: Path) -> str:
-    path = repo / "VERSION.json"
+    path = _metadata_file(repo, "VERSION.json")
     if not path.is_file():
         return ""
     try:

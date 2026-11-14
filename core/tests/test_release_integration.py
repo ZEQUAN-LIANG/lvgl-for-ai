@@ -134,10 +134,16 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             published = out_dir / "lvgl-verify-loop"
             self.assertEqual(Path(summary["package"]), published)
             self.assertTrue((published / "SKILL.md").is_file())
-            self.assertTrue((published / "CONTEXT.md").is_file())
-            self.assertTrue((published / "LVGL-AI-Viewer.exe").is_file())
-            self.assertTrue((published / "intro-demo.gif").is_file())
-            self.assertTrue((published / "versions.json").is_file())
+            self.assertEqual(
+                [path.name for path in published.iterdir() if path.is_file()],
+                ["SKILL.md"],
+            )
+            self.assertFalse((published / "CONTEXT.md").exists())
+            self.assertTrue((published / "bin" / "LVGL-AI-Viewer.exe").is_file())
+            self.assertTrue((published / "docs" / "intro-demo.gif").is_file())
+            self.assertTrue((published / "meta" / "versions.json").is_file())
+            self.assertTrue((published / "meta" / "VERSION.json").is_file())
+            self.assertTrue((published / "licenses" / "LICENSE").is_file())
             self.assertTrue((published / "core" / "cli.py").is_file())
             self.assertTrue(
                 (published / "build" / "lvgl_9_6" / "lvgl_engine.exe").is_file()
@@ -193,9 +199,10 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 )
             required = (
                 "lvgl-verify-loop/SKILL.md",
-                "lvgl-verify-loop/CONTEXT.md",
-                "lvgl-verify-loop/VERSION.json",
-                "lvgl-verify-loop/LVGL-AI-Viewer.exe",
+                "lvgl-verify-loop/meta/VERSION.json",
+                "lvgl-verify-loop/meta/versions.json",
+                "lvgl-verify-loop/licenses/LICENSE",
+                "lvgl-verify-loop/bin/LVGL-AI-Viewer.exe",
                 "lvgl-verify-loop/bin/lvgl.cmd",
                 "lvgl-verify-loop/runtime/python/python.exe",
                 "lvgl-verify-loop/runtime/python/pythonw.exe",
@@ -216,8 +223,7 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 "lvgl-verify-loop/sdk/9.6/lib/libfreetype.dll.a",
                 "lvgl-verify-loop/build/lvgl_9_6/lvgl_engine.exe",
                 "lvgl-verify-loop/build/lvgl_9_6/libfreetype.dll",
-                "lvgl-verify-loop/intro-demo.gif",
-                "lvgl-verify-loop/versions.json",
+                "lvgl-verify-loop/docs/intro-demo.gif",
                 "lvgl-verify-loop/user/app/intro/intro.c",
                 "lvgl-verify-loop/user/scenarios/intro.json",
             )
@@ -275,7 +281,7 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             ):
                 self.assertIn(heading, skill)
             version = json.loads(
-                (pkg / "VERSION.json").read_text(encoding="utf-8")
+                (pkg / "meta" / "VERSION.json").read_text(encoding="utf-8")
             )
             self.assertEqual(version["schema"], "lvgl-ai-version-v1")
             self.assertEqual(version["lvgl"]["host_sdk"], ["9.6"])

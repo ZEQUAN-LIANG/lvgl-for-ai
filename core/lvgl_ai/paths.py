@@ -49,6 +49,33 @@ DEFAULT_LVGL_VERSION = "9.6"
 TOOL_VERSION = "0.2.0"
 
 
+def metadata_dir() -> Path:
+    """Directory that owns package metadata.
+
+    A release package keeps ``VERSION.json`` and ``versions.json`` under
+    ``meta/`` so the skill root only contains ``SKILL.md``.  The development
+    checkout keeps them at the repository root.
+    """
+    meta = REPO_ROOT / "meta"
+    return meta if meta.is_dir() else REPO_ROOT
+
+
+def metadata_file(name: str) -> Path:
+    """Resolve one package metadata file for the active checkout layout."""
+    return metadata_dir() / name
+
+
+def shared_sdk_lib_dir() -> Path | None:
+    """Return the shared SDK runtime directory in a release package.
+
+    Multi-version packages move identical SDK libraries (the FreeType DLL and
+    its import library) to ``sdk/common/lib``.  Development checkouts keep a
+    copy under every ``sdk/<version>/lib`` and return ``None`` here.
+    """
+    candidate = SDK_ROOT / "common" / "lib"
+    return candidate if candidate.is_dir() else None
+
+
 def lvgl_version_from_env() -> str:
     return os.environ.get("LVGL_AI_LVGL_VERSION") or DEFAULT_LVGL_VERSION
 

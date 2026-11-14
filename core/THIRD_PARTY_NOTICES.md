@@ -122,5 +122,5 @@ FreeType 2.13.2 还作为 LVGL 运行时 TTF 加载库链接进 host engine（`L
 
 ## 本工具自身
 
-- 仓库未为 LVGL AI Tools 自身源码声明单独许可证；如需对外分发，由仓库所有者补充
-  `LICENSE`。本声明不改变任何第三方代码的许可证。
+- LVGL AI Tools 自身源码使用仓库根目录 `LICENSE`（发布包内为 `licenses/LICENSE`）。
+  本声明不改变任何第三方代码的许可证。

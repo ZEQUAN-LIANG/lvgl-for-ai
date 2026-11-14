@@ -9,7 +9,7 @@ description: Write and verify LVGL user apps with a real headless runtime, scena
 宿主、虚拟 pointer/keypad/encoder、虚拟时间、帧与 timeline、会话回放。工具只提供
 环境、输入和证据，**不判定画面**。
 
-![intro demo](intro-demo.gif)
+![intro demo](docs/intro-demo.gif)
 
 ## 环境与入口
 
@@ -23,7 +23,7 @@ PATH 上的 Python 3.9+。所有命令从包根执行。
 | `bin\lvgl.cmd report ...` | 只读已有会话证据 |
 | `bin\lvgl.cmd serve ...` | 打开网页端（固定 `127.0.0.1:8765`） |
 | `bin\lvgl.cmd assets ...` | 字体/图片转 LVGL C 数组（不启动 engine） |
-| `LVGL-AI-Viewer.exe` | Windows 双击打开网页端，优先使用包内 Python |
+| `bin\LVGL-AI-Viewer.exe` | Windows 双击打开网页端，优先使用包内 Python |
 
 需要直接调用解释器时：
 
@@ -38,15 +38,22 @@ Ninja 只在源码构建模式需要。发布包不内置 GCC。
 ## 目录
 
 ```
+SKILL.md         根目录唯一文件：skill 入口与工作流
 core/            工具层：cli.py、assets.py、web.py、session_report.py、lvgl_ai/、engine/、tools/
 user/app/        唯一源码真源：应用变体 C 代码与资源头
 user/scenarios/  场景 JSON
-sdk/             宿主编译 SDK：默认 9.6；其他版本按需下载到 sdk/<version>
+sdk/             宿主编译 SDK：sdk/<version>/；共享头与库在 sdk/common/
 build/           预编译 engine：build/lvgl_<token>/lvgl_engine.exe
-bin/             统一入口包装脚本
-LVGL-AI-Viewer.exe  Windows 双击启动网页端
-versions.json    版本索引：默认版本、支持列表、pack URL 与 sha256
+bin/             入口：lvgl.cmd、sifli.cmd、LVGL-AI-Viewer.exe
+runtime/python/  包内 Python（发布包附带时）
+docs/            演示图与补充说明：intro-demo.gif、SIFLI.md
+meta/            包元数据：VERSION.json、versions.json
+licenses/        本包许可证与第三方许可证
 ```
+
+多版本包把各 SDK 中完全相同的 FreeType DLL、导入库和公共头文件统一放在
+`sdk/common/`，每个 `sdk/<version>/manifest.json` 通过 `shared_root` 与
+`shared_*` 字段引用；`build/` 下不再复制 DLL。
 
 `core/lvgl_ai/assets/vendor/` 随包内置 freetype-py（含 FreeType DLL）与 pypng；
 资源转换不需要 Node.js、`pip install` 或联网。
@@ -144,7 +151,7 @@ bin\lvgl.cmd run --lvgl 9.4 --scenario user\scenarios\intro.json --json
 bin\lvgl.cmd run --lvgl 8.3 --scenario smoke\8.3\legacy_smoke.json --json
 ```
 
-`versions.json` 只记录版本与 `bundled` 状态。场景可选 `"lvgl": "9.4"`；优先级是
+`meta/versions.json` 只记录版本与 `bundled` 状态。场景可选 `"lvgl": "9.4"`；优先级是
 `--lvgl` > 场景 `lvgl` > `LVGL_AI_LVGL_VERSION` > 默认 9.6。`install_version.py`
 仍可用于自定义源码安装，但默认包不需要它。
 
@@ -160,8 +167,8 @@ runtime\python\python.exe -I chip-adapt\sifli\host\cli.py flash --app sift_watch
 ```
 
 包含自研 `chip-adapt/sifli/`、`SiFli-Host.exe`、pyserial/xterm、
-`user/app/sift_watch/` 和导出示例；**不包含** SiFli SDK、ARM 工具链、sftool、驱动
-或固件。构建/烧录前按 `chip-adapt/vendor/README.md` 安装官方依赖；没有开发板时
+`user/app/sift_watch/` 和导出示例，说明见 `docs/SIFLI.md`；**不包含** SiFli SDK、
+ARM 工具链、sftool、驱动或固件。构建/烧录前按 `chip-adapt/vendor/README.md` 安装官方依赖；没有开发板时
 只能停在导出 dry-run 或 fake serial 测试，不得声称设备已验证。
 
 ## 硬规则

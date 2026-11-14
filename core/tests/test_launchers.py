@@ -28,13 +28,13 @@ class LauncherConfigTest(unittest.TestCase):
         cls.build = load_build()
         cls.entries = {entry["name"]: entry for entry in cls.build.LAUNCHERS}
 
-    def test_viewer_launcher_lives_at_the_repository_root(self) -> None:
+    def test_viewer_launcher_lives_in_bin(self) -> None:
         entry = self.entries["lvgl-ai-viewer"]
-        self.assertEqual(entry["target"], r"core\web.pyw")
-        self.assertEqual(entry["cwd"], ".")
+        self.assertEqual(entry["target"], r"..\core\web.pyw")
+        self.assertEqual(entry["cwd"], r"..")
         self.assertEqual(entry["args"], ())
-        self.assertEqual(entry["python"], r"runtime\python\pythonw.exe")
-        self.assertEqual(entry["output"], REPO_ROOT / "LVGL-AI-Viewer.exe")
+        self.assertEqual(entry["python"], r"..\runtime\python\pythonw.exe")
+        self.assertEqual(entry["output"], REPO_ROOT / "bin" / "LVGL-AI-Viewer.exe")
 
     def test_host_launcher_lives_in_the_sifli_tools_directory(self) -> None:
         entry = self.entries["sifli-host"]

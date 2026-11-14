@@ -116,7 +116,7 @@ For the prebuilt 0.2.0 release, download one of two bundles:
 - `lvgl-verify-loop-0.2.0-full-win64.zip`: all six LVGL versions, embedded Python 3.11 and the viewer.
 - `lvgl-verify-loop-0.2.0-full-sifli-win64.zip`: the same full bundle plus the SiFli tools.
 
-Extract the zip and double-click `LVGL-AI-Viewer.exe`; no Python, GCC or CMake is required. There is no version download step: every supported version is already in the bundle.
+Extract the zip and double-click `bin\LVGL-AI-Viewer.exe`; no Python, GCC or CMake is required. There is no version download step: every supported version is already in the bundle.
 
 To hand the work to AI, give this repository to a harness such as Claude Code or Cursor; it reads `core/SKILL.md` and `CLAUDE.md` and starts writing from `user/app/**/*.c`. The Claude Code skill is named `lvgl-verify-loop`.
 

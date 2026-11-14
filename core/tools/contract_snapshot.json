@@ -4763,6 +4763,8 @@
                   }
                 ]
               },
+              "app": "property",
+              "build": "property",
               "encoder": {
                 "signature": [
                   {
@@ -4797,6 +4799,7 @@
                   }
                 ]
               },
+              "live_frame": "property",
               "log_tail": {
                 "signature": [
                   {
@@ -4806,6 +4809,7 @@
                   }
                 ]
               },
+              "lvgl_src": "property",
               "mark": {
                 "signature": [
                   {
@@ -4814,6 +4818,8 @@
                   }
                 ]
               },
+              "max_log_bytes": "property",
+              "mode": "property",
               "pid": "property",
               "pointer": {
                 "signature": [
@@ -4831,6 +4837,9 @@
                   }
                 ]
               },
+              "ready": "property",
+              "record": "property",
+              "record_changed_only": "property",
               "record_error": {
                 "signature": [
                   {
@@ -4840,6 +4849,8 @@
                 ]
               },
               "recording": "property",
+              "session_retention": "property",
+              "sessions_root": "property",
               "snapshot": {
                 "signature": [
                   {

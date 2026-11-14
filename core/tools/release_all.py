@@ -7,7 +7,9 @@ The default release contains exactly two zips:
 - ``full-sifli``: the same package plus the self-developed SiFli tools.
 
 There are no per-version packs, no release notes and no upload scripts in the
-release directory.  Tokens are never part of this build.
+release directory.  Tokens are never part of this build.  Files that are
+identical in every host SDK (the FreeType DLL, its import library and the
+shared zlib/libpng/FreeType headers) are stored once under ``sdk/common``.
 """
 
 from __future__ import annotations
@@ -77,7 +79,7 @@ def _json_line(result: subprocess.CompletedProcess[str]) -> dict[str, Any]:
 
 
 def _ensure_launchers(repo: Path) -> None:
-    viewer = repo / release_tool.RELEASE_VIEWER
+    viewer = repo / release_tool.RELEASE_VIEWER_PATH
     host = repo / "chip-adapt" / "sifli" / "tools" / "SiFli-Host.exe"
     if viewer.is_file() and host.is_file():
         return
@@ -299,6 +301,9 @@ def _stage_full_package(
             smoke_dir / "legacy_smoke.json",
         )
 
+    shared = release_tool.share_sdk_payload(package, VERSIONS)
+    release_tool.strip_build_runtime_dlls(package)
+
     smoke_report: list[dict[str, Any]] = []
     if smoke:
         for version in VERSIONS:
@@ -318,7 +323,7 @@ def _stage_full_package(
 
     release_tool.purge_caches(package)
     release_tool.check_hygiene(package, repo)
-    return {"engine": staged["engine"], "smoke": smoke_report}
+    return {"engine": staged["engine"], "smoke": smoke_report, "shared": shared}
 
 
 def _overlay_sifli(package: Path, repo: Path, tool_version: str) -> None:
@@ -392,7 +397,9 @@ def _overlay_sifli(package: Path, repo: Path, tool_version: str) -> None:
         if result.returncode == 0 and (generated / "export.json").is_file():
             shutil.copytree(generated, example_target, dirs_exist_ok=True)
 
-    (package / "SIFLI.md").write_text(_sifli_readme(tool_version), encoding="utf-8")
+    docs = package / "docs"
+    docs.mkdir(parents=True, exist_ok=True)
+    (docs / "SIFLI.md").write_text(_sifli_readme(tool_version), encoding="utf-8")
     (package / "bin" / "sifli.cmd").write_text(_sifli_cmd(), encoding="utf-8")
 
 

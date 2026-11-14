@@ -25,7 +25,7 @@ if str(TOOL_ROOT) not in sys.path:
 from lvgl_ai import paths  # noqa: E402
 from lvgl_ai.apps import parse_app_entries  # noqa: E402
 from lvgl_ai.scenario import SCENARIO_SCHEMA, STEP_TYPES  # noqa: E402
-from lvgl_ai.web import live_session, webapp, wire  # noqa: E402
+from lvgl_ai.web import live_session, routes, webapp, wire  # noqa: E402
 
 DOCS_DIR = paths.REPO_ROOT / "docs"
 SIFLI_PAGE = paths.REPO_ROOT / "chip-adapt" / "docs" / "sifli.html"
@@ -166,7 +166,7 @@ def _numeric_pattern(fact: str) -> re.Pattern[str]:
 
 
 def _server_route_literals() -> tuple[str, ...]:
-    source = Path(webapp.__file__).read_text(encoding="utf-8")
+    source = Path(routes.__file__).read_text(encoding="utf-8")
     return tuple(
         sorted(
             set(
@@ -333,7 +333,7 @@ class DocsSingleSourceTest(unittest.TestCase):
                 route,
                 text,
                 f"docs copy HTTP route {route!r}; "
-                "link to webapp._WebHandler._route instead",
+                "link to routes.route instead",
             )
 
     def test_no_scenario_vocabulary_copy(self) -> None:

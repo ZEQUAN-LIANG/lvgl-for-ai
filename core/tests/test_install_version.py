@@ -56,6 +56,19 @@ class VersionIndexTest(unittest.TestCase):
             self.assertEqual(index["default"], "9.6")
             self.assertEqual(index["versions"]["9.4"]["tag"], "v9.4.0")
 
+    def test_meta_layout_is_used_when_present(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            repo = make_repo(Path(raw))
+            meta = repo / "meta"
+            meta.mkdir()
+            (repo / "versions.json").replace(meta / "versions.json")
+            (meta / "VERSION.json").write_text(
+                json.dumps({"tool_version": "0.2.0"}), encoding="utf-8"
+            )
+            index = install_version._load_index(repo)
+            self.assertEqual(index["default"], "9.6")
+            self.assertEqual(install_version._core_version(repo), "0.2.0")
+
     def test_unknown_version_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             repo = make_repo(Path(raw))
