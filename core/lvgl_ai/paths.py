@@ -52,9 +52,9 @@ TOOL_VERSION = "0.2.0"
 def metadata_dir() -> Path:
     """Directory that owns package metadata.
 
-    A release package keeps ``VERSION.json`` and ``versions.json`` under
-    ``meta/`` so the skill root only contains ``SKILL.md``.  The development
-    checkout keeps them at the repository root.
+    Both layouts keep package metadata under ``meta/``.  Older development
+    checkouts may still have the files at the repository root, so callers fall
+    back there when ``meta/`` is absent.
     """
     meta = REPO_ROOT / "meta"
     return meta if meta.is_dir() else REPO_ROOT

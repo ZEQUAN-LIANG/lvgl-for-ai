@@ -300,7 +300,9 @@ def stage_package(
         license_target = package / RELEASE_LICENSE
         license_target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(license_source, license_target)
-    versions_source = repo_root / "versions.json"
+    versions_source = repo_root / "meta" / "versions.json"
+    if not versions_source.is_file():
+        versions_source = repo_root / "versions.json"
     if not versions_source.is_file():
         raise BuildError("release: versions.json is missing")
     versions_target = package / RELEASE_META_DIR / "versions.json"

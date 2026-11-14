@@ -52,8 +52,8 @@ def _packaged_bundle() -> bool:
     """Return true when this is the release package layout.
 
     The release zip keeps ``SKILL.md`` at the package root and metadata under
-    ``meta/``.  The development checkout keeps ``core/SKILL.md`` and a root
-    ``versions.json`` instead.
+    ``meta/``.  The development checkout keeps ``core/SKILL.md`` instead, but
+    also keeps its metadata under ``meta/``.
     """
     return (
         (paths.REPO_ROOT / "SKILL.md").is_file()

@@ -20,9 +20,9 @@ when it does. Pack mode installs a release asset that already contains
 unless the user later changes C code.
 
 All paths are resolved from ``--repo-root`` (default: the detected workspace
-root). ``versions.json`` lists the supported versions (``meta/versions.json``
-in a release package, the workspace root in a development checkout),
-the default and whether the shipped intro app supports that version.
+root). ``meta/versions.json`` lists the supported versions, the default and
+whether the shipped intro app supports that version. Older checkouts that
+still keep ``versions.json`` at the workspace root are accepted as a fallback.
 """
 
 from __future__ import annotations

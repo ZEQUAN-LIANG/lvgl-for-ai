@@ -209,7 +209,10 @@ def _smoke(
 
 
 def _update_versions(repo: Path, tool_version: str) -> None:
-    path = repo / "versions.json"
+    path = repo / "meta" / "versions.json"
+    if not path.is_file():
+        path = repo / "versions.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
     index = json.loads(path.read_text(encoding="utf-8"))
     index["core"] = {"version": tool_version, "platform": "win64"}
     for version, entry in index["versions"].items():

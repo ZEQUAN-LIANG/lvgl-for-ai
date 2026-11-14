@@ -22,7 +22,7 @@
 - `tools/new_app.py`：生成应用变体的源文件与场景，并注册到 `user/app/app.c`。
 - `tools/export_sdk.py`：从 `lvgl-src/<version>` 导出宿主预编译 SDK 到 `sdk/<version>`。
 - `tools/install_version.py`：安装其他 LVGL 版本（源码或自定义版本包），读取
-  `meta/versions.json`（开发仓库为根目录 `versions.json`）。
+  `meta/versions.json`（开发仓库与发布包同一位置）。
 - `tools/release.py`：生成单个可分发 skill zip、`.sha256` 与 release manifest。
 - `tools/release_all.py`：构建默认的两个完整包：`full` 与 `full-sifli`。
 - `tools/sync_github.py`：把 Gitee（`origin`）的分支与标签强制镜像到 GitHub（`github`）。
@@ -42,6 +42,7 @@
 | `build/` | engine 构建产物（Git 忽略） |
 | `sdk/` | 预编译宿主 SDK（Git 忽略；由 `export_sdk.py` 生成） |
 | `release/` | 解包后的 skill 目录、发布 zip、sha256 与 release manifest（Git 忽略） |
+| `meta/` | 包元数据：`versions.json`；发布包还含 `VERSION.json` |
 | `bin/` | `lvgl.cmd` 统一入口包装脚本 |
 | `sessions/` | 会话证据（Git 忽略） |
 | `docs/` | 应用变体与场景/服务端常量的索引指针页；SiFli 能力索引见 `chip-adapt/docs/sifli.html` |
