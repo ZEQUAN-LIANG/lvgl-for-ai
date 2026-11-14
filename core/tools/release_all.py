@@ -16,9 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -28,7 +26,7 @@ _BOOTSTRAP_TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(_BOOTSTRAP_TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(_BOOTSTRAP_TOOL_ROOT))
 
-from lvgl_ai import paths  # noqa: E402
+from lvgl_ai import paths, versions  # noqa: E402
 from lvgl_ai.control.errors import BuildError  # noqa: E402
 
 _TOOLS_DIR = Path(__file__).resolve().parent
@@ -37,44 +35,21 @@ if str(_TOOLS_DIR) not in sys.path:
 
 import export_sdk  # noqa: E402
 import release as release_tool  # noqa: E402
+import release_bundle  # noqa: E402
 
-VERSIONS = ("9.6", "9.5", "9.4", "9.1", "8.4", "8.3")
-INTRO_VERSIONS = frozenset(("9.6", "9.5", "9.4"))
-LEGACY_VERSIONS = frozenset(("9.1", "8.4", "8.3"))
 FULL_ASSET = "lvgl-verify-loop-{version}-full-win64.zip"
 FULL_SIFLI_ASSET = "lvgl-verify-loop-{version}-full-sifli-win64.zip"
 
 
-def _run(
-    command: list[str],
-    *,
-    cwd: Path,
-    env: dict[str, str] | None = None,
-    timeout: float = 300.0,
-) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        command,
-        cwd=str(cwd),
-        env=env,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=timeout,
-    )
-
-
-def _json_line(result: subprocess.CompletedProcess[str]) -> dict[str, Any]:
-    lines = [line for line in result.stdout.splitlines() if line.strip()]
-    if len(lines) != 1:
-        raise BuildError(
-            f"expected one JSON line, got {lines!r}; "
-            f"stderr={result.stderr.strip()[:500]!r}"
-        )
-    payload = json.loads(lines[0])
-    if not isinstance(payload, dict):
-        raise BuildError("JSON summary is not an object")
-    return payload
+def version_plan(repo_root: Path) -> dict[str, Any]:
+    """Render the version index for the two bundle builds."""
+    return {
+        "supported": versions.supported(repo_root),
+        "default": versions.default(repo_root),
+        "intro": versions.intro(repo_root),
+        "legacy": versions.legacy(repo_root),
+        "bundled": versions.bundled(repo_root),
+    }
 
 
 LAUNCHER_SUFFIXES = frozenset({".c", ".rc", ".ico", ".py"})
@@ -99,7 +74,7 @@ def _ensure_launchers(repo: Path, *, force: bool = False) -> dict[str, Any]:
             and meta.get("exe_sha256") == release_tool.sha256_file(exe)
         ):
             return {"status": "reused", "digest": digest}
-    result = _run(
+    result = release_bundle.run_command(
         [
             sys.executable,
             "-I",
@@ -196,71 +171,23 @@ def _smoke(
     markers: tuple[str, ...],
 ) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix=f"lvgl-release-{version}-") as raw:
-        workspace = Path(raw)
-        env = os.environ.copy()
-        env["LVGL_AI_SESSIONS_ROOT"] = str(workspace / "sessions")
-        env.pop("LVGL_AI_LVGL_SRC", None)
-        env.pop("LVGL_AI_DEMO", None)
-        result = _run(
-            [
-                os.environ.get("COMSPEC", "cmd.exe"),
-                "/c",
-                str(package / "bin" / "lvgl.cmd"),
-                "run",
-                "--lvgl", version,
-                "--no-build",
-                "--scenario", str(scenario),
-                "--json",
-            ],
-            cwd=workspace,
-            env=env,
+        payload = release_bundle.smoke_scenario(
+            package,
+            version,
+            scenario,
+            Path(raw),
+            via_wrapper=True,
+            extra=("--no-build",),
+            markers=markers,
+            label=version,
             timeout=180.0,
         )
-        if result.returncode != 0:
-            raise BuildError(
-                f"{version} smoke failed: stdout={result.stdout.strip()[:500]!r}; "
-                f"stderr={result.stderr.strip()[:500]!r}"
-            )
-        payload = _json_line(result)
-        if payload.get("status") != "ok":
-            raise BuildError(
-                f"{version} smoke status={payload.get('status')!r}: "
-                f"{payload.get('error')!r}"
-            )
-        session = Path(str(payload["session_dir"]))
-        log = (session / "engine.log").read_text(
-            encoding="utf-8", errors="replace"
-        )
-        missing = [marker for marker in markers if marker not in log]
-        if missing:
-            raise BuildError(
-                f"{version} smoke log is missing {missing!r}; "
-                f"log tail={log[-800:]!r}"
-            )
         return {
             "version": version,
             "session_id": payload.get("session_id"),
             "frame_count": payload.get("frame_count"),
             "markers": list(markers),
         }
-
-
-def _update_versions(repo: Path, tool_version: str) -> None:
-    path = repo / "meta" / "versions.json"
-    if not path.is_file():
-        path = repo / "versions.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    index = json.loads(path.read_text(encoding="utf-8"))
-    index["core"] = {"version": tool_version, "platform": "win64"}
-    for version, entry in index["versions"].items():
-        entry["sdk"] = True
-        entry["bundled"] = True
-        entry["legacy"] = version in LEGACY_VERSIONS
-        entry.pop("pack", None)
-    path.write_text(
-        json.dumps(index, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
 
 
 def _copy_engine(package: Path, repo: Path, version: str) -> None:
@@ -288,25 +215,25 @@ def _stage_full_package(
     tool_version: str,
     smoke: bool,
     force_build: bool,
+    plan: dict[str, Any],
 ) -> dict[str, Any]:
+    supported = tuple(plan["supported"])
+    base_version = str(plan["default"])
+    legacy_versions = set(plan["legacy"])
     engines: dict[str, dict[str, Any]] = {}
-    for version in VERSIONS:
+    for version in supported:
         _ensure_sdk(repo, version)
-    # Engines for 9.5/9.4 are intro-only; legacy engines keep the demo harness.
-    for version in ("9.5", "9.4"):
+    # Non-default intro engines use the intro-only app; legacy engines keep
+    # the demo harness.
+    for version in supported:
+        if version == base_version:
+            continue
         with tempfile.TemporaryDirectory(prefix=f"lvgl-{version}-app-") as raw:
             app_dir = Path(raw) / "app"
-            _stage_intro_app(repo, app_dir)
-            engines[version] = _build_engine(
-                repo,
-                version,
-                user_app_dir=app_dir,
-                force=force_build,
-            )
-    for version in ("9.1", "8.4", "8.3"):
-        with tempfile.TemporaryDirectory(prefix=f"lvgl-{version}-app-") as raw:
-            app_dir = Path(raw) / "app"
-            _stage_legacy_app(repo, app_dir)
+            if version in legacy_versions:
+                _stage_legacy_app(repo, app_dir)
+            else:
+                _stage_intro_app(repo, app_dir)
             engines[version] = _build_engine(
                 repo,
                 version,
@@ -317,37 +244,31 @@ def _stage_full_package(
     staged = release_tool.stage_package(
         repo_root=repo,
         package=package,
-        sdk_dir=repo / "sdk" / "9.6",
-        lvgl_version="9.6",
+        sdk_dir=repo / "sdk" / base_version,
+        lvgl_version=base_version,
         tool_version=tool_version,
-        host_sdks=list(VERSIONS),
+        host_sdks=list(supported),
         force_build=force_build,
     )
-    engines["9.6"] = staged["engine"]
-    for version in VERSIONS:
-        if version == "9.6":
+    engines[base_version] = staged["engine"]
+    for version in supported:
+        if version == base_version:
             continue
         shutil.copytree(
             repo / "sdk" / version,
             package / "sdk" / version,
         )
         _copy_engine(package, repo, version)
-    release_tool.clean_build_dir(package, "9.6")
+    release_tool.clean_build_dir(package, base_version)
 
-    shared = release_tool.share_sdk_payload(package, VERSIONS)
+    shared = release_tool.share_sdk_payload(package, supported)
     release_tool.strip_build_runtime_dlls(package)
 
     if smoke:
         with tempfile.TemporaryDirectory(prefix="lvgl-release-smoke-") as raw:
             smoke_root = Path(raw)
-            for version in VERSIONS:
-                if version in INTRO_VERSIONS:
-                    scenario = package / "user" / "scenarios" / "intro.json"
-                    markers = (
-                        "[app] app=intro",
-                        "[index] ui created",
-                    )
-                else:
+            for version in supported:
+                if version in legacy_versions:
                     # Keep the legacy smoke fixture out of the shipped package.
                     scenario = smoke_root / f"legacy_{version}.json"
                     shutil.copy2(
@@ -355,11 +276,23 @@ def _stage_full_package(
                         scenario,
                     )
                     markers = ("[app] demo_button clicked",)
+                else:
+                    scenario = package / "user" / "scenarios" / "intro.json"
+                    markers = (
+                        "[app] app=intro",
+                        "[index] ui created",
+                    )
                 _smoke(package, version, scenario, markers=markers)
 
     release_tool.purge_caches(package)
     release_tool.check_hygiene(package, repo)
-    return {"engine": staged["engine"], "shared": shared, "engines": engines}
+    return {
+        "engine": staged["engine"],
+        "shared": shared,
+        "engines": engines,
+        "sdk_manifest": staged["sdk_manifest"],
+        "version": staged["version"],
+    }
 
 
 def _overlay_sifli(package: Path, repo: Path, tool_version: str) -> None:
@@ -417,7 +350,7 @@ def _overlay_sifli(package: Path, repo: Path, tool_version: str) -> None:
     example_target = package / "chip-adapt" / "examples" / "export" / "sift_watch"
     with tempfile.TemporaryDirectory(prefix="lvgl-sifli-example-") as raw:
         generated = Path(raw) / "sift_watch"
-        result = _run(
+        result = release_bundle.run_command(
             [
                 sys.executable,
                 "-I",
@@ -517,7 +450,7 @@ def build_release(
     out.mkdir(parents=True, exist_ok=True)
     _clean_output(out)
     launcher = _ensure_launchers(repo, force=force_build)
-    _update_versions(repo, tool_version)
+    plan = version_plan(repo)
 
     with tempfile.TemporaryDirectory(prefix="lvgl-release-full-") as raw:
         root = Path(raw)
@@ -528,33 +461,63 @@ def build_release(
             tool_version=tool_version,
             smoke=smoke,
             force_build=force_build,
+            plan=plan,
         )
+        base_version = str(plan["default"])
         full_zip = out / FULL_ASSET.format(version=tool_version)
-        full_sha = release_tool.build_zip(package, full_zip)
+        full_sha = release_bundle.build_zip(package, full_zip)
+        full_sha_path = release_bundle.write_checksum(full_zip, full_sha)
+        _full_manifest, full_manifest_path = release_bundle.write_manifest(
+            package,
+            full_zip,
+            tool_version=tool_version,
+            git_commit=staged["version"]["git_commit"],
+            lvgl_version=base_version,
+            gcc_version=str(staged["version"]["gcc"]["version"]),
+            adapters=[],
+            digest=full_sha,
+        )
 
-        sifli_package = root / "sifli" / release_tool.PACKAGE_DIR_NAME
+        sifli_package = root / "sifli" / release_bundle.PACKAGE_DIR_NAME
         shutil.copytree(package, sifli_package)
         _overlay_sifli(sifli_package, repo, tool_version)
         sifli_zip = out / FULL_SIFLI_ASSET.format(version=tool_version)
-        sifli_sha = release_tool.build_zip(sifli_package, sifli_zip)
+        sifli_sha = release_bundle.build_zip(sifli_package, sifli_zip)
+        sifli_sha_path = release_bundle.write_checksum(sifli_zip, sifli_sha)
+        _sifli_manifest, sifli_manifest_path = release_bundle.write_manifest(
+            sifli_package,
+            sifli_zip,
+            tool_version=tool_version,
+            git_commit=staged["version"]["git_commit"],
+            lvgl_version=base_version,
+            gcc_version=str(staged["version"]["gcc"]["version"]),
+            adapters=[],
+            digest=sifli_sha,
+        )
 
-    return {
-        "schema": "lvgl-verify-loop-release-v2",
+    summary = {
+        "schema": release_bundle.BUNDLE_SCHEMA,
         "tool_version": tool_version,
-        "versions": list(VERSIONS),
+        "versions": list(plan["supported"]),
         "full": {
             "zip": str(full_zip),
             "sha256": full_sha,
             "bytes": full_zip.stat().st_size,
+            "sha256_file": str(full_sha_path),
+            "manifest": str(full_manifest_path),
         },
         "full_sifli": {
             "zip": str(sifli_zip),
             "sha256": sifli_sha,
             "bytes": sifli_zip.stat().st_size,
+            "sha256_file": str(sifli_sha_path),
+            "manifest": str(sifli_manifest_path),
         },
         "engines": staged["engines"],
         "launcher": launcher,
     }
+    release_bundle.write_summary(out, summary)
+    return summary
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -38,6 +38,7 @@ if str(_TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(_TOOL_ROOT))
 
 from lvgl_ai import paths  # noqa: E402
+from tools import release_bundle  # noqa: E402
 
 DEFAULT_GITHUB_REPO = "ZEQUAN-LIANG/lvgl-for-ai"
 DEFAULT_GITEE_REPO = "liang-zequan/lvgl-for-ai"
@@ -51,10 +52,56 @@ class UploadError(Exception):
     """A user-facing upload failure."""
 
 
+SUMMARY_SCHEMA = release_bundle.BUNDLE_SCHEMA
+BUNDLE_KEYS = ("full", "full_sifli")
+
+
+def _manifest_assets(
+    assets_dir: Path, manifest_path: Path, version: str
+) -> list[Path]:
+    """Select the assets declared by the double-bundle summary."""
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise UploadError(f"cannot read {manifest_path}: {exc}") from exc
+    if not isinstance(payload, dict) or payload.get("schema") != SUMMARY_SCHEMA:
+        raise UploadError(
+            f"{manifest_path}: schema must be {SUMMARY_SCHEMA!r}"
+        )
+    if payload.get("tool_version") != version:
+        raise UploadError(
+            f"{manifest_path}: tool_version must be {version!r}, "
+            f"found {payload.get('tool_version')!r}"
+        )
+    zips: list[Path] = []
+    checksums: list[Path] = []
+    for key in BUNDLE_KEYS:
+        record = payload.get(key)
+        if not isinstance(record, dict):
+            raise UploadError(f"{manifest_path}: {key} must be an object")
+        zip_value = record.get("zip")
+        if not isinstance(zip_value, str) or not zip_value:
+            raise UploadError(f"{manifest_path}: {key}.zip must be a string")
+        zip_path = assets_dir / Path(zip_value).name
+        checksum = assets_dir / (zip_path.name + ".sha256")
+        if not zip_path.is_file():
+            raise UploadError(f"declared zip is missing: {zip_path}")
+        if not checksum.is_file():
+            raise UploadError(f"declared checksum is missing: {checksum}")
+        zips.append(zip_path)
+        checksums.append(checksum)
+    return zips + checksums + [manifest_path]
+
+
 def release_assets(assets_dir: Path, version: str) -> list[Path]:
-    """Return the zip and checksum assets for ``version`` in stable order."""
+    """Return the two zips, their checksums and the summary in stable order."""
     if not re.fullmatch(r"[0-9A-Za-z._-]+", version):
         raise UploadError(f"invalid release version: {version!r}")
+    manifest_path = assets_dir / "release.json"
+    if manifest_path.is_file():
+        return _manifest_assets(assets_dir, manifest_path, version)
+    # Older release directories have no summary manifest; keep the glob
+    # fallback for them.
     zips = [
         path
         for path in assets_dir.glob(f"lvgl-verify-loop-{version}-*.zip")
@@ -103,6 +150,46 @@ def redact(text: str, token: str) -> str:
     return text.replace(token, "***") if token else text
 
 
+class UrllibTransport:
+    """Production transport: one urllib request, JSON on success."""
+
+    def request(
+        self,
+        method: str,
+        url: str,
+        *,
+        token: str,
+        bearer: bool = False,
+        data: bytes | None = None,
+        content_type: str | None = None,
+        allow_404: bool = False,
+    ) -> tuple[int, Any]:
+        headers = {"User-Agent": USER_AGENT}
+        if content_type:
+            headers["Content-Type"] = content_type
+        if bearer:
+            headers["Authorization"] = f"Bearer {token}"
+        req = urllib.request.Request(
+            url, data=data, headers=headers, method=method
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=300) as response:
+                body = response.read()
+                return response.status, (
+                    json.loads(body.decode("utf-8")) if body else None
+                )
+        except urllib.error.HTTPError as exc:
+            body = redact(exc.read().decode("utf-8", "replace"), token)
+            if allow_404 and exc.code == 404:
+                return 404, None
+            raise UploadError(
+                f"{method} {url.split('?', 1)[0]} -> {exc.code}: {body[:500]}"
+            ) from exc
+
+
+DEFAULT_TRANSPORT = UrllibTransport()
+
+
 def request(
     method: str,
     url: str,
@@ -113,26 +200,16 @@ def request(
     content_type: str | None = None,
     allow_404: bool = False,
 ) -> tuple[int, Any]:
-    """Perform one API request and return ``(status, decoded_json_or_none)``."""
-    headers = {"User-Agent": USER_AGENT}
-    if content_type:
-        headers["Content-Type"] = content_type
-    if bearer:
-        headers["Authorization"] = f"Bearer {token}"
-    req = urllib.request.Request(url, data=data, headers=headers, method=method)
-    try:
-        with urllib.request.urlopen(req, timeout=300) as response:
-            body = response.read()
-            return response.status, (
-                json.loads(body.decode("utf-8")) if body else None
-            )
-    except urllib.error.HTTPError as exc:
-        body = redact(exc.read().decode("utf-8", "replace"), token)
-        if allow_404 and exc.code == 404:
-            return 404, None
-        raise UploadError(
-            f"{method} {url.split('?', 1)[0]} -> {exc.code}: {body[:500]}"
-        ) from exc
+    """Perform one API request through the default urllib transport."""
+    return DEFAULT_TRANSPORT.request(
+        method,
+        url,
+        token=token,
+        bearer=bearer,
+        data=data,
+        content_type=content_type,
+        allow_404=allow_404,
+    )
 
 
 def multipart(filename: str, data: bytes, token: str) -> tuple[bytes, str]:
@@ -153,10 +230,12 @@ def multipart(filename: str, data: bytes, token: str) -> tuple[bytes, str]:
     return b"".join(chunks), f"multipart/form-data; boundary={boundary}"
 
 
-def _gitee_url(repo: str, path: str, token: str) -> str:
+def _gitee_url(
+    repo: str, path: str, token: str, api_base: str = GITEE_API
+) -> str:
     separator = "&" if "?" in path else "?"
     return (
-        f"{GITEE_API}/repos/{repo}{path}"
+        f"{api_base}/repos/{repo}{path}"
         f"{separator}access_token={urllib.parse.quote(token)}"
     )
 
@@ -170,10 +249,13 @@ def _gitee_request(
     data: bytes | None = None,
     content_type: str | None = None,
     allow_404: bool = False,
+    api_base: str = GITEE_API,
+    transport: Any = None,
 ) -> tuple[int, Any]:
-    return request(
+    client = transport or DEFAULT_TRANSPORT
+    return client.request(
         method,
-        _gitee_url(repo, path, token),
+        _gitee_url(repo, path, token, api_base),
         token=token,
         data=data,
         content_type=content_type,
@@ -191,20 +273,24 @@ def upload_github(
     token: str,
     replace: bool,
     dry_run: bool,
+    api_base: str = GITHUB_API,
+    uploads_base: str = GITHUB_UPLOADS,
+    transport: Any = None,
 ) -> str:
     """Create or update the GitHub release, then upload the assets."""
-    base = f"{GITHUB_API}/repos/{repo}"
+    client = transport or DEFAULT_TRANSPORT
+    base = f"{api_base}/repos/{repo}"
     url = f"https://github.com/{repo}/releases/tag/{tag}"
     if dry_run:
         log(f"[github] would upload {len(assets)} assets to {tag}")
         return url
-    status, release = request(
+    status, release = client.request(
         "GET", f"{base}/releases/tags/{tag}", token=token, bearer=True,
         allow_404=True,
     )
     name = f"LVGL Verify Loop {version}"
     if status == 404:
-        _status, release = request(
+        _status, release = client.request(
             "POST",
             f"{base}/releases",
             token=token,
@@ -226,7 +312,7 @@ def upload_github(
         patch: dict[str, Any] = {"name": name}
         if notes is not None:
             patch["body"] = notes
-        request(
+        client.request(
             "PATCH",
             f"{base}/releases/{release['id']}",
             token=token,
@@ -245,7 +331,7 @@ def upload_github(
             if not replace:
                 log(f"[github] exists {path.name}")
                 continue
-            request(
+            client.request(
                 "DELETE",
                 f"{base}/releases/assets/{existing[path.name]}",
                 token=token,
@@ -253,9 +339,9 @@ def upload_github(
                 allow_404=True,
             )
             log(f"[github] deleted old {path.name}")
-        status, asset = request(
+        status, asset = client.request(
             "POST",
-            f"{GITHUB_UPLOADS}/repos/{repo}/releases/{release_id}/assets"
+            f"{uploads_base}/repos/{repo}/releases/{release_id}/assets"
             f"?name={urllib.parse.quote(path.name)}",
             token=token,
             bearer=True,
@@ -278,14 +364,38 @@ def upload_gitee(
     token: str,
     replace: bool,
     dry_run: bool,
+    api_base: str = GITEE_API,
+    transport: Any = None,
 ) -> str:
     """Create or update the Gitee release, then upload the assets."""
+    client = transport or DEFAULT_TRANSPORT
     page = f"https://gitee.com/{repo}/releases/tag/{tag}"
     if dry_run:
         log(f"[gitee] would upload {len(assets)} assets to {tag}")
         return page
-    _status, release = _gitee_request(
-        "GET", repo, f"/releases/tags/{tag}", token, allow_404=True
+
+    def gitee(
+        method: str,
+        path: str,
+        *,
+        data: bytes | None = None,
+        content_type: str | None = None,
+        allow_404: bool = False,
+    ) -> tuple[int, Any]:
+        return _gitee_request(
+            method,
+            repo,
+            path,
+            token,
+            data=data,
+            content_type=content_type,
+            allow_404=allow_404,
+            api_base=api_base,
+            transport=client,
+        )
+
+    _status, release = gitee(
+        "GET", f"/releases/tags/{tag}", allow_404=True
     )
     name = f"LVGL Verify Loop {version}"
     if not isinstance(release, dict):
@@ -298,11 +408,9 @@ def upload_gitee(
                 "prerelease": "false",
             }
         ).encode("utf-8")
-        _status, release = _gitee_request(
+        _status, release = gitee(
             "POST",
-            repo,
             "/releases",
-            token,
             data=form,
             content_type="application/x-www-form-urlencoded",
         )
@@ -315,19 +423,17 @@ def upload_gitee(
         if target_commitish:
             patch["target_commitish"] = target_commitish
         form = urllib.parse.urlencode(patch).encode("utf-8")
-        _gitee_request(
+        gitee(
             "PATCH",
-            repo,
             f"/releases/{release['id']}",
-            token,
             data=form,
             content_type="application/x-www-form-urlencoded",
         )
     if not isinstance(release, dict) or not release.get("id"):
         raise UploadError("Gitee did not return a release with an id")
     release_id = release["id"]
-    _status, attachments = _gitee_request(
-        "GET", repo, f"/releases/{release_id}/attach_files", token
+    _status, attachments = gitee(
+        "GET", f"/releases/{release_id}/attach_files"
     )
     existing = {
         item["name"]: item["id"]
@@ -339,20 +445,16 @@ def upload_gitee(
             if not replace:
                 log(f"[gitee] exists {path.name}")
                 continue
-            _gitee_request(
+            gitee(
                 "DELETE",
-                repo,
                 f"/releases/{release_id}/attach_files/{existing[path.name]}",
-                token,
                 allow_404=True,
             )
             log(f"[gitee] deleted old {path.name}")
         body, content_type = multipart(path.name, path.read_bytes(), token)
-        _status, _ = _gitee_request(
+        _status, _ = gitee(
             "POST",
-            repo,
             f"/releases/{release_id}/attach_files",
-            token,
             data=body,
             content_type=content_type,
         )

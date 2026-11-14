@@ -34,14 +34,13 @@ import sys
 import tarfile
 from pathlib import Path
 
-TAGS = {
-    "8.4": "v8.4.0",
-    "8.3": "v8.3.11",
-    "9.6": "v9.6.0",
-    "9.5": "v9.5.0",
-    "9.4": "v9.4.0",
-    "9.1": "v9.1.0",
-}
+_TOOL_ROOT = Path(__file__).resolve().parent.parent
+if str(_TOOL_ROOT) not in sys.path:
+    sys.path.insert(0, str(_TOOL_ROOT))
+
+from lvgl_ai import versions  # noqa: E402
+
+TAGS = versions.tags()
 
 SOURCE_SCHEMA = "lvgl-ai-lvgl-source-v1"
 

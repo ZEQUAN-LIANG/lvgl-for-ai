@@ -45,6 +45,8 @@ USER_APP_DIR = USER_DIR / "app"
 USER_SCENARIOS_DIR = USER_DIR / "scenarios"
 DEFAULT_SESSIONS_ROOT = REPO_ROOT / "sessions"
 
+# Last-resort fallback for a workspace without ``meta/versions.json``.  The
+# version index owns the real default; :func:`default_lvgl_version` reads it.
 DEFAULT_LVGL_VERSION = "9.6"
 TOOL_VERSION = "0.2.0"
 
@@ -76,8 +78,18 @@ def shared_sdk_lib_dir() -> Path | None:
     return candidate if candidate.is_dir() else None
 
 
+def default_lvgl_version() -> str:
+    """Return the version index default, with the constant as a fallback."""
+    from lvgl_ai import versions
+
+    try:
+        return versions.default()
+    except versions.VersionsError:
+        return DEFAULT_LVGL_VERSION
+
+
 def lvgl_version_from_env() -> str:
-    return os.environ.get("LVGL_AI_LVGL_VERSION") or DEFAULT_LVGL_VERSION
+    return os.environ.get("LVGL_AI_LVGL_VERSION") or default_lvgl_version()
 
 
 def lvgl_src_for(version: str) -> Path:

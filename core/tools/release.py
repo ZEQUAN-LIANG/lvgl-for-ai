@@ -37,7 +37,6 @@ import tempfile
 import threading
 import time
 import urllib.request
-import zipfile
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -45,7 +44,7 @@ _BOOTSTRAP_TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(_BOOTSTRAP_TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(_BOOTSTRAP_TOOL_ROOT))
 
-from lvgl_ai import paths  # noqa: E402
+from lvgl_ai import paths, versions  # noqa: E402
 from lvgl_ai.control.build_plan import BuildPlan  # noqa: E402
 from lvgl_ai.control.errors import BuildError  # noqa: E402
 from lvgl_ai.control.prebuilt import HostSdk, resolve_compiler  # noqa: E402
@@ -58,11 +57,12 @@ if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
 import export_sdk  # noqa: E402
+import release_bundle  # noqa: E402
 
-PACKAGE_DIR_NAME = "lvgl-verify-loop"
-RELEASE_SCHEMA = "lvgl-ai-release-v1"
-VERSION_SCHEMA = "lvgl-ai-version-v1"
-DEFAULT_LVGL = paths.DEFAULT_LVGL_VERSION
+PACKAGE_DIR_NAME = release_bundle.PACKAGE_DIR_NAME
+RELEASE_SCHEMA = release_bundle.RELEASE_SCHEMA
+VERSION_SCHEMA = release_bundle.VERSION_SCHEMA
+DEFAULT_LVGL = versions.default()
 SMOKE_SCENARIO = Path("user") / "scenarios" / "intro.json"
 RELEASE_INTRO_APP = "intro"
 RELEASE_SCENARIOS = ("intro.json",)
@@ -80,6 +80,7 @@ CORE_RELEASE_EXCLUDE_FILES = (
     "tools/release_tools_README.md",
     "tools/release.py",
     "tools/release_all.py",
+    "tools/release_bundle.py",
     "tools/release_app.c",
     "tools/upload_release.py",
     "tools/sync_github.py",
@@ -108,18 +109,7 @@ USER_EXCLUDE_DIRS = {".trash", "__pycache__"}
 EXCLUDE_SUFFIXES = {".pyc", ".pyo", ".dump"}
 
 
-def _run(command: Iterable[str], *, cwd: Path, env: dict[str, str] | None = None,
-         timeout: float = 300.0) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        list(command),
-        cwd=str(cwd),
-        env=env,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=timeout,
-    )
+_run = release_bundle.run_command
 
 
 def copy_tree(
@@ -147,20 +137,6 @@ def copy_tree(
         destination = target_path / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, destination)
-
-
-def _git_commit(repo_root: Path) -> str:
-    try:
-        result = subprocess.run(
-            ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return "unknown"
-    text = result.stdout.strip()
-    return text if result.returncode == 0 and text else "unknown"
 
 
 def write_version_file(
@@ -191,6 +167,22 @@ def write_version_file(
         encoding="utf-8",
     )
     return payload
+
+
+def write_package_versions(package: Path, *, tool_version: str) -> dict[str, Any]:
+    """Write the release metadata into the package copy of ``versions.json``.
+
+    The source index is read-only during a release: only the copied file under
+    ``<package>/meta/`` carries the tool version being built.
+    """
+    path = package / RELEASE_META_DIR / "versions.json"
+    index = json.loads(path.read_text(encoding="utf-8"))
+    index["core"] = {"version": tool_version, "platform": "win64"}
+    path.write_text(
+        json.dumps(index, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return index
 
 
 def check_hygiene(package: Path, repo_root: Path) -> None:
@@ -488,6 +480,7 @@ def stage_package(
     versions_target = package / RELEASE_META_DIR / "versions.json"
     versions_target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(versions_source, versions_target)
+    write_package_versions(package, tool_version=tool_version)
     copy_tree(
         repo_root / "core", package / "core",
         exclude_dirs=CORE_EXCLUDE_DIRS,
@@ -550,7 +543,7 @@ def stage_package(
         tool_version=tool_version,
         lvgl_version=lvgl_version,
         gcc_version=str(sdk_manifest["compiler"]["version"]),
-        git_commit=_git_commit(repo_root),
+        git_commit=release_bundle.git_commit(repo_root),
         adapters=[],
         host_sdks=host_sdks,
     )
@@ -737,38 +730,12 @@ def strip_build_runtime_dlls(package: Path) -> None:
             path.unlink()
 
 
-def _cli_command(package: Path, lvgl_version: str, *args: str) -> list[str]:
-    return [
-        sys.executable,
-        "-I", "-B",
-        str(package / "core" / "cli.py"),
-        "--lvgl", lvgl_version,
-        *args,
-    ]
-
-
-def _smoke_env(workspace: Path) -> dict[str, str]:
-    env = os.environ.copy()
-    env["LVGL_AI_SESSIONS_ROOT"] = str(workspace / "sessions")
-    env.pop("LVGL_AI_LVGL_SRC", None)
-    env.pop("LVGL_AI_DEMO", None)
-    return env
+_cli_command = release_bundle.cli_command
+_smoke_env = release_bundle.smoke_environment
 
 
 def _json_line(result: subprocess.CompletedProcess[str]) -> dict[str, Any]:
-    lines = [line for line in result.stdout.splitlines() if line.strip()]
-    if len(lines) != 1:
-        raise BuildError(
-            "release smoke: expected one JSON line, got "
-            f"{lines!r}; stderr={result.stderr.strip()[:500]!r}"
-        )
-    try:
-        payload = json.loads(lines[0])
-    except ValueError as exc:
-        raise BuildError(f"release smoke: invalid JSON: {lines[0][:200]}") from exc
-    if not isinstance(payload, dict):
-        raise BuildError("release smoke: JSON summary is not an object")
-    return payload
+    return release_bundle.json_line(result, label="release smoke")
 
 
 def _smoke_run(
@@ -789,32 +756,19 @@ def _smoke_run(
 
 
 def _smoke_scenario(package: Path, lvgl_version: str, workspace: Path, *extra: str) -> dict[str, Any]:
-    scenario = package / SMOKE_SCENARIO
-    payload = _smoke_run(
+    return release_bundle.smoke_scenario(
         package,
         lvgl_version,
+        package / SMOKE_SCENARIO,
         workspace,
-        *extra,
-        "--scenario", str(scenario),
-        "--json",
+        extra=extra,
+        require_evidence=True,
+        label="release smoke",
+        timeout=300.0,
     )
-    if payload.get("status") != "ok":
-        raise BuildError(
-            "release smoke: scenario finished with "
-            f"status={payload.get('status')!r}: {payload.get('error')!r}"
-        )
-    session_dir = Path(str(payload.get("session_dir")))
-    for name in ("manifest.json", "timeline.ndjson", "engine.log", "build.log"):
-        if not (session_dir / name).is_file():
-            raise BuildError(f"release smoke: session evidence missing {name}")
-    return payload
 
 
-def _cmd_wrapper(package: Path, *args: str) -> list[str]:
-    command = [str(package / "bin" / "lvgl.cmd"), *args]
-    if os.name == "nt":
-        return [os.environ.get("COMSPEC", "cmd.exe"), "/c", *command]
-    return command
+_cmd_wrapper = release_bundle.cmd_wrapper
 
 
 def _smoke_wrapper_run(
@@ -959,35 +913,7 @@ def smoke_package(package: Path, lvgl_version: str) -> dict[str, Any]:
         }
 
 
-def build_zip(package: Path, zip_path: Path) -> str:
-    """Write a deterministic zip; return its sha256."""
-    zip_path.parent.mkdir(parents=True, exist_ok=True)
-    files = sorted(
-        (path for path in package.rglob("*") if path.is_file()),
-        key=lambda path: path.relative_to(package).as_posix(),
-    )
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
-        for path in files:
-            relative = path.relative_to(package).as_posix()
-            info = zipfile.ZipInfo(
-                f"{PACKAGE_DIR_NAME}/{relative}",
-                date_time=(1980, 1, 1, 0, 0, 0),
-            )
-            info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = (0o644 & 0xFFFF) << 16
-            archive.writestr(info, path.read_bytes())
-    return sha256_file(zip_path)
-
-
-def _file_hashes(package: Path) -> dict[str, str]:
-    paths = sorted(
-        (path for path in package.rglob("*") if path.is_file()),
-        key=lambda path: path.relative_to(package).as_posix(),
-    )
-    return {
-        path.relative_to(package).as_posix(): sha256_file(path)
-        for path in paths
-    }
+build_zip = release_bundle.build_zip
 
 
 def release(
@@ -1051,48 +977,17 @@ def release(
             asset_name
             or f"{PACKAGE_DIR_NAME}-{tool_version}-{lvgl_version}.zip"
         )
-        zip_hash = build_zip(package, zip_path)
-        hashes = _file_hashes(package)
-        files = sorted(package.rglob("*"))
-        file_count = sum(1 for path in files if path.is_file())
-        unpacked = sum(
-            path.stat().st_size for path in files if path.is_file()
-        )
-        sdk_manifest_sha256 = sha256_file(
-            package / "sdk" / lvgl_version / "manifest.json"
-        )
-    sha_path = zip_path.with_name(zip_path.name + ".sha256")
-    sha_path.write_text(f"{zip_hash}  {zip_path.name}\n", encoding="utf-8")
-    sdk_manifest = staged["sdk_manifest"]
-    manifest = {
-        "schema": RELEASE_SCHEMA,
-        "tool_version": tool_version,
-        "git_commit": staged["version"]["git_commit"],
-        "lvgl_version": lvgl_version,
-        "sdk": {
-            "schema": sdk_manifest.get("schema"),
-            "lvgl_version": sdk_manifest.get("lvgl_version"),
-            "lvgl_tag": sdk_manifest.get("lvgl_tag"),
-            "manifest_sha256": sdk_manifest_sha256,
-            "compiler": sdk_manifest.get("compiler"),
-            "libs": sdk_manifest.get("libs"),
-            "sha256": sdk_manifest.get("sha256"),
-        },
-        "gcc": {"version": staged["version"]["gcc"]["version"]},
-        "adapters": [],
-        "package": {
-            "root": PACKAGE_DIR_NAME,
-            "file_count": file_count,
-            "unpacked_bytes": unpacked,
-            "archive_bytes": zip_path.stat().st_size,
-        },
-        "sha256": zip_hash,
-        "files": hashes,
-    }
-    manifest_path = out_dir / f"{zip_path.stem}.release.json"
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
+        zip_hash = release_bundle.build_zip(package, zip_path)
+    sha_path = release_bundle.write_checksum(zip_path, zip_hash)
+    _manifest, manifest_path = release_bundle.write_manifest(
+        package,
+        zip_path,
+        tool_version=tool_version,
+        git_commit=staged["version"]["git_commit"],
+        lvgl_version=lvgl_version,
+        gcc_version=str(staged["version"]["gcc"]["version"]),
+        adapters=[],
+        digest=zip_hash,
     )
     return {
         "package": str(package),
