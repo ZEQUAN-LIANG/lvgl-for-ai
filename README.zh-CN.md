@@ -109,7 +109,7 @@ python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json
 python -I core/web.py --open
 ```
 
-成功时退出码为 `0`，stdout 最后一行是会话目录，`manifest.json` 的 `status` 为 `ok`。国内网络访问源码下载地址不稳定时，第 1 步加 `--source gitee`。
+成功时退出码为 `0`，stdout 最后一行是会话目录，`manifest.json` 的 `status` 为 `ok`。默认 `--source auto` 会先试 GitHub codeload，再试 Gitee 镜像；Gitee 的 LVGL 镜像可能返回 HTML/400，失败时请使用默认值或预编译版本包。
 
 要让 AI 接手，把这个仓库交给 Claude Code、Cursor 等 harness，它会读取 `core/SKILL.md` 与 `CLAUDE.md`，从 `user/app/**/*.c` 开始写。Claude Code 里的 skill 名是 `lvgl-verify-loop`。
 
@@ -149,7 +149,7 @@ AI 的结论必须指向这些文件。`status: ok` 表示会话正常结束；�
 
   ```bash
   python -I core/tools/install_version.py --list
-  python -I core/tools/install_version.py --lvgl 9.4 --source gitee
+  python -I core/tools/install_version.py --lvgl 9.4 --source auto
   ```
 
   源码模式需要 CMake/Ninja/GCC；有预编译版本包时可用 `--mode pack --pack` 免 CMake/Ninja。

@@ -30,7 +30,7 @@ python -I core/tools/export_sdk.py --version 9.6 --json
 
 # 安装其他 LVGL 版本（源码或版本包）
 python -I core/tools/install_version.py --list --json
-python -I core/tools/install_version.py --lvgl 9.4 --source gitee
+python -I core/tools/install_version.py --lvgl 9.4 --source auto
 
 # 统一入口与发布 zip（release/）
 python -I core/tools/lvgl.py run --scenario user/scenarios/settings.json --json

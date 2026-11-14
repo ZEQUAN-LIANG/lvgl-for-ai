@@ -109,7 +109,7 @@ python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json
 python -I core/web.py --open
 ```
 
-On success the exit code is `0`, the last stdout line is the session directory, and `manifest.json` has `status: ok`. If source downloads are unstable on your network in China, add `--source gitee` to step 1.
+On success the exit code is `0`, the last stdout line is the session directory, and `manifest.json` has `status: ok`. The default `--source auto` tries GitHub codeload first and the Gitee mirror second; the Gitee LVGL mirror can return HTML/400, so use the default or a version pack when that happens.
 
 To hand the work to AI, give this repository to a harness such as Claude Code or Cursor; it reads `core/SKILL.md` and `CLAUDE.md` and starts writing from `user/app/**/*.c`. The Claude Code skill is named `lvgl-verify-loop`.
 
@@ -149,7 +149,7 @@ AI conclusions must point at these files. `status: ok` means the session ended n
 
   ```bash
   python -I core/tools/install_version.py --list
-  python -I core/tools/install_version.py --lvgl 9.4 --source gitee
+  python -I core/tools/install_version.py --lvgl 9.4 --source auto
   ```
 
   Source mode needs CMake/Ninja/GCC; a prebuilt version pack can be installed with

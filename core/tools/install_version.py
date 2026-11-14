@@ -5,7 +5,7 @@ The default package ships LVGL 9.6. This script adds another supported
 version in one command:
 
     python -I core/tools/install_version.py --list
-    python -I core/tools/install_version.py --lvgl 9.4 --source gitee
+    python -I core/tools/install_version.py --lvgl 9.4 --source auto
     python -I core/tools/install_version.py --lvgl 9.5 --no-build
     python -I core/tools/install_version.py --lvgl 9.4 --mode pack \
         --pack path\\to\\version-pack.zip
@@ -13,7 +13,9 @@ version in one command:
 Source mode wraps ``fetch_lvgl.py``, ``fetch_png.py`` and
 ``export_sdk.py``, then builds ``user/app`` against the exported host SDK
 with ``BuildPlan``. It needs CMake, Ninja and GCC for the SDK export, and GCC
-for the app build. Pack mode installs a release asset that already contains
+for the app build. ``--source auto`` (the default) tries GitHub codeload first;
+the Gitee LVGL mirror can return an HTML/400 page, so use ``auto`` or a pack
+when it does. Pack mode installs a release asset that already contains
 ``sdk/<version>`` and ``build/lvgl_<token>/lvgl_engine``; it needs no compiler
 unless the user later changes C code.
 
@@ -407,7 +409,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--source",
         choices=("auto", "codeload", "gitee"),
         default="auto",
-        help="LVGL source download source for source mode",
+        help=(
+            "LVGL source download source; auto tries GitHub codeload first, "
+            "then the Gitee mirror"
+        ),
     )
     parser.add_argument(
         "--pack",

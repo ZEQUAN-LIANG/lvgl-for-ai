@@ -103,12 +103,14 @@ engine 时 `--no-build` 直接运行，不需要编译器。
 
 ```bat
 python -I core\tools\install_version.py --list
-python -I core\tools\install_version.py --lvgl 9.4 --source gitee
+python -I core\tools\install_version.py --lvgl 9.4 --source auto
 python -I core\tools\install_version.py --lvgl 9.4 --mode pack --pack path\to\pack.zip
 ```
 
 - **源码模式**：下载 `lvgl-src/<version>` 与 `third_party/`，9.6 额外导出预编译 SDK，
   其他版本用 CMake/Ninja/GCC 源码构建 engine；`--no-build` 只准备源码。
+  `--source auto` 先试 GitHub codeload；Gitee 的 LVGL 镜像可能返回 HTML/400，失败时
+  用 `--source codeload` 或 pack 模式。
 - **pack 模式**：解包已构建的 `sdk/<version>` 与
   `build/lvgl_<token>/lvgl_engine`，不需要 CMake/Ninja；修改用户 C 代码仍然需要 GCC。
 - `versions.json` 是版本索引：默认版本、支持列表、是否支持 intro。场景可选

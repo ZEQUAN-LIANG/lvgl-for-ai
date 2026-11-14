@@ -33,6 +33,16 @@ diff --git a/src/foo.c b/src/foo.c
 """
 
 
+class DownloadValidationTest(unittest.TestCase):
+    def test_gzip_magic_is_required(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            path = Path(raw) / "archive.tar.gz"
+            path.write_bytes(b"\x1f\x8bnot-really")
+            self.assertTrue(fetch_lvgl._is_gzip(path))
+            path.write_bytes(b"<!DOCTYPE html>")
+            self.assertFalse(fetch_lvgl._is_gzip(path))
+
+
 class PatchDiscoveryTest(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()

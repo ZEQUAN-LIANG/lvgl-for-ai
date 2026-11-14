@@ -10,9 +10,13 @@ trees are untrusted data: they live in their own directories under
 ``.scratch/tmp`` and are only read by this script, which never executes
 anything from them.
 
+``--source auto`` tries GitHub codeload first and the Gitee mirror second.
+The Gitee mirror may answer with an HTML/400 page; a download is accepted only
+when it starts with the gzip magic bytes.
+
 Usage:
     python -I core/tools/fetch_lvgl.py --version 9.5 --repo-root .
-    python -I core/tools/fetch_lvgl.py --version 8.3 --source gitee
+    python -I core/tools/fetch_lvgl.py --version 8.3 --source auto
     python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --no-patch
     python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --patch-dir my-patches
 """
@@ -78,6 +82,8 @@ def _curl(url: str, archive: Path, *, resolve_ip: str | None) -> int:
         "curl",
         "-L",
         "--fail",
+        "-A",
+        "Mozilla/5.0 (compatible; lvgl-ai)",
         "--silent",
         "--show-error",
         "--retry",
@@ -93,6 +99,14 @@ def _curl(url: str, archive: Path, *, resolve_ip: str | None) -> int:
         command.extend(["--resolve", f"codeload.github.com:443:{resolve_ip}"])
     command.append(url)
     return subprocess.run(command).returncode
+
+
+def _is_gzip(path: Path) -> bool:
+    try:
+        with path.open("rb") as handle:
+            return handle.read(2) == b"\x1f\x8b"
+    except OSError:
+        return False
 
 
 def download(tag: str, archive: Path, source: str) -> None:
@@ -118,6 +132,10 @@ def download(tag: str, archive: Path, source: str) -> None:
         print(f"download {label}", flush=True)
         returncode = _curl(url, archive, resolve_ip=resolve_ip)
         if returncode == 0 and archive.is_file() and archive.stat().st_size > 0:
+            if not _is_gzip(archive):
+                errors.append(f"{label}: response is not a gzip archive")
+                archive.unlink(missing_ok=True)
+                continue
             print(f"downloaded {archive.stat().st_size} bytes", flush=True)
             return
         errors.append(f"{label}: curl exit {returncode}")
@@ -298,7 +316,12 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", required=True, choices=sorted(TAGS))
     parser.add_argument("--repo-root", type=Path, required=True)
-    parser.add_argument("--source", choices=("auto", "codeload", "gitee"), default="auto")
+    parser.add_argument(
+        "--source",
+        choices=("auto", "codeload", "gitee"),
+        default="auto",
+        help="auto tries GitHub codeload first, then the Gitee mirror",
+    )
     parser.add_argument("--force", action="store_true")
     parser.add_argument(
         "--patch-dir",

@@ -113,10 +113,11 @@ python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json
 python -I core/web.py --open
 ```
 
-国内网络访问 `codeload.github.com` 不稳定时，第 2 步改用 Gitee 镜像：
+默认的 `--source auto` 会先试 GitHub codeload，再试 Gitee 镜像；Gitee 的 LVGL
+镜像当前可能返回 HTML/400，下载失败时请使用默认值或预编译版本包：
 
 ```bash
-python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --source gitee
+python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --source auto
 ```
 
 说明：
@@ -199,7 +200,7 @@ python -I core/cli.py --lvgl 9.6 --source   --scenario user/scenarios/settings.j
 
 ```bash
 python -I core/tools/install_version.py --list
-python -I core/tools/install_version.py --lvgl 9.4 --source gitee
+python -I core/tools/install_version.py --lvgl 9.4 --source auto
 python -I core/tools/install_version.py --lvgl 9.4 --no-build
 python -I core/tools/install_version.py --lvgl 9.4 --mode pack --pack version-pack.zip
 ```
@@ -444,7 +445,7 @@ python -I core/tools/contract_snapshot.py compare
 | `CMake 3.20 or higher is required` | CMake 版本过低 | 升级 CMake |
 | `engine binary not found: ...` | 使用了 `--no-build`，但 `build/` 中没有 engine | 去掉 `--no-build` 先构建 |
 | `configure timed out after 600s` / `build timed out after 600s` | 单阶段超过 600 秒 | 关闭负载或杀毒扫描后重跑；已完成的阶段会保留，可增量构建 |
-| `all download URLs failed:` | 网络、DNS 或代理问题 | 加 `--source gitee`；检查 `curl` 与代理环境变量 |
+| `all download URLs failed:` | 网络、DNS 或代理问题 | 默认 `--source auto` 会试 codeload 与 Gitee 镜像；Gitee 不可用时改用 `--source codeload` 或版本包，并检查 `curl` 与代理环境变量 |
 | `version header mismatch:` | 镜像 tag 漂移 | 删除 `.scratch/tmp/archives` 后重下，或加 `--force` |
 | `[web] cannot listen on 127.0.0.1:8765:` | 端口被占用 | 用 `--port 0` 或换一个端口 |
 | `cannot read scenario ...` | 场景路径写错 | 检查 `user/scenarios/` 下的文件名 |
