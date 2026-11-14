@@ -38,6 +38,7 @@ if str(_TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(_TOOL_ROOT))
 
 from lvgl_ai import paths  # noqa: E402
+from tools import release_bundle  # noqa: E402
 
 DEFAULT_GITHUB_REPO = "ZEQUAN-LIANG/lvgl-for-ai"
 DEFAULT_GITEE_REPO = "liang-zequan/lvgl-for-ai"
@@ -51,7 +52,7 @@ class UploadError(Exception):
     """A user-facing upload failure."""
 
 
-SUMMARY_SCHEMA = "lvgl-verify-loop-release-v2"
+SUMMARY_SCHEMA = release_bundle.BUNDLE_SCHEMA
 BUNDLE_KEYS = ("full", "full_sifli")
 
 
