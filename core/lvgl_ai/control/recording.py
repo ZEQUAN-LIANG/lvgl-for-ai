@@ -36,6 +36,7 @@ def tail_lines(text: str, n: int) -> list[str]:
 # layout has exactly one owner; the names below stay re-exported for callers
 # that import them from here.
 from . import session_schema
+from .documents import DocumentStore
 
 ANNOTATIONS_FILE = session_schema.ANNOTATIONS_FILE
 ANNOTATIONS_SCHEMA = session_schema.ANNOTATIONS_SCHEMA
@@ -254,47 +255,26 @@ class Recording:
     # ---- annotations (writable) ---------------------------------------
 
     @property
+    def annotations_store(self) -> DocumentStore:
+        """The shared JSON + image transaction for ``annotations.json``."""
+        return DocumentStore(
+            self.path,
+            filename=session_schema.ANNOTATIONS_FILE,
+            schema=session_schema.ANNOTATIONS_SCHEMA,
+            collection="notes",
+            unreadable_code="annotations_unreadable",
+            write_code="annotations_write_error",
+        )
+
+    @property
     def annotations(self) -> dict[str, Any]:
-        path = self.path / session_schema.ANNOTATIONS_FILE
-        if not path.is_file():
-            return {"schema": session_schema.ANNOTATIONS_SCHEMA, "notes": []}
-        data = _read_json_object(path)
-        return _validate_annotations(data, path)
+        return self.annotations_store.read()
 
     @annotations.setter
     def annotations(self, value: Any) -> None:
         if not self.path.is_dir():
             raise FileNotFoundError(f"session directory not found: {self.path}")
-        filename = session_schema.ANNOTATIONS_FILE
-        data = _validate_annotations(value, self.path / filename)
-        path = self.path / filename
-        tmp = path.with_name(f"{filename}.tmp")
-        tmp.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
-        tmp.replace(path)
-
-
-def _validate_annotations(value: Any, path: Path) -> dict[str, Any]:
-    if not isinstance(value, dict):
-        raise ValueError(f"{path}: annotations must be a JSON object")
-    schema = value.get("schema", session_schema.ANNOTATIONS_SCHEMA)
-    if schema != session_schema.ANNOTATIONS_SCHEMA:
-        raise ValueError(
-            f"{path}: schema must be "
-            f"{session_schema.ANNOTATIONS_SCHEMA!r}, got {schema!r}"
-        )
-    notes = value.get("notes")
-    if not isinstance(notes, list):
-        raise ValueError(f"{path}: notes must be a list")
-    for index, note in enumerate(notes):
-        if not isinstance(note, dict):
-            raise ValueError(f"{path}: notes[{index}] must be a JSON object")
-    data = dict(value)
-    data["schema"] = session_schema.ANNOTATIONS_SCHEMA
-    data["notes"] = notes
-    return data
+        self.annotations_store.write(value)
 
 
 _TIMELINE_TAIL_BYTES = 262144

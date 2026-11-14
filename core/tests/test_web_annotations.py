@@ -20,6 +20,7 @@ from lvgl_ai import Recording
 from lvgl_ai.web.annotations import (
     AnnotationConflict,
     AnnotationError,
+    delete_note,
     write_note,
 )
 from web_support import SESSION_ID, WebHarness, make_web_session
@@ -485,6 +486,71 @@ class WriteNoteTransactionTest(unittest.TestCase):
             json.loads(self.annotations_path.read_text(encoding="utf-8")),
             saved,
         )
+
+
+class AnnotationDocumentSeamTest(unittest.TestCase):
+    """B6: annotations share the document transaction behind Recording."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        self.session = make_web_session(self.root)
+        self.recording = Recording.open(self.session)
+
+    def test_write_note_reads_and_writes_only_the_recording_seam(self) -> None:
+        class SeamRecording:
+            """Expose the writable document seam and nothing else."""
+
+            def __init__(self, recording: Recording) -> None:
+                self._recording = recording
+
+            @property
+            def annotations(self):
+                return self._recording.annotations
+
+            @annotations.setter
+            def annotations(self, value) -> None:
+                self._recording.annotations = value
+
+            @property
+            def annotations_store(self):
+                return self._recording.annotations_store
+
+            @property
+            def frames(self):
+                return self._recording.frames
+
+            def __getattr__(self, name: str):
+                raise AssertionError(f"unexpected recording attribute: {name}")
+
+        document, saved = write_note(
+            SeamRecording(self.recording), valid_note(id="seam")
+        )
+
+        self.assertEqual([note["id"] for note in document["notes"]], ["seam"])
+        self.assertEqual(saved["regions"][0]["image"], "regions/seam-0.png")
+        self.assertTrue((self.session / "regions/seam-0.png").is_file())
+
+    def test_write_note_prunes_unreferenced_region_images(self) -> None:
+        regions = self.session / "regions"
+        regions.mkdir()
+        stale = regions / "stale-0.png"
+        stale.write_bytes(b"stale")
+
+        write_note(self.recording, valid_note(id="n1"))
+
+        self.assertFalse(stale.exists())
+        self.assertTrue((regions / "n1-0.png").is_file())
+
+    def test_delete_note_removes_only_the_deleted_notes_images(self) -> None:
+        write_note(self.recording, valid_note(id="n1"))
+        write_note(self.recording, valid_note(id="n2"))
+
+        delete_note(self.recording, "n1")
+
+        self.assertFalse((self.session / "regions/n1-0.png").exists())
+        self.assertTrue((self.session / "regions/n2-0.png").is_file())
 
 
 def range_note(**overrides):
