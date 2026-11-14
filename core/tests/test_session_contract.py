@@ -227,10 +227,15 @@ class FileLayoutConstantsTest(unittest.TestCase):
             session_schema, "ANNOTATIONS_FILE", "notes-b3.json"
         ), mock.patch.object(
             session_schema, "WHITEBOARDS_FILE", "boards-b3.json"
+        ), mock.patch.object(
+            session_schema, "MANIFEST_FILE", "session-b3.json"
         ):
             (self.session / "frames").rename(self.session / "frames-b3")
             (self.session / "annotations.json").rename(
                 self.session / "notes-b3.json"
+            )
+            (self.session / "manifest.json").rename(
+                self.session / "session-b3.json"
             )
             (self.session / "boards-b3.json").write_text(
                 json.dumps(whiteboards), encoding="utf-8"
@@ -238,6 +243,13 @@ class FileLayoutConstantsTest(unittest.TestCase):
 
             harness = WebHarness(self.root)
             self.addCleanup(harness.close)
+
+            status, _, listing = harness.json("GET", "/api/sessions")
+            self.assertEqual(status, 200)
+            self.assertEqual(
+                [entry["id"] for entry in listing["sessions"]],
+                [SESSION_NAME],
+            )
 
             status, _, detail = harness.json(
                 "GET", f"/api/sessions/{SESSION_NAME}"

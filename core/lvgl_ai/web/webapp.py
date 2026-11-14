@@ -28,10 +28,13 @@ from urllib.parse import parse_qs, unquote, urlencode, urlparse
 from .. import apps as app_store
 from .. import paths
 from ..apps.trash import InvalidTrashId
+from ..control import session_schema
 from ..control.input import TOKEN_PATTERN, is_token
 from ..control.recording import Recording
 from ..control.runtime import Runtime
-from ..control.session_schema import SESSION_ID_RE, is_session_id
+
+# Re-exported: the docs single-source test reads the pattern from here.
+SESSION_ID_RE = session_schema.SESSION_ID_RE
 from ..scenario import scenario_index
 from . import page_render, replay_model, whiteboards
 from .annotations import AnnotationError, delete_note, write_note
@@ -226,9 +229,11 @@ class WebApp:
             return []
         entries: list[dict[str, Any]] = []
         for child in sorted(root.iterdir(), key=lambda item: item.name, reverse=True):
-            if not child.is_dir() or not is_session_id(child.name):
+            if not child.is_dir() or not session_schema.is_session_id(
+                child.name
+            ):
                 continue
-            if not (child / "manifest.json").is_file():
+            if not (child / session_schema.MANIFEST_FILE).is_file():
                 continue
             entry: dict[str, Any] = {
                 "id": child.name,
@@ -380,7 +385,7 @@ class WebApp:
         )
 
     def session_path(self, session_id: Any) -> Path:
-        if not is_session_id(session_id):
+        if not session_schema.is_session_id(session_id):
             raise HttpError(
                 HTTPStatus.NOT_FOUND,
                 "unknown_session",
