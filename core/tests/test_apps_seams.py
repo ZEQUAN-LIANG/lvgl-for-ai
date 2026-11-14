@@ -235,6 +235,28 @@ class PolicySeamTest(_TempRepo):
         self.assertFalse(policy.is_reserved_create_name(self.root, "promo"))
 
 
+class PolicyScopeDocumentationTest(unittest.TestCase):
+    def test_module_docstring_marks_the_console_only_policy(self) -> None:
+        doc = policy.__doc__ or ""
+        self.assertIn("management-console", doc)
+        self.assertIn("not the build layer's app discovery", doc)
+        self.assertIn("PROTECTED_APPS", doc)
+        self.assertIn("PROTECTED_SCENARIOS", doc)
+
+    def test_protected_scenarios_exist_in_the_development_repo(self) -> None:
+        from lvgl_ai import paths
+
+        scenarios = paths.REPO_ROOT / "user" / "scenarios"
+        if not scenarios.is_dir():
+            self.skipTest("not the development repository")
+        missing = [
+            name
+            for name in policy.PROTECTED_SCENARIOS
+            if not (scenarios / name).is_file()
+        ]
+        self.assertEqual(missing, [])
+
+
 class ScaffoldPolicyTest(_TempRepo):
     def _error(self, name: str, **kwargs) -> common.AppError:
         with self.assertRaises(common.AppError) as raised:

@@ -1,6 +1,10 @@
 """Name policy: deletion protection and derived create-time reservations.
 
-Deletion protection is an explicit policy (the built-in apps and scenarios).
+Deletion protection is an explicit management-console policy for the built-in
+apps and scenarios; it is not the build layer's app discovery. When a built-in
+app or scenario is added, renamed or removed, update ``PROTECTED_APPS`` /
+``PROTECTED_SCENARIOS`` here.
+
 Create-time reservations are derived from the current repository state:
 ``apps[]`` rows, app directories, scenarios and ``app.c`` string literals, so
 adding or deleting a user app never leaves a stale static list behind.
