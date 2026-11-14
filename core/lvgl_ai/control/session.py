@@ -12,9 +12,7 @@ files through the shared :mod:`~lvgl_ai.control.session_schema` layout.
 
 from __future__ import annotations
 
-import datetime as _dt
 import json
-import secrets
 import threading
 from pathlib import Path
 from typing import Any, Callable, Mapping
@@ -27,11 +25,8 @@ from .session_schema import build_manifest, display_problem, list_pngs
 
 DEFAULT_MAX_LOG_BYTES = 16 * 1024 * 1024
 
-
-def new_session_id(now: _dt.datetime | None = None) -> str:
-    """Return ``YYYYMMDD-HHMMSS-4hex`` in local time."""
-    stamp = (now or _dt.datetime.now()).strftime("%Y%m%d-%H%M%S")
-    return f"{stamp}-{secrets.token_hex(2)}"
+# Re-exported: the generator belongs to the session contract module.
+new_session_id = session_schema.new_session_id
 
 
 class TailLog:

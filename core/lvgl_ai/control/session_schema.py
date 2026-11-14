@@ -11,6 +11,9 @@ cannot drift.
 
 from __future__ import annotations
 
+import datetime as _dt
+import re
+import secrets
 from pathlib import Path
 from typing import Any
 
@@ -70,6 +73,22 @@ TIMELINE_ROW_TYPES = frozenset({"frame", "input", "wait", "mark", "snapshot", "e
 # The scenario, the ready announcement and the manifest share one dimension
 # rule: a positive integer, capped for scenario display requests.
 MAX_DISPLAY_DIMENSION = 4096
+
+# One session directory name: local timestamp plus four lowercase hex chars.
+# Retention, the writer and the web adapter all validate with this rule.
+SESSION_ID_PATTERN = r"\d{8}-\d{6}-[0-9a-f]{4}"
+SESSION_ID_RE = re.compile(r"^" + SESSION_ID_PATTERN + r"\Z")
+
+
+def new_session_id(now: _dt.datetime | None = None) -> str:
+    """Return ``YYYYMMDD-HHMMSS-4hex`` in local time."""
+    stamp = (now or _dt.datetime.now()).strftime("%Y%m%d-%H%M%S")
+    return f"{stamp}-{secrets.token_hex(2)}"
+
+
+def is_session_id(value: Any) -> bool:
+    """True when ``value`` is a canonical session directory name."""
+    return isinstance(value, str) and SESSION_ID_RE.fullmatch(value) is not None
 
 # Optional evidence file -> manifest artifacts key, in listing order.
 ARTIFACT_FILES = (

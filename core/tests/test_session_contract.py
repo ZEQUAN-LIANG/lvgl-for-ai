@@ -264,6 +264,63 @@ class FileLayoutConstantsTest(unittest.TestCase):
             )
 
 
+class SessionIdContractTest(unittest.TestCase):
+    """B4: one generator and one validator for session directory names."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+
+    def test_generator_matches_the_shared_validator(self) -> None:
+        for _ in range(5):
+            session_id = session_schema.new_session_id()
+            self.assertRegex(session_id, r"^\d{8}-\d{6}-[0-9a-f]{4}$")
+            self.assertTrue(session_schema.is_session_id(session_id))
+
+    def test_validator_rejects_the_old_web_loose_format(self) -> None:
+        for value in (
+            "loose-session",
+            "20260102-030405-ABCD",
+            "20260102-030405-abcd-extra",
+            "20260102-030405-abcd/..",
+            "",
+        ):
+            with self.subTest(value=value):
+                self.assertFalse(session_schema.is_session_id(value))
+
+    def test_web_lists_and_serves_only_canonical_session_directories(self) -> None:
+        loose = make_summary_session(
+            self.root,
+            name="loose-session",
+            display=DISPLAY,
+            with_annotations=False,
+            with_snapshot=False,
+        )
+        self.assertTrue((loose / "manifest.json").is_file())
+        make_summary_session(
+            self.root,
+            name=SESSION_NAME,
+            display=DISPLAY,
+            with_annotations=False,
+            with_snapshot=False,
+        )
+        harness = WebHarness(self.root)
+        self.addCleanup(harness.close)
+
+        status, _, payload = harness.json("GET", "/api/sessions")
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            [entry["id"] for entry in payload["sessions"]], [SESSION_NAME]
+        )
+
+        status, _, payload = harness.json(
+            "GET", "/api/sessions/loose-session"
+        )
+        self.assertEqual(status, 404)
+        self.assertEqual(payload["error"]["code"], "unknown_session")
+
+
 class DisplayValidatorTest(unittest.TestCase):
     """B2: ``session_schema.validate_display`` is the one display rule."""
 

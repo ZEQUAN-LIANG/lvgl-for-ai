@@ -31,6 +31,7 @@ from ..apps.trash import InvalidTrashId
 from ..control.input import TOKEN_PATTERN, is_token
 from ..control.recording import Recording
 from ..control.runtime import Runtime
+from ..control.session_schema import SESSION_ID_RE, is_session_id
 from ..scenario import scenario_index
 from . import page_render, replay_model, whiteboards
 from .annotations import AnnotationError, delete_note, write_note
@@ -59,7 +60,6 @@ PAGE_CLOSE_GRACE_S = 0.5
 # reset the connection while the client is still writing (which would hide the
 # 4xx response behind a ConnectionAbortedError).
 MAX_DRAIN_BYTES = 16 * 1024 * 1024
-SESSION_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 FILE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*\.png$")
 PAGE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 APP_REQUEST_HEADER = "X-LVGL-AI-Request"
@@ -226,7 +226,7 @@ class WebApp:
             return []
         entries: list[dict[str, Any]] = []
         for child in sorted(root.iterdir(), key=lambda item: item.name, reverse=True):
-            if not child.is_dir() or not SESSION_ID_RE.fullmatch(child.name):
+            if not child.is_dir() or not is_session_id(child.name):
                 continue
             if not (child / "manifest.json").is_file():
                 continue
@@ -380,10 +380,7 @@ class WebApp:
         )
 
     def session_path(self, session_id: Any) -> Path:
-        if (
-            not isinstance(session_id, str)
-            or not SESSION_ID_RE.fullmatch(session_id)
-        ):
+        if not is_session_id(session_id):
             raise HttpError(
                 HTTPStatus.NOT_FOUND,
                 "unknown_session",

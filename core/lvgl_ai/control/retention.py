@@ -13,14 +13,14 @@ another live Runtime, an interrupted run, or the user.
 from __future__ import annotations
 
 import json
-import re
 import shutil
 from pathlib import Path
 
 from . import session_schema
 
 DEFAULT_SESSION_LIMIT = 10
-SESSION_DIR_RE = re.compile(r"^\d{8}-\d{6}-[0-9a-f]{4}$")
+# Re-exported for callers that imported the old name.
+SESSION_DIR_RE = session_schema.SESSION_ID_RE
 # Only a finalized build failure is safe to drop: it has no frames and its
 # error is already reported by the start() call that produced it.
 DISCARDED_STATUSES = frozenset({"build_error"})
@@ -49,7 +49,7 @@ def prune_sessions(
 
     sessions: list[tuple[Path, str]] = []
     for child in root_path.iterdir():
-        if not child.is_dir() or not SESSION_DIR_RE.fullmatch(child.name):
+        if not child.is_dir() or not session_schema.is_session_id(child.name):
             continue
         status = _manifest_status(child)
         if status is None:
