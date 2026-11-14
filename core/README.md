@@ -465,6 +465,18 @@ print(recording.manifest["app"], recording.manifest["frame_count"])
 
 `LVGL_AI_LVGL_VERSION` 选择 `lvgl-src/<version>`，支持 `9.6` / `9.5` / `9.4` / `9.1` / `8.4` / `8.3`；`LVGL_AI_LVGL_SRC` 可覆盖源码路径。`LVGL_AI_USER_APP_DIR` 可指向导出的应用目录（例如 `chip-adapt/exports/<app>/src/app`），用于运行时验证；非默认目录的构建输出在 `build/lvgl_<token>_export_<label>_<hash>`，与 `user/app` 的 `build/lvgl_<token>` 隔离。构建前会获取该目录的跨进程锁，并等待或终止 PID 文件记录的残留 engine。跨版本比较事件语义，不比较像素。
 
+## Upgrading LVGL（升级检查清单）
+
+升级 `lvgl-src/<version>` 或新增受支持版本前，先复核这些非公开依赖；它们不在 LVGL 的公开 API 契约内，升级时可能静默改变语义：
+
+1. **命中测试**：`core/engine/adapter_9x.c:113` 的 `hit_test` 使用 `lv_indev_search_obj`，这是 LVGL 内部辅助函数。9.4 起 `lv_obj_class_t::name` 移入私有头，`adapter_9x.c:17-20` 按 `LVGL_VERSION_MINOR >= 4` 包含 `src/core/lv_obj_class_private.h`；升级要确认该头仍存在、`name` 字段路径未变，否则 `hit` 会退化为空。
+2. **lodepng 返回类型**：`core/engine/adapter_9x.c:339-352` 假设 `lodepng_decode32` 写出的指针实际是 `lv_draw_buf_t *`，这是 LVGL 的封装行为，不是公开契约。升级要确认 `decoded->data`、`decoded->header.stride` 与 RGBA 布局仍成立，否则参考图 diff 会读错内存。
+3. **版本分支与 indev 注册**：`adapter_9x.c` 使用 `lv_indev_create` / `lv_indev_set_read_cb`，`adapter_8x.c` 使用 `lv_indev_drv_init` / `lv_indev_drv_register`；9.2+ 才有对象名。`lv_conf.h`、display/layer API 与 flush 回调签名也分别落在两个 adapter 分支里，不要只改一个。
+4. **支持矩阵**：9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3。升级后跑 `test_multiversion` 与各版本场景（`meta/versions.json` + `tools/install_version.py`）；跨版本只比较事件语义与 session 文件集合，不比较像素。
+5. **边界检查**：`python -I core/tools/check_version_boundaries.py` 与 `python -I core/tools/check_api_nav.py` 必须通过；`core/api-nav/<version>.md` 跟随公开 API 变化更新。
+
+新增版本时同步 `meta/versions.json`、`api-nav/` 与 `patches/<version>/`（如需 patch）；不要直接修改已安装的 `lvgl-src/<version>/`。
+
 ## 测试
 
 ```bash
