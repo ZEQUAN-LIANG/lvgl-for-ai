@@ -134,6 +134,10 @@ class Runtime:
     ``window=True`` asks the engine for a Win32 GDI window; real mouse and
     keyboard input then work alongside the virtual indevs. ``headless`` stays
     the default, and non-Windows engines fall back to headless.
+
+    Session options are constructor keywords only. ``SessionStore`` owns
+    their values after construction; Runtime exposes just ``app`` / ``mode`` /
+    ``ready`` for the :class:`RuntimeLike` surface.
     """
 
     def __init__(
