@@ -448,33 +448,33 @@ def _write_upload_checklist(
     assets.extend((Path(item["zip"]).name, item["sha256"]) for item in packs)
     assets.append((Path(sifli["zip"]).name, sifli["sha256"]))
     lines = [
-        f"# {tool_version} 上传清单",
+        f"# {tool_version} upload checklist",
         "",
         f"Tag: `v{tool_version}`",
         "",
-        "把下面的 zip 和对应 `.sha256` 上传到 Gitee 和 GitHub 的同一个 Release。",
-        "`versions.json` 里的 `pack.gitee` / `pack.github` 已按这个 tag 写好。",
+        "Upload the zips and matching `.sha256` files to the same Release on Gitee and GitHub.",
+        "`versions.json` already contains the Gitee/GitHub pack URLs for this tag.",
         "",
-        "| 资产 | sha256 |",
+        "| Asset | sha256 |",
         "| --- | --- |",
     ]
     for name, digest in assets:
         lines.append(f"| `{name}` | `{digest}` |")
     lines += [
         "",
-        "## 使用方式",
+        "## Usage",
         "",
-        f"1. 下载 `lvgl-verify-loop-{tool_version}-core-win64.zip`，解压得到 `lvgl-verify-loop/`。",
-        "2. 双击 `LVGL-AI-Viewer.exe`，或运行 `bin\\lvgl.cmd run --scenario user\\scenarios\\intro.json`。",
-        "3. 需要 9.5 / 9.4 / 9.1 / 8.4 / 8.3 时，直接运行对应版本；首次会询问是否下载 pack。",
-        "4. 需要 SiFli 时，把 `sifli-tools` zip 解压到 core 的同一父目录，运行 `bin\\sifli.cmd`。",
+        f"1. Download `lvgl-verify-loop-{tool_version}-core-win64.zip` and extract `lvgl-verify-loop/`.",
+        "2. Double-click `LVGL-AI-Viewer.exe`, or run `bin\\lvgl.cmd run --scenario user\\scenarios\\intro.json`.",
+        "3. For 9.5 / 9.4 / 9.1 / 8.4 / 8.3, run the version directly; the first run asks before downloading its pack.",
+        "4. For SiFli, extract the `sifli-tools` zip into the same parent directory as core and run `bin\\sifli.cmd`.",
         "",
-        "## 上传后检查",
+        "## Post-upload checks",
         "",
-        f"- Gitee 与 GitHub 的 `v{tool_version}` Release 都包含全部 zip。",
-        "- `versions.json` 的 sha256 与上传文件一致。",
-        "- 在一个空目录解压 core，运行 `bin\\lvgl.cmd run --lvgl 9.4 --yes ...`，确认能下载并运行。",
-        "- `sifli-tools` 解压后，`runtime\\python\\python.exe -I chip-adapt\\sifli\\export.py sift_watch --dry-run --force` 返回 ok。",
+        f"- The Gitee and GitHub `v{tool_version}` releases contain every zip.",
+        "- Each `versions.json` sha256 matches the uploaded file.",
+        "- Extract core into an empty directory and run `bin\\lvgl.cmd run --lvgl 9.4 --yes ...`; it must download and run.",
+        "- After extracting `sifli-tools`, `runtime\\python\\python.exe -I chip-adapt\\sifli\\export.py sift_watch --dry-run --force` returns ok.",
         "",
     ]
     path = out_dir / "UPLOAD.md"
