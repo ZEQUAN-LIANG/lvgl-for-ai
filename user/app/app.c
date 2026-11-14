@@ -2,13 +2,11 @@
  * @file app.c
  * The user entry point: lvgl_engine calls exactly this function.
  *
- * LVGL 9.6 starts the AURELIA C9 coffee machine by default. LVGL_AI_DEMO selects
- * the app variant: coffee (default), xiaohongshu (alias xhs), spectrum,
- * sift_watch, zombie_cannon or textarea_evidence. The CLI and
- * web set it from a scenario's "app" field, so the same value is recorded in
- * the session manifest. The original demo tree is always created but hidden,
- * because the tool's integration tests target its named button; older LVGL
- * targets show that demo as-is.
+ * LVGL_AI_DEMO selects the app variant from the apps[] table below. The CLI
+ * and web set it from a scenario's "app" field, so the same value is recorded
+ * in the session manifest. The development tree keeps a hidden demo harness
+ * for the tool's integration tests; the release package uses
+ * core/tools/release_app.c and ships only the intro app.
  *
  * Every app exposes the same ``void create(void)`` entry. Adding an app means
  * one row in ``apps`` plus its implementation; the tool layer never learns app
@@ -25,6 +23,7 @@
 #include "textarea_evidence/textarea_evidence.h"
 #include "sift_watch/sift_watch.h"
 #include "zombie_cannon/zombie_cannon.h"
+#include "intro/intro.h"
 #endif
 
 #include <stdio.h>
@@ -46,6 +45,7 @@ static const app_entry_t apps[] = {
     {"textarea_evidence", textarea_evidence_create},
     {"sift_watch", sift_watch_create},
     {"zombie_cannon", zombie_cannon_create},
+    {"intro", intro_create},
 };
 
 #define APP_COUNT (sizeof(apps) / sizeof(apps[0]))
@@ -95,8 +95,8 @@ void app_create(void)
         exit(1);
     }
 
-    /* The original demo tree stays transparent behind every app because the
-     * tool's integration tests target its named button. */
+    /* The development harness (when present) stays transparent behind every
+     * app because the tool's integration tests target its named button. */
     demo_harness_create(false);
     printf("[app] app=%s\n", app->name);
     app->create();

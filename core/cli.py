@@ -20,7 +20,10 @@ choice. ``--app NAME`` selects
 the user app variant by setting ``LVGL_AI_DEMO``; when ``--scenario`` is used and
 the scenario declares ``app``, omitting the flag uses the scenario value.
 A scenario's optional ``display`` object sets the engine width/height; an
-explicit ``--app`` overrides only the app, not that scene's display.
+explicit ``--app`` overrides only the app, not that scene's display. A
+scenario's optional ``lvgl`` field selects the version when ``--lvgl`` is
+omitted; explicit ``--lvgl`` wins, then the scenario field, then
+``LVGL_AI_LVGL_VERSION``, then the default 9.6.
 
 ``--json`` prints exactly one JSON object on stdout. The original fields
 ``session_id``, ``manifest_path``, ``app`` and ``error`` (``null`` on success)
@@ -95,7 +98,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--lvgl",
         default=None,
-        help="LVGL version, e.g. 9.6 (default: LVGL_AI_LVGL_VERSION or 9.6)",
+        help=(
+            "LVGL version, e.g. 9.6 (default: scenario lvgl, "
+            "LVGL_AI_LVGL_VERSION, or 9.6)"
+        ),
     )
     parser.add_argument(
         "--app",
@@ -180,8 +186,11 @@ def main(argv: list[str] | None = None) -> int:
     app = args.app if args.app is not None else (
         None if scenario is None else scenario.get("app")
     )
+    lvgl = args.lvgl if args.lvgl is not None else (
+        None if scenario is None else scenario.get("lvgl")
+    )
     runtime_kwargs = dict(
-        lvgl=args.lvgl,
+        lvgl=lvgl,
         build=args.build,
         record=args.record,
     )

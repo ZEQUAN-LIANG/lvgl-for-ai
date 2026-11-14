@@ -1,0 +1,22 @@
+{
+  "schema": "lvgl-ai-scenario-v1",
+  "name": "intro",
+  "app": "intro",
+  "steps": [
+    {"type": "mark", "id": "landing"},
+    {"type": "snapshot", "label": "landing"},
+    {"type": "wait", "ms": 300},
+    {"type": "click_at", "x": 640, "y": 528},
+    {"type": "wait", "ms": 600},
+    {"type": "snapshot", "label": "write"},
+    {"type": "wait", "ms": 900},
+    {"type": "snapshot", "label": "build"},
+    {"type": "wait", "ms": 900},
+    {"type": "snapshot", "label": "record"},
+    {"type": "wait", "ms": 900},
+    {"type": "snapshot", "label": "read"},
+    {"type": "wait", "ms": 1000},
+    {"type": "snapshot", "label": "done"},
+    {"type": "mark", "id": "done"}
+  ]
+}

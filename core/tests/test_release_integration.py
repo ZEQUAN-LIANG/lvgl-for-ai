@@ -131,13 +131,31 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             )
             summary = json_line(result)
             # The release directory itself is a usable skill directory.
-            published = out_dir / "lvgl-ai-new"
+            published = out_dir / "lvgl-verify-loop"
             self.assertEqual(Path(summary["package"]), published)
             self.assertTrue((published / "SKILL.md").is_file())
             self.assertTrue((published / "CONTEXT.md").is_file())
+            self.assertTrue((published / "LVGL-AI-Viewer.exe").is_file())
+            self.assertTrue((published / "intro-demo.gif").is_file())
+            self.assertTrue((published / "versions.json").is_file())
             self.assertTrue((published / "core" / "cli.py").is_file())
             self.assertTrue(
                 (published / "build" / "lvgl_9_6" / "lvgl_engine.exe").is_file()
+            )
+            self.assertTrue(
+                (published / "user" / "app" / "intro" / "intro.c").is_file()
+            )
+            self.assertFalse((published / "user" / "app" / "coffee").exists())
+            self.assertFalse((published / "user" / "app" / "template").exists())
+            self.assertFalse((published / "user" / "app" / "demo").exists())
+            self.assertTrue(
+                (published / "user" / "scenarios" / "intro.json").is_file()
+            )
+            self.assertFalse(
+                (published / "user" / "scenarios" / "coffee.json").exists()
+            )
+            self.assertFalse(
+                (published / "user" / "scenarios" / "settings.json").exists()
             )
             zip_path = Path(summary["zip"])
             self.assertTrue(zip_path.is_file())
@@ -159,6 +177,13 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 "/sessions/",
                 "core/tests/",
                 "chip-adapt/",
+                "user/app/coffee/",
+                "user/app/xiaohongshu/",
+                "user/app/template/",
+                "user/app/demo/",
+                "user/scenarios/coffee.json",
+                "user/scenarios/template.json",
+                "user/scenarios/settings.json",
                 "__pycache__/",
                 "/.git/",
             ):
@@ -167,13 +192,18 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                     forbidden,
                 )
             required = (
-                "lvgl-ai-new/SKILL.md",
-                "lvgl-ai-new/CONTEXT.md",
-                "lvgl-ai-new/VERSION.json",
-                "lvgl-ai-new/bin/lvgl.cmd",
-                "lvgl-ai-new/core/cli.py",
-                "lvgl-ai-new/sdk/9.6/manifest.json",
-                "lvgl-ai-new/build/lvgl_9_6/lvgl_engine.exe",
+                "lvgl-verify-loop/SKILL.md",
+                "lvgl-verify-loop/CONTEXT.md",
+                "lvgl-verify-loop/VERSION.json",
+                "lvgl-verify-loop/LVGL-AI-Viewer.exe",
+                "lvgl-verify-loop/bin/lvgl.cmd",
+                "lvgl-verify-loop/core/cli.py",
+                "lvgl-verify-loop/sdk/9.6/manifest.json",
+                "lvgl-verify-loop/build/lvgl_9_6/lvgl_engine.exe",
+                "lvgl-verify-loop/intro-demo.gif",
+                "lvgl-verify-loop/versions.json",
+                "lvgl-verify-loop/user/app/intro/intro.c",
+                "lvgl-verify-loop/user/scenarios/intro.json",
             )
             for name in required:
                 self.assertIn(name, names)
@@ -181,11 +211,11 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             package = root / "unpacked"
             with zipfile.ZipFile(zip_path) as archive:
                 archive.extractall(package)
-            pkg = package / "lvgl-ai-new"
+            pkg = package / "lvgl-verify-loop"
 
             # The manifest describes the files that are actually in the zip.
             manifest_names = {
-                f"lvgl-ai-new/{relative}"
+                f"lvgl-verify-loop/{relative}"
                 for relative in release_manifest["files"]
             }
             self.assertEqual(manifest_names, set(names))
@@ -250,7 +280,7 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             wrapper = [os.environ.get("COMSPEC", "cmd.exe"), "/c",
                        str(pkg / "bin" / "lvgl.cmd"), "run",
                        "--no-build",
-                       "--scenario", str(pkg / "user" / "scenarios" / "settings.json"),
+                       "--scenario", str(pkg / "user" / "scenarios" / "intro.json"),
                        "--json"]
             run = subprocess.run(
                 wrapper,
@@ -280,7 +310,7 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                     os.environ.get("COMSPEC", "cmd.exe"), "/c",
                     str(pkg / "bin" / "lvgl.cmd"), "run",
                     "--prebuilt",
-                    "--scenario", str(pkg / "user" / "scenarios" / "settings.json"),
+                    "--scenario", str(pkg / "user" / "scenarios" / "intro.json"),
                     "--json",
                 ],
                 cwd=str(work),

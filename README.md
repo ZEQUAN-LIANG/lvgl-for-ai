@@ -26,6 +26,12 @@ AI 时代，code is cheap。写 C 不再是瓶颈，缺的是让 AI 看见真实
 
 ## 它能做什么
 
+### 默认介绍页：把验证回路跑一遍
+
+`user/app/intro/` 是 skill 的默认应用，也是默认模板。下面的 GIF 来自一次真实会话（`user/scenarios/intro.json`）：
+
+<p align="center"><img src="docs/img/intro-demo.gif" width="800" alt="LVGL Verify Loop 默认介绍页"></p>
+
 ### AI 闭环：改 C → 跑场景 → 读证据 → 自己判定
 
 AI 直接修改 `user/app/**/*.c`，用一条命令构建并播放场景：
@@ -103,7 +109,7 @@ python -I core/web.py --open
 
 成功时退出码为 `0`，stdout 最后一行是会话目录，`manifest.json` 的 `status` 为 `ok`。国内网络访问源码下载地址不稳定时，第 1 步加 `--source gitee`。
 
-要让 AI 接手，把这个仓库交给 Claude Code、Cursor 等 harness，它会读取 `core/SKILL.md` 与 `CLAUDE.md`，从 `user/app/**/*.c` 开始写。
+要让 AI 接手，把这个仓库交给 Claude Code、Cursor 等 harness，它会读取 `core/SKILL.md` 与 `CLAUDE.md`，从 `user/app/**/*.c` 开始写。Claude Code 里的 skill 名是 `lvgl-verify-loop`。
 
 ## 看懂证据
 
@@ -135,8 +141,17 @@ AI 的结论必须指向这些文件。`status: ok` 表示会话正常结束；�
 
 ## 版本与真机
 
-- 宿主默认 LVGL 9.6，用于日常预览与取证。
+- 宿主默认 LVGL 9.6，用于日常预览与取证；发布包里的 `intro` 应用按 9.4+ 编写。
 - 设备应用按 LVGL 9.4 基线编写；导出只做兼容性检查，不自动改写源码。
+- 其他版本用一条命令安装：
+
+  ```bash
+  python -I core/tools/install_version.py --list
+  python -I core/tools/install_version.py --lvgl 9.4 --source gitee
+  ```
+
+  源码模式需要 CMake/Ninja/GCC；有预编译版本包时可用 `--mode pack --pack` 免 CMake/Ninja。
+  场景可选 `"lvgl": "9.4"`；`--lvgl` 优先于场景，场景优先于 `LVGL_AI_LVGL_VERSION`。
 - SiFli 命令见上文；SDK、工具链与 sftool 安装见 `chip-adapt/vendor/README.md`。
 
 ## 环境依赖

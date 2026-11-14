@@ -3,7 +3,7 @@
 
 One command produces the package directory, zip, ``.sha256`` and release
 manifest.  The unpacked skill directory stays under the output directory
-(``release/lvgl-ai-new/``) next to the zip, so it can be inspected or run
+(``release/lvgl-verify-loop/``) next to the zip, so it can be inspected or run
 without extracting.  The default package is host-only: tool layer, ``user/``,
 the prebuilt host SDK, a prebuilt engine, ``bin/lvgl.cmd``, ``SKILL.md`` and
 ``CONTEXT.md``.  LVGL source, third-party source, sessions, tests and chip
@@ -54,11 +54,18 @@ if str(TOOLS_DIR) not in sys.path:
 
 import export_sdk  # noqa: E402
 
-PACKAGE_DIR_NAME = "lvgl-ai-new"
+PACKAGE_DIR_NAME = "lvgl-verify-loop"
 RELEASE_SCHEMA = "lvgl-ai-release-v1"
 VERSION_SCHEMA = "lvgl-ai-version-v1"
 DEFAULT_LVGL = paths.DEFAULT_LVGL_VERSION
-SMOKE_SCENARIO = Path("user") / "scenarios" / "settings.json"
+SMOKE_SCENARIO = Path("user") / "scenarios" / "intro.json"
+RELEASE_INTRO_APP = "intro"
+RELEASE_SCENARIOS = ("intro.json",)
+RELEASE_APP_FILES = ("app.h", "lvgl_compat.h", "README.md", "GUIDE.md")
+RELEASE_APP_DIRS = (RELEASE_INTRO_APP,)
+RELEASE_VIEWER = "LVGL-AI-Viewer.exe"
+RELEASE_DEMO_GIF = "intro-demo.gif"
+RELEASE_DEMO_SOURCE = Path("docs") / "img" / RELEASE_DEMO_GIF
 FORBIDDEN_TOP_LEVEL = {
     ".git", "chip-adapt", "release", "lvgl-src", "patches", "sessions",
     "tests", "third_party", ".scratch",
@@ -202,6 +209,40 @@ def check_hygiene(package: Path, repo_root: Path) -> None:
                 )
 
 
+def stage_user_tree(repo_root: Path, package: Path) -> None:
+    """Copy the intro app and the scenario the package needs."""
+    source = repo_root / "user"
+    app_source = source / "app"
+    app_target = package / "user" / "app"
+    app_target.mkdir(parents=True, exist_ok=True)
+    for name in RELEASE_APP_FILES:
+        source_file = app_source / name
+        if not source_file.is_file():
+            raise BuildError(f"release: user/app/{name} is missing")
+        shutil.copy2(source_file, app_target / name)
+    for name in RELEASE_APP_DIRS:
+        source_dir = app_source / name
+        if not source_dir.is_dir():
+            raise BuildError(f"release: user/app/{name} is missing")
+        copy_tree(
+            source_dir,
+            app_target / name,
+            exclude_dirs=USER_EXCLUDE_DIRS,
+            exclude_suffixes=EXCLUDE_SUFFIXES,
+        )
+    release_app = TOOLS_DIR / "release_app.c"
+    if not release_app.is_file():
+        raise BuildError("release: core/tools/release_app.c is missing")
+    shutil.copy2(release_app, app_target / "app.c")
+    scenario_target = package / "user" / "scenarios"
+    scenario_target.mkdir(parents=True, exist_ok=True)
+    for name in RELEASE_SCENARIOS:
+        source_file = source / "scenarios" / name
+        if not source_file.is_file():
+            raise BuildError(f"release: user/scenarios/{name} is missing")
+        shutil.copy2(source_file, scenario_target / name)
+
+
 def stage_package(
     *,
     repo_root: Path,
@@ -221,20 +262,36 @@ def stage_package(
     skill_source = repo_root / "core" / "SKILL.md"
     if skill_source.is_file():
         shutil.copy2(skill_source, package / "SKILL.md")
+    versions_source = repo_root / "versions.json"
+    if not versions_source.is_file():
+        raise BuildError("release: versions.json is missing")
+    shutil.copy2(versions_source, package / "versions.json")
     copy_tree(
         repo_root / "core", package / "core",
         exclude_dirs=CORE_EXCLUDE_DIRS,
         exclude_suffixes=EXCLUDE_SUFFIXES,
     )
-    copy_tree(
-        repo_root / "user", package / "user",
-        exclude_dirs=USER_EXCLUDE_DIRS,
-        exclude_suffixes=EXCLUDE_SUFFIXES,
-    )
+    stage_user_tree(repo_root, package)
     copy_tree(repo_root / "licenses", package / "licenses")
     copy_tree(repo_root / "bin", package / "bin")
     if not (repo_root / "bin" / "lvgl.cmd").is_file():
         raise BuildError("release: bin/lvgl.cmd is missing")
+    viewer = repo_root / RELEASE_VIEWER
+    if not viewer.is_file():
+        raise BuildError(
+            f"release: {RELEASE_VIEWER} is missing; "
+            "run core/tools/launchers/build.py first"
+        )
+    shutil.copy2(viewer, package / RELEASE_VIEWER)
+    demo_gif = repo_root / RELEASE_DEMO_SOURCE
+    if not demo_gif.is_file():
+        demo_gif = repo_root / RELEASE_DEMO_GIF
+    if not demo_gif.is_file():
+        raise BuildError(
+            f"release: {RELEASE_DEMO_SOURCE.as_posix()} or "
+            f"{RELEASE_DEMO_GIF} is missing; record user/scenarios/intro.json first"
+        )
+    shutil.copy2(demo_gif, package / RELEASE_DEMO_GIF)
     sdk_target = package / "sdk" / lvgl_version
     shutil.copytree(sdk_dir, sdk_target)
 
@@ -588,7 +645,9 @@ def release(
             shutil.rmtree(package)
         shutil.move(str(staging_package), str(package))
 
-        zip_path = out_dir / f"lvgl-ai-{tool_version}-{lvgl_version}.zip"
+        zip_path = out_dir / (
+            f"{PACKAGE_DIR_NAME}-{tool_version}-{lvgl_version}.zip"
+        )
         zip_hash = build_zip(package, zip_path)
         hashes = _file_hashes(package)
         files = sorted(package.rglob("*"))
@@ -629,7 +688,9 @@ def release(
         "files": hashes,
         "smoke": smoke_report,
     }
-    manifest_path = out_dir / f"lvgl-ai-{tool_version}-{lvgl_version}.release.json"
+    manifest_path = out_dir / (
+        f"{PACKAGE_DIR_NAME}-{tool_version}-{lvgl_version}.release.json"
+    )
     manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",

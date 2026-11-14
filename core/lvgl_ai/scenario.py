@@ -6,6 +6,7 @@ A scenario file is a JSON object with the ``lvgl-ai-scenario-v1`` schema::
       "schema": "lvgl-ai-scenario-v1",
       "name": "settings",
       "app": "coffee",
+      "lvgl": "9.6",
       "display": {"width": 800, "height": 600},
       "steps": [
         {"type": "click_at", "x": 112, "y": 324},
@@ -20,6 +21,12 @@ A scenario file is a JSON object with the ``lvgl-ai-scenario-v1`` schema::
 ``[A-Za-z0-9_-]+``). The CLI forwards it as ``LVGL_AI_DEMO`` before starting the
 engine and the session manifest records it; omit it to use the user code
 default.
+
+``lvgl`` is optional and selects the LVGL version (matching
+``[0-9A-Za-z._-]+``, for example ``9.4``). The CLI uses it only when
+``--lvgl`` is omitted; an explicit flag wins. The value is not validated
+against the installed trees here, so ``install_version.py`` may prepare a
+version that is not downloaded yet.
 
 ``display`` is optional and declares the LVGL screen size. ``width`` and
 ``height`` are integers in ``1..4096``; omit the object to use the engine
@@ -75,6 +82,7 @@ last step cannot leave a half-played gesture.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -113,7 +121,8 @@ DEFAULT_DRAG_INTERVAL_MS = 0
 MAX_DRAG_STEPS = 1000
 DRAG_SNAPSHOT_LABEL = "drag_end"
 
-_FILE_FIELDS = {"schema", "name", "app", "display", "steps"}
+_FILE_FIELDS = {"schema", "name", "app", "lvgl", "display", "steps"}
+_VERSION_PATTERN = re.compile(r"[0-9A-Za-z._-]+")
 _STEP_FIELDS = {
     "click_at": {"type", "x", "y", "hold_ms"},
     "drag": {"type", "from", "to", "steps", "interval_ms"},
@@ -170,6 +179,13 @@ def load_scenario(path: str | Path) -> dict[str, Any]:
         raise ScenarioError(
             f"scenario {scenario_path}: app must match {TOKEN_PATTERN}"
         )
+    lvgl = data.get("lvgl")
+    if lvgl is not None and (
+        not isinstance(lvgl, str) or not _VERSION_PATTERN.fullmatch(lvgl)
+    ):
+        raise ScenarioError(
+            f"scenario {scenario_path}: lvgl must match [0-9A-Za-z._-]+"
+        )
     display = data.get("display")
     if display is not None:
         problem = display_problem(display)
@@ -183,6 +199,8 @@ def load_scenario(path: str | Path) -> dict[str, Any]:
         document["name"] = name
     if app is not None:
         document["app"] = app
+    if lvgl is not None:
+        document["lvgl"] = lvgl
     if display is not None:
         document["display"] = {
             "width": display["width"],

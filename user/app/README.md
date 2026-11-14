@@ -3,6 +3,10 @@
 用户代码目录。入口固定为 `void app_create(void)`；`user/app/**/*.c` 会被 CMake
 递归收集并全部编译，不需要注册表，也不需要写 `main`。
 
+> 发布包只带 `intro/` 一个应用；它同时是默认介绍页和默认模板。下表中的 coffee、
+> xiaohongshu、spectrum、sift_watch、zombie_cannon、textarea_evidence 仅存在于
+> 开发仓库。
+
 ## 应用变体（app）
 
 同一个入口可以承载多个应用变体。`LVGL_AI_DEMO` 环境变量是用户代码与工具之间的契约：
@@ -14,7 +18,8 @@
 | `spectrum` | ORBITAL 频谱播放器，`spectrum/` | LVGL 9.6 |
 | `sift_watch` | 390x450 像素手表 OS，含 ZOMBIE 无尽尸潮应用，`sift_watch/` | LVGL 9.6 / 导出 9.4 |
 | `zombie_cannon` | 390x460 无尽尸潮独立预览，`zombie_cannon/` | LVGL 9.6 |
-| 未设置 | `coffee` | LVGL 9.6 |
+| `intro` | 项目介绍页，发布包唯一应用与默认模板，`intro/` | 发布包 9.4+ / 开发仓库 9.6 |
+| 未设置 | `coffee`（开发仓库） / `intro`（发布包） | LVGL 9.6 |
 | 任意值 | 旧版本忽略选择，显示 `demo/` 的 harness | 9.1 / 8.x |
 
 未知的 `LVGL_AI_DEMO` 会打印可用值并让 engine 退出，避免悄悄跑错界面。
@@ -24,6 +29,7 @@
 推荐让 scenario 声明 app，CLI 会自动应用：
 
 ```bash
+python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/intro.json
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/coffee.json
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/xiaohongshu.json
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/spectrum.json
@@ -36,6 +42,7 @@ python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/zombie_cannon_ai.json
 没有 scenario 时用 `--app`；`--idle` 保持会话直到 Ctrl+C（headless）：
 
 ```bash
+python -I core/cli.py --lvgl 9.6 --app intro --idle
 python -I core/cli.py --lvgl 9.6 --app coffee --idle
 python -I core/cli.py --lvgl 9.6 --app xiaohongshu --idle
 python -I core/cli.py --lvgl 9.6 --app spectrum --idle

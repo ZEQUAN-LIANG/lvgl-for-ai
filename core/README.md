@@ -19,6 +19,7 @@
 - `tools/fetch_png.py`：下载 pin 的 zlib / libpng 源码到 `third_party/`，供 engine 编码 PNG。
 - `tools/new_app.py`：生成应用变体的源文件与场景，并注册到 `user/app/app.c`。
 - `tools/export_sdk.py`：从 `lvgl-src/<version>` 导出宿主预编译 SDK 到 `sdk/<version>`。
+- `tools/install_version.py`：安装其他 LVGL 版本（源码或预编译版本包），读取根目录 `versions.json`。
 - `tools/release.py`：生成可分发的 skill zip、`.sha256` 与 release manifest。
 - `tools/lvgl.py`：统一入口，分发 `run` / `report` / `serve`。
 - `tools/contract_snapshot.py`：记录/对比六类外部契约快照，用于重构行为冻结；用法见
@@ -191,6 +192,22 @@ python -I core/cli.py --lvgl 9.6 --prebuilt --scenario user/scenarios/settings.j
 python -I core/cli.py --lvgl 9.6 --source   --scenario user/scenarios/settings.json --json
 ```
 
+## 安装其他 LVGL 版本
+
+默认包只带 `sdk/9.6`。`versions.json` 列出支持的版本与是否支持 `intro`；安装其他版本：
+
+```bash
+python -I core/tools/install_version.py --list
+python -I core/tools/install_version.py --lvgl 9.4 --source gitee
+python -I core/tools/install_version.py --lvgl 9.4 --no-build
+python -I core/tools/install_version.py --lvgl 9.4 --mode pack --pack version-pack.zip
+```
+
+源码模式封装 `fetch_lvgl.py`、`fetch_png.py` 与 `export_sdk.py`，然后按 `versions.json`
+的 `sdk` 标记选择预编译或 CMake 源码构建 engine。pack 模式只解包
+`sdk/<version>` 与 `build/lvgl_<token>`，不需要 CMake/Ninja；修改用户 C 代码仍需 GCC。
+场景可选 `"lvgl": "9.4"`，优先级是 `--lvgl` > 场景 `lvgl` > `LVGL_AI_LVGL_VERSION` > 9.6。
+
 ## 统一入口
 
 `core/tools/lvgl.py` 把 `run` / `report` / `serve` 映射到现有入口；包内
@@ -211,11 +228,15 @@ python -I core/tools/lvgl.py serve
 python -I core/tools/release.py --out release --json
 ```
 
-`release/` 目录同时保留解包后的 skill 目录 `release/lvgl-ai-new/`（含 `SKILL.md`、
-`CONTEXT.md`、`core/`、`user/`、`sdk/`、`bin/`、`VERSION.json`），以及同名 zip、
-`.sha256` 和 release manifest；可以直接在 `release/lvgl-ai-new/` 里运行，不必先解压。
+`release/` 目录同时保留解包后的 skill 目录 `release/lvgl-verify-loop/`（含 `SKILL.md`、
+`CONTEXT.md`、`core/`、`user/`、`sdk/`、`bin/`、`VERSION.json`、`LVGL-AI-Viewer.exe`、
+`intro-demo.gif`），
+以及同名 zip、`.sha256` 和 release manifest；可以直接在 `release/lvgl-verify-loop/`
+里运行，不必先解压。发布包只带 `user/app/intro/` 一个应用（默认介绍页与模板），
+其他示例应用留在开发仓库。
 包内包含 `core/`、`user/`、`sdk/<version>/`、预编译 engine、`bin/lvgl.cmd`、
-`SKILL.md`、`CONTEXT.md`、`VERSION.json` 与 `licenses/`。LVGL 源码、`third_party/`、
+`SKILL.md`、`CONTEXT.md`、`VERSION.json`、`LVGL-AI-Viewer.exe`、`intro-demo.gif`
+与 `licenses/`。LVGL 源码、`third_party/`、
 `sessions/`、测试目录、`chip-adapt/vendor`、`chip-adapt/exports`、构建中间物和开发机
 绝对路径不会进包（二进制里的 `__FILE__` 与调试信息也会被检查）；打包前会在暂存目录
 从无关工作目录运行 `--no-build`、预编译构建、统一入口和网页端 smoke。`--skip-smoke`

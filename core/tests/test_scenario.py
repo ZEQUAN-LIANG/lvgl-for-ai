@@ -428,6 +428,24 @@ class ScenarioFileTest(unittest.TestCase):
             load_scenario(path)
         self.assertIn("app", str(caught.exception))
 
+    def test_lvgl_is_preserved_in_the_normalized_document(self) -> None:
+        path = scenario_file(
+            self.root, [{"type": "wait", "ms": 16}], lvgl="9.4"
+        )
+        self.assertEqual(load_scenario(path)["lvgl"], "9.4")
+
+    def test_invalid_lvgl_is_rejected(self) -> None:
+        for value in (9.4, "bad version", ""):
+            with self.subTest(value=value):
+                path = scenario_file(
+                    self.root,
+                    [{"type": "wait", "ms": 16}],
+                    lvgl=value,
+                )
+                with self.assertRaises(ScenarioError) as caught:
+                    load_scenario(path)
+                self.assertIn("lvgl", str(caught.exception))
+
     def test_display_is_preserved_in_the_normalized_document(self) -> None:
         path = scenario_file(
             self.root,

@@ -1,13 +1,15 @@
 ---
-name: lvgl-ai
+name: lvgl-verify-loop
 description: Write and verify LVGL user apps with a real headless runtime, scenario replay, session evidence and a prebuilt host SDK. Use when building, previewing, debugging or verifying LVGL C interfaces, or when exporting LVGL apps to a device SDK.
 ---
 
-# LVGL AI
+# LVGL Verify Loop
 
 本 skill 把 LVGL 用户应用从「改代码」带到「跑场景、读证据」：真实 headless LVGL
 宿主、虚拟 pointer/keypad/encoder、虚拟时间、帧与 timeline、会话回放。工具只提供
 环境、输入和证据，**不判定画面**。
+
+![intro demo](intro-demo.gif)
 
 ## 环境与入口
 
@@ -19,11 +21,12 @@ Python 3.9+。所有命令从包根执行，统一使用 `python -I`。
 | `bin\lvgl.cmd run ...` | 构建 `user/app` 并播放场景 |
 | `bin\lvgl.cmd report ...` | 只读已有会话证据 |
 | `bin\lvgl.cmd serve ...` | 打开网页端（固定 `127.0.0.1:8765`） |
+| `LVGL-AI-Viewer.exe` | Windows 双击打开网页端（需要 `pythonw.exe` 或 `pyw.exe`） |
 
 也可以直接调用：
 
 ```bat
-python -I core\cli.py --scenario user\scenarios\settings.json --json
+python -I core\cli.py --scenario user\scenarios\intro.json --json
 python -I core\session_report.py --latest --log-tail 5
 python -I core\web.py
 ```
@@ -36,9 +39,14 @@ user/     唯一源码真源：app/**/*.c 与 scenarios/*.json
 sdk/      预编译宿主 SDK：静态库、公共头、lv_conf.h、manifest.json
 build/    预编译 engine 与按目录隔离的构建缓存
 bin/      统一入口包装脚本
+LVGL-AI-Viewer.exe  Windows 双击启动网页端
+versions.json      版本索引：默认版本、支持列表、intro 支持
 ```
 
 `user/app/**/*.c` 是唯一源码真源；`core/`、`sdk/` 和 `build/` 不存放用户业务代码。
+本包只带 `user/app/intro/` 一个应用；它同时是默认介绍页和默认模板。启动时不指定
+app 就运行它，`user/scenarios/intro.json` 是它的录制演示。coffee、xiaohongshu、
+spectrum 等示例只在开发仓库里，不随发布包分发。
 
 ## 宿主工作流
 
@@ -83,9 +91,28 @@ engine 时 `--no-build` 直接运行，不需要编译器。
 ## 版本策略
 
 - 宿主默认 LVGL **9.6**，用于日常预览与取证。
+- 发布包里的 `intro` 应用按 **9.4+** 版本门编写；9.1 / 8.x 只能跑旧 harness，
+  不能使用 intro 应用变体。
 - 设备应用按 LVGL **9.4** 基线编写，使用 `LVGL_VERSION_MINOR >= 4` 版本门；
   设备对齐用 `--lvgl 9.4`（需要 `sdk/9.4` 或 `lvgl-src/9.4`）。
 - 导出只做兼容性检查并拒绝 9.5/9.6-only API，不自动改写源码。
+
+## 版本安装
+
+默认包只带 `sdk/9.6` 和 9.6 engine。安装其他版本：
+
+```bat
+python -I core\tools\install_version.py --list
+python -I core\tools\install_version.py --lvgl 9.4 --source gitee
+python -I core\tools\install_version.py --lvgl 9.4 --mode pack --pack path\to\pack.zip
+```
+
+- **源码模式**：下载 `lvgl-src/<version>` 与 `third_party/`，9.6 额外导出预编译 SDK，
+  其他版本用 CMake/Ninja/GCC 源码构建 engine；`--no-build` 只准备源码。
+- **pack 模式**：解包已构建的 `sdk/<version>` 与
+  `build/lvgl_<token>/lvgl_engine`，不需要 CMake/Ninja；修改用户 C 代码仍然需要 GCC。
+- `versions.json` 是版本索引：默认版本、支持列表、是否支持 intro。场景可选
+  `"lvgl": "9.4"`；优先级是 `--lvgl` > 场景 `lvgl` > `LVGL_AI_LVGL_VERSION` > 默认 9.6。
 
 ## SiFli 工作流
 

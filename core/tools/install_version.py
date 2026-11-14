@@ -1,0 +1,533 @@
+#!/usr/bin/env python3
+"""Install one LVGL version for a local LVGL Verify Loop workspace.
+
+The default package ships LVGL 9.6. This script adds another supported
+version in one command:
+
+    python -I core/tools/install_version.py --list
+    python -I core/tools/install_version.py --lvgl 9.4 --source gitee
+    python -I core/tools/install_version.py --lvgl 9.5 --no-build
+    python -I core/tools/install_version.py --lvgl 9.4 --mode pack \
+        --pack path\\to\\version-pack.zip
+
+Source mode wraps ``fetch_lvgl.py``, ``fetch_png.py`` and
+``export_sdk.py``, then builds ``user/app`` against the exported host SDK
+with ``BuildPlan``. It needs CMake, Ninja and GCC for the SDK export, and GCC
+for the app build. Pack mode installs a release asset that already contains
+``sdk/<version>`` and ``build/lvgl_<token>/lvgl_engine``; it needs no compiler
+unless the user later changes C code.
+
+All paths are resolved from ``--repo-root`` (default: the detected workspace
+root). ``versions.json`` at the workspace root lists the supported versions,
+the default and whether the shipped intro app supports that version.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib.request
+import zipfile
+from pathlib import Path
+from typing import Any
+
+TOOL_ROOT = Path(__file__).resolve().parent.parent
+if str(TOOL_ROOT) not in sys.path:
+    sys.path.insert(0, str(TOOL_ROOT))
+
+from lvgl_ai import paths  # noqa: E402
+from lvgl_ai.control.build_plan import BuildPlan  # noqa: E402
+from lvgl_ai.control.errors import BuildError  # noqa: E402
+
+INDEX_SCHEMA = "lvgl-verify-loop-versions-v1"
+INSTALL_SCHEMA = "lvgl-verify-loop-install-v1"
+INDEX_NAME = "versions.json"
+_VERSION_RE = re.compile(r"[0-9A-Za-z._-]+")
+
+
+class InstallError(Exception):
+    """A user-facing installation failure."""
+
+
+class ToolError(InstallError):
+    """A download/export/build subprocess failed."""
+
+
+def _repo_root(value: Path | None) -> Path:
+    root = (value or paths.REPO_ROOT).expanduser().resolve()
+    if not (root / "core").is_dir() or not (root / "user").is_dir():
+        raise InstallError(f"not a workspace root: {root}")
+    return root
+
+
+def _load_index(repo: Path) -> dict[str, Any]:
+    path = repo / INDEX_NAME
+    if not path.is_file():
+        raise InstallError(
+            f"{path} is missing; the package should ship versions.json"
+        )
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise InstallError(f"cannot read {path}: {exc}") from exc
+    if not isinstance(data, dict) or data.get("schema") != INDEX_SCHEMA:
+        raise InstallError(f"{path}: schema must be {INDEX_SCHEMA!r}")
+    versions = data.get("versions")
+    if not isinstance(versions, dict) or not versions:
+        raise InstallError(f"{path}: versions must be a non-empty object")
+    default = data.get("default")
+    if not isinstance(default, str) or default not in versions:
+        raise InstallError(f"{path}: default must name a supported version")
+    for name, entry in versions.items():
+        if not isinstance(name, str) or not _VERSION_RE.fullmatch(name):
+            raise InstallError(f"{path}: invalid version name {name!r}")
+        if not isinstance(entry, dict):
+            raise InstallError(f"{path}: {name} must be an object")
+        if not isinstance(entry.get("tag"), str) or not entry["tag"]:
+            raise InstallError(f"{path}: {name}.tag must be a string")
+        if "sdk" in entry and not isinstance(entry["sdk"], bool):
+            raise InstallError(f"{path}: {name}.sdk must be a boolean")
+        pack = entry.get("pack")
+        if pack is not None:
+            if not isinstance(pack, dict):
+                raise InstallError(f"{path}: {name}.pack must be an object")
+            for key, value in pack.items():
+                if not isinstance(value, str):
+                    raise InstallError(
+                        f"{path}: {name}.pack.{key} must be a string"
+                    )
+    return data
+
+
+def _version_entry(index: dict[str, Any], version: str) -> dict[str, Any]:
+    entry = index["versions"].get(version)
+    if entry is None:
+        supported = ", ".join(sorted(index["versions"]))
+        raise InstallError(
+            f"unsupported LVGL version {version!r}; supported: {supported}"
+        )
+    return entry
+
+
+def _build_dir(repo: Path, version: str) -> Path:
+    return repo / "build" / f"lvgl_{paths.version_token(version)}"
+
+
+def _engine_path(repo: Path, version: str) -> Path:
+    return _build_dir(repo, version) / paths.engine_filename()
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _run_script(script: str, args: list[str], *, json_mode: bool) -> None:
+    command = [sys.executable, "-I", str(TOOL_ROOT / "tools" / script), *args]
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.stdout.strip():
+        stream = sys.stderr if json_mode else sys.stdout
+        stream.write(result.stdout)
+        if not result.stdout.endswith("\n"):
+            stream.write("\n")
+    if result.stderr.strip():
+        sys.stderr.write(result.stderr)
+        if not result.stderr.endswith("\n"):
+            sys.stderr.write("\n")
+    if result.returncode != 0:
+        raise ToolError(
+            f"{script} failed with exit code {result.returncode}"
+        )
+
+
+def _safe_zip(archive: zipfile.ZipFile, destination: Path) -> None:
+    for info in archive.infolist():
+        name = info.filename
+        target = Path(name)
+        if target.is_absolute() or ".." in target.parts:
+            raise InstallError(f"unsafe pack member: {name!r}")
+        mode = (info.external_attr >> 16) & 0o170000
+        if mode == 0o120000:
+            raise InstallError(f"pack contains a symlink: {name!r}")
+    archive.extractall(destination)
+
+
+def _pack_root(root: Path, version: str) -> Path:
+    expected = (
+        root / "sdk" / version / "manifest.json",
+        _engine_path(root, version),
+    )
+    if all(path.is_file() for path in expected):
+        return root
+    for child in sorted(root.iterdir()):
+        if not child.is_dir():
+            continue
+        if (child / "sdk" / version / "manifest.json").is_file() and _engine_path(
+            child, version
+        ).is_file():
+            return child
+    raise InstallError(
+        "pack does not contain sdk/{0} and build/lvgl_{1}/{2}".format(
+            version, paths.version_token(version), paths.engine_filename()
+        )
+    )
+
+
+def _download(url: str, destination: Path) -> None:
+    request = urllib.request.Request(url, headers={"User-Agent": "lvgl-verify-loop"})
+    with urllib.request.urlopen(request, timeout=120) as response:
+        destination.write_bytes(response.read())
+
+
+def _install_pack(
+    repo: Path,
+    version: str,
+    *,
+    pack_path: Path | None,
+    pack_url: str | None,
+    sha256: str | None,
+    force: bool,
+) -> list[str]:
+    if pack_path is None and pack_url is None:
+        raise InstallError(
+            "pack mode needs --pack PATH or --pack-url URL; "
+            "use --mode source to download and build instead"
+        )
+    with tempfile.TemporaryDirectory(prefix="lvgl-version-pack-") as raw:
+        work = Path(raw)
+        downloaded = pack_path is None
+        if pack_path is not None:
+            source = pack_path.expanduser().resolve()
+            if source.is_dir():
+                root = _pack_root(source, version)
+                _copy_pack(repo, root, version, force)
+                return ["install_pack"]
+            archive_path = source
+        else:
+            archive_path = work / "pack.zip"
+            _download(pack_url or "", archive_path)
+        if sha256 is not None:
+            actual = _sha256(archive_path)
+            if actual != sha256.lower():
+                raise InstallError(
+                    f"pack sha256 mismatch: expected {sha256}, got {actual}"
+                )
+        elif downloaded:
+            raise InstallError(
+                "downloaded packs require --sha256 or pack.sha256 in versions.json"
+            )
+        if not zipfile.is_zipfile(archive_path):
+            raise InstallError(f"pack is not a zip archive: {archive_path}")
+        extract = work / "extract"
+        extract.mkdir()
+        with zipfile.ZipFile(archive_path) as archive:
+            _safe_zip(archive, extract)
+        root = _pack_root(extract, version)
+        _copy_pack(repo, root, version, force)
+        return ["download_pack", "install_pack"] if downloaded else ["install_pack"]
+
+
+def _copy_pack(repo: Path, root: Path, version: str, force: bool) -> None:
+    for relative in (
+        Path("sdk") / version,
+        Path("build") / f"lvgl_{paths.version_token(version)}",
+    ):
+        source = root / relative
+        target = repo / relative
+        if target.exists():
+            if not force:
+                raise InstallError(
+                    f"{target} already exists; pass --force to replace it"
+                )
+            shutil.rmtree(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(source, target)
+
+
+def _install_source(
+    repo: Path,
+    version: str,
+    *,
+    lvgl_source: str,
+    prebuilt: bool,
+    build_engine: bool,
+    force: bool,
+    json_mode: bool,
+) -> list[str]:
+    actions: list[str] = []
+    source = repo / "lvgl-src" / version
+    if source.is_dir() and not force:
+        actions.append("lvgl-source-present")
+    else:
+        _run_script(
+            "fetch_lvgl.py",
+            [
+                "--version", version,
+                "--repo-root", str(repo),
+                "--source", lvgl_source,
+            ]
+            + (["--force"] if force else []),
+            json_mode=json_mode,
+        )
+        actions.append("fetch_lvgl")
+
+    if (
+        (repo / "third_party" / "zlib").is_dir()
+        and (repo / "third_party" / "libpng").is_dir()
+        and not force
+    ):
+        actions.append("png-source-present")
+    else:
+        _run_script(
+            "fetch_png.py",
+            ["--repo-root", str(repo)] + (["--force"] if force else []),
+            json_mode=json_mode,
+        )
+        actions.append("fetch_png")
+
+    sdk = repo / "sdk" / version
+    if prebuilt:
+        if (sdk / "manifest.json").is_file() and not force:
+            actions.append("sdk-present")
+        else:
+            _run_script(
+                "export_sdk.py",
+                [
+                    "--version", version,
+                    "--repo-root", str(repo),
+                    "--out", str(sdk),
+                    "--json",
+                ]
+                + (["--force"] if force and sdk.exists() else []),
+                json_mode=json_mode,
+            )
+            actions.append("export_sdk")
+    else:
+        actions.append("source-mode")
+
+    if build_engine:
+        plan = BuildPlan(
+            version,
+            lvgl_src=source,
+            build_dir=_build_dir(repo, version),
+            engine_dir=repo / "core" / "engine",
+            user_app_dir=repo / "user" / "app",
+            zlib_src=repo / "third_party" / "zlib",
+            libpng_src=repo / "third_party" / "libpng",
+            sdk_dir=sdk,
+            build_mode="prebuilt" if prebuilt else "source",
+        )
+        plan.execute(build=True)
+        actions.append("build_engine")
+    return actions
+
+
+def _installed(repo: Path, version: str) -> dict[str, bool]:
+    return {
+        "source": (repo / "lvgl-src" / version).is_dir(),
+        "sdk": (repo / "sdk" / version / "manifest.json").is_file(),
+        "engine": _engine_path(repo, version).is_file(),
+    }
+
+
+def _list_versions(repo: Path, index: dict[str, Any], json_mode: bool) -> int:
+    rows = []
+    for version, entry in sorted(index["versions"].items()):
+        state = _installed(repo, version)
+        rows.append(
+            {
+                "version": version,
+                "tag": entry["tag"],
+                "intro": bool(entry.get("intro", False)),
+                "default": version == index["default"],
+                **state,
+            }
+        )
+    if json_mode:
+        print(
+            json.dumps(
+                {"schema": INDEX_SCHEMA, "versions": rows},
+                ensure_ascii=False,
+            )
+        )
+    else:
+        print("version  default  intro  source  sdk  engine  tag")
+        for row in rows:
+            display = dict(row)
+            display.update(
+                {
+                    "default": "yes" if row["default"] else "",
+                    "intro": "yes" if row["intro"] else "",
+                    "source": "yes" if row["source"] else "",
+                    "sdk": "yes" if row["sdk"] else "",
+                    "engine": "yes" if row["engine"] else "",
+                }
+            )
+            print(
+                "{version:<7} {default:<8} {intro:<6} {source:<6} "
+                "{sdk:<4} {engine:<7} {tag}".format(**display)
+            )
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="install_version.py",
+        description="Install one LVGL version for the local workspace.",
+    )
+    parser.add_argument("--lvgl", default=None, help="LVGL version, e.g. 9.4")
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=None,
+        help="workspace root (default: detected from the tool location)",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=("auto", "source", "pack"),
+        default="auto",
+        help="install mode (default: pack when a pack is given, else source)",
+    )
+    parser.add_argument(
+        "--source",
+        choices=("auto", "codeload", "gitee"),
+        default="auto",
+        help="LVGL source download source for source mode",
+    )
+    parser.add_argument(
+        "--pack",
+        type=Path,
+        default=None,
+        help="local version pack directory or zip",
+    )
+    parser.add_argument(
+        "--pack-url",
+        default=None,
+        help="version pack URL (requires --sha256 or pack.sha256)",
+    )
+    parser.add_argument(
+        "--sha256",
+        default=None,
+        help="sha256 for --pack-url",
+    )
+    parser.add_argument(
+        "--pack-source",
+        choices=("auto", "github", "gitee"),
+        default="auto",
+        help="choose a pack URL from versions.json (default: auto)",
+    )
+    parser.add_argument(
+        "--no-build",
+        action="store_true",
+        help="source mode: export the SDK but do not build user/app",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="replace existing source, SDK, engine or pack files",
+    )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="list supported versions and installation state",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print exactly one JSON summary on stdout",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    try:
+        repo = _repo_root(args.repo_root)
+        index = _load_index(repo)
+        if args.list:
+            return _list_versions(repo, index, args.json)
+        if not args.lvgl:
+            raise InstallError("--lvgl is required unless --list is used")
+        entry = _version_entry(index, args.lvgl)
+        version = args.lvgl
+        pack_url = args.pack_url
+        sha256 = args.sha256
+        pack = entry.get("pack") or {}
+        if pack_url is None and args.pack is None and pack:
+            key = args.pack_source
+            if key == "auto":
+                key = "github" if pack.get("github") else "gitee"
+            pack_url = pack.get(key) or pack.get("github") or pack.get("gitee")
+            sha256 = sha256 or pack.get("sha256")
+        mode = args.mode
+        if mode == "auto":
+            mode = "pack" if (args.pack is not None or pack_url) else "source"
+        if mode == "pack":
+            actions = _install_pack(
+                repo,
+                version,
+                pack_path=args.pack,
+                pack_url=pack_url,
+                sha256=sha256,
+                force=args.force,
+            )
+        else:
+            actions = _install_source(
+                repo,
+                version,
+                lvgl_source=args.source,
+                prebuilt=bool(entry.get("sdk", False)),
+                build_engine=not args.no_build,
+                force=args.force,
+                json_mode=args.json,
+            )
+        summary = {
+            "schema": INSTALL_SCHEMA,
+            "version": version,
+            "tag": entry["tag"],
+            "mode": mode,
+            "engine_mode": "prebuilt" if entry.get("sdk") else "source",
+            "actions": actions,
+            "lvgl_src": str(repo / "lvgl-src" / version),
+            "sdk": (
+                str(repo / "sdk" / version)
+                if mode == "pack" or entry.get("sdk")
+                else None
+            ),
+            "engine": str(_engine_path(repo, version)),
+            "status": "ok",
+        }
+        if args.json:
+            print(json.dumps(summary, ensure_ascii=False))
+        else:
+            print(
+                f"[version] {version} installed via {mode}: "
+                f"{', '.join(actions)}"
+            )
+            print(f"[version] sdk: {summary['sdk']}")
+            print(f"[version] engine: {summary['engine']}")
+        return 0
+    except (InstallError, BuildError, OSError, ValueError) as exc:
+        print(f"[version] error: {exc}", file=sys.stderr)
+        if isinstance(exc, ToolError):
+            return 1
+        return 2 if isinstance(exc, (InstallError, ValueError)) else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

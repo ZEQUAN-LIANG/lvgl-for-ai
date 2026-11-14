@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=800, initial-scale=1">
+<title>LVGL Verify Loop - Intro</title>
+<style>
+  /* ------------------------------------------------------------------
+     LVGL VERIFY LOOP - 800x600 default intro.
+     Every visual element maps to LVGL 9.6 primitives:
+     rectangle / rounded card / border / vertical gradient / shadow /
+     label / button / bar / arc / timer / anim.
+     No images, web fonts, blur, clip-path or backdrop-filter.
+     The gauge below is a CSS stand-in for one lv_arc (270 deg sweep).
+     ------------------------------------------------------------------ */
+  :root {
+    --bg-top: #0A1017;
+    --bg-bottom: #070B10;
+    --hole: #080D13;
+    --panel: #0B131C;
+    --panel-deep: #091017;
+    --panel-active-a: #102433;
+    --panel-active-b: #0B1822;
+    --panel-done-a: #0A1617;
+    --panel-done-b: #081012;
+    --line: #182430;
+    --line-2: #223447;
+    --line-3: #2B3E52;
+    --text: #F2F7FB;
+    --muted: #93A6B9;
+    --dim: #6B8198;
+    --faint: #40566B;
+    --accent: #38BDF8;
+    --accent-soft: #7DD3FC;
+    --accent-deep: #1E5C7A;
+    --green: #34D399;
+    --ink: #04131C;
+    --arc-color: var(--accent);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: #030507;
+    overflow: hidden;
+  }
+
+  body {
+    display: grid;
+    place-items: center;
+    color: var(--text);
+    font-family: "Montserrat", "Segoe UI", "Trebuchet MS", sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+  }
+
+  .screen {
+    position: relative;
+    width: 800px;
+    height: 600px;
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+    isolation: isolate;
+  }
+
+  .screen.is-done { --arc-color: var(--green); }
+
+  /* ---------------- header ---------------- */
+
+  .brand-pulse {
+    position: absolute;
+    left: 48px;
+    top: 37px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: breathe 2.6s ease-in-out infinite;
+  }
+
+  .brand {
+    position: absolute;
+    left: 64px;
+    top: 31px;
+    height: 18px;
+    line-height: 18px;
+    font-size: 16px;
+    letter-spacing: 1.4px;
+    white-space: nowrap;
+  }
+
+  .brand-mark { color: var(--accent); }
+  .brand-rest { color: var(--text); }
+
+  .env {
+    position: absolute;
+    right: 48px;
+    top: 32px;
+    height: 16px;
+    line-height: 16px;
+    font-size: 14px;
+    letter-spacing: 1.6px;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+
+  .rule {
+    position: absolute;
+    left: 48px;
+    width: 704px;
+    height: 1px;
+    background: var(--line);
+  }
+
+  .rule-header { top: 64px; }
+
+  .rule-header::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -1px;
+    width: 24px;
+    height: 2px;
+    background: var(--accent);
+    opacity: .9;
+  }
+
+  /* ---------------- hero ---------------- */
+
+  .eyebrow {
+    position: absolute;
+    left: 48px;
+    top: 89px;
+    height: 16px;
+    line-height: 16px;
+    padding-left: 14px;
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+
+  .eyebrow::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    width: 5px;
+    height: 5px;
+    background: var(--accent);
+  }
+
+  .eyebrow-meta {
+    position: absolute;
+    right: 404px;
+    top: 89px;
+    height: 16px;
+    line-height: 16px;
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: var(--faint);
+    white-space: nowrap;
+  }
+
+  .title {
+    position: absolute;
+    left: 48px;
+    top: 112px;
+    height: 22px;
+    margin: 0;
+    line-height: 22px;
+    font-size: 20px;
+    font-weight: 400;
+    letter-spacing: 1.8px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .title .dot { color: var(--accent); }
+
+  .subtitle {
+    position: absolute;
+    left: 48px;
+    top: 141px;
+    height: 16px;
+    margin: 0;
+    line-height: 16px;
+    font-size: 14px;
+    letter-spacing: .2px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .rule-hero {
+    top: 170px;
+    width: 348px;
+  }
+
+  .rule-hero::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -1px;
+    width: 40px;
+    height: 2px;
+    background: var(--accent);
+    opacity: .85;
+  }
+
+  /* ---------------- step cards ---------------- */
+
+  .cards {
+    position: absolute;
+    left: 48px;
+    top: 190px;
+    width: 348px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .card {
+    position: relative;
+    width: 348px;
+    height: 62px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: linear-gradient(180deg, #0C141D 0%, var(--panel-deep) 100%);
+  }
+
+  .card-spine {
+    position: absolute;
+    left: 0;
+    top: 10px;
+    width: 2px;
+    height: 42px;
+    border-radius: 1px;
+    background: transparent;
+  }
+
+  .card-num {
+    position: absolute;
+    left: 14px;
+    top: 23px;
+    width: 22px;
+    height: 16px;
+    line-height: 16px;
+    font-size: 14px;
+    letter-spacing: 1.2px;
+    color: var(--faint);
+    white-space: nowrap;
+  }
+
+  .card-divider {
+    position: absolute;
+    left: 44px;
+    top: 11px;
+    width: 1px;
+    height: 40px;
+    background: var(--line);
+  }
+
+  .card-title {
+    position: absolute;
+    left: 58px;
+    top: 11px;
+    height: 18px;
+    line-height: 18px;
+    font-size: 16px;
+    letter-spacing: 1.4px;
+    color: #D8E3ED;
+    white-space: nowrap;
+  }
+
+  .card-body {
+    position: absolute;
+    left: 58px;
+    top: 33px;
+    width: 246px;
+    height: 16px;
+    line-height: 16px;
+    font-size: 14px;
+    letter-spacing: .2px;
+    color: #7F94A8;
+    white-space: nowrap;
+  }
+
+  .card-ind {
+    position: absolute;
+    left: 322px;
+    top: 26px;
+    width: 10px;
+    height: 10px;
+    border: 1px solid var(--line-3);
+    border-radius: 50%;
+    background: transparent;
+  }
+
+  .card-halo {
+    position: absolute;
+    left: -7px;
+    top: -7px;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    opacity: 0;
+  }
+
+  /* card: next (idle hint) */
+  .card.next {
+    border-color: #1D394C;
+    background: linear-gradient(180deg, #0C1822 0%, #091119 100%);
+  }
+  .card.next .card-spine { background: #245C78; }
+  .card.next .card-num { color: #6FB9DC; }
+  .card.next .card-title { color: #E7F2FA; }
+  .card.next .card-ind { border-color: #2E6B8B; }
+
+  /* card: active */
+  .card.active {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, var(--panel-active-a) 0%, var(--panel-active-b) 100%);
+    box-shadow: 0 10px 28px rgba(56, 189, 248, .12);
+  }
+  .card.active .card-spine { background: var(--accent); }
+  .card.active .card-divider { background: #1B3A4E; }
+  .card.active .card-num { color: var(--accent); }
+  .card.active .card-title { color: var(--text); }
+  .card.active .card-body { color: #B5C7D6; }
+  .card.active .card-ind {
+    border: 2px solid var(--accent);
+    background: #0B1822;
+  }
+  .card.active .card-halo {
+    opacity: .55;
+    animation: halo 1.2s ease-in-out infinite;
+  }
+
+  /* card: done */
+  .card.done {
+    border-color: #1D3A34;
+    background: linear-gradient(180deg, var(--panel-done-a) 0%, var(--panel-done-b) 100%);
+  }
+  .card.done .card-spine { background: var(--green); }
+  .card.done .card-divider { background: #17332D; }
+  .card.done .card-num { color: var(--green); }
+  .card.done .card-title { color: #BDCDD8; }
+  .card.done .card-body { color: #70879A; }
+  .card.done .card-ind {
+    border-color: var(--green);
+    background: var(--green);
+  }
+
+  /* ---------------- loop gauge ---------------- */
+
+  .loop-zone {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .loop-caption {
+    position: absolute;
+    left: 428px;
+    top: 89px;
+    height: 16px;
+    line-height: 16px;
+    font-size: 14px;
+    letter-spacing: 1.8px;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+
+  .step-readout {
+    position: absolute;
+    right: 48px;
+    top: 89px;
+    height: 16px;
+    line-height: 16px;
+    font-size: 14px;
+    letter-spacing: 1.4px;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+
+  .bracket {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-color: #203244;
+    border-style: solid;
+    border-width: 0;
+  }
+  .bracket-tl {
+    left: 428px;
+    top: 118px;
+    border-left-width: 1px;
+    border-top-width: 1px;
+  }
+  .bracket-br {
+    left: 734px;
+    top: 452px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+  }
+
+  .halo {
+    position: absolute;
+    left: 422px;
+    top: 120px;
+    width: 332px;
+    height: 332px;
+    border: 1px solid #17293A;
+    border-radius: 50%;
+    opacity: .8;
+  }
+
+  .arc-track,
+  .arc-fill {
+    position: absolute;
+    left: 444px;
+    top: 142px;
+    width: 288px;
+    height: 288px;
+    border-radius: 50%;
+    background: conic-gradient(from 225deg,
+      #1B2C3B 0deg 270deg,
+      transparent 270deg 360deg);
+  }
+
+  .arc-fill {
+    background: conic-gradient(from 225deg,
+      var(--arc-color) 0deg var(--sweep, 0deg),
+      transparent var(--sweep, 0deg) 360deg);
+    opacity: 0;
+  }
+
+  .arc-hole {
+    position: absolute;
+    left: 452px;
+    top: 150px;
+    width: 272px;
+    height: 272px;
+    border-radius: 50%;
+    background: var(--hole);
+  }
+
+  .cap-orbit {
+    position: absolute;
+    left: 444px;
+    top: 142px;
+    width: 288px;
+    height: 288px;
+  }
+
+  .arc-cap {
+    position: absolute;
+    left: 140px;
+    top: 140px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--arc-color);
+    transform-origin: 4px 4px;
+    opacity: 0;
+  }
+
+  #cap-start { transform: rotate(225deg) translateY(-140px); }
+
+  .disc {
+    position: absolute;
+    left: 472px;
+    top: 170px;
+    width: 232px;
+    height: 232px;
+    border: 1px solid #1B2C3C;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #0D1A25 0%, #081017 100%);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, .5);
+  }
+
+  .screen.is-done .disc { border-color: #1E4A3D; }
+
+  .disc-number {
+    position: absolute;
+    left: 76px;
+    top: 77px;
+    width: 80px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    font-size: 20px;
+    letter-spacing: 3px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .disc-rule {
+    position: absolute;
+    left: 104px;
+    top: 110px;
+    width: 24px;
+    height: 2px;
+    background: var(--accent);
+  }
+
+  .screen.is-done .disc-rule { background: var(--green); }
+
+  .disc-caption {
+    position: absolute;
+    left: 16px;
+    top: 119px;
+    width: 200px;
+    height: 16px;
+    line-height: 16px;
+    text-align: center;
+    font-size: 14px;
+    letter-spacing: 2.2px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .disc-percent {
+    position: absolute;
+    left: 66px;
+    top: 141px;
+    width: 100px;
+    height: 16px;
+    line-height: 16px;
+    text-align: center;
+    font-size: 14px;
+    letter-spacing: 1.2px;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+
+  .node {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border: 1px solid var(--line-3);
+    border-radius: 50%;
+    background: var(--bg-bottom);
+  }
+
+  .node-start {
+    width: 4px;
+    height: 4px;
+    border: 0;
+    background: #2E4358;
+  }
+
+  .node.next {
+    border-color: var(--accent-deep);
+    background: transparent;
+  }
+
+  .node.active {
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+
+  .node.active::after {
+    content: "";
+    position: absolute;
+    left: -7px;
+    top: -7px;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    opacity: .55;
+    animation: halo 1.2s ease-in-out infinite;
+  }
+
+  .node.done,
+  .node-start.done {
+    border-color: var(--green);
+    background: var(--green);
+  }
+
+  .screen.is-running .step-readout,
+  .screen.is-running .disc-percent,
+  .screen.is-running .console-percent { color: var(--accent); }
+
+  .screen.is-done .step-readout,
+  .screen.is-done .disc-percent,
+  .screen.is-done .console-percent { color: var(--green); }
+
+  /* ---------------- bottom console ---------------- */
+
+  .console {
+    position: absolute;
+    left: 48px;
+    top: 490px;
+    width: 704px;
+    height: 76px;
+    border: 1px solid #1B2A39;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #0C1520 0%, #091019 100%);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .45);
+  }
+
+  .status-dot {
+    position: absolute;
+    left: 18px;
+    top: 12px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: breathe 1.6s ease-in-out infinite;
+  }
+
+  .status {
+    position: absolute;
+    left: 34px;
+    top: 7px;
+    height: 18px;
+    line-height: 18px;
+    font-size: 16px;
+    letter-spacing: 1.8px;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  .screen.is-done .status { color: var(--green); }
+  .screen.is-done .status-dot {
+    background: var(--green);
+    animation: none;
+    opacity: 1;
+  }
+
+  .console-percent {
+    position: absolute;
+    left: 392px;
+    top: 8px;
+    width: 72px;
+    height: 16px;
+    line-height: 16px;
+    text-align: right;
+    font-size: 14px;
+    letter-spacing: 1.2px;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+
+  .detail {
+    position: absolute;
+    left: 34px;
+    top: 30px;
+    height: 16px;
+    line-height: 16px;
+    font-size: 14px;
+    letter-spacing: 1.2px;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+
+  .bar {
+    position: absolute;
+    left: 34px;
+    top: 55px;
+    width: 430px;
+    height: 4px;
+    border-radius: 2px;
+    background: #1B2A38;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    display: block;
+    width: 0%;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+
+  .screen.is-done .bar-fill { background: var(--green); }
+
+  .console-sep {
+    position: absolute;
+    left: 484px;
+    top: 12px;
+    width: 1px;
+    height: 52px;
+    background: #182838;
+  }
+
+  .btn {
+    position: absolute;
+    left: 500px;
+    top: 16px;
+    width: 184px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 16px;
+    letter-spacing: 1.6px;
+    line-height: 42px;
+    text-align: center;
+    cursor: pointer;
+    outline: none;
+    box-shadow: 0 8px 24px rgba(56, 189, 248, .28);
+  }
+
+  .btn:hover { background: var(--accent-soft); }
+  .btn:active { transform: translateY(1px); }
+
+  .btn:disabled {
+    background: #102B3D;
+    color: #6F8EA6;
+    box-shadow: none;
+    cursor: default;
+  }
+
+  .btn.done {
+    background: transparent;
+    border-color: var(--green);
+    color: var(--green);
+    box-shadow: none;
+  }
+
+  .btn.done:hover { background: rgba(52, 211, 153, .10); }
+
+  /* ---------------- motion ---------------- */
+
+  @keyframes breathe {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .35; }
+  }
+
+  @keyframes halo {
+    0%, 100% { opacity: .18; }
+    50% { opacity: .70; }
+  }
+
+  @keyframes pop {
+    0% { opacity: 0; transform: translateY(4px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  .pop { animation: pop .26s ease-out; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .brand-pulse, .status-dot, .card-halo, .node.active::after { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="screen" id="screen" data-state="ready">
+
+  <!-- header: brand / environment / hairline -->
+  <span class="brand-pulse" aria-hidden="true"></span>
+  <div class="brand"><span class="brand-mark">LVGL</span> <span class="brand-rest">VERIFY LOOP</span></div>
+  <div class="env">HEADLESS / LVGL 9.6</div>
+  <div class="rule rule-header"></div>
+
+  <!-- hero -->
+  <div class="eyebrow">CLOSED-LOOP TOOLING</div>
+  <div class="eyebrow-meta">04 STEPS</div>
+  <h1 class="title">WRITE<span class="dot">.</span> RUN<span class="dot">.</span> SEE<span class="dot">.</span></h1>
+  <p class="subtitle">A closed loop for LVGL user apps.</p>
+  <div class="rule rule-hero"></div>
+
+  <!-- four-step stack -->
+  <div class="cards">
+    <article class="card next" data-card="0">
+      <span class="card-spine"></span>
+      <span class="card-num">01</span>
+      <span class="card-divider"></span>
+      <span class="card-title">WRITE</span>
+      <span class="card-body">Author the LVGL C interface.</span>
+      <span class="card-ind"><i class="card-halo"></i></span>
+    </article>
+    <article class="card" data-card="1">
+      <span class="card-spine"></span>
+      <span class="card-num">02</span>
+      <span class="card-divider"></span>
+      <span class="card-title">BUILD</span>
+      <span class="card-body">Build the real headless host.</span>
+      <span class="card-ind"><i class="card-halo"></i></span>
+    </article>
+    <article class="card" data-card="2">
+      <span class="card-spine"></span>
+      <span class="card-num">03</span>
+      <span class="card-divider"></span>
+      <span class="card-title">RECORD</span>
+      <span class="card-body">Replay input, record frames.</span>
+      <span class="card-ind"><i class="card-halo"></i></span>
+    </article>
+    <article class="card" data-card="3">
+      <span class="card-spine"></span>
+      <span class="card-num">04</span>
+      <span class="card-divider"></span>
+      <span class="card-title">READ</span>
+      <span class="card-body">Read timeline, diffs, logs.</span>
+      <span class="card-ind"><i class="card-halo"></i></span>
+    </article>
+  </div>
+
+  <!-- gauge: 270 degree arc, floor at 135deg, sweep clockwise -->
+  <section class="loop-zone" aria-hidden="true">
+    <div class="loop-caption">VERIFICATION LOOP</div>
+    <div class="step-readout" id="step-readout">00 / 04</div>
+    <span class="bracket bracket-tl"></span>
+    <span class="bracket bracket-br"></span>
+    <div class="halo"></div>
+    <div class="arc-track"></div>
+    <div class="arc-fill" id="arc-fill"></div>
+    <div class="arc-hole"></div>
+    <div class="cap-orbit">
+      <i class="arc-cap" id="cap-start"></i>
+      <i class="arc-cap" id="cap-end"></i>
+    </div>
+    <div class="disc">
+      <div class="disc-number" id="disc-number">01</div>
+      <div class="disc-rule"></div>
+      <div class="disc-caption" id="disc-caption">WRITE</div>
+      <div class="disc-percent" id="disc-percent">00%</div>
+    </div>
+
+    <span class="node-start node" data-node="start" style="left:473px;top:397px;"></span>
+    <span class="node next" data-node="0" style="left:436px;top:221px;"></span>
+    <span class="node" data-node="1" style="left:584px;top:122px;"></span>
+    <span class="node" data-node="2" style="left:732px;top:221px;"></span>
+    <span class="node" data-node="3" style="left:697px;top:395px;"></span>
+  </section>
+
+  <!-- bottom console: status / progress / action -->
+  <footer class="console">
+    <span class="status-dot" id="status-dot"></span>
+    <div class="status" id="status" aria-live="polite">READY</div>
+    <div class="console-percent" id="console-percent">00%</div>
+    <div class="detail" id="detail">CLICK TO PLAY THE LOOP</div>
+    <div class="bar"><i class="bar-fill" id="bar-fill"></i></div>
+    <div class="console-sep"></div>
+    <button class="btn" id="run" type="button">RUN SCENARIO</button>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var screen = document.getElementById("screen");
+  var cards = Array.prototype.slice.call(document.querySelectorAll(".card"));
+  var nodes = Array.prototype.slice.call(document.querySelectorAll('[data-node]:not([data-node="start"])'));
+  var startNode = document.querySelector('[data-node="start"]');
+  var statusEl = document.getElementById("status");
+  var detailEl = document.getElementById("detail");
+  var stepReadout = document.getElementById("step-readout");
+  var discNumber = document.getElementById("disc-number");
+  var discCaption = document.getElementById("disc-caption");
+  var discPercent = document.getElementById("disc-percent");
+  var consolePercent = document.getElementById("console-percent");
+  var arcFill = document.getElementById("arc-fill");
+  var capStart = document.getElementById("cap-start");
+  var capEnd = document.getElementById("cap-end");
+  var barFill = document.getElementById("bar-fill");
+  var button = document.getElementById("run");
+
+  var PHASES = [
+    { status: "WRITING",   detail: "AUTHOR THE LVGL C INTERFACE",  name: "WRITE",  progress: 25 },
+    { status: "BUILDING",  detail: "BUILD THE REAL HEADLESS HOST", name: "BUILD",  progress: 50 },
+    { status: "RECORDING", detail: "REPLAY INPUT, RECORD FRAMES",  name: "RECORD", progress: 75 },
+    { status: "READING",   detail: "READ TIMELINE, DIFFS, LOGS",   name: "READ",   progress: 100 }
+  ];
+
+  var STEP_MS = 900;
+  var timers = [];
+  var running = false;
+  var arcValue = 0;
+  var arcFrame = null;
+  var currentPhase = -1;
+
+  function clearTimers() {
+    timers.forEach(clearTimeout);
+    timers = [];
+  }
+
+  function setButton(mode) {
+    if (mode === "running") {
+      button.disabled = true;
+      button.classList.remove("done");
+      button.textContent = "RUNNING";
+    } else if (mode === "done") {
+      button.disabled = false;
+      button.classList.add("done");
+      button.textContent = "REPLAY";
+    } else {
+      button.disabled = false;
+      button.classList.remove("done");
+      button.textContent = "RUN SCENARIO";
+    }
+  }
+
+  function renderArc(value) {
+    var sweep = 270 * value / 100;
+    var angle = 225 + sweep;
+    var rounded = Math.round(value);
+    var text = (rounded < 10 ? "0" : "") + rounded + "%";
+
+    arcFill.style.setProperty("--sweep", sweep + "deg");
+    arcFill.style.opacity = value > 0 ? "1" : "0";
+    capStart.style.opacity = value > 0 ? "1" : "0";
+    capEnd.style.opacity = value > 0 ? "1" : "0";
+    capEnd.style.transform = "rotate(" + angle + "deg) translateY(-140px)";
+    barFill.style.width = value + "%";
+    discPercent.textContent = text;
+    consolePercent.textContent = text;
+  }
+
+  function setArc(target, animate) {
+    if (arcFrame !== null) {
+      cancelAnimationFrame(arcFrame);
+      arcFrame = null;
+    }
+
+    target = Math.max(0, Math.min(100, target));
+    if (!animate) {
+      arcValue = target;
+      renderArc(arcValue);
+      return;
+    }
+
+    var from = arcValue;
+    var startTime = null;
+    var duration = 550;
+
+    function frame(now) {
+      if (startTime === null) startTime = now;
+      var t = Math.min(1, (now - startTime) / duration);
+      var eased = 1 - Math.pow(1 - t, 3);
+      arcValue = from + (target - from) * eased;
+      renderArc(arcValue);
+      if (t < 1) {
+        arcFrame = requestAnimationFrame(frame);
+      } else {
+        arcFrame = null;
+      }
+    }
+
+    arcFrame = requestAnimationFrame(frame);
+  }
+
+  function setCards(activeIndex) {
+    cards.forEach(function (card, index) {
+      card.classList.remove("next", "active", "done");
+      if (activeIndex === -1) {
+        if (index === 0) card.classList.add("next");
+      } else if (index < activeIndex) {
+        card.classList.add("done");
+      } else if (index === activeIndex) {
+        card.classList.add("active");
+      }
+    });
+  }
+
+  function setNodes(activeIndex, done) {
+    nodes.forEach(function (node, index) {
+      node.classList.remove("next", "active", "done");
+      if (done) {
+        node.classList.add("done");
+      } else if (index < activeIndex) {
+        node.classList.add("done");
+      } else if (index === activeIndex) {
+        node.classList.add("active");
+      } else if (activeIndex === -1 && index === 0) {
+        node.classList.add("next");
+      }
+    });
+    startNode.classList.toggle("done", !!done);
+  }
+
+  function popNumber() {
+    discNumber.classList.remove("pop");
+    void discNumber.offsetWidth;
+    discNumber.classList.add("pop");
+  }
+
+  function idle() {
+    clearTimers();
+    running = false;
+    currentPhase = -1;
+    screen.classList.remove("is-running", "is-done");
+    setCards(-1);
+    setNodes(-1, false);
+    stepReadout.textContent = "00 / 04";
+    statusEl.textContent = "READY";
+    detailEl.textContent = "CLICK TO PLAY THE LOOP";
+    discNumber.textContent = "01";
+    discCaption.textContent = "WRITE";
+    setArc(0, false);
+    setButton("ready");
+    popNumber();
+  }
+
+  function applyPhase(index, animate) {
+    currentPhase = index;
+    var phase = PHASES[index];
+    running = true;
+    screen.classList.add("is-running");
+    screen.classList.remove("is-done");
+
+    setCards(index);
+    setNodes(index, false);
+    stepReadout.textContent = ("0" + (index + 1)).slice(-2) + " / 04";
+    statusEl.textContent = phase.status;
+    detailEl.textContent = phase.detail;
+    discNumber.textContent = ("0" + (index + 1)).slice(-2);
+    discCaption.textContent = phase.name;
+    setArc(phase.progress, animate !== false);
+    setButton("running");
+    popNumber();
+  }
+
+  function finish(animate) {
+    clearTimers();
+    running = false;
+    currentPhase = 4;
+    screen.classList.remove("is-running");
+    screen.classList.add("is-done");
+
+    cards.forEach(function (card) {
+      card.classList.remove("next", "active");
+      card.classList.add("done");
+    });
+    setNodes(4, true);
+    stepReadout.textContent = "04 / 04";
+    statusEl.textContent = "EVIDENCE READY";
+    detailEl.textContent = "SESSION EVIDENCE IS READY";
+    discNumber.textContent = "OK";
+    discCaption.textContent = "EVIDENCE";
+    setArc(100, animate !== false);
+    setButton("done");
+    popNumber();
+  }
+
+  function startSequence() {
+    clearTimers();
+    running = true;
+    screen.classList.remove("is-done");
+    setCards(-1);
+    setNodes(-1, false);
+    arcValue = 0;
+    renderArc(0);
+
+    applyPhase(0, true);
+
+    for (var index = 1; index < PHASES.length; index++) {
+      (function (step) {
+        timers.push(setTimeout(function () {
+          applyPhase(step, true);
+        }, STEP_MS * step));
+      })(index);
+    }
+
+    timers.push(setTimeout(function () {
+      finish(true);
+    }, STEP_MS * PHASES.length));
+  }
+
+  button.addEventListener("click", function () {
+    if (running) return;
+    startSequence();
+  });
+
+  // Deterministic states for screenshots / docs:
+  //   intro.html#done    -> completed evidence state
+  //   intro.html#step2   -> BUILDING, 50%
+  //   intro.html#step3   -> RECORDING, 75%
+  //   intro.html#play    -> autoplay the demo once
+  function applyHash() {
+    var hash = window.location.hash.replace("#", "");
+    if (hash === "play") {
+      startSequence();
+      return;
+    }
+
+    // Frozen states are for screenshots and docs; never let a previous run
+    // keep ticking behind them.
+    clearTimers();
+    if (hash === "done") {
+      finish(false);
+    } else if (hash === "step2") {
+      applyPhase(1, false);
+    } else if (hash === "step3") {
+      applyPhase(2, false);
+    } else {
+      idle();
+    }
+  }
+
+  window.addEventListener("hashchange", applyHash);
+  applyHash();
+})();
+</script>
+</body>
+</html>
