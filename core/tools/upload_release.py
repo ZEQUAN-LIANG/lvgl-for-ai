@@ -51,10 +51,56 @@ class UploadError(Exception):
     """A user-facing upload failure."""
 
 
+SUMMARY_SCHEMA = "lvgl-verify-loop-release-v2"
+BUNDLE_KEYS = ("full", "full_sifli")
+
+
+def _manifest_assets(
+    assets_dir: Path, manifest_path: Path, version: str
+) -> list[Path]:
+    """Select the assets declared by the double-bundle summary."""
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise UploadError(f"cannot read {manifest_path}: {exc}") from exc
+    if not isinstance(payload, dict) or payload.get("schema") != SUMMARY_SCHEMA:
+        raise UploadError(
+            f"{manifest_path}: schema must be {SUMMARY_SCHEMA!r}"
+        )
+    if payload.get("tool_version") != version:
+        raise UploadError(
+            f"{manifest_path}: tool_version must be {version!r}, "
+            f"found {payload.get('tool_version')!r}"
+        )
+    zips: list[Path] = []
+    checksums: list[Path] = []
+    for key in BUNDLE_KEYS:
+        record = payload.get(key)
+        if not isinstance(record, dict):
+            raise UploadError(f"{manifest_path}: {key} must be an object")
+        zip_value = record.get("zip")
+        if not isinstance(zip_value, str) or not zip_value:
+            raise UploadError(f"{manifest_path}: {key}.zip must be a string")
+        zip_path = assets_dir / Path(zip_value).name
+        checksum = assets_dir / (zip_path.name + ".sha256")
+        if not zip_path.is_file():
+            raise UploadError(f"declared zip is missing: {zip_path}")
+        if not checksum.is_file():
+            raise UploadError(f"declared checksum is missing: {checksum}")
+        zips.append(zip_path)
+        checksums.append(checksum)
+    return zips + checksums + [manifest_path]
+
+
 def release_assets(assets_dir: Path, version: str) -> list[Path]:
-    """Return the zip and checksum assets for ``version`` in stable order."""
+    """Return the two zips, their checksums and the summary in stable order."""
     if not re.fullmatch(r"[0-9A-Za-z._-]+", version):
         raise UploadError(f"invalid release version: {version!r}")
+    manifest_path = assets_dir / "release.json"
+    if manifest_path.is_file():
+        return _manifest_assets(assets_dir, manifest_path, version)
+    # Older release directories have no summary manifest; keep the glob
+    # fallback for them.
     zips = [
         path
         for path in assets_dir.glob(f"lvgl-verify-loop-{version}-*.zip")

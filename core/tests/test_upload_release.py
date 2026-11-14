@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 import unittest
@@ -45,6 +46,84 @@ class ReleaseAssetsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw:
             with self.assertRaises(upload_release.UploadError):
                 upload_release.release_assets(Path(raw), "*")
+
+
+class ManifestAssetsTest(unittest.TestCase):
+    def make_release(self, root: Path, *, tool_version: str = "0.2.0") -> list[str]:
+        full = root / "lvgl-verify-loop-0.2.0-full-win64.zip"
+        sifli = root / "lvgl-verify-loop-0.2.0-full-sifli-win64.zip"
+        for path, data in ((full, b"full"), (sifli, b"sifli")):
+            path.write_bytes(data)
+            (root / (path.name + ".sha256")).write_text(
+                "hash\n", encoding="utf-8"
+            )
+            (root / (path.stem + ".release.json")).write_text(
+                "{}\n", encoding="utf-8"
+            )
+        (root / "lvgl-verify-loop-0.2.0-extra.zip").write_bytes(b"extra")
+        (root / "lvgl-verify-loop-0.2.0-extra.zip.sha256").write_text(
+            "hash\n", encoding="utf-8"
+        )
+        (root / "release.json").write_text(
+            json.dumps(
+                {
+                    "schema": "lvgl-verify-loop-release-v2",
+                    "tool_version": tool_version,
+                    "full": {"zip": str(full), "sha256": "full-hash"},
+                    "full_sifli": {
+                        "zip": str(sifli),
+                        "sha256": "sifli-hash",
+                    },
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return [
+            full.name,
+            sifli.name,
+            full.name + ".sha256",
+            sifli.name + ".sha256",
+            "release.json",
+        ]
+
+    def test_manifest_selects_exactly_two_zips_two_checksums_and_summary(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            expected = self.make_release(root)
+            assets = upload_release.release_assets(root, "0.2.0")
+            self.assertEqual([path.name for path in assets], expected)
+
+    def test_missing_declared_zip_is_an_error(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            self.make_release(root)
+            (root / "lvgl-verify-loop-0.2.0-full-sifli-win64.zip").unlink()
+            with self.assertRaises(upload_release.UploadError):
+                upload_release.release_assets(root, "0.2.0")
+
+    def test_manifest_version_must_match(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            self.make_release(root, tool_version="0.3.0")
+            with self.assertRaises(upload_release.UploadError):
+                upload_release.release_assets(root, "0.2.0")
+
+    def test_unknown_manifest_schema_is_an_error(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            self.make_release(root)
+            manifest = json.loads(
+                (root / "release.json").read_text(encoding="utf-8")
+            )
+            manifest["schema"] = "unknown"
+            (root / "release.json").write_text(
+                json.dumps(manifest), encoding="utf-8"
+            )
+            with self.assertRaises(upload_release.UploadError):
+                upload_release.release_assets(root, "0.2.0")
 
 
 class TokenTest(unittest.TestCase):
