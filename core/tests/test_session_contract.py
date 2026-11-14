@@ -321,6 +321,60 @@ class SessionIdContractTest(unittest.TestCase):
         self.assertEqual(payload["error"]["code"], "unknown_session")
 
 
+class RecordedContractTest(unittest.TestCase):
+    """B5: manifest intent and evidence files decide ``recorded`` together."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        self.session = make_summary_session(
+            self.root,
+            display=DISPLAY,
+            with_annotations=False,
+        )
+
+    def _manifest(self) -> dict:
+        return json.loads(
+            (self.session / "manifest.json").read_text(encoding="utf-8")
+        )
+
+    def test_record_false_manifest_ignores_a_stray_timeline_file(self) -> None:
+        manifest = self._manifest()
+        self.assertEqual(manifest["frame_count"], 2)
+        manifest["frame_count"] = 0
+        manifest["artifacts"] = {
+            "manifest": "manifest.json",
+            "engine_log": "engine.log",
+        }
+        (self.session / "manifest.json").write_text(
+            json.dumps(manifest), encoding="utf-8"
+        )
+        self.assertTrue((self.session / "timeline.ndjson").is_file())
+        self.assertTrue((self.session / "frame_diffs.ndjson").is_file())
+
+        self.assertFalse(
+            session_schema.session_is_recorded(manifest, self.session)
+        )
+        self.assertFalse(summarize_session(self.session)["recorded"])
+
+    def test_recorded_needs_manifest_intent_and_both_evidence_files(self) -> None:
+        manifest = self._manifest()
+        self.assertTrue(
+            session_schema.session_is_recorded(manifest, self.session)
+        )
+
+        (self.session / "frame_diffs.ndjson").unlink()
+        self.assertFalse(
+            session_schema.session_is_recorded(manifest, self.session)
+        )
+
+        (self.session / "timeline.ndjson").unlink()
+        self.assertFalse(
+            session_schema.session_is_recorded(manifest, self.session)
+        )
+
+
 class DisplayValidatorTest(unittest.TestCase):
     """B2: ``session_schema.validate_display`` is the one display rule."""
 

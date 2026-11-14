@@ -20,12 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from . import session_schema
-from .recording import (
-    Recording,
-    manifest_is_recorded,
-    snapshot_label,
-    tail_lines,
-)
+from .recording import Recording, snapshot_label, tail_lines
 
 _APP_LINE = re.compile(r"^\[app\]\s+app=(\S+)")
 
@@ -112,7 +107,7 @@ def summarize_session(
         "inputs": [dict(row) for row in timeline if row["type"] == "input"],
         "frame_diffs": [dict(row) for row in frame_diffs],
         "log_tail": tail_lines(log_text, log_tail_lines),
-        "recorded": manifest_is_recorded(manifest),
+        "recorded": session_schema.session_is_recorded(manifest, session_dir),
         "error": manifest.get("error"),
     }
     return {field: values[field] for field in SUMMARY_FIELDS}

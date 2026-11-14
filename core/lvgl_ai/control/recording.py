@@ -15,24 +15,9 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 _SNAPSHOT_NUMBER_PREFIX = re.compile(r"^\d+_")
-
-
-def manifest_is_recorded(manifest: Mapping[str, Any]) -> bool:
-    """True when the manifest describes a session with timeline evidence.
-
-    This is the single rule shared by :class:`Recording` validation and
-    :func:`~lvgl_ai.control.evidence.summarize_session`, so both entry points
-    agree on what ``recorded`` means.
-    """
-    artifacts = manifest.get("artifacts")
-    if not isinstance(artifacts, Mapping):
-        return False
-    return manifest.get("frame_count", 0) > 0 or any(
-        key in artifacts for key in ("timeline", "frame_diffs")
-    )
 
 
 def snapshot_label(path: Path) -> str:
@@ -69,6 +54,8 @@ TIMELINE_ROW_TYPES = session_schema.TIMELINE_ROW_TYPES
 TIMELINE_SCHEMA = session_schema.TIMELINE_SCHEMA
 _list_pngs = session_schema.list_pngs
 _validate_manifest = session_schema.validate_manifest
+# Re-exported: the manifest rule now lives with the rest of the contract.
+manifest_is_recorded = session_schema.manifest_describes_recording
 
 
 def _read_json_object(path: Path) -> dict[str, Any]:
@@ -116,7 +103,7 @@ class Recording:
         manifest = self.manifest
         self._require_file(self.path / session_schema.ENGINE_LOG_FILE)
 
-        if manifest_is_recorded(manifest):
+        if session_schema.manifest_describes_recording(manifest):
             self._require_file(self.path / session_schema.TIMELINE_FILE)
             self._require_file(self.path / session_schema.FRAME_DIFFS_FILE)
 
@@ -132,6 +119,11 @@ class Recording:
         """The session manifest, re-read on every access."""
         path = self.path / session_schema.MANIFEST_FILE
         return session_schema.validate_manifest(_read_json_object(path), path)
+
+    @property
+    def recorded(self) -> bool:
+        """Manifest intent plus both recording files, the shared rule."""
+        return session_schema.session_is_recorded(self.manifest, self.path)
 
     def timeline(self) -> list[dict[str, Any]]:
         """Parsed ``timeline.ndjson`` rows."""

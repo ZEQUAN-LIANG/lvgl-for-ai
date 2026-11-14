@@ -15,7 +15,7 @@ import datetime as _dt
 import re
 import secrets
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from .errors import SESSION_STATUSES
 
@@ -237,6 +237,38 @@ def validate_manifest(data: dict[str, Any], path: Path) -> dict[str, Any]:
                 f"{path}: error must be null or {{code, message, detail}}"
             )
     return data
+
+
+def manifest_describes_recording(manifest: Mapping[str, Any]) -> bool:
+    """True when the manifest says this session recorded evidence.
+
+    ``frame_count > 0`` covers a session whose changed-only run retained at
+    least one frame; the ``timeline`` / ``frame_diffs`` artifact keys cover a
+    run that recorded only input rows. A record=False manifest has neither,
+    so a stray file in its directory does not turn it into a recording.
+    """
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, Mapping):
+        return False
+    return manifest.get("frame_count", 0) > 0 or any(
+        key in artifacts for key in ("timeline", "frame_diffs")
+    )
+
+
+def session_is_recorded(
+    manifest: Mapping[str, Any], session_dir: str | Path
+) -> bool:
+    """True when the manifest intends a recording and both files exist.
+
+    This is the single rule behind ``summarize_session``'s ``recorded`` flag:
+    manifest intent alone is not enough, and files alone are not enough.
+    """
+    if not manifest_describes_recording(manifest):
+        return False
+    root = Path(session_dir)
+    return (root / TIMELINE_FILE).is_file() and (
+        root / FRAME_DIFFS_FILE
+    ).is_file()
 
 
 def list_pngs(directory: Path) -> list[Path]:
