@@ -1,6 +1,7 @@
 /user/.trash/
 *.pyc
 __pycache__/
+.ruff_cache/
 .scratch/tmp/
 sessions/
 /lvgl-src/*

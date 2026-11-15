@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import hashlib
@@ -51,9 +50,14 @@ def _kill(process: subprocess.Popen[str]) -> None:
 def serve_package(package: Path, work: Path, env: dict[str, str]) -> int:
     process = subprocess.Popen(
         [
-            os.environ.get("COMSPEC", "cmd.exe"), "/c",
-            str(package / "bin" / "lvgl.cmd"), "serve",
-            "--host", "127.0.0.1", "--port", "0",
+            os.environ.get("COMSPEC", "cmd.exe"),
+            "/c",
+            str(package / "bin" / "lvgl.cmd"),
+            "serve",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "0",
         ],
         cwd=str(work),
         env=env,
@@ -78,7 +82,9 @@ def serve_package(package: Path, work: Path, env: dict[str, str]) -> int:
                 url = match.group(1)
                 break
         if url is None:
-            raise AssertionError("release smoke: web server did not print a URL")
+            raise AssertionError(
+                "release smoke: web server did not print a URL"
+            )
         with urllib.request.urlopen(url, timeout=10) as response:
             status = response.status
             body = response.read(100)
@@ -99,17 +105,23 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
         support.ensure_host_sdk("9.6")
 
     def test_zip_unpacks_and_runs_from_an_unrelated_directory(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="lvgl-ai-release-test-") as raw:
+        with tempfile.TemporaryDirectory(
+            prefix="lvgl-ai-release-test-"
+        ) as raw:
             root = Path(raw)
             out_dir = root / "release"
             result = subprocess.run(
                 [
                     sys.executable,
-                    "-I", "-B",
+                    "-I",
+                    "-B",
                     str(RELEASE),
-                    "--lvgl", "9.6",
-                    "--sdk", str(paths.sdk_dir_for("9.6")),
-                    "--out", str(out_dir),
+                    "--lvgl",
+                    "9.6",
+                    "--sdk",
+                    str(paths.sdk_dir_for("9.6")),
+                    "--out",
+                    str(out_dir),
                     "--json",
                 ],
                 cwd=str(REPO_ROOT),
@@ -133,20 +145,26 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 ["SKILL.md"],
             )
             self.assertFalse((published / "CONTEXT.md").exists())
-            self.assertTrue((published / "bin" / "LVGL-AI-Viewer.exe").is_file())
+            self.assertTrue(
+                (published / "bin" / "LVGL-AI-Viewer.exe").is_file()
+            )
             self.assertTrue((published / "docs" / "intro-demo.gif").is_file())
             self.assertTrue((published / "meta" / "versions.json").is_file())
             self.assertTrue((published / "meta" / "VERSION.json").is_file())
             self.assertTrue((published / "licenses" / "LICENSE").is_file())
             self.assertTrue((published / "core" / "cli.py").is_file())
             self.assertTrue(
-                (published / "build" / "lvgl_9_6" / "lvgl_engine.exe").is_file()
+                (
+                    published / "build" / "lvgl_9_6" / "lvgl_engine.exe"
+                ).is_file()
             )
             self.assertTrue(
                 (published / "user" / "app" / "intro" / "intro.c").is_file()
             )
             self.assertFalse((published / "user" / "app" / "coffee").exists())
-            self.assertFalse((published / "user" / "app" / "template").exists())
+            self.assertFalse(
+                (published / "user" / "app" / "template").exists()
+            )
             self.assertFalse((published / "user" / "app" / "demo").exists())
             self.assertTrue(
                 (published / "user" / "scenarios" / "intro.json").is_file()
@@ -203,6 +221,7 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 "core/tools/contract_snapshot.json",
                 "core/tools/check_api_nav.py",
                 "core/tools/check_version_boundaries.py",
+                "core/tools/lint.py",
                 "__pycache__/",
                 "/.git/",
             ):
@@ -276,7 +295,9 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             skill = (pkg / "SKILL.md").read_text(encoding="utf-8")
             self.assertTrue(skill.startswith("---\n"))
             frontmatter = skill.split("\n---\n", 1)[0].splitlines()[1:]
-            keys = [line.split(":", 1)[0] for line in frontmatter if line.strip()]
+            keys = [
+                line.split(":", 1)[0] for line in frontmatter if line.strip()
+            ]
             self.assertEqual(keys, ["name", "description"])
             for heading in (
                 "## 环境与入口",
@@ -309,11 +330,16 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             env["LVGL_AI_SESSIONS_ROOT"] = str(root / "sessions")
             env.pop("LVGL_AI_LVGL_SRC", None)
             env.pop("LVGL_AI_DEMO", None)
-            wrapper = [os.environ.get("COMSPEC", "cmd.exe"), "/c",
-                       str(pkg / "bin" / "lvgl.cmd"), "run",
-                       "--no-build",
-                       "--scenario", str(pkg / "user" / "scenarios" / "intro.json"),
-                       "--json"]
+            wrapper = [
+                os.environ.get("COMSPEC", "cmd.exe"),
+                "/c",
+                str(pkg / "bin" / "lvgl.cmd"),
+                "run",
+                "--no-build",
+                "--scenario",
+                str(pkg / "user" / "scenarios" / "intro.json"),
+                "--json",
+            ]
             run = subprocess.run(
                 wrapper,
                 cwd=str(work),
@@ -337,10 +363,13 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
 
             build_run = subprocess.run(
                 [
-                    os.environ.get("COMSPEC", "cmd.exe"), "/c",
-                    str(pkg / "bin" / "lvgl.cmd"), "run",
+                    os.environ.get("COMSPEC", "cmd.exe"),
+                    "/c",
+                    str(pkg / "bin" / "lvgl.cmd"),
+                    "run",
                     "--prebuilt",
-                    "--scenario", str(pkg / "user" / "scenarios" / "intro.json"),
+                    "--scenario",
+                    str(pkg / "user" / "scenarios" / "intro.json"),
                     "--json",
                 ],
                 cwd=str(work),

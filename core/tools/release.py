@@ -22,7 +22,6 @@ Usage::
     python -I core/tools/release.py --lvgl 9.6 --out release --json
 """
 
-
 from __future__ import annotations
 
 import argparse
@@ -88,6 +87,7 @@ CORE_RELEASE_EXCLUDE_FILES = (
     "tools/contract_snapshot.json",
     "tools/check_api_nav.py",
     "tools/check_version_boundaries.py",
+    "tools/lint.py",
 )
 RELEASE_ENGINE_CACHE_DIR = Path("build") / "release"
 RELEASE_ENGINE_SCHEMA = "lvgl-ai-release-engine-v1"
@@ -100,8 +100,15 @@ RELEASE_META_DIR = Path("meta")
 RELEASE_DOCS_DIR = Path("docs")
 RELEASE_LICENSE = Path("licenses") / "LICENSE"
 FORBIDDEN_TOP_LEVEL = {
-    ".git", "chip-adapt", "release", "lvgl-src", "patches", "sessions",
-    "tests", "third_party", ".scratch",
+    ".git",
+    "chip-adapt",
+    "release",
+    "lvgl-src",
+    "patches",
+    "sessions",
+    "tests",
+    "third_party",
+    ".scratch",
 }
 FORBIDDEN_ANY_LEVEL = {"__pycache__"}
 CORE_EXCLUDE_DIRS = {"tests", "__pycache__", ".cache"}
@@ -168,7 +175,9 @@ def write_version_file(
     return payload
 
 
-def write_package_versions(package: Path, *, tool_version: str) -> dict[str, Any]:
+def write_package_versions(
+    package: Path, *, tool_version: str
+) -> dict[str, Any]:
     path = package / RELEASE_META_DIR / "versions.json"
     index = json.loads(path.read_text(encoding="utf-8"))
     index["core"] = {"version": tool_version, "platform": "win64"}
@@ -231,7 +240,9 @@ def check_hygiene(package: Path, repo_root: Path) -> None:
         try:
             data = path.read_bytes()
         except OSError as exc:
-            raise BuildError(f"release hygiene: cannot read {path}: {exc}") from exc
+            raise BuildError(
+                f"release hygiene: cannot read {path}: {exc}"
+            ) from exc
         for needle in needles:
             if needle and needle in data:
                 raise BuildError(
@@ -273,7 +284,9 @@ def release_engine_inputs_digest(
     )
     digest.update(b"\0")
     digest.update(
-        tree_digest(user_app_dir, RELEASE_ENGINE_SOURCE_SUFFIXES).encode("ascii")
+        tree_digest(user_app_dir, RELEASE_ENGINE_SOURCE_SUFFIXES).encode(
+            "ascii"
+        )
     )
     digest.update(b"\0")
     digest.update(compiler_version.encode("utf-8"))
@@ -362,7 +375,9 @@ def ensure_release_engine(
     )
     plan.execute(build=True)
     if not engine.is_file():
-        raise BuildError(f"release: prebuilt engine was not produced: {engine}")
+        raise BuildError(
+            f"release: prebuilt engine was not produced: {engine}"
+        )
     cache_dir.mkdir(parents=True, exist_ok=True)
     if cache_engine.resolve() != engine.resolve():
         shutil.copy2(engine, cache_engine)
@@ -404,7 +419,9 @@ def stage_user_tree(repo_root: Path, package: Path) -> None:
             raise BuildError(f"release: user/app/{name} is missing")
         shutil.copy2(source_file, app_target / name)
     if not RELEASE_USER_README.is_file():
-        raise BuildError("release: core/tools/release_user_app_README.md is missing")
+        raise BuildError(
+            "release: core/tools/release_user_app_README.md is missing"
+        )
     shutil.copy2(RELEASE_USER_README, app_target / "README.md")
     for name in RELEASE_APP_DIRS:
         source_dir = app_source / name
@@ -463,7 +480,8 @@ def stage_package(
     shutil.copy2(versions_source, versions_target)
     write_package_versions(package, tool_version=tool_version)
     copy_tree(
-        repo_root / "core", package / "core",
+        repo_root / "core",
+        package / "core",
         exclude_dirs=CORE_EXCLUDE_DIRS,
         exclude_suffixes=EXCLUDE_SUFFIXES,
     )
@@ -472,8 +490,12 @@ def stage_package(
         if path.is_file():
             path.unlink()
     if not RELEASE_TOOLS_README.is_file():
-        raise BuildError("release: core/tools/release_tools_README.md is missing")
-    shutil.copy2(RELEASE_TOOLS_README, package / "core" / "tools" / "README.md")
+        raise BuildError(
+            "release: core/tools/release_tools_README.md is missing"
+        )
+    shutil.copy2(
+        RELEASE_TOOLS_README, package / "core" / "tools" / "README.md"
+    )
     stage_user_tree(repo_root, package)
     copy_tree(repo_root / "licenses", package / "licenses")
     copy_tree(repo_root / "bin", package / "bin")
@@ -552,7 +574,9 @@ def clean_build_dir(package: Path, lvgl_version: str) -> Path:
     target_dir = build_root / f"lvgl_{token}"
     engine = target_dir / paths.engine_filename()
     if not engine.is_file():
-        raise BuildError(f"release: engine is missing before packaging: {engine}")
+        raise BuildError(
+            f"release: engine is missing before packaging: {engine}"
+        )
     keep = [engine]
     sdk_manifest = package / "sdk" / lvgl_version / "manifest.json"
     if sdk_manifest.is_file():
@@ -585,12 +609,16 @@ def clean_build_dir(package: Path, lvgl_version: str) -> Path:
 def _prune_empty_dirs(root: Path) -> None:
     if not root.is_dir():
         return
-    for path in sorted(root.rglob("*"), key=lambda item: len(item.parts), reverse=True):
+    for path in sorted(
+        root.rglob("*"), key=lambda item: len(item.parts), reverse=True
+    ):
         if path.is_dir() and not any(path.iterdir()):
             path.rmdir()
 
 
-def share_sdk_payload(package: Path, versions: Iterable[str]) -> dict[str, Any]:
+def share_sdk_payload(
+    package: Path, versions: Iterable[str]
+) -> dict[str, Any]:
     versions = list(versions)
     summary: dict[str, Any] = {
         "versions": versions,
@@ -620,7 +648,9 @@ def share_sdk_payload(package: Path, versions: Iterable[str]) -> dict[str, Any]:
     shared_libs: set[str] = set()
     shared_dlls: set[str] = set()
     shared_include = False
-    for rel in sorted(set.intersection(*(set(files) for files in files_by_version.values()))):
+    for rel in sorted(
+        set.intersection(*(set(files) for files in files_by_version.values()))
+    ):
         first = files_by_version[versions[0]][rel]
         digest = sha256_file(first)
         if any(
@@ -638,7 +668,7 @@ def share_sdk_payload(package: Path, versions: Iterable[str]) -> dict[str, Any]:
         summary["saved_bytes"] += size * (len(versions) - 1)
         if rel.startswith("include/"):
             shared_include = True
-        elif rel.startswith("lib/") and "/" not in rel[len("lib/"):]:
+        elif rel.startswith("lib/") and "/" not in rel[len("lib/") :]:
             name = Path(rel).name
             if name.lower().endswith(".dll"):
                 shared_dlls.add(name)
@@ -664,11 +694,13 @@ def share_sdk_payload(package: Path, versions: Iterable[str]) -> dict[str, Any]:
         ]
         manifest["include_dirs"] = include_dirs
         manifest["libs"] = [
-            name for name in manifest.get("libs", [])
+            name
+            for name in manifest.get("libs", [])
             if name not in shared_libs
         ]
         manifest["runtime_dlls"] = [
-            name for name in manifest.get("runtime_dlls", [])
+            name
+            for name in manifest.get("runtime_dlls", [])
             if name not in shared_dlls
         ]
         manifest["shared_root"] = "common"
@@ -720,7 +752,9 @@ def _smoke_run(
     return _json_line(result)
 
 
-def _smoke_scenario(package: Path, lvgl_version: str, workspace: Path, *extra: str) -> dict[str, Any]:
+def _smoke_scenario(
+    package: Path, lvgl_version: str, workspace: Path, *extra: str
+) -> dict[str, Any]:
     return release_bundle.smoke_scenario(
         package,
         lvgl_version,
@@ -745,9 +779,11 @@ def _smoke_wrapper_run(
         _cmd_wrapper(
             package,
             "run",
-            "--lvgl", lvgl_version,
+            "--lvgl",
+            lvgl_version,
             "--no-build",
-            "--scenario", str(scenario),
+            "--scenario",
+            str(scenario),
             "--json",
         ),
         cwd=workspace,
@@ -783,8 +819,7 @@ def _smoke_assets(package: Path, workspace: Path) -> dict[str, Any]:
     payload = _json_line(result)
     if not payload.get("ok"):
         raise BuildError(
-            "release smoke: assets doctor reported "
-            f"{payload.get('error')!r}"
+            f"release smoke: assets doctor reported {payload.get('error')!r}"
         )
     return payload
 
@@ -807,7 +842,9 @@ def _kill_tree(process: subprocess.Popen[str]) -> None:
 
 def _smoke_serve(package: Path, workspace: Path) -> dict[str, Any]:
     if os.name != "nt":
-        raise BuildError("release smoke: serve check currently requires Windows")
+        raise BuildError(
+            "release smoke: serve check currently requires Windows"
+        )
     env = _smoke_env(workspace)
     process = subprocess.Popen(
         _cmd_wrapper(package, "serve", "--host", "127.0.0.1", "--port", "0"),
@@ -856,8 +893,12 @@ def _smoke_serve(package: Path, workspace: Path) -> dict[str, Any]:
 def smoke_package(package: Path, lvgl_version: str) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="lvgl-ai-smoke-") as raw:
         workspace = Path(raw)
-        no_build = _smoke_scenario(package, lvgl_version, workspace, "--no-build")
-        prebuilt = _smoke_scenario(package, lvgl_version, workspace, "--prebuilt")
+        no_build = _smoke_scenario(
+            package, lvgl_version, workspace, "--no-build"
+        )
+        prebuilt = _smoke_scenario(
+            package, lvgl_version, workspace, "--prebuilt"
+        )
         build_log = Path(str(prebuilt["session_dir"])) / "build.log"
         if "# build mode: prebuilt" not in build_log.read_text(
             encoding="utf-8", errors="replace"
