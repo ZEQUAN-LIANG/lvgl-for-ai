@@ -93,10 +93,10 @@ python -I chip-adapt/sifli/host/cli.py flash --app sift_watch --actor ai --json
 ## 安装 skill
 
 发布包本身就是 skill。从 [GitHub Releases](https://github.com/ZEQUAN-LIANG/lvgl-for-ai/releases)
-或 [Gitee Releases](https://gitee.com/liang-zequan/lvgl-for-ai/releases) 下载 0.2.0 的两个包之一：
+或 [Gitee Releases](https://gitee.com/liang-zequan/lvgl-for-ai/releases) 下载 0.2.1 的两个包之一：
 
-- `lvgl-verify-loop-0.2.0-full-win64.zip`：六个 LVGL 版本和 viewer。
-- `lvgl-verify-loop-0.2.0-full-sifli-win64.zip`：上面的完整包再加 SiFli 工具。
+- `lvgl-verify-loop-0.2.1-full-win64.zip`：六个 LVGL 版本和 viewer。
+- `lvgl-verify-loop-0.2.1-full-sifli-win64.zip`：上面的完整包再加 SiFli 工具。
 
 宿主机必须提供 Python 3.9+（`python`/`pythonw`，或 `py`/`pyw`）并在 PATH 上；发布包
 不自带 Python。运行包内应用不需要 CMake 或 GCC。
@@ -104,7 +104,7 @@ python -I chip-adapt/sifli/host/cli.py flash --app sift_watch --actor ai --json
 用一条命令把它装成 Claude Code 的个人 skill（Windows PowerShell）：
 
 ```powershell
-Expand-Archive .\lvgl-verify-loop-0.2.0-full-win64.zip "$env:USERPROFILE\.claude\skills"
+Expand-Archive .\lvgl-verify-loop-0.2.1-full-win64.zip "$env:USERPROFILE\.claude\skills"
 ```
 
 zip 里只有一层 `lvgl-verify-loop\`，所以解压后就是
@@ -190,7 +190,7 @@ AI 的结论必须指向这些文件。`status: ok` 表示会话正常结束；�
 ## 版本与真机
 
 - 宿主默认 LVGL 9.6，用于日常预览与取证；发布包里的 `intro` 应用按 9.4+ 编写。
-- 0.2.0 只发布两个 zip：`full` 带全部六个 LVGL 版本和 engine；`full-sifli` 再加
+- 0.2.1 只发布两个 zip：`full` 带全部六个 LVGL 版本和 engine；`full-sifli` 再加
   SiFli 工具。两者都要求宿主机安装 Python 3.9+，不自带运行时；没有逐版本下载步骤。
 - 随包 SDK 用 GCC 15.2.0 导出；走预编译路径重新编译用户 C 时需要同一个 GCC 版本。
   CMake/Ninja 只在从 LVGL 源码构建时需要。

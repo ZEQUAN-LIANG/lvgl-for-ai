@@ -92,12 +92,12 @@ Two more points: a prebuilt host SDK lets you run with just GCC installed (`--pr
 
 ## Install the skill
 
-The release zip **is** the skill. Download one of the two 0.2.0 bundles from
+The release zip **is** the skill. Download one of the two 0.2.1 bundles from
 [GitHub Releases](https://github.com/ZEQUAN-LIANG/lvgl-for-ai/releases) or
 [Gitee Releases](https://gitee.com/liang-zequan/lvgl-for-ai/releases):
 
-- `lvgl-verify-loop-0.2.0-full-win64.zip`: all six LVGL versions and the viewer.
-- `lvgl-verify-loop-0.2.0-full-sifli-win64.zip`: the same bundle plus the SiFli tools.
+- `lvgl-verify-loop-0.2.1-full-win64.zip`: all six LVGL versions and the viewer.
+- `lvgl-verify-loop-0.2.1-full-sifli-win64.zip`: the same bundle plus the SiFli tools.
 
 Python 3.9+ must be on PATH (`python`/`pythonw`, or `py`/`pyw`); the package
 does not bundle Python. Running the bundled apps needs no CMake or GCC.
@@ -105,7 +105,7 @@ does not bundle Python. Running the bundled apps needs no CMake or GCC.
 Install it as a personal Claude Code skill with one command (Windows PowerShell):
 
 ```powershell
-Expand-Archive .\lvgl-verify-loop-0.2.0-full-win64.zip "$env:USERPROFILE\.claude\skills"
+Expand-Archive .\lvgl-verify-loop-0.2.1-full-win64.zip "$env:USERPROFILE\.claude\skills"
 ```
 
 The zip contains a single top-level `lvgl-verify-loop\` folder, so this creates
@@ -196,7 +196,7 @@ AI conclusions must point at these files. `status: ok` means the session ended n
 ## Versions and real hardware
 
 - Host default is LVGL 9.6, for daily preview and evidence collection; the package's `intro` app targets 9.4+.
-- The 0.2.0 release publishes exactly two zips: `full` contains all six LVGL versions and their engines; `full-sifli` adds the SiFli tools. Both require Python 3.9+ on the host and do not bundle it; there is no per-version download step.
+- The 0.2.1 release publishes exactly two zips: `full` contains all six LVGL versions and their engines; `full-sifli` adds the SiFli tools. Both require Python 3.9+ on the host and do not bundle it; there is no per-version download step.
 - The bundled SDKs were exported with GCC 15.2.0. Rebuilding user C through the prebuilt path requires the same GCC version; CMake/Ninja are only for LVGL source builds.
 - Device apps are written against the LVGL 9.4 baseline; export only checks compatibility and never rewrites sources.
 - Inspect versions or use source installation only for a custom build:

@@ -13,7 +13,7 @@ Usage::
 
     set GITHUB_TOKEN=...
     set GITEE_TOKEN=...
-    python -I core/tools/upload_release.py --version 0.2.0 --replace
+    python -I core/tools/upload_release.py --version 0.2.1 --replace
     python -I core/tools/upload_release.py --target github
     python -I core/tools/upload_release.py --dry-run
 """

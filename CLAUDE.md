@@ -43,7 +43,7 @@ python -I core/tools/release_all.py --out release --force-build --json
 
 # 上传 Release 资产（token 只从环境变量读取）
 #   set GITHUB_TOKEN=...   /   set GITEE_TOKEN=...
-python -I core/tools/upload_release.py --version 0.2.0 --replace --json
+python -I core/tools/upload_release.py --version 0.2.1 --replace --json
 python -I core/tools/upload_release.py --dry-run --json
 
 # Gitee → GitHub 强制镜像（分支 + 标签）
