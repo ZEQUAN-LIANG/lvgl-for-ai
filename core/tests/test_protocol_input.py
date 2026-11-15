@@ -1,7 +1,3 @@
-"""Protocol strictness, command sequencing and lvgl-ai-input-v1 validation.
-
-These tests use the fake engine process, so they do not build LVGL.
-"""
 
 from __future__ import annotations
 

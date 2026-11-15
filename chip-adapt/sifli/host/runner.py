@@ -68,8 +68,6 @@ class JobRunner:
         self._broker = broker
         self._state = state_store
 
-    # -- build ---------------------------------------------------------
-
     def build(self, job: Job, request: BuildRequest) -> None:
         try:
             result = run_build(
@@ -95,8 +93,6 @@ class JobRunner:
             self._fail(job, exc)
         except Exception as exc:  # noqa: BLE001 - job boundary
             self._crash(job, exc)
-
-    # -- flash ---------------------------------------------------------
 
     def flash(self, job: Job, request: FlashRequest) -> None:
         saved: dict[str, Any] | None = None
@@ -146,8 +142,6 @@ class JobRunner:
         finally:
             if saved is not None and request.reconnect:
                 self._reconnect(job, request, saved, result)
-
-    # -- helpers -------------------------------------------------------
 
     def _record_flash_state(self, app: str, result: dict[str, Any]) -> None:
         project_dir = str(Path(result["build_dir"]).parent)

@@ -1,11 +1,3 @@
-"""The replay model is the one evidence-to-view conversion for HTML and JSON.
-
-``replay_model.load(recording)`` reads every evidence file once and exposes the
-frame rows, snapshot labels, timeline rows, diff tables, log tails and note
-view fields the page and the ``/api/sessions`` series both render.  Missing or
-corrupt files degrade to the same empty values the page has always shown while
-keeping the read error available to the JSON endpoints that used to raise.
-"""
 
 from __future__ import annotations
 
@@ -20,7 +12,6 @@ from web_support import SESSION_ID, make_web_session
 
 
 class _CountingRecording(Recording):
-    """Recording that counts evidence reads, to prove at-most-once loading."""
 
     def __init__(self, path) -> None:
         super().__init__(path)

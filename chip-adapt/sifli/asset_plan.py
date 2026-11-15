@@ -25,8 +25,8 @@ for _path in (CORE_ROOT, ADAPTER_DIR):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-import layout  # noqa: E402
-from lvgl_ai.apps import common  # noqa: E402
+import layout
+from lvgl_ai.apps import common
 ASSET_SCHEMA = "lvgl-ai-assets-v1"
 ASSET_MODES = {"ezip", "raw"}
 ASSET_PLACEMENTS = {"flash", "psram", "sram"}
@@ -34,7 +34,7 @@ ASSET_TRANSFORMS = {"none", "rotate", "scale", "rotate_scale"}
 
 
 class ExportError(common.AppError):
-    """Domain error for export-specific failures."""
+    pass
 
 
 @dataclass(frozen=True)
@@ -211,8 +211,6 @@ def _load_asset_manifest(
             detail={"file": str(manifest_path)},
         )
     if not raw_assets:
-        # A cache-only manifest lets canvas-only apps reserve the PSRAM cache
-        # pool without inventing a dummy image.
         if not isinstance(raw_cache, dict) or not raw_cache:
             raise ExportError(
                 "asset_manifest_invalid",

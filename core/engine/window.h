@@ -49,7 +49,6 @@ typedef void (*window_input_cb)(void * user,
 
 typedef struct window window_t;
 
-/** True when this build can open a window (currently only Win32). */
 bool window_available(void);
 
 /**
@@ -64,7 +63,6 @@ window_t * window_create(uint32_t width,
                                  window_input_cb callback,
                                  void * user);
 
-/** Destroy the window. Safe on NULL. */
 void window_destroy(window_t * window);
 
 /**
@@ -86,11 +84,10 @@ void window_present(window_t * window, const uint8_t * framebuffer);
  */
 void window_install_ctrl_handler(void);
 
-/** True when Ctrl+C/Ctrl+Break was seen since the handler was installed. */
 bool window_console_interrupted(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* WINDOW_H */
+#endif

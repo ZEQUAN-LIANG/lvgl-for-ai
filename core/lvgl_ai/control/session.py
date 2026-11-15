@@ -25,19 +25,10 @@ from .session_schema import build_manifest, display_problem, list_pngs
 
 DEFAULT_MAX_LOG_BYTES = 16 * 1024 * 1024
 
-# Re-exported: the generator belongs to the session contract module.
 new_session_id = session_schema.new_session_id
 
 
 class TailLog:
-    """Append-only ``engine.log`` with a byte cap and a line-aligned tail.
-
-    ``append`` keeps the last ``max_bytes`` by rewriting to roughly half the
-    cap when it overflows, so a crash still leaves a usable
-    ``RuntimeCrash.log_tail``. ``tail`` reads the file, so it also works after
-    ``close``. All handle access is serialized because the engine's stdout and
-    stderr pumps append from two threads.
-    """
 
     def __init__(
         self, path: Path, *, max_bytes: int = DEFAULT_MAX_LOG_BYTES
@@ -51,11 +42,9 @@ class TailLog:
 
     @property
     def truncated(self) -> bool:
-        """True once the cap forced a tail rewrite."""
         return self._truncated
 
     def open(self) -> None:
-        """Create (or truncate) the log file for a new session."""
         with self._lock:
             if self._handle is not None and not self._handle.closed:
                 self._handle.close()
@@ -66,7 +55,6 @@ class TailLog:
             self._truncated = False
 
     def append(self, line: str) -> None:
-        """Append one line; silently drop it once the log is closed."""
         text = line + "\n"
         size = len(text.encode("utf-8"))
         with self._lock:
@@ -80,7 +68,6 @@ class TailLog:
                 self._truncate_locked(self.max_bytes // 2 or 1)
 
     def tail(self, n: int = 40) -> list[str]:
-        """Last ``n`` lines; ``n <= 0`` returns ``[]``."""
         with self._lock:
             handle = self._handle
             if handle is not None and not handle.closed:
@@ -93,7 +80,6 @@ class TailLog:
         return lines[-n:] if n > 0 else []
 
     def close(self) -> None:
-        """Flush and close the handle; later appends are dropped."""
         with self._lock:
             handle = self._handle
             if handle is not None and not handle.closed:
@@ -101,7 +87,6 @@ class TailLog:
                 handle.close()
 
     def _truncate_locked(self, keep_bytes: int) -> None:
-        """Keep the last ``keep_bytes``, aligned to a line start."""
         handle = self._handle
         if handle is None or handle.closed:
             return
@@ -127,12 +112,6 @@ class TailLog:
 
 
 class SessionOutcome:
-    """Final status for one session: a recorded failure beats a crash, a crash
-    beats ``ok``.
-
-    The status vocabulary only describes what the tool did. ``error`` is the
-    typed exception that explains a non-``ok`` status.
-    """
 
     __slots__ = ("status", "error")
 
@@ -150,7 +129,6 @@ class SessionOutcome:
 
     @classmethod
     def from_failure(cls, error: BaseException) -> SessionOutcome:
-        """Map a failure outside the exit-code path to its manifest status."""
         return cls(status_for_error(error), error)
 
     @classmethod
@@ -162,11 +140,6 @@ class SessionOutcome:
         unexpected_exit: bool,
         make_crash: Callable[[str], RuntimeCrash] | None = None,
     ) -> SessionOutcome:
-        """Decide the final status after the engine stopped.
-
-        ``make_crash`` fills the exit code and log tail once the pumps joined;
-        without it a plain :class:`RuntimeCrash` is recorded.
-        """
         if failure is not None:
             return cls.from_failure(failure)
         if exit_code == 0 and not unexpected_exit:
@@ -184,14 +157,6 @@ class SessionOutcome:
 
 
 class SessionStore:
-    """One session directory and every file the control layer writes into it.
-
-    ``create`` reserves the directory (with ``frames/`` when recording) and
-    opens ``engine.log``; ``prune`` applies the retention policy right after,
-    so the current session is never touched. Manifest metadata is collected
-    from the constructor options, the validated ``ready`` announcement and the
-    on-disk evidence, then written atomically by :meth:`write_manifest`.
-    """
 
     def __init__(
         self,
@@ -224,11 +189,8 @@ class SessionStore:
         self._log: TailLog | None = None
         self._ready: dict[str, Any] = {}
         self._truncated = False
-        # Protocol commands that actually ran and reached a successful reply
-        # (or failed). ``checks`` only says whether the command executed.
         self._checks: list[dict[str, Any]] = []
 
-    # ---- session directory --------------------------------------------
 
     @property
     def engine_log_path(self) -> Path | None:
@@ -244,21 +206,17 @@ class SessionStore:
 
     @property
     def log_truncated(self) -> bool:
-        """True once ``engine.log`` was capped during this session."""
         return self._log is not None and self._log.truncated
 
     @property
     def ready(self) -> dict[str, Any] | None:
-        """The validated ``ready`` announcement, or ``None`` before startup."""
         return self._ready or None
 
     @property
     def lvgl_src(self) -> Path | None:
-        """The LVGL source tree as recorded, or ``None`` for the default."""
         return None if self._lvgl_src is None else Path(self._lvgl_src)
 
     def create(self) -> Path:
-        """Reserve a unique session directory and open its engine log."""
         self.sessions_root.mkdir(parents=True, exist_ok=True)
         for _ in range(50):
             session_id = new_session_id()
@@ -282,7 +240,6 @@ class SessionStore:
         return path
 
     def prune(self) -> list[Path]:
-        """Delete expired sessions; deletion is best effort and never fatal."""
         if self.retention is None:
             return []
         try:
@@ -294,10 +251,8 @@ class SessionStore:
         except OSError:
             return []
 
-    # ---- logs ----------------------------------------------------------
 
     def write_build_log(self, text: str) -> None:
-        """Write ``build.log``; the caller passes the whole phase output."""
         if self.session_dir is None:
             return
         if not text.endswith("\n"):
@@ -307,12 +262,10 @@ class SessionStore:
         )
 
     def append_log(self, line: str) -> None:
-        """Append one engine stdout/stderr line."""
         if self._log is not None:
             self._log.append(line)
 
     def log_tail(self, n: int = 40) -> list[str]:
-        """Last ``n`` lines of engine.log (stdout and stderr)."""
         if self._log is None:
             return []
         return self._log.tail(n)
@@ -321,10 +274,8 @@ class SessionStore:
         if self._log is not None:
             self._log.close()
 
-    # ---- preview -------------------------------------------------------
 
     def discard_preview(self) -> None:
-        """Remove the transient raw preview; it is not session evidence."""
         if not self.live_frame or self.session_dir is None:
             return
         try:
@@ -334,19 +285,15 @@ class SessionStore:
         except OSError:
             pass
 
-    # ---- manifest ------------------------------------------------------
 
     def note_ready(self, ready: Mapping[str, Any]) -> None:
-        """Record the validated ``ready`` announcement for later manifests."""
         self._ready = dict(ready)
         self._truncated = bool(ready.get("truncated"))
 
     def note_mode(self, mode: str) -> None:
-        """Record the mode the engine actually reported."""
         self.mode = mode
 
     def note_truncated(self) -> None:
-        """Remember that the engine dropped frames or rows at the cap."""
         self._truncated = True
 
     def append_check(self, command: str, ok: bool, frame_no: Any) -> None:
@@ -361,11 +308,6 @@ class SessionStore:
         *,
         build_status: str | None = None,
     ) -> None:
-        """Atomically write ``manifest.json`` for ``outcome``.
-
-        Artifacts and ``frame_count`` come from the files actually on disk, so
-        a partially written session stays self-describing.
-        """
         if self.session_dir is None or self.manifest_path is None:
             return
         ready = self._ready
@@ -433,7 +375,6 @@ class SessionStore:
 
 
 def _display_metadata(ready: Mapping[str, Any]) -> dict[str, int] | None:
-    """The actual display size from ``ready``; ``None`` before startup."""
     display = ready.get("display")
     if not isinstance(display, Mapping) or display_problem(display) is not None:
         return None

@@ -1,9 +1,3 @@
-"""Replay page and read-only HTTP API built on Recording.
-
-The page is server-rendered from the same evidence files the engine writes:
-frames, snapshots, timeline, annotations and the optional frame diffs. It must
-not expose pass/fail verdicts and it must not spawn an engine.
-"""
 
 from __future__ import annotations
 
@@ -344,7 +338,6 @@ def _write_note_with_crop(session: Path) -> None:
 
 
 class SharedReplayModelTest(unittest.TestCase):
-    """The HTML page and the JSON API render the same replay model."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -379,7 +372,6 @@ class SharedReplayModelTest(unittest.TestCase):
         )
         _, _, html = self.harness.html(f"/?session={SESSION_ID}")
 
-        # The stage renders the first frame as <img>; the rest travel in MODEL.
         self.assertIn(f'src="{payload["frames"][0]["url"]}"', html)
         for snapshot in payload["snapshots"]:
             self.assertIn(f'data-snapshot-label="{snapshot["label"]}"', html)
@@ -411,7 +403,6 @@ class SharedReplayModelTest(unittest.TestCase):
 
 
 class NotesSingleRendererTest(unittest.TestCase):
-    """Notes have one renderer: the server-side ``_render_notes``."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -460,7 +451,6 @@ class NotesSingleRendererTest(unittest.TestCase):
 
 
 class ReplayDegradationTest(unittest.TestCase):
-    """Missing or corrupt evidence keeps the documented fallbacks."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()

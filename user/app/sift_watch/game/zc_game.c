@@ -296,9 +296,6 @@ typedef struct {
     float flash_red;
     float flash_white;
 
-    /* Idle fallback: after 12 s on title/gameover the game starts itself,
-     * after 6 s on the upgrade sheet it picks a card, and after 10 s without
-     * touch in battle the HUD shows AI.  Any touch/key clears it. */
     bool ai_mode;
     float ai_timer;
     float ai_idle;
@@ -310,7 +307,6 @@ static zc_hooks_t g_hooks;
 static bool g_created;
 static uint32_t g_rand_state = 0x51F7A11DU;
 
-/* ---------------------------------------------------------- utilities */
 
 static uint32_t rng_raw(void)
 {
@@ -419,7 +415,6 @@ static void save_store(void)
     g_hooks.store(&save, g_hooks.user);
 }
 
-/* --------------------------------------------------------- definitions */
 
 static float hp_scale_for(int wave)
 {
@@ -494,7 +489,6 @@ static float interval_for(bool manual)
     return fmaxf(0.13f, base * powf(0.87f, (float)S.upg[UPG_RAPID]));
 }
 
-/* ------------------------------------------------------------ effects */
 
 static void add_particle(float x, float y, float vx, float vy, float life,
                          uint16_t color, int size, float gravity)
@@ -594,7 +588,6 @@ static void add_blast(float x, float y, float radius, bool crit)
     }
 }
 
-/* ---------------------------------------------------------- enemy math */
 
 static zc_sprite_def_t const * sprite_for(int type)
 {
@@ -661,7 +654,6 @@ static void resolve_aim(float raw_x, float raw_y)
     S.aim_valid = true;
 }
 
-/* ------------------------------------------------------------- combat */
 
 static void heal_base(int amount)
 {
@@ -932,7 +924,6 @@ static void detonate(shell_t * s)
     if(S.upg[UPG_FIRE] > 0) add_fire_patch(s->tx, s->ty);
 }
 
-/* --------------------------------------------------------------- wave */
 
 static void wave_composition(int n, int * walker, int * runner, int * brute, int * boss)
 {
@@ -1124,7 +1115,6 @@ static void spawn_enemy(int type)
     }
 }
 
-/* ------------------------------------------------------------ upgrades */
 
 static void upgrade_desc(int key, char * out, size_t n)
 {
@@ -1301,7 +1291,6 @@ static void choose_upgrade(int key)
     sfx(ZC_SFX_CLICK);
 }
 
-/* --------------------------------------------------------------- update */
 
 static void update_aim_and_fire(float dt)
 {
@@ -1623,7 +1612,6 @@ static void update_game(float dt)
     }
 }
 
-/* -------------------------------------------------------------- drawing */
 
 static float ease_out_cubic(float t)
 {
@@ -1971,7 +1959,6 @@ static void draw_reticle(void)
     }
 }
 
-/* ------------------------------------------------------------------ HUD */
 
 static void draw_hud(void)
 {
@@ -2098,7 +2085,6 @@ static void draw_boss_bar(void)
     for(int i = 1; i < 8; i++) zc_blend_rect(bx + i * 33, py + 8, 1, 5, ZC_RGB565(10, 8, 6), 82);
 }
 
-/* --------------------------------------------------------------- overlays */
 
 static void draw_banner(void)
 {
@@ -2423,7 +2409,6 @@ static void draw_screen_effects(void)
     }
 }
 
-/* ----------------------------------------------------------------- title */
 
 typedef struct {
     int type;
@@ -2528,7 +2513,6 @@ static void draw_title(void)
     }
 }
 
-/* --------------------------------------------------------------- compose */
 
 static void draw_game_world(void)
 {
@@ -2616,7 +2600,6 @@ void zc_render(void)
     if(S.scanlines && !S.safe) draw_scanlines();
 }
 
-/* ------------------------------------------------------------ lifecycle */
 
 static void reset_run(void)
 {
@@ -2771,7 +2754,6 @@ void zc_tick(uint32_t now_ms, uint32_t elapsed_ms)
     }
 }
 
-/* ----------------------------------------------------------------- input */
 
 static bool point_in(int x, int y, int rx, int ry, int rw, int rh)
 {

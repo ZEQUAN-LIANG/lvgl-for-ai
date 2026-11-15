@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Build the distributable skill zip from this workspace.
 
 One command produces the package directory, zip, ``.sha256`` and release
@@ -23,6 +22,7 @@ Usage::
     python -I core/tools/release.py --lvgl 9.6 --out release --json
 """
 
+
 from __future__ import annotations
 
 import argparse
@@ -44,11 +44,11 @@ _BOOTSTRAP_TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(_BOOTSTRAP_TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(_BOOTSTRAP_TOOL_ROOT))
 
-from lvgl_ai import paths, versions  # noqa: E402
-from lvgl_ai.control.build_plan import BuildPlan  # noqa: E402
-from lvgl_ai.control.errors import BuildError  # noqa: E402
-from lvgl_ai.control.prebuilt import HostSdk, resolve_compiler  # noqa: E402
-from lvgl_ai.digest import sha256_file  # noqa: E402
+from lvgl_ai import paths, versions
+from lvgl_ai.control.build_plan import BuildPlan
+from lvgl_ai.control.errors import BuildError
+from lvgl_ai.control.prebuilt import HostSdk, resolve_compiler
+from lvgl_ai.digest import sha256_file
 
 TOOL_ROOT = paths.TOOL_ROOT
 REPO_ROOT = paths.REPO_ROOT
@@ -56,8 +56,8 @@ TOOLS_DIR = TOOL_ROOT / "tools"
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
-import export_sdk  # noqa: E402
-import release_bundle  # noqa: E402
+import export_sdk
+import release_bundle
 
 PACKAGE_DIR_NAME = release_bundle.PACKAGE_DIR_NAME
 RELEASE_SCHEMA = release_bundle.RELEASE_SCHEMA
@@ -120,7 +120,6 @@ def copy_tree(
     exclude_files: Iterable[str] = (),
     exclude_suffixes: Iterable[str] = (),
 ) -> None:
-    """Copy ``source`` below ``target`` with name/suffix exclusions."""
     source_path = Path(source)
     target_path = Path(target)
     excluded_dirs = set(exclude_dirs)
@@ -170,11 +169,6 @@ def write_version_file(
 
 
 def write_package_versions(package: Path, *, tool_version: str) -> dict[str, Any]:
-    """Write the release metadata into the package copy of ``versions.json``.
-
-    The source index is read-only during a release: only the copied file under
-    ``<package>/meta/`` carries the tool version being built.
-    """
     path = package / RELEASE_META_DIR / "versions.json"
     index = json.loads(path.read_text(encoding="utf-8"))
     index["core"] = {"version": tool_version, "platform": "win64"}
@@ -186,7 +180,6 @@ def write_package_versions(package: Path, *, tool_version: str) -> dict[str, Any
 
 
 def check_hygiene(package: Path, repo_root: Path) -> None:
-    """Reject forbidden trees, build intermediates and development paths."""
     package = package.resolve()
     for child in package.iterdir():
         if child.name in FORBIDDEN_TOP_LEVEL:
@@ -230,7 +223,6 @@ def check_hygiene(package: Path, repo_root: Path) -> None:
     paths_to_hide = {str(repo_root.resolve()), str(Path.home().resolve())}
     needles = set()
     for value in paths_to_hide:
-        # Native and forward-slash spellings both appear in binaries.
         needles.add(value.encode("utf-8"))
         needles.add(value.replace("\\", "/").encode("utf-8"))
     for path in package.rglob("*"):
@@ -250,7 +242,6 @@ def check_hygiene(package: Path, repo_root: Path) -> None:
 
 
 def tree_digest(root: Path, suffixes: frozenset[str]) -> str:
-    """Hash the names and contents of matching files below ``root``."""
     digest = hashlib.sha256()
     if not root.is_dir():
         return digest.hexdigest()
@@ -272,7 +263,6 @@ def release_engine_inputs_digest(
     sdk_dir: Path,
     compiler_version: str,
 ) -> str:
-    """Hash the inputs that decide the bytes of one prebuilt release engine."""
     digest = hashlib.sha256()
     digest.update(RELEASE_ENGINE_SCHEMA.encode("utf-8"))
     digest.update(b"\0")
@@ -299,7 +289,6 @@ def _release_engine_cache_matches(
     cache_meta: Path,
     digest: str,
 ) -> bool:
-    """A cache hit needs the same inputs and the exact cached engine bytes."""
     if not cache_engine.is_file() or not cache_meta.is_file():
         return False
     try:
@@ -326,12 +315,6 @@ def ensure_release_engine(
     compiler_version: str | None = None,
     force: bool = False,
 ) -> dict[str, Any]:
-    """Build a prebuilt engine once per input digest; reuse its cached bytes.
-
-    The cache lives under ``build/release/lvgl_<token>/`` and is independent
-    of the daily ``build/lvgl_<token>/`` tree.  A hit still copies the engine
-    into ``build_dir`` so callers keep the same staging shape.
-    """
     compiler_path, resolved_version = resolve_compiler(
         override=compiler, version=compiler_version
     )
@@ -411,7 +394,6 @@ def ensure_release_engine(
 
 
 def stage_user_tree(repo_root: Path, package: Path) -> None:
-    """Copy the intro app and the scenario the package needs."""
     source = repo_root / "user"
     app_source = source / "app"
     app_target = package / "user" / "app"
@@ -462,7 +444,6 @@ def stage_package(
     host_sdks: list[str] | None = None,
     force_build: bool = False,
 ) -> dict[str, Any]:
-    """Copy the allowlisted tree and build or reuse the package's engine."""
     package.mkdir(parents=True)
     skill_source = repo_root / "core" / "SKILL.md"
     if skill_source.is_file():
@@ -555,7 +536,6 @@ def stage_package(
 
 
 def purge_caches(package: Path) -> None:
-    """Remove bytecode caches created by running the staged package."""
     for path in sorted(package.rglob("__pycache__"), reverse=True):
         if path.is_dir():
             shutil.rmtree(path, ignore_errors=True)
@@ -567,11 +547,6 @@ def purge_caches(package: Path) -> None:
 
 
 def clean_build_dir(package: Path, lvgl_version: str) -> Path:
-    """Keep only the engine under ``build/lvgl_<token>/``.
-
-    Object caches, CMake leftovers and the prebuilt marker are build
-    intermediates and must not enter the package.
-    """
     token = paths.version_token(lvgl_version)
     build_root = package / "build"
     target_dir = build_root / f"lvgl_{token}"
@@ -604,8 +579,6 @@ def clean_build_dir(package: Path, lvgl_version: str) -> Path:
     for path in keep:
         shutil.move(str(temporary / path.name), str(target_dir / path.name))
     temporary.rmdir()
-    # Other version directories in build/ are kept: a multi-version package
-    # uses one engine per version and must not delete its siblings.
     return engine
 
 
@@ -618,13 +591,6 @@ def _prune_empty_dirs(root: Path) -> None:
 
 
 def share_sdk_payload(package: Path, versions: Iterable[str]) -> dict[str, Any]:
-    """Move SDK files that are identical in every version to ``sdk/common``.
-
-    The shipped package keeps one FreeType DLL and one copy of the shared
-    zlib/libpng/FreeType headers instead of six copies.  Each version manifest
-    gains ``shared_root`` plus the ``shared_*`` lists consumed by
-    :class:`lvgl_ai.control.prebuilt.HostSdk`.
-    """
     versions = list(versions)
     summary: dict[str, Any] = {
         "versions": versions,
@@ -721,7 +687,6 @@ def share_sdk_payload(package: Path, versions: Iterable[str]) -> dict[str, Any]:
 
 
 def strip_build_runtime_dlls(package: Path) -> None:
-    """Delete per-engine DLL copies; they are loaded from ``sdk/common``."""
     build_root = package / "build"
     if not build_root.is_dir():
         return
@@ -889,7 +854,6 @@ def _smoke_serve(package: Path, workspace: Path) -> dict[str, Any]:
 
 
 def smoke_package(package: Path, lvgl_version: str) -> dict[str, Any]:
-    """Run the package from an unrelated working directory."""
     with tempfile.TemporaryDirectory(prefix="lvgl-ai-smoke-") as raw:
         workspace = Path(raw)
         no_build = _smoke_scenario(package, lvgl_version, workspace, "--no-build")
@@ -964,9 +928,6 @@ def release(
         clean_build_dir(staging_package, lvgl_version)
         check_hygiene(staging_package, repo_root)
 
-        # The release directory is itself browsable: keep the unpacked skill
-        # directory next to the zip so users and agents can inspect or run it
-        # without extracting first.
         out_dir.mkdir(parents=True, exist_ok=True)
         package = out_dir / PACKAGE_DIR_NAME
         if package.exists():

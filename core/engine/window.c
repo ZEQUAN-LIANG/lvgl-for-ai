@@ -351,7 +351,7 @@ void window_present(window_t * window, const uint8_t * framebuffer)
     UpdateWindow(window->hwnd);
 }
 
-#else /* !_WIN32 */
+#else
 
 struct window {
     int unused;
@@ -405,4 +405,4 @@ bool window_console_interrupted(void)
     return false;
 }
 
-#endif /* _WIN32 */
+#endif

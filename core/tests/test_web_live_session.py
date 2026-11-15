@@ -1,7 +1,3 @@
-"""Live session state machine: Runtime delegation and stream ownership.
-
-Split from ``test_web_live.py`` so the HTTP adapter tests stay readable.
-"""
 
 
 from __future__ import annotations
@@ -30,7 +26,6 @@ APP_C = Path(__file__).resolve().parent.parent.parent / "user" / "app" / "app.c"
 
 
 class SessionFakeRuntime(FakeRuntime):
-    """FakeRuntime that points at a real fixture session directory."""
 
     def __init__(self, session_dir: str | Path, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -46,7 +41,6 @@ class SessionFakeRuntime(FakeRuntime):
 
 
 class Factory:
-    """Build a fresh runtime per live start, recording every instance."""
 
     def __init__(self, builder) -> None:
         self.builder = builder
@@ -61,7 +55,6 @@ class Factory:
 
 
 class BlockingRuntime(SessionFakeRuntime):
-    """Pause inside start/stop so the state machine is observable."""
 
     def __init__(self, session_dir: str | Path) -> None:
         super().__init__(session_dir)
@@ -84,7 +77,6 @@ class BlockingRuntime(SessionFakeRuntime):
 
 
 class StreamRuntime(FakeRuntime):
-    """Writes one raw preview frame at startup."""
 
     def __init__(self, session_dir: str | Path) -> None:
         super().__init__(record=False)
@@ -168,7 +160,6 @@ class LiveSessionTest(unittest.TestCase):
         self.assertFalse(session.is_active())
         stopped = session.status()
         self.assertFalse(stopped["running"])
-        # A recording keeps its finished session visible for replay.
         self.assertEqual(stopped["session_id"], SESSION_ID)
 
     def test_start_failure_after_engine_start_keeps_the_session_active(self) -> None:
@@ -187,8 +178,6 @@ class LiveSessionTest(unittest.TestCase):
         self.assertEqual(raised.exception.code, "live_start_error")
         self.assertTrue(raised.exception.detail["live"]["running"])
         self.assertEqual(session.state, "idle")
-        # The engine is still running, so a retry (and app mutation) must still
-        # be refused, exactly like the old bridge-based check.
         self.assertTrue(session.is_active())
         with self.assertRaises(LiveError) as conflict:
             session.start("record", "coffee")
@@ -357,7 +346,6 @@ class LiveSessionTest(unittest.TestCase):
         session = self._session(lambda: runtime)
         session.start("record", "coffee")
         self.assertEqual(session.selected_app("xiaohongshu"), "coffee")
-        # Deleting the selected app while running must not clear it.
         session.forget_app("coffee")
         self.assertEqual(session.selected_app(None), "coffee")
         session.stop()
@@ -458,7 +446,6 @@ class LiveSessionTest(unittest.TestCase):
         instances: list[Runtime] = []
 
         class StoreRuntime(Runtime):
-            """Real Runtime + SessionStore, without spawning an engine."""
 
             def __init__(self, **kwargs: object) -> None:
                 super().__init__(**kwargs)
@@ -550,7 +537,6 @@ class LiveSessionTest(unittest.TestCase):
         assert frame is not None
         self.assertEqual((frame.width, frame.height), (2, 1))
         self.assertEqual(frame.seq, 1)
-        # The hub must carry the exact RGBA bytes the engine wrote to live.rgba.
         self.assertEqual(frame.pixels, bytes([10, 20, 30, 255]) * 2)
         self.assertIsNone(session.wait_frame(frame.seq, timeout=0.01))
 

@@ -1,10 +1,3 @@
-"""Characterization: every reader agrees on one session's contract.
-
-A complete session from ``session_fixtures`` is read through ``Recording``,
-``summarize_session``, retention and the web JSON API. The assertions are
-literal values from the fixture, so later refactors cannot silently change
-the display, file names or status one entry point sees.
-"""
 
 from __future__ import annotations
 
@@ -58,21 +51,18 @@ class SessionContractTest(unittest.TestCase):
         )
         self.assertEqual(status, 200)
 
-        # Manifest literal fields.
         self.assertEqual(manifest["schema"], "lvgl-ai-session-v1")
         self.assertEqual(manifest["id"], SESSION_NAME)
         self.assertEqual(manifest["status"], "ok")
         self.assertEqual(manifest["display"], DISPLAY)
         self.assertEqual(manifest["frame_count"], 2)
 
-        # Every reader sees the same display and status.
         self.assertEqual(summary["display"], DISPLAY)
         self.assertEqual(detail["manifest"]["display"], DISPLAY)
         self.assertEqual(entry["status"], "ok")
         self.assertEqual(summary["status"], "ok")
         self.assertEqual(detail["manifest"]["status"], "ok")
 
-        # Every reader sees the same frame and snapshot names.
         expected_frames = [FRAME_1, FRAME_2]
         self.assertEqual(
             [path.name for path in recording.frames],
@@ -138,7 +128,6 @@ class SessionContractTest(unittest.TestCase):
 
 
 class FileLayoutConstantsTest(unittest.TestCase):
-    """B3: one module owns the session file layout."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -277,7 +266,6 @@ class FileLayoutConstantsTest(unittest.TestCase):
 
 
 class SessionIdContractTest(unittest.TestCase):
-    """B4: one generator and one validator for session directory names."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -334,7 +322,6 @@ class SessionIdContractTest(unittest.TestCase):
 
 
 class RecordedContractTest(unittest.TestCase):
-    """B5: manifest intent and evidence files decide ``recorded`` together."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -388,7 +375,6 @@ class RecordedContractTest(unittest.TestCase):
 
 
 class DisplayValidatorTest(unittest.TestCase):
-    """B2: ``session_schema.validate_display`` is the one display rule."""
 
     def test_accepts_positive_dimensions_and_ignores_extra_fields(self) -> None:
         self.assertEqual(

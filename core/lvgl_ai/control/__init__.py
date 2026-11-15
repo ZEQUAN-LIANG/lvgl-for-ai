@@ -1,4 +1,3 @@
-"""Control layer: Runtime, Recording, errors, build orchestration."""
 
 from .errors import (
     BuildError,

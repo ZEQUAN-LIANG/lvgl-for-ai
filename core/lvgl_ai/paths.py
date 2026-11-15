@@ -20,12 +20,6 @@ TOOL_ROOT = PACKAGE_DIR.parent
 
 
 def _repo_root_for(tool_root: Path) -> Path:
-    """Resolve the workspace root for all supported layouts.
-
-    Flat development checkout: the tool code and ``user/`` share ``<repo>``.
-    Tool subdirectory: ``<workspace>/<tool>`` -> the parent directory, which
-    owns ``user/``.
-    """
     if (tool_root / "user").is_dir():
         return tool_root
     return tool_root.parent
@@ -45,41 +39,25 @@ USER_APP_DIR = USER_DIR / "app"
 USER_SCENARIOS_DIR = USER_DIR / "scenarios"
 DEFAULT_SESSIONS_ROOT = REPO_ROOT / "sessions"
 
-# Last-resort fallback for a workspace without ``meta/versions.json``.  The
-# version index owns the real default; :func:`default_lvgl_version` reads it.
 DEFAULT_LVGL_VERSION = "9.6"
 TOOL_VERSION = "0.2.0"
 
 
 def metadata_dir() -> Path:
-    """Directory that owns package metadata.
-
-    Both layouts keep package metadata under ``meta/``.  Older development
-    checkouts may still have the files at the repository root, so callers fall
-    back there when ``meta/`` is absent.
-    """
     meta = REPO_ROOT / "meta"
     return meta if meta.is_dir() else REPO_ROOT
 
 
 def metadata_file(name: str) -> Path:
-    """Resolve one package metadata file for the active checkout layout."""
     return metadata_dir() / name
 
 
 def shared_sdk_lib_dir() -> Path | None:
-    """Return the shared SDK runtime directory in a release package.
-
-    Multi-version packages move identical SDK libraries (the FreeType DLL and
-    its import library) to ``sdk/common/lib``.  Development checkouts keep a
-    copy under every ``sdk/<version>/lib`` and return ``None`` here.
-    """
     candidate = SDK_ROOT / "common" / "lib"
     return candidate if candidate.is_dir() else None
 
 
 def default_lvgl_version() -> str:
-    """Return the version index default, with the constant as a fallback."""
     from lvgl_ai import versions
 
     try:
@@ -100,12 +78,6 @@ def lvgl_src_for(version: str) -> Path:
 
 
 def sdk_dir_for(version: str) -> Path:
-    """Directory of the exported host SDK for ``version``.
-
-    ``sdk/<version>`` is the prebuilt counterpart of ``lvgl-src/<version>``.
-    A release package ships the same layout, so the prebuilt build path works
-    without the LVGL source tree.
-    """
     if not re.fullmatch(r"[0-9A-Za-z._-]+", version):
         raise ValueError(f"invalid host SDK version: {version!r}")
     return SDK_ROOT / version
@@ -142,17 +114,6 @@ def sessions_root_from_env() -> Path:
 def build_dir_for(
     version: str, user_app_dir: str | Path | None = None
 ) -> Path:
-    """Return the build directory for ``version`` and one user app directory.
-
-    Every non-alphanumeric run becomes ``_`` so local patched trees get a
-    distinct directory: ``9.6`` -> ``build/lvgl_9_6`` and ``9.6-patched`` ->
-    ``build/lvgl_9_6_patched``. Labels that normalize to the same token share
-    a directory, so keep version labels distinct.
-
-    The default ``user/app`` keeps the version-only directory for ``--no-build``
-    compatibility. Any other source tree gets its own directory so an exported
-    project and the workspace app never share a CMake cache or engine binary.
-    """
     token = version_token(version)
     if user_app_dir is None:
         return BUILD_ROOT / f"lvgl_{token}"
@@ -166,7 +127,6 @@ def build_dir_for(
 
 
 def version_token(version: str) -> str:
-    """Filesystem-safe token for a version label (``9.6`` -> ``9_6``)."""
     token = re.sub(r"[^0-9A-Za-z]+", "_", version).strip("_")
     if not token:
         raise ValueError(f"invalid LVGL version: {version!r}")

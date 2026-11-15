@@ -1,9 +1,3 @@
-"""Input vocabulary seam: devices, actions, tokens, ranges and key parsing.
-
-``lvgl_ai.control.input`` is the single vocabulary source consumed by
-``play_scenario``, ``Runtime`` and the CLI. These tests pin the shared table
-and the exact accept/reject messages that predate the consolidation.
-"""
 
 from __future__ import annotations
 

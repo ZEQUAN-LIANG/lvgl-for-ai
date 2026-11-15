@@ -86,7 +86,6 @@
 
   <h2>2. 硬约束</h2>
   <ul>
-    <li>用户只写 <code>user/app/**/*.c</code> 与 <code>user/scenarios/</code>；应用资源头放在各自的 <code>user/app/&lt;name&gt;/</code>，没有公共资源目录；不写 <code>main</code>、不注册控件、不碰构建。</li>
     <li>工具层不写死应用名；应用列表只来自 <code>apps[]</code> 表与场景的 <code>app</code> 字段，本页不维护副本。</li>
     <li>没有对象树、<code>inspect</code>、<code>set</code>、<code>param</code>；精确状态只能用用户 C 代码 <code>printf</code> 到 <code>engine.log</code>。</li>
     <li>改过 <code>user/app/*.c</code> 后必须走源码构建，不要用 <code>--no-build</code> 跑旧二进制。</li>

@@ -1618,4 +1618,4 @@ const lv_image_dsc_t * const intro_watch_frames[8] = {
     &intro_img_watch_07, &intro_img_watch_08,
 };
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4 */
+#endif

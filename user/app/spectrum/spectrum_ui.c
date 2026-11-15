@@ -1,11 +1,3 @@
-/**
- * @file spectrum_ui.c
- * Model, synthetic audio and shared widget builders for the ORBITAL app.
- *
- * This is the only translation unit that includes the generated asset headers:
- * fonts, covers, icons and the glow texture. Other files go through the small
- * accessors below, so the static arrays exist exactly once in the binary.
- */
 
 #include "spectrum.h"
 
@@ -34,7 +26,6 @@ const spectrum_palette_t spectrum_palettes[SPECTRUM_PALETTE_COUNT] = {
     {"VERDANT", 0x020D0A, 0x07261F, 0x5DFFB0, 0x29D7FF, 0xD4FF4D, 0xC4FFE4, 0x7FB5A5},
 };
 
-/* ------------------------------------------------------------- assets */
 
 const lv_font_t * spectrum_font(spectrum_font_id_t id)
 {
@@ -161,7 +152,6 @@ const lv_image_dsc_t * spectrum_glow_asset(void)
     return &spectrum_glow;
 }
 
-/* ------------------------------------------------------------ builders */
 
 lv_obj_t * spectrum_box(lv_obj_t * parent, int x, int y, int w, int h)
 {
@@ -256,7 +246,6 @@ void spectrum_divider(lv_obj_t * parent, int x, int y, int w)
     lv_obj_set_style_bg_opa(line, 18, 0);
 }
 
-/* --------------------------------------------------------------- model */
 
 static double sp_clamp(double value, double lo, double hi)
 {
@@ -513,4 +502,4 @@ bool spectrum_sim_update(double dt)
     return false;
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

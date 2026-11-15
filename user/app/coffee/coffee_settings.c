@@ -1,8 +1,3 @@
-/**
- * @file coffee_settings.c
- * Machine settings. Every control writes the shared model and refreshes the
- * visible labels; reset restores the factory defaults after confirmation.
- */
 
 #include "coffee_ui.h"
 
@@ -352,4 +347,4 @@ lv_obj_t * coffee_settings_create(lv_obj_t * parent)
     return page;
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

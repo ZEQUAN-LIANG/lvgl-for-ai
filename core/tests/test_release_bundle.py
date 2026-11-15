@@ -1,10 +1,3 @@
-"""Artifact contract shared by the single- and double-bundle release tools.
-
-The tests build a tiny package in a temporary directory and verify the zip,
-``.sha256`` and ``release.json`` bytes with independent literals and
-``hashlib``.  ``release_all`` is exercised with its slow staging patched out,
-so the product under test is the artifact writing, not the engine build.
-"""
 
 from __future__ import annotations
 

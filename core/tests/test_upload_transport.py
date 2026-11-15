@@ -1,9 +1,3 @@
-"""GitHub / Gitee upload flows against a local fake HTTP service.
-
-The fake service returns fixed status codes and JSON; the expected request
-sequence, bodies and headers are literals.  No test reads a real token or
-touches the internet.
-"""
 
 from __future__ import annotations
 

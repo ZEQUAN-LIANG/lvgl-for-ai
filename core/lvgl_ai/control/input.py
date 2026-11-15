@@ -34,7 +34,6 @@ import re
 from typing import Any, Iterable
 
 from .errors import ScenarioError
-# Re-exported: callers import the whole input vocabulary from this module.
 from .keys import (
     ASCII_PRINTABLE_MAX,
     ASCII_PRINTABLE_MIN,
@@ -68,16 +67,11 @@ _DEVICE_FIELDS = {
 }
 
 
-# ---- vocabulary checks ------------------------------------------------
-
-
 def is_token(value: Any) -> bool:
-    """True when ``value`` matches the shared token syntax and length cap."""
     return isinstance(value, str) and _TOKEN_RE.fullmatch(value) is not None
 
 
 def token_problem(value: Any, name: str) -> str | None:
-    """Return the shared token diagnostic, or ``None`` when it is valid."""
     if is_token(value):
         return None
     return f"{name} must match {TOKEN_PATTERN}"
@@ -90,7 +84,6 @@ def integer_problem(
     minimum: int | None = None,
     maximum: int | None = None,
 ) -> str | None:
-    """Return the shared integer diagnostic, or ``None`` when it is valid."""
     if isinstance(value, bool) or not isinstance(value, int):
         return f"{name} must be an integer"
     if minimum is not None and value < minimum:
@@ -101,14 +94,12 @@ def integer_problem(
 
 
 def dimension_problem(value: Any, name: str) -> str | None:
-    """Return the display-dimension diagnostic, or ``None`` when valid."""
     return _shared_dimension_problem(
         value, name, maximum=MAX_DISPLAY_DIMENSION
     )
 
 
 def display_problem(value: Any) -> str | None:
-    """Return the scenario ``display`` object diagnostic, or ``None``."""
     return _shared_display_problem(
         value,
         label="display",
@@ -118,7 +109,6 @@ def display_problem(value: Any) -> str | None:
 
 
 def text_problem(value: Any) -> str | None:
-    """Return the ``text`` step diagnostic, or ``None`` when valid."""
     if not isinstance(value, str):
         return "value must be a string"
     if not value:
@@ -133,7 +123,6 @@ def text_problem(value: Any) -> str | None:
 
 
 def point_problem(value: Any, name: str) -> str | None:
-    """Return the shared ``[x, y]`` diagnostic, or ``None`` when it is valid."""
     valid = (
         isinstance(value, list)
         and len(value) == 2
@@ -151,7 +140,6 @@ def point_problem(value: Any, name: str) -> str | None:
 def step_action_problem(
     device: str, action: Any, *, quoted: bool = False
 ) -> str | None:
-    """Diagnostic for a scenario/input-event action in dotted naming."""
     actions = DEVICE_ACTIONS[device]
     if action in actions:
         return None
@@ -161,7 +149,6 @@ def step_action_problem(
 
 
 def runtime_action_problem(device: str, action: Any) -> str | None:
-    """Diagnostic for a ``Runtime`` method action in plain naming."""
     actions = DEVICE_ACTIONS[device]
     if action in actions:
         return None
@@ -174,11 +161,7 @@ def _or_list(actions: tuple[str, ...]) -> str:
     return ", ".join(actions[:-1]) + " or " + actions[-1]
 
 
-# ---- Runtime-facing helpers -------------------------------------------
-
-
 def require_action(device: str, action: Any) -> str:
-    """Validate a Runtime action, raising ``ValueError`` with today's text."""
     problem = runtime_action_problem(device, action)
     if problem is not None:
         raise ValueError(problem)
@@ -212,7 +195,6 @@ def require_non_negative_int(value: Any, name: str) -> int:
 def require_display_pair(
     width: Any, height: Any
 ) -> tuple[int, int] | None:
-    """Validate Runtime width/height; ``None`` means the engine default."""
     if width is None and height is None:
         return None
     if width is None or height is None:
@@ -225,7 +207,6 @@ def require_display_pair(
 
 
 def require_int16(value: Any, name: str) -> int:
-    """Validate the encoder range; Runtime keeps its ``within`` wording."""
     problem = integer_problem(value, name)
     if problem is not None:
         raise ValueError(problem)
@@ -236,15 +217,7 @@ def require_int16(value: Any, name: str) -> int:
     return value
 
 
-# ---- lvgl-ai-input-v1 --------------------------------------------------
-
-
 def normalize_input_events(events: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Validate and stably sort a ``lvgl-ai-input-v1`` list.
-
-    Raises :class:`ScenarioError` with ``step`` set to the offending index.
-    ``at_ms`` is an offset relative to the start of the input call.
-    """
     if isinstance(events, (str, bytes)) or not isinstance(events, Iterable):
         raise ScenarioError("input events must be a list of objects")
 

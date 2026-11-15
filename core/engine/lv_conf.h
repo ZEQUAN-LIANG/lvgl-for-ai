@@ -34,7 +34,6 @@
 #define LV_USE_LABEL 1
 #define LV_USE_BTN 1
 #define LV_USE_IMG 1
-/* Runtime FreeType TTF loading is part of the default host engine. */
 #define LV_USE_FREETYPE 1
 /* 8.x lodepng backs both the reference decoder and the full-frame PNG writer;
  * LV_USE_PNG is the only switch 8.3/8.4 expose for it. */
@@ -50,7 +49,7 @@
 #define LV_BUILD_EXAMPLES 0
 #define LV_BUILD_DEMOS 0
 
-#else /* 9.x */
+#else
 
 /* Runtime-sized XRGB8888 headless display (default 800x600), 16 MiB LVGL
  * heap. */
@@ -80,7 +79,6 @@
 #define LV_USE_BUTTON 1
 #define LV_USE_IMAGE 1
 #define LV_USE_LODEPNG 1
-/* Runtime FreeType TTF loading is part of the default host engine. */
 #define LV_USE_FREETYPE 1
 #define LV_USE_FLEX 1
 #define LV_USE_GRID 1
@@ -97,6 +95,6 @@
 #define LV_BUILD_EXAMPLES 0
 #define LV_BUILD_DEMOS 0
 
-#endif /* LVGL_MAJOR_8 */
+#endif
 
-#endif /* LV_CONF_H */
+#endif

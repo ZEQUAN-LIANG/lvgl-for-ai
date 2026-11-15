@@ -28,7 +28,7 @@ TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
-from lvgl_ai import paths  # noqa: E402
+from lvgl_ai import paths
 
 REPO_ROOT = paths.REPO_ROOT
 ENGINE_DIR = paths.ENGINE_DIR

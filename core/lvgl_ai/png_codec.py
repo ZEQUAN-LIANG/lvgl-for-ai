@@ -99,7 +99,6 @@ class PngHeader:
 
 @dataclass(frozen=True)
 class ImageComparison:
-    """Pixel statistics for one same-size image pair."""
 
     width: int
     height: int
@@ -158,7 +157,6 @@ def _parse_ihdr(payload: bytes) -> PngHeader:
 
 
 def read_png_header(data: bytes) -> PngHeader:
-    """Read and validate the IHDR chunk without inflating pixel data."""
     for chunk_type, payload in _read_chunks(data):
         if chunk_type == b"IHDR":
             return _parse_ihdr(payload)
@@ -280,7 +278,7 @@ def encode_png(image: PngImage) -> bytes:
             raise PngError("row width does not match image width")
     raw = bytearray()
     for row in image.rows:
-        raw.append(0)  # filter: None
+        raw.append(0)
         raw += row
     ihdr = struct.pack(
         ">IIBBBBB",
@@ -301,7 +299,6 @@ def encode_png(image: PngImage) -> bytes:
 
 
 def crop_png(data: bytes, region: Region) -> tuple[bytes, Region, PngImage]:
-    """Crop ``region`` out of ``data``; returns (PNG bytes, clipped box, image)."""
     image = decode_png(data)
     box = region.clipped(image.width, image.height)
     channels = CHANNELS[image.color_type]
@@ -313,7 +310,6 @@ def crop_png(data: bytes, region: Region) -> tuple[bytes, Region, PngImage]:
 
 
 def read_pixel(data: bytes, x: int, y: int) -> tuple[int, int, int]:
-    """Return the RGB value at ``(x, y)`` without writing anything."""
     return pixel_at(decode_png(data), x, y)
 
 
@@ -418,7 +414,6 @@ def compare_png(
 
 
 def pixel_at(image: PngImage, x: int, y: int) -> tuple[int, int, int]:
-    """RGB value at ``(x, y)``; alpha is ignored."""
     if not (0 <= x < image.width and 0 <= y < image.height):
         raise PngError(
             f"pixel {x},{y} outside image {image.width}x{image.height}"
@@ -434,7 +429,6 @@ def pixel_at(image: PngImage, x: int, y: int) -> tuple[int, int, int]:
 
 @dataclass(frozen=True)
 class ContactTile:
-    """One labeled thumbnail placed on a contact sheet."""
 
     label: str
     x: int
@@ -449,7 +443,6 @@ class ContactTile:
 
 @dataclass(frozen=True)
 class ContactSheet:
-    """A rendered RGB contact sheet plus its stable tile order."""
 
     image: PngImage
     tiles: tuple[ContactTile, ...]
@@ -467,13 +460,6 @@ def build_contact_sheet(
     tile_width: int = DEFAULT_CONTACT_TILE_WIDTH,
     tile_height: int = DEFAULT_CONTACT_TILE_HEIGHT,
 ) -> ContactSheet:
-    """Arrange labeled thumbnails in input order without touching the files.
-
-    ``items`` is ``(label, png_bytes)`` in the order the caller wants; the
-    label is drawn in the tile and kept in :class:`ContactTile`. Sources that
-    exceed the decode or output budget raise :class:`PngError` before being
-    inflated.
-    """
     entries = list(items)
     _validate_contact_layout(entries, columns, tile_width, tile_height)
     gap = _CONTACT_GAP

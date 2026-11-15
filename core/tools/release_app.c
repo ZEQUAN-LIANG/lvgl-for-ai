@@ -1,12 +1,3 @@
-/**
- * @file app.c
- * Release-package entry point: only the intro app is registered.
- *
- * The development tree keeps the full ``apps[]`` table and the hidden demo
- * harness in ``user/app/app.c``. ``release.py`` copies this file instead so
- * the distributable skill stays intro-only and can run on LVGL 9.4+ without
- * shipping the other app variants.
- */
 
 #include "lvgl.h"
 #include "intro/intro.h"

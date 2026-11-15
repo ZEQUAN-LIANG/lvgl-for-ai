@@ -1,9 +1,3 @@
-"""Read-only views: app listing, directory tree and recent modifications.
-
-The web app manager reads these views; nothing here mutates the registry or
-the filesystem.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path

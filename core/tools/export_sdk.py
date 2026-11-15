@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Export a prebuilt host SDK for one LVGL version.
 
 The SDK holds the five static libraries the engine and user apps need
@@ -33,17 +32,17 @@ _BOOTSTRAP_TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(_BOOTSTRAP_TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(_BOOTSTRAP_TOOL_ROOT))
 
-from lvgl_ai import paths  # noqa: E402
-from lvgl_ai.control.build import (  # noqa: E402
+from lvgl_ai import paths
+from lvgl_ai.control.build import (
     BuildResult,
     build_failure,
     format_build_log,
     missing_build_tools,
     run_capture,
 )
-from lvgl_ai.control.errors import BuildError  # noqa: E402
-from lvgl_ai.control.prebuilt import REQUIRED_LIBS, SDK_SCHEMA  # noqa: E402
-from lvgl_ai.digest import sha256_file  # noqa: E402
+from lvgl_ai.control.errors import BuildError
+from lvgl_ai.control.prebuilt import REQUIRED_LIBS, SDK_SCHEMA
+from lvgl_ai.digest import sha256_file
 
 SOURCE_SCHEMA = "lvgl-ai-lvgl-source-v1"
 
@@ -123,7 +122,6 @@ def _read_source_tag(source_dir: Path) -> str:
 
 
 def _copy_header_tree(source: Path, target: Path) -> None:
-    """Copy only ``*.h`` files, preserving the relative directory tree."""
 
     def ignore(directory: str, names: list[str]) -> set[str]:
         current = Path(directory)
@@ -137,13 +135,6 @@ def _copy_header_tree(source: Path, target: Path) -> None:
 
 
 def _copy_headers(source: Path, out: Path, version: str) -> list[str]:
-    """Copy public LVGL, zlib and libpng headers; return include order.
-
-    LVGL 9.6 keeps public headers in ``include/lvgl``.  Older 9.x and 8.x
-    releases keep ``lvgl.h`` at the source root and the rest under ``src/``.
-    The exported SDK mirrors whichever layout the source uses and records the
-    matching include path in the manifest.
-    """
     include_dir = out / "include"
     include_dir.mkdir(parents=True, exist_ok=True)
 
@@ -166,7 +157,6 @@ def _copy_headers(source: Path, out: Path, version: str) -> list[str]:
             raise BuildError(f"LVGL source has no src/ header tree: {source}")
         _copy_header_tree(src_headers, include_dir / "src")
         # "." is the SDK root: LVGL's lv_conf_internal.h includes "lv_conf.h",
-        # which export_sdk writes next to the manifest, not under include/.
         include_dirs = [".", "include"]
 
     zlib_src = paths.zlib_src()
@@ -200,7 +190,6 @@ def export_sdk(
     force: bool = False,
     compiler: str | None = None,
 ) -> dict:
-    """Build one host SDK and write its manifest; return the manifest."""
     repo = (repo_root or paths.REPO_ROOT).resolve()
     source = (
         Path(source_dir).expanduser().resolve()

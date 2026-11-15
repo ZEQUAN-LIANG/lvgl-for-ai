@@ -96,4 +96,4 @@ void timeline_end(timeline_t * timeline,
 }
 #endif
 
-#endif /* TIMELINE_H */
+#endif

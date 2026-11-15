@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Install one LVGL version for a local LVGL Verify Loop workspace.
 
 The default package ships LVGL 9.6. This script adds another supported
@@ -25,6 +24,7 @@ whether the shipped intro app supports that version. Older checkouts that
 still keep ``versions.json`` at the workspace root are accepted as a fallback.
 """
 
+
 from __future__ import annotations
 
 import argparse
@@ -44,9 +44,9 @@ TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
-from lvgl_ai import paths  # noqa: E402
-from lvgl_ai.control.build_plan import BuildPlan  # noqa: E402
-from lvgl_ai.control.errors import BuildError  # noqa: E402
+from lvgl_ai import paths
+from lvgl_ai.control.build_plan import BuildPlan
+from lvgl_ai.control.errors import BuildError
 
 INDEX_SCHEMA = "lvgl-verify-loop-versions-v1"
 INSTALL_SCHEMA = "lvgl-verify-loop-install-v1"
@@ -56,11 +56,11 @@ _VERSION_RE = re.compile(r"[0-9A-Za-z._-]+")
 
 
 class InstallError(Exception):
-    """A user-facing installation failure."""
+    pass
 
 
 class ToolError(InstallError):
-    """A download/export/build subprocess failed."""
+    pass
 
 
 def _repo_root(value: Path | None) -> Path:
@@ -71,7 +71,6 @@ def _repo_root(value: Path | None) -> Path:
 
 
 def _metadata_file(repo: Path, name: str) -> Path:
-    """Resolve package metadata for both release and development layouts."""
     meta = repo / "meta" / name
     return meta if meta.is_file() else repo / name
 
@@ -462,11 +461,6 @@ def ensure_pack_for_version(
     offline: bool = False,
     force: bool = False,
 ) -> list[str] | None:
-    """Install a missing version pack after the first-run confirmation.
-
-    A version with a source tree, SDK or engine is left alone: it can be
-    built or run locally. Only a completely missing version prompts.
-    """
     index = _load_index(repo)
     entry = _version_entry(index, version)
     state = _installed(repo, version)

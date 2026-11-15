@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Run the SiFli adapter tests (layout, asset plan, export)."""
 
 from __future__ import annotations
 

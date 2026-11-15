@@ -108,7 +108,6 @@ def ensure_engine_stopped(
     image_of: Callable[[int], str | None] = process_image,
     terminate: Callable[[int], None] | None = None,
 ) -> None:
-    """Wait for the engine recorded for *engine_path*; terminate as last resort."""
     payload = read_engine_pid(engine_path)
     if payload is None:
         return

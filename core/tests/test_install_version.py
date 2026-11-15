@@ -1,9 +1,3 @@
-"""Unit tests for ``core/tools/install_version.py``.
-
-The source path is intentionally not exercised here: it downloads LVGL and
-builds an SDK. These tests cover the version index, ``--list``, pack installs
-and error handling without network or toolchain access.
-"""
 
 from __future__ import annotations
 

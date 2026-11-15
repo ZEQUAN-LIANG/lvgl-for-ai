@@ -68,7 +68,6 @@ def is_reserved_create_name(root: Path, name: str) -> bool:
 
 
 def _reserved_state(root: Path) -> tuple[frozenset[str], frozenset[str]]:
-    """Return derived identities and the ones that already have a target."""
     names: set[str] = set()
     targets: set[str] = set()
     app_c = common._app_c(root)
@@ -121,7 +120,6 @@ def _reserved_state(root: Path) -> tuple[frozenset[str], frozenset[str]]:
 
 
 def _c_string_literals(text: str) -> Iterator[str]:
-    """Yield string literal contents, skipping comments and char literals."""
     index = 0
     length = len(text)
     while index < length:

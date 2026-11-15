@@ -1,4 +1,3 @@
-"""Whiteboard writes: scope, confirmation, PNG storage and one upsert path."""
 
 from __future__ import annotations
 
@@ -229,7 +228,6 @@ class WhiteboardTransactionTest(unittest.TestCase):
 
 
 class WhiteboardDocumentSeamTest(unittest.TestCase):
-    """B6: whiteboards share the document transaction behind Recording."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -259,7 +257,6 @@ class WhiteboardDocumentSeamTest(unittest.TestCase):
 
     def test_save_and_read_use_only_the_recording_document_seam(self) -> None:
         class SeamRecording:
-            """Expose the document seam and nothing else."""
 
             def __init__(self, recording: Recording) -> None:
                 self._recording = recording

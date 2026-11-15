@@ -1,9 +1,3 @@
-/**
- * @file coffee_custom.c
- * The recipe editor: strength, volume, temperature, milk, foam, cup count and
- * preheat. Edits are applied to the selected drink; cancel restores the copy
- * taken when the editor opened.
- */
 
 #include "coffee_ui.h"
 
@@ -496,4 +490,4 @@ void coffee_open_custom(int drink)
     custom_refresh();
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

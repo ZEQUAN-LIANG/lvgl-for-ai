@@ -1,8 +1,3 @@
-"""Run the lvgl_ai test suite under ``python -I``.
-
-``-I`` removes the working directory from ``sys.path``, so add the tool root
-and the tests directory explicitly (same pattern as the old workbench suite).
-"""
 
 from __future__ import annotations
 

@@ -1,10 +1,3 @@
-"""Prebuilt build selection, command construction and error mapping.
-
-Everything drives ``BuildPlan`` through its scripted runner seam, so no
-compiler, CMake, Ninja or LVGL source is required.  The SDK fixture is a
-validated ``lvgl-ai-host-sdk-v1`` manifest with real hashes over dummy library
-bytes.
-"""
 
 from __future__ import annotations
 
@@ -30,14 +23,13 @@ def sha256(data: bytes) -> str:
 
 
 class WritingRunner:
-    """Scripted runner that creates the output file each command writes."""
 
     def __init__(self, *, fail_on: str | None = None, stderr: str = "") -> None:
         self.calls: list[list[str]] = []
         self.fail_on = fail_on
         self.stderr = stderr
 
-    def __call__(self, command, *, timeout, env=None):  # noqa: ANN001
+    def __call__(self, command, *, timeout, env=None):
         command = list(command)
         self.calls.append(command)
         phase = None

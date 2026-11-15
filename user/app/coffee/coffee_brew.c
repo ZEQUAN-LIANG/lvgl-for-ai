@@ -1,8 +1,3 @@
-/**
- * @file coffee_brew.c
- * The brewing overlay: live arc, cup fill, phase list, pressure/temperature
- * and the completion flow. All timing uses the engine's virtual clock.
- */
 
 #include "coffee_ui.h"
 
@@ -359,9 +354,6 @@ static void build_cup(lv_obj_t * panel, const coffee_drink_t * drink)
     const int cup_x = 44;
     const int cup_y = 80;
 
-    /* The liquid container sits behind the cup image. The image has a
-     * transparent opening at x=58..132, y=40..128 (3x supersampled asset
-     * coordinates), so the fill is visible through the ceramic walls. */
     lv_obj_t * inner = coffee_card(panel, cup_x + 48, cup_y + 40, 94, 88, 8,
                                    0xCDBFAC, 0);
     lv_obj_set_style_clip_corner(inner, true, 0);
@@ -510,4 +502,4 @@ void coffee_start_brew(int drink)
     brew_tick();
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

@@ -1,10 +1,3 @@
-"""The single- and double-bundle entry points share one smoke contract.
-
-``release.py`` and ``release_all.py`` must build the same subprocess
-environment, parse the same one-line JSON reply and check the same session
-markers.  The slow engine build is patched out; the product under test is the
-shared orchestration seam.
-"""
 
 from __future__ import annotations
 

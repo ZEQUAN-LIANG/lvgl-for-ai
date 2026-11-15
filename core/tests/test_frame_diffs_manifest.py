@@ -1,8 +1,3 @@
-"""frame_diffs.ndjson + manifest.json + Recording, against the real engine.
-
-The screen layout comes from ``user/app/app.c``: the demo button covers
-x=32..192, y=300..348, so its center is (112, 324).
-"""
 
 from __future__ import annotations
 
@@ -53,7 +48,6 @@ def read_ndjson(path: str | Path) -> list[dict]:
 def expected_diff(
     previous: Path, current: Path, threshold: int = 10
 ) -> tuple[dict | None, int, float, float]:
-    """Recompute the engine's diff rule from two full PNGs."""
     width, height, before = read_png_rgb(previous)
     other_width, other_height, after = read_png_rgb(current)
     if (width, height) != (other_width, other_height):
@@ -109,7 +103,6 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
         rt.tick(16)
         rt.snapshot("evidence")
 
-        # While the engine is live, the manifest describes the startup state.
         live = rt.recording
         self.assertEqual(live.manifest["status"], "ok")
         self.assertEqual(live.timeline()[0]["type"], "frame")
@@ -133,7 +126,6 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
         self.assertEqual(manifest["frame_count"], len(recording.frames))
         self.assertIs(manifest["truncated"], False)
         self.assertIs(manifest["log_truncated"], False)
-        # checks records only whether each protocol command ran.
         self.assertEqual(
             manifest["checks"],
             [
@@ -180,9 +172,9 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
         self.assertTrue((rt.session_dir / "frame_diffs.ndjson").is_file())
         self.assertEqual(read_ndjson(rt.session_dir / "frame_diffs.ndjson"), [])
 
-        rt.tick(16)  # frame 2: nothing changed
+        rt.tick(16)
         rt.pointer("down", *BUTTON_CENTER)
-        rt.wait(64)  # frames 3..6: the theme transition animates the press
+        rt.wait(64)
         rt.stop()
 
         rows = read_ndjson(rt.session_dir / "frame_diffs.ndjson")
@@ -204,7 +196,6 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
         self.assertEqual(unchanged["changed_ratio"], 0.0)
         self.assertEqual(unchanged["max_delta"], 0.0)
 
-        # Every row must match a recomputation from its PNG pair.
         for row in rows:
             previous = rt.session_dir / "frames" / f"{row['prev_frame_no']:06d}.png"
             current = rt.session_dir / "frames" / f"{row['frame_no']:06d}.png"
@@ -233,11 +224,9 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
         self.assertEqual(len(rows), 5)
         for row in rows:
             self.assertEqual(row["threshold"], 255)
-            # A channel delta can never exceed 255, so no pixel counts as changed.
             self.assertEqual(row["changed_px"], 0)
             self.assertIsNone(row["bbox"])
             self.assertEqual(row["changed_ratio"], 0.0)
-        # max_delta still reports that the picture did change.
         self.assertGreater(max(row["max_delta"] for row in rows), 0.0)
 
     def test_invalid_diff_threshold_is_rejected(self) -> None:

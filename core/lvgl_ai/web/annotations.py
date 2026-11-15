@@ -55,11 +55,6 @@ MAX_IMAGE_PATH_LENGTH = 512
 
 
 class AnnotationError(ValueError):
-    """The annotation contract rejected a read, payload or write.
-
-    ``code`` names the failure so HTTP can map it to a status without
-    inspecting the exception type hierarchy.
-    """
 
     code = "invalid_annotation"
 
@@ -70,13 +65,13 @@ class AnnotationError(ValueError):
 
 
 class AnnotationConflict(AnnotationError):
-    """The note id already exists in the document."""
+    pass
 
     code = "duplicate_annotation_id"
 
 
 class AnnotationNotFound(AnnotationError):
-    """The note id is not in the document."""
+    pass
 
     code = "unknown_annotation"
 
@@ -235,13 +230,6 @@ def validate_note(
     require_id: bool = False,
     allow_images: bool = True,
 ) -> dict[str, Any]:
-    """Validate one note and return it with the stable fields in schema order.
-
-    A note is either a single-frame note (``frame_no`` + ``regions``) or a
-    time-range note (``frame_start``..``frame_end`` + sparse ``anchors``).
-    Range fields are optional on the single-frame form, so documents written
-    before ranges existed keep validating unchanged.
-    """
     where = "note" if index is None else f"notes[{index}]"
     if not isinstance(note, dict):
         raise AnnotationError(f"{where} must be an object")
@@ -394,7 +382,6 @@ def validate_note(
 
 
 def validate_document(document: Any) -> dict[str, Any]:
-    """Validate a full ``lvgl-ai-annotations-v1`` document."""
     if not isinstance(document, dict):
         raise AnnotationError("annotations document must be an object")
     unknown = sorted(set(document) - set(DOCUMENT_FIELDS))
@@ -432,7 +419,6 @@ def new_note_id(existing_ids: set[str]) -> str:
 def append_note(
     document: dict[str, Any], note: dict[str, Any]
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Append one validated note to a validated document."""
     notes = [dict(existing) for existing in document["notes"]]
     ids = {existing["id"] for existing in notes}
     saved = dict(note)
@@ -444,18 +430,10 @@ def append_note(
     return {"schema": ANNOTATIONS_SCHEMA, "notes": notes}, saved
 
 
-# One lock for the whole transaction: two concurrent posts must never append
-# from the same document snapshot or interleave crop files for one note.
 _WRITE_LOCK = threading.Lock()
 
 
 def _read_existing(recording: Recording) -> dict[str, Any]:
-    """Read the current document and validate every note in it.
-
-    A file the ``Recording`` cannot parse is unreadable evidence (the old 409
-    path); a parsed document with bad note fields is an invalid payload (the
-    old 400 path).
-    """
     try:
         document = recording.annotations
     except ValueError as exc:
@@ -466,16 +444,6 @@ def _read_existing(recording: Recording) -> dict[str, Any]:
 def write_note(
     recording: Recording, payload: Any
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Append one note as a single transaction and return ``(document, note)``.
-
-    The steps run under one lock and in this order: read and validate the
-    existing document, validate the payload, append the note, validate the
-    resulting document, and atomically replace ``annotations.json``.
-
-    Expected failures raise :class:`AnnotationError` with a ``code``. A plain
-    ``OSError`` while reading evidence keeps the historical generic 500
-    (``internal_error``) response.
-    """
     with _WRITE_LOCK:
         store = recording.annotations_store
         try:
@@ -514,7 +482,6 @@ def _safe_note_stem(note_id: str) -> str:
 
 
 def _prune_images(store: Any, document: dict[str, Any]) -> None:
-    """Remove region crops no note references any more."""
     store.remove_unreferenced(
         session_schema.REGIONS_DIR, image_references(document, "notes")
     )
@@ -652,12 +619,6 @@ def _save_region_crops(
 
 
 def delete_note(recording: Recording, note_id: str) -> dict[str, Any]:
-    """Remove one note and return the new document.
-
-    Crop files the deleted note referenced are unreferenced after the write,
-    so the shared document transaction removes them. A failed unlink never
-    blocks the deletion.
-    """
     if not isinstance(note_id, str) or not note_id:
         raise AnnotationNotFound("note id is required")
     with _WRITE_LOCK:

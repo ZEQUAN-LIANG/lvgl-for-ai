@@ -1,11 +1,3 @@
-"""Last-used flash paths and auto-fill suggestions.
-
-The web UI should not make the user hunt for the exported project or the build
-directory every time.  A small JSON file under ``host/.cache`` records the last
-successful build/open, and a filesystem scan supplies a fallback on a fresh
-checkout.
-"""
-
 from __future__ import annotations
 
 import json
@@ -176,8 +168,6 @@ def suggest(config: dict[str, Any], store: StateStore) -> dict[str, Any]:
         if candidate.is_dir():
             project_dir = str(candidate)
 
-    # Do not let a stale app name leak onto an SDK example or another
-    # project.  Only an exported <exports>/<app>/project keeps an app.
     project_app = _app_from_project(project_dir, exports_root) or _app_from_project(
         build_dir, exports_root
     )

@@ -1,10 +1,3 @@
-"""Error vocabulary seam: one table drives code, status, exit code and detail.
-
-``lvgl_ai.control.errors.ERROR_MAPPINGS`` is the single mapping consumed by the
-manifest writer (``status_for_error``), the ``--json`` error shape
-(``dump_error``) and the CLI exit code (``exit_code_for``). A new error type
-therefore needs one row, not four ``isinstance`` chains.
-"""
 
 from __future__ import annotations
 

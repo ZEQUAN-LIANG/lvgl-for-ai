@@ -1,8 +1,3 @@
-"""Thin CLI: flag mapping, --json, exit codes, idle and the real scenario run.
-
-Unit tests replace ``cli.Runtime`` with ``FakeRuntime``; the integration tests
-below run the real engine into a temporary session root.
-"""
 
 from __future__ import annotations
 

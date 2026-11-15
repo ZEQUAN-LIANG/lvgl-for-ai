@@ -1,10 +1,3 @@
-/**
- * @file xhs_ui.h
- * Shared helpers and data for the Xiaohongshu replica.
- *
- * Only xhs_ui.c includes the generated asset headers, so the font and image
- * arrays exist exactly once even though several page modules draw them.
- */
 
 #ifndef XHS_UI_H
 #define XHS_UI_H
@@ -89,13 +82,11 @@ typedef struct {
 #define XHS_NOTE_COUNT 6
 extern xhs_note_t xhs_notes[XHS_NOTE_COUNT];
 
-/* Generated assets, reached through wrappers so only one TU owns them. */
 const lv_font_t * xhs_font(xhs_font_id_t id);
 const lv_image_dsc_t * xhs_icon(xhs_icon_id_t id);
 const lv_image_dsc_t * xhs_cover(int index);
 int xhs_cover_height(int index);
 
-/* Small builders shared by every page. */
 lv_obj_t * xhs_box(lv_obj_t * parent, int x, int y, int w, int h);
 lv_obj_t * xhs_label(lv_obj_t * parent, const char * text,
                      xhs_font_id_t font, uint32_t color);
@@ -119,13 +110,11 @@ void xhs_clickable(lv_obj_t * obj, const char * name);
 void xhs_set_hidden(lv_obj_t * obj, bool hidden);
 void xhs_back_event_cb(lv_event_t * event);
 
-/* Shell: root tabs and full-screen overlays. */
 void xhs_show_root(int index);
 void xhs_open_overlay(lv_obj_t * page);
 void xhs_close_overlay(void);
 lv_obj_t * xhs_overlay_host(void);
 
-/* Pages. */
 lv_obj_t * xhs_home_create(lv_obj_t * parent);
 lv_obj_t * xhs_market_create(lv_obj_t * parent);
 lv_obj_t * xhs_messages_create(lv_obj_t * parent);
@@ -134,6 +123,6 @@ void xhs_note_open(int index);
 void xhs_home_sync_likes(void);
 void xhs_publish_open(void);
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif
 
-#endif /* XHS_UI_H */
+#endif

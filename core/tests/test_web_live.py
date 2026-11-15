@@ -1,10 +1,3 @@
-"""Live web adapter: Runtime delegation, independent engine process, HTTP routes.
-
-``LiveSession`` owns one ``Runtime``, the raw preview hub, the ticker, the
-temporary test-session root and the idle -> starting -> running -> stopping
-state machine. The unit tests replace the process boundary with
-``FakeRuntime``; the integration test starts the real engine through HTTP.
-"""
 
 from __future__ import annotations
 
@@ -32,7 +25,7 @@ APP_C = Path(__file__).resolve().parent.parent.parent / "user" / "app" / "app.c"
 
 
 
-from test_web_live_session import (  # noqa: E402
+from test_web_live_session import (
     BlockingRuntime,
     Factory,
     SessionFakeRuntime,
@@ -40,7 +33,6 @@ from test_web_live_session import (  # noqa: E402
 )
 
 class FakeClock:
-    """Controllable monotonic clock for the page heartbeat/grace rules."""
 
     def __init__(self, now: float = 100.0) -> None:
         self.now = now
@@ -53,7 +45,6 @@ class FakeClock:
 
 
 class PageTrackingTest(unittest.TestCase):
-    """The --exit-on-close decision, driven by real page beacons and a clock."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -204,8 +195,6 @@ class LiveHttpTest(unittest.TestCase):
         self.assertFalse(stopped["running"])
         self.assertEqual(factory.instances[0].stop_calls, 1)
 
-        # Stop is idempotent: Runtime.stop() is a no-op after the process is
-        # gone, and it can still finish the manifest of an engine that exited.
         status, _, stopped_again = harness.json("POST", "/api/live/stop")
         self.assertEqual(status, 200, stopped_again)
         self.assertFalse(stopped_again["running"])
@@ -267,7 +256,6 @@ class LiveHttpTest(unittest.TestCase):
         harness.json("POST", "/api/live/stop")
 
     def test_live_start_does_not_spawn_a_process(self) -> None:
-        """The web adapter reaches the engine only through the Runtime seam."""
         factory = Factory(lambda index: FakeRuntime())
         harness = self._harness(factory)
         with mock.patch(
@@ -685,7 +673,6 @@ class LiveHttpTest(unittest.TestCase):
         )
         self.assertEqual(status, 200, payload)
         self.assertIn(("pointer", "down", 12, 34), runtime.commands)
-        # Pointer state alone does not render; the web adapter must tick.
         self.assertIn(("wait", 16), runtime.commands)
 
         before_move = len(runtime.commands)
@@ -697,7 +684,6 @@ class LiveHttpTest(unittest.TestCase):
         self.assertEqual(status, 200, payload)
         move_commands = runtime.commands[before_move:]
         self.assertIn(("pointer", "move", 20, 40), move_commands)
-        # Drag moves are left to the ticker instead of rendering per event.
         self.assertNotIn(("wait", 16), move_commands)
 
         status, _, payload = harness.json(
@@ -848,13 +834,12 @@ class LiveHttpTest(unittest.TestCase):
 
     def test_shutdown_without_live_is_a_noop(self) -> None:
         harness = self._harness(Factory(lambda index: FakeRuntime()))
-        harness.server.app.shutdown()  # must not raise
+        harness.server.app.shutdown()
         self.assertEqual(harness.server.app.live.state, "idle")
         self.assertFalse(harness.server.app.live.is_active())
 
 
 class LiveIndependentEngineTest(unittest.TestCase):
-    """The live session must own its own Runtime and engine PID."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()

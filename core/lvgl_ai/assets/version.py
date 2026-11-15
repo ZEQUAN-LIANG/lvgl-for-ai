@@ -1,5 +1,3 @@
-"""Resolve the LVGL version that generated assets should target."""
-
 from __future__ import annotations
 
 import os
@@ -12,7 +10,6 @@ _VERSION_RE = re.compile(r"^(\d+)\.(\d+)$")
 
 
 def parse_version(text: str) -> tuple[int, int]:
-    """Parse ``"9.6"`` into ``(9, 6)``; reject anything else."""
     match = _VERSION_RE.fullmatch(text.strip())
     if not match:
         raise ValueError(f"invalid LVGL version: {text!r} (expected MAJOR.MINOR)")
@@ -20,12 +17,9 @@ def parse_version(text: str) -> tuple[int, int]:
 
 
 def supported_versions(repo_root: Path | None = None) -> tuple[str, ...]:
-    """Supported versions in numeric order for CLIs and messages."""
     return tuple(sorted(versions.supported(repo_root), key=parse_version))
 
 
-# Kept as a module constant for ``core/assets.py`` and the package exports;
-# the content is the index membership rendered in the historical order.
 SUPPORTED_VERSIONS = supported_versions()
 
 
@@ -38,7 +32,6 @@ def _supported(version: str, repo_root: Path | None = None) -> bool:
 
 
 def available_versions(repo_root: Path) -> list[str]:
-    """Return the supported version directories present in *repo_root*."""
     found: set[str] = set()
     for parent in (repo_root / "sdk", repo_root / "lvgl-src"):
         if not parent.is_dir():
@@ -80,7 +73,6 @@ def resolve_lvgl_version(repo_root: Path, requested: str = "auto") -> str:
 
 
 def version_available(repo_root: Path, version: str) -> bool:
-    """Whether *repo_root* has an SDK or source tree for *version*."""
     return (repo_root / "sdk" / version).is_dir() or (
         repo_root / "lvgl-src" / version
     ).is_dir()

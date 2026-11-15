@@ -1,8 +1,3 @@
-"""Host SDK header-layout tests for ``core/tools/export_sdk.py``.
-
-The full export builds LVGL; these tests pin the version-dependent header
-copy and include order without CMake.
-"""
 
 from __future__ import annotations
 

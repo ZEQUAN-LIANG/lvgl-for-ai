@@ -1,9 +1,3 @@
-"""Virtual pointer, virtual time, full frames and timeline evidence.
-
-All tests here use the real engine with a temporary session root. The button
-below is created by ``user/app/app.c``; its screen rectangle is
-x=32..192, y=300..348, so the center is (112, 324).
-"""
 
 from __future__ import annotations
 
@@ -64,7 +58,6 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
             self.assertEqual(row["hit"], "demo_button")
             self.assertEqual(row["hit_class"], "lv_button")
 
-        # The callback only runs when LVGL itself delivers the click.
         log_text = (rt.session_dir / "engine.log").read_text(encoding="utf-8")
         self.assertIn("[app] demo_button clicked", log_text)
 
@@ -75,7 +68,7 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
         self.assertEqual(rt.ready["frames"], 1)
 
         rt.tick(16)
-        self.assertEqual(rt.ready["frames"], 1)  # ready is a snapshot of startup
+        self.assertEqual(rt.ready["frames"], 1)
         rt.wait(48)
 
         rows = read_ndjson(rt.session_dir / "timeline.ndjson")
@@ -212,7 +205,6 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
         )
         self.assertIs(inputs[1]["delivered"], True)
 
-        # Release the key so the next input starts from a defined state.
         rt.key("release", "ENTER")
 
     def test_same_input_sequence_has_identical_frames(self) -> None:

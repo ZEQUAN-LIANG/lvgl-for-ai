@@ -73,15 +73,6 @@ def spawn_engine(
 
 
 class EngineLink:
-    """One engine child process behind a strict request/reply protocol.
-
-    ``command`` sends one protocol line and returns the matching reply.
-    Non-protocol stdout lines and every stderr line go to ``log``; ``log_tail``
-    and ``log_path`` feed :class:`RuntimeCrash`, and ``on_check`` records that
-    a command ran (never whether the picture is correct). ``process_factory``
-    is the test seam that replaces the real spawn with scripted pipes.
-    """
-
     def __init__(
         self,
         command: Sequence[str],
@@ -124,11 +115,8 @@ class EngineLink:
         self._stdout_thread: threading.Thread | None = None
         self._stderr_thread: threading.Thread | None = None
         self._seq = 0
-        # Set when the engine disappears outside a commanded quit path, for
-        # example the human closes the window while a command is in flight.
         self._unexpected_exit = False
 
-    # ---- lifecycle -----------------------------------------------------
 
     @property
     def is_running(self) -> bool:
@@ -141,21 +129,17 @@ class EngineLink:
 
     @property
     def pid(self) -> int | None:
-        """OS process id of the engine, or ``None`` before ``start()``."""
         return None if self._proc is None else self._proc.pid
 
     @property
     def exit_code(self) -> int | None:
-        """Engine exit code once it stopped, or ``None`` while running."""
         return None if self._proc is None else self._proc.poll()
 
     @property
     def unexpected_exit(self) -> bool:
-        """The engine disappeared outside the quit -> terminate path."""
         return self._unexpected_exit
 
     def start(self) -> None:
-        """Spawn the engine and start the stdout/stderr pumps."""
         self._proc = self._spawn(self._command, self._env, self._cwd)
         if (
             self._engine_path is not None
@@ -182,15 +166,12 @@ class EngineLink:
         self._stderr_thread.start()
 
     def shutdown(self, *, send_quit: bool) -> int | None:
-        """Ask the engine to quit, then wait, terminate and finally kill it."""
         proc = self._proc
         if proc is None:
             return None
         try:
             if proc.poll() is None and send_quit:
                 try:
-                    # A malformed quit reply must not replace the real reason
-                    # the session is stopping.
                     self.command("quit", timeout=self.quit_timeout)
                 except ToolError:
                     pass
@@ -223,7 +204,6 @@ class EngineLink:
 
     @staticmethod
     def _close_pipes(proc: subprocess.Popen[str]) -> None:
-        """Close stdin/stdout/stderr so Windows releases every pipe handle."""
         for stream in (proc.stdin, proc.stdout, proc.stderr):
             close = getattr(stream, "close", None)
             if close is None:
@@ -233,8 +213,6 @@ class EngineLink:
             except (OSError, ValueError):
                 pass
 
-    # ---- protocol ------------------------------------------------------
-
     def command(
         self,
         verb: str,
@@ -242,7 +220,6 @@ class EngineLink:
         timeout: float | None = None,
         track_check: bool = True,
     ) -> dict[str, Any]:
-        """Send one command line and return its matching reply."""
         if not self.is_running or self._proc is None or self._proc.stdin is None:
             if self._proc is not None and self._proc.poll() is not None:
                 self._unexpected_exit = True
@@ -274,13 +251,6 @@ class EngineLink:
         *,
         on_frames: Callable[[int], None] | None = None,
     ) -> dict[str, Any]:
-        """Wait for and validate the ``ready`` announcement.
-
-        ``on_frames`` fires as soon as ``ready.frames`` validates, before the
-        remaining optional fields are checked; ``Runtime`` mirrors that number
-        into its public ``frame_count`` at the same point the old inline
-        validator did.
-        """
         wait = self.timeout if timeout is None else timeout
         while True:
             item = self._queue_get(wait, "engine did not announce ready")
@@ -299,7 +269,6 @@ class EngineLink:
             )
 
     def crash(self, message: str) -> RuntimeCrash:
-        """Build a crash carrying the current exit code and log tail."""
         return RuntimeCrash(
             message,
             exit_code=self.exit_code,
@@ -310,13 +279,10 @@ class EngineLink:
     def complete_crash(
         self, error: RuntimeCrash, *, exit_code: int | None
     ) -> RuntimeCrash:
-        """Fill a crash after shutdown joined the pumps and reaped the process."""
         error.exit_code = exit_code
         error.log_tail = self._log_tail()
         error.log_path = None if self._log_path is None else str(self._log_path)
         return error
-
-    # ---- pumps ---------------------------------------------------------
 
     def _pump_stdout(self) -> None:
         assert self._proc is not None and self._proc.stdout is not None
@@ -338,8 +304,6 @@ class EngineLink:
             if line:
                 self._log(f"[stderr] {line}")
 
-    # ---- reply plumbing ------------------------------------------------
-
     def _await_reply(self, seq: int, line: str, timeout: float) -> dict:
         while True:
             item = self._queue_get(timeout, f"engine did not reply to {line!r}")
@@ -357,7 +321,7 @@ class EngineLink:
                     )
                 return message
             if isinstance(reply_seq, int) and reply_seq < seq:
-                continue  # late or duplicate reply; keep waiting
+                continue
             raise ProtocolError(
                 f"protocol seq mismatch: expected {seq}, got {reply_seq!r}",
                 raw=raw,

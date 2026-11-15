@@ -1,10 +1,3 @@
-"""Public import surface of ``lvgl_ai`` stays stable after the shim removal.
-
-The control layer and web helpers live under ``lvgl_ai.control`` and
-``lvgl_ai.web``; the old forwarding modules are gone.  These tests pin the
-remaining public contract: the top-level exports, the ``LatError`` alias and
-the ``apps`` lifecycle signatures.
-"""
 
 from __future__ import annotations
 
@@ -18,9 +11,9 @@ TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
-import lvgl_ai  # noqa: E402
-import lvgl_ai.apps as apps  # noqa: E402
-import lvgl_ai.control as control  # noqa: E402
+import lvgl_ai
+import lvgl_ai.apps as apps
+import lvgl_ai.control as control
 
 EXPECTED_EXPORTS = [
     "BuildError",

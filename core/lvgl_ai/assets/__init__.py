@@ -1,4 +1,3 @@
-"""LVGL asset conversion: fonts and images to C arrays."""
 
 from __future__ import annotations
 

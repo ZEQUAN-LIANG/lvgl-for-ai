@@ -1,8 +1,3 @@
-/**
- * @file frame_encoder.h
- * Background PNG encoding: bounded in-memory staging plus worker threads.
- */
-
 #ifndef FRAME_ENCODER_H
 #define FRAME_ENCODER_H
 
@@ -37,4 +32,4 @@ bool frame_encoder_failed(frame_encoder_t * encoder);
 }
 #endif
 
-#endif /* FRAME_ENCODER_H */
+#endif

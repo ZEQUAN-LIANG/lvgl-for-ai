@@ -159,7 +159,7 @@ void stdin_queue_free(stdin_queue_t * queue)
     free(queue);
 }
 
-#else /* !_WIN32 */
+#else
 
 struct stdin_queue {
     int unused;
@@ -189,4 +189,4 @@ void stdin_queue_free(stdin_queue_t * queue)
     (void)queue;
 }
 
-#endif /* _WIN32 */
+#endif

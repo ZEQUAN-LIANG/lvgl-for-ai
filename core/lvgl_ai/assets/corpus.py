@@ -1,5 +1,3 @@
-"""Collect the codepoints that a generated font should contain."""
-
 from __future__ import annotations
 
 import re
@@ -37,7 +35,6 @@ def _parse_int(text: str) -> int:
 
 
 def parse_ranges(values: Sequence[str]) -> set[int]:
-    """Parse repeated ``--range`` values such as ``0x20-0x7E`` or ``32-126``."""
     result: set[int] = set()
     for raw in values:
         for item in raw.split(","):
@@ -63,7 +60,6 @@ def parse_ranges(values: Sequence[str]) -> set[int]:
 
 
 def _decode_c_literal(raw: str) -> str:
-    """Decode the contents of a C string literal (without surrounding quotes)."""
     parts: list[bytes] = []
     index = 0
     length = len(raw)
@@ -115,7 +111,6 @@ def _decode_c_literal(raw: str) -> str:
             parts.append(bytes([int(digits, 8) & 0xFF]))
             continue
 
-        # Unknown escape: keep the escaped character as written.
         parts.append(escaped.encode("utf-8"))
 
     return b"".join(parts).decode("utf-8", errors="replace")
@@ -154,7 +149,7 @@ def scan_c_strings(text: str) -> list[str]:
                 index += 1
             elif char == "'":
                 state = "code"
-        else:  # string
+        else:
             if char == "\\":
                 buffer.append(char)
                 index += 1
@@ -179,7 +174,6 @@ def _iter_source_files(app_dir: Path) -> Iterable[Path]:
 
 
 def scan_app_sources(app_dir: Path) -> tuple[set[int], dict[str, object]]:
-    """Collect codepoints from string literals in an app's ``.c``/``.h`` files."""
     if not app_dir.is_dir():
         raise AssetError(f"app directory not found: {app_dir}")
     codepoints: set[int] = set()
@@ -222,7 +216,6 @@ def build_charset(
     scan_app_dir: Path | None = None,
     include_ascii: bool = True,
 ) -> tuple[list[int], dict[str, object]]:
-    """Combine all charset sources into a sorted, deduplicated codepoint list."""
     codepoints: set[int] = set()
     metadata: dict[str, object] = {}
     explicit = bool(texts or text_files or ranges)

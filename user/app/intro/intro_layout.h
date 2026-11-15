@@ -16,4 +16,4 @@ extern const lv_image_dsc_t * const intro_frames[5];
 extern const lv_image_dsc_t * const intro_watch_frames[8];
 
 #endif
-#endif /* INTRO_LAYOUT_H */
+#endif

@@ -1,4 +1,3 @@
-"""Static checks for the Windows double-click launchers."""
 
 from __future__ import annotations
 

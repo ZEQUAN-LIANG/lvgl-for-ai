@@ -193,7 +193,6 @@ void zc_copy_backdrop(void)
     }
 }
 
-/* ---------------------------------------------------------------- text */
 
 static const zc_glyph5_t * find5(char ch)
 {

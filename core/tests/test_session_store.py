@@ -1,11 +1,3 @@
-"""SessionStore seam: session directory, manifest, logs, preview, retention.
-
-These tests exercise the internal session-evidence writer directly, without an
-engine. They pin the session contract that ``Recording`` reads: the same
-manifest fields and artifacts, the same log truncation rule, the same
-``live.rgba`` lifecycle and the same retention policy. ``SessionOutcome``
-decides the final status with the documented failure > crash > ok precedence.
-"""
 
 from __future__ import annotations
 
@@ -231,7 +223,7 @@ class SessionStoreTest(unittest.TestCase):
         preview.write_bytes(b"\x00\x01")
         store.discard_preview()
         self.assertFalse(preview.exists())
-        store.discard_preview()  # idempotent
+        store.discard_preview()
 
     def test_discard_preview_is_a_no_op_without_live_frame(self) -> None:
         store = self.make_store(live_frame=False)

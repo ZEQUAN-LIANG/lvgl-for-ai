@@ -1,14 +1,3 @@
-"""The docs index pages stay indexes, not copies of drifting facts.
-
-``docs/app.html`` and ``docs/scenario-server.html`` must point at code or
-README instead of restating the app list, HTTP routes, server constants or
-scenario step vocabulary.  These tests pin that static invariant: every link
-resolves, every symbol pointer names something in the linked file, and facts
-owned by code do not reappear in the pages.
-``docs/index.html`` is the entry page and ``chip-adapt/docs/sifli.html`` is a
-capability page; both are link-checked only, so they may mention app names,
-routes and constants as illustrative facts.
-"""
 
 from __future__ import annotations
 
@@ -23,16 +12,15 @@ TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
-from lvgl_ai import paths  # noqa: E402
-from lvgl_ai.apps import parse_app_entries  # noqa: E402
-from lvgl_ai.scenario import SCENARIO_SCHEMA, STEP_TYPES  # noqa: E402
-from lvgl_ai.web import live_session, routes, webapp, wire  # noqa: E402
+from lvgl_ai import paths
+from lvgl_ai.apps import parse_app_entries
+from lvgl_ai.control import session_schema
+from lvgl_ai.scenario import SCENARIO_SCHEMA, STEP_TYPES
+from lvgl_ai.web import live_session, routes, webapp, wire
 
 DOCS_DIR = paths.REPO_ROOT / "docs"
 SIFLI_PAGE = paths.REPO_ROOT / "chip-adapt" / "docs" / "sifli.html"
 PAGE_NAMES = ("app.html", "scenario-server.html")
-# index.html is the entry page and sifli.html is a capability page; neither is
-# a fact index, so both are link-checked only.
 LINK_PAGES = PAGE_NAMES + ("index.html", "sifli.html")
 
 
@@ -42,8 +30,6 @@ def _link_page(name: str) -> Path:
     return DOCS_DIR / name
 
 
-# Server constants whose values may not be copied into the docs.  Names may
-# appear as symbol pointers; values may not.
 CONSTANT_SOURCES = {
     webapp: (
         "DEFAULT_HOST",
@@ -63,7 +49,7 @@ CONSTANT_SOURCES = {
     ),
     wire: ("PAGE_HEARTBEAT_INTERVAL_MS", "STREAM_MAGIC", "MAX_FRAME_BYTES"),
 }
-REGEX_CONSTANTS = ((webapp, "SESSION_ID_RE"), (webapp, "FILE_NAME_RE"))
+REGEX_CONSTANTS = ((session_schema, "SESSION_ID_RE"), (webapp, "FILE_NAME_RE"))
 ROUTE_PREFIXES = ("/api/", "/frames/", "/snapshots/", "/regions/")
 LINE_POINTER = re.compile(
     r"\b[\w./-]+\.(?:c|h|py|md|json|html|txt|ndjson)\s*:\s*\d"
@@ -275,7 +261,6 @@ class DocsSingleSourceTest(unittest.TestCase):
         for name in LINK_PAGES:
             with self.subTest(name=name):
                 self.assertTrue(_link_page(name).is_file(), name)
-        # The sifli page is link-checked against real repository links only.
         self.assertTrue(_parse_page(SIFLI_PAGE).hrefs)
 
     def test_sifli_page_is_link_checked_but_not_an_index_page(self) -> None:
@@ -283,8 +268,6 @@ class DocsSingleSourceTest(unittest.TestCase):
         self.assertNotIn("sifli.html", PAGE_NAMES)
 
     def test_one_off_audit_report_is_not_an_index_page(self) -> None:
-        # The untracked audit report may exist in the main checkout; it never
-        # joins the index or link-check lists.
         audit_pages = sorted(
             path.name for path in DOCS_DIR.glob("audit-*.html")
         )

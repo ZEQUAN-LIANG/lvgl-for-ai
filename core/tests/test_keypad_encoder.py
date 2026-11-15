@@ -1,14 +1,3 @@
-"""Standard virtual keypad and encoder indevs on the real engine.
-
-The demo app owns the focus group (the tool never creates one): it adds the
-panel, button and title to a group and attaches that group to the keypad and
-encoder indevs. Focus events therefore prove that a key or encoder turn was
-processed by LVGL, not merely queued by the tool.
-
-The button screen rectangle is x=32..192, y=300..348. Group order is
-panel -> demo_button -> title, with the button focused at startup, so
-``encoder turn +1`` moves focus to the title and ``-1`` moves it back.
-"""
 
 from __future__ import annotations
 
@@ -22,8 +11,6 @@ from support import read_ndjson
 
 ENGINE_DIR = paths.TOOL_ROOT / "engine"
 
-# The LV_KEY_* names defined by LVGL 9.6 (include/lvgl/core/lv_group.h).
-# INSERT is not among them.
 LV_KEY_NAMES = (
     "UP",
     "DOWN",
@@ -87,7 +74,6 @@ class KeypadIntegrationTest(unittest.TestCase):
         log_text = (rt.session_dir / "engine.log").read_text(encoding="utf-8")
         self.assertIn("[app] demo_button clicked", log_text)
 
-        # The group belongs to user/app, never to the tool.
         self.assertIn("[app] focus group created", log_text)
 
     def test_every_lv_key_name_reaches_the_keypad_indev(self) -> None:
@@ -123,7 +109,6 @@ class KeypadIntegrationTest(unittest.TestCase):
         self.assertEqual(caught.exception.step, 1)
         self.assertIn("INSERT", str(caught.exception))
 
-        # Validation happens before any command, so nothing was recorded.
         self.assertEqual(input_rows(rt.session_dir), [])
         self.assertIs(rt.key("press", "UP")["delivered"], True)
 
@@ -158,8 +143,6 @@ class EncoderIntegrationTest(unittest.TestCase):
                 ("encoder", "turn", -1, True),
             ],
         )
-        # +1 focuses the next object (title), -1 returns to the button. A
-        # reversed sign would focus the panel first.
         self.assertEqual(
             focus_lines(rt.session_dir),
             [
@@ -196,8 +179,6 @@ class EncoderIntegrationTest(unittest.TestCase):
         rt.tick(16)
         rt.wait(48)
 
-        # The diff is a delta, not a held state: timer reads after the first
-        # delivery must not turn the encoder again.
         self.assertEqual(
             focus_lines(rt.session_dir),
             [

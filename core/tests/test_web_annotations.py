@@ -1,10 +1,3 @@
-"""Annotation writes: one transaction appends a note; invalid payloads are 4xx.
-
-``annotations.write_note`` holds the lock, validates the document and payload,
-crops every region, writes ``annotations.json`` through the Recording setter
-(temp file + replace) and rolls back the crops it touched on failure, so a
-rejected request cannot corrupt the previous file or leave a new crop behind.
-"""
 
 from __future__ import annotations
 
@@ -50,7 +43,6 @@ class AnnotationApiTest(unittest.TestCase):
         self.addCleanup(self.harness.close)
         self.annotations_path = self.session / "annotations.json"
 
-    # ---- valid writes ---------------------------------------------------
 
     def test_post_note_writes_schema_and_all_six_fields(self) -> None:
         status, _, payload = self.harness.json(
@@ -164,8 +156,6 @@ class AnnotationApiTest(unittest.TestCase):
         self.assertFalse(self.annotations_path.exists())
 
     def test_document_shaped_payload_is_not_an_append_path(self) -> None:
-        # The web API only appends one dragged-box note; a whole document is
-        # not a write path and is rejected as an invalid note payload.
         notes = [valid_note(id="a"), valid_note(id="b", frame_no=3, text="b")]
         status, _, payload = self.harness.json(
             "POST",
@@ -195,7 +185,6 @@ class AnnotationApiTest(unittest.TestCase):
         )
         self.assertEqual(Recording.open(self.session).annotations["notes"], saved["notes"])
 
-    # ---- rejected payloads ---------------------------------------------
 
     def test_invalid_payloads_are_4xx_and_do_not_create_the_file(self) -> None:
         bad_notes = [
@@ -315,7 +304,6 @@ class AnnotationApiTest(unittest.TestCase):
         self.assertEqual(status, 404, payload)
         self.assertEqual(payload["error"]["code"], "unknown_session")
 
-    # ---- error mapping --------------------------------------------------
 
     def test_error_codes_match_the_http_contract(self) -> None:
         cases = [
@@ -375,7 +363,6 @@ class AnnotationApiTest(unittest.TestCase):
 
 
 class WriteNoteTransactionTest(unittest.TestCase):
-    """``annotations.write_note`` is the whole annotation transaction."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -385,7 +372,6 @@ class WriteNoteTransactionTest(unittest.TestCase):
         self.recording = Recording.open(self.session)
         self.annotations_path = self.session / "annotations.json"
 
-    # ---- success --------------------------------------------------------
 
     def test_success_returns_document_and_note(self) -> None:
         document, saved = write_note(self.recording, valid_note(id="n1"))
@@ -409,7 +395,6 @@ class WriteNoteTransactionTest(unittest.TestCase):
         self.assertFalse((self.session / "regions").exists())
         self.assertTrue(self.annotations_path.is_file())
 
-    # ---- rejected writes ------------------------------------------------
 
     def test_conflict_keeps_the_document(self) -> None:
         write_note(self.recording, valid_note(id="dup"))
@@ -463,7 +448,6 @@ class WriteNoteTransactionTest(unittest.TestCase):
             ["keep-0.png"],
         )
 
-    # ---- serialization --------------------------------------------------
 
     def test_concurrent_writes_keep_every_note(self) -> None:
         def post(index: int) -> str:
@@ -489,7 +473,6 @@ class WriteNoteTransactionTest(unittest.TestCase):
 
 
 class AnnotationDocumentSeamTest(unittest.TestCase):
-    """B6: annotations share the document transaction behind Recording."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -500,7 +483,6 @@ class AnnotationDocumentSeamTest(unittest.TestCase):
 
     def test_write_note_reads_and_writes_only_the_recording_seam(self) -> None:
         class SeamRecording:
-            """Expose the writable document seam and nothing else."""
 
             def __init__(self, recording: Recording) -> None:
                 self._recording = recording

@@ -1,11 +1,3 @@
-/**
- * @file coffee_ui.h
- * Shared model and view helpers for the AURELIA C9 coffee-machine demo.
- *
- * The whole demo targets LVGL 9.6 only, matching the engine used by the
- * scenario in user/scenarios/coffee.json. Everything lives under user/app, so
- * the tool never learns about drinks, profiles or maintenance programs.
- */
 
 #ifndef COFFEE_UI_H
 #define COFFEE_UI_H
@@ -203,13 +195,11 @@ extern coffee_state_t coffee_state;
 extern coffee_drink_t coffee_drinks[COFFEE_DRINK_COUNT];
 extern coffee_profile_t coffee_profiles[3];
 
-/* Generated assets, reached through wrappers so only one TU owns them. */
 const lv_font_t * coffee_font(coffee_font_id_t id);
 const lv_image_dsc_t * coffee_icon(coffee_icon_id_t id);
 const lv_image_dsc_t * coffee_art(coffee_art_id_t id);
 const lv_image_dsc_t * coffee_brew_cup_asset(void);
 
-/* Small builders shared by every page. */
 lv_obj_t * coffee_box(lv_obj_t * parent, int x, int y, int w, int h);
 lv_obj_t * coffee_card(lv_obj_t * parent, int x, int y, int w, int h,
                        int radius, uint32_t bg, uint32_t border);
@@ -240,7 +230,6 @@ void coffee_toggle_set(lv_obj_t * track, bool on);
 void coffee_clickable(lv_obj_t * obj, const char * name);
 void coffee_hide(lv_obj_t * obj, bool hidden);
 
-/* Shared state access. */
 coffee_drink_t * coffee_selected(void);
 coffee_profile_t * coffee_profile(void);
 bool coffee_is_favorite(int drink);
@@ -251,13 +240,11 @@ void coffee_format_temp(char * buffer, size_t size, int celsius);
 void coffee_format_clock(char * buffer, size_t size);
 void coffee_log(const char * format, ...);
 
-/* Feedback and global refresh. */
 void coffee_toast(const char * text);
 void coffee_apply_brightness(void);
 void coffee_dim_overlay_set(lv_obj_t * obj);
 void coffee_refresh_all(void);
 
-/* Shell and overlays. */
 void coffee_create(void);
 void coffee_show_page(coffee_page_id_t page);
 void coffee_toggle_standby(void);
@@ -268,7 +255,6 @@ void coffee_modal_close(void);
 void coffee_brew_abort(void);
 void coffee_maintenance_abort(void);
 
-/* Pages and overlays. */
 lv_obj_t * coffee_home_create(lv_obj_t * parent);
 lv_obj_t * coffee_favorites_create(lv_obj_t * parent);
 lv_obj_t * coffee_maintenance_create(lv_obj_t * parent);
@@ -292,6 +278,6 @@ static inline int coffee_int_of(void * value)
     return (int)(intptr_t)value;
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif
 
-#endif /* COFFEE_UI_H */
+#endif

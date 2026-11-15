@@ -24,7 +24,7 @@ INDEX_SCHEMA = "lvgl-verify-loop-versions-v1"
 
 
 class VersionsError(ValueError):
-    """The version index is missing or malformed."""
+    pass
 
 
 def _candidate_paths(repo_root: Path | None) -> Iterator[Path]:
@@ -37,7 +37,6 @@ def _candidate_paths(repo_root: Path | None) -> Iterator[Path]:
 
 
 def index_path(repo_root: Path | None = None) -> Path:
-    """Return the first existing version index for ``repo_root``."""
     candidates = list(_candidate_paths(repo_root))
     for candidate in candidates:
         if candidate.is_file():
@@ -74,7 +73,6 @@ def _validate(payload: Any, path: Path) -> dict[str, Any]:
 
 
 def load(repo_root: Path | None = None) -> dict[str, Any]:
-    """Load and validate the version index."""
     path = index_path(repo_root)
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -84,12 +82,10 @@ def load(repo_root: Path | None = None) -> dict[str, Any]:
 
 
 def supported(repo_root: Path | None = None) -> tuple[str, ...]:
-    """Supported versions in index order."""
     return tuple(load(repo_root)["versions"])
 
 
 def default(repo_root: Path | None = None) -> str:
-    """The default host preview version."""
     return str(load(repo_root)["default"])
 
 
@@ -101,28 +97,23 @@ def _flagged(flag: str, repo_root: Path | None) -> tuple[str, ...]:
 
 
 def intro(repo_root: Path | None = None) -> tuple[str, ...]:
-    """Versions whose bundled app follows the intro harness."""
     return _flagged("intro", repo_root)
 
 
 def legacy(repo_root: Path | None = None) -> tuple[str, ...]:
-    """Versions whose bundled app follows the legacy harness."""
     return _flagged("legacy", repo_root)
 
 
 def bundled(repo_root: Path | None = None) -> tuple[str, ...]:
-    """Versions whose SDK and prebuilt engine ship in the full bundle."""
     return _flagged("bundled", repo_root)
 
 
 def tags(repo_root: Path | None = None) -> dict[str, str]:
-    """Map every supported version to its official LVGL release tag."""
     entries = load(repo_root)["versions"]
     return {name: str(entry["tag"]) for name, entry in entries.items()}
 
 
 def tag(version: str, repo_root: Path | None = None) -> str:
-    """Return the release tag for one supported version."""
     tags_by_version = tags(repo_root)
     try:
         return tags_by_version[version]

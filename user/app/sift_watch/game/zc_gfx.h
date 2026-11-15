@@ -35,4 +35,4 @@ void zc_cn_text(const char * text, int x, int y, int size, uint16_t color,
 
 void zc_heart(int x, int y, bool filled, int scale, bool flash);
 
-#endif /* ZC_GFX_H */
+#endif

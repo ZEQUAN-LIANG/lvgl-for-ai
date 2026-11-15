@@ -1,5 +1,3 @@
-"""Errors raised by the LVGL asset converters."""
-
 from __future__ import annotations
 
 

@@ -42,4 +42,4 @@ void stdin_queue_free(stdin_queue_t * queue);
 }
 #endif
 
-#endif /* STDIN_QUEUE_H */
+#endif

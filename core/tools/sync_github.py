@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Mirror the Gitee remote's branches and tags to GitHub.
 
 Gitee is the source of truth: every branch under ``refs/remotes/<source>/`` and
@@ -12,6 +11,7 @@ Run from the repository root with::
     python -I core/tools/sync_github.py
     python -I core/tools/sync_github.py --json
 """
+
 
 from __future__ import annotations
 

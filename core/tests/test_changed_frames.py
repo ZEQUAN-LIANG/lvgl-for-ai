@@ -1,10 +1,3 @@
-"""Changed-only recording against the real engine.
-
-The default coffee screen is static for the first few ticks; the hidden demo
-button at (112, 324) gives a deterministic pixel change. These tests verify
-that identical frames are skipped without breaking frame numbers, timeline
-rows, diff rows, snapshots or the raw live preview.
-"""
 
 from __future__ import annotations
 
@@ -44,7 +37,6 @@ class ChangedFramesTest(unittest.TestCase):
         self.assertEqual(rt.frame_count, 1)
         self.assertEqual(rt.t_ms, 48)
 
-        # A wait with no visual change keeps frame_start == frame_end.
         rt.wait(ms=64)
         self.assertEqual(rt.frame_count, 1)
 
@@ -59,7 +51,6 @@ class ChangedFramesTest(unittest.TestCase):
         rt.pointer("up", *BUTTON_CENTER)
         rt.wait(ms=64)
         self.assertGreater(rt.frame_count, 1)
-        # The engine's reserved-frame count; the manifest counts drained PNGs.
         reserved = rt.frame_count
 
         rt.stop()

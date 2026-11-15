@@ -1,5 +1,3 @@
-"""C-emission helpers shared by the font and image converters."""
-
 from __future__ import annotations
 
 import hashlib
@@ -59,7 +57,6 @@ def generator_label() -> str:
 
 
 def sanitize_identifier(text: str, fallback: str = "asset") -> str:
-    """Turn arbitrary text into a safe C identifier."""
     value = re.sub(r"[^0-9A-Za-z_]", "_", text.strip())
     value = re.sub(r"_+", "_", value).strip("_")
     if not value:
@@ -149,7 +146,6 @@ def atomic_write_text(path: Path, text: str) -> None:
 
 
 def write_if_changed(path: Path, text: str, force: bool = False) -> str:
-    """Write *text* atomically; return created/updated/unchanged."""
     if path.exists():
         try:
             current = path.read_text(encoding="utf-8")
@@ -213,7 +209,6 @@ def merge_manifest_entry(
 
 
 def relative_posix(path: Path, base: Path) -> str:
-    """Return a repo-relative path, or the absolute path when outside the repo."""
     try:
         return path.resolve().relative_to(base.resolve()).as_posix()
     except ValueError:

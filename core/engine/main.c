@@ -1,14 +1,3 @@
-/**
- * @file main.c
- * LVGL host: headless by default, Win32 GDI window with --window. The user's
- * only entry point is app_create().
- *
- * Virtual time advances only through tick/wait commands; the session owns
- * the refresh -> capture -> timeline -> diff chain. In window mode every
- * LVGL call stays on the window thread: protocol lines arrive through the
- * stdin queue, real input arrives through Win32 messages.
- */
-
 #include "adapter.h"
 #include "frame_encoder.h"
 #include "json.h"
@@ -34,9 +23,7 @@ extern void app_create(void);
 typedef struct {
     adapter_t * adapter;
     session_t session;
-    /** Non-NULL only while the Win32 window is open. */
     window_t * window;
-    /** Stdin reader thread used by the window main loop. */
     stdin_queue_t * stdin_queue;
 } engine_t;
 
@@ -63,7 +50,6 @@ static bool only_spaces(const char * text)
     return true;
 }
 
-/** Copy the next whitespace-delimited token. NULL when no token is left. */
 static const char * next_token(const char * cursor, char * out, size_t out_size)
 {
     if(cursor == NULL) return NULL;
@@ -112,7 +98,6 @@ static bool token_valid(const char * text)
     return true;
 }
 
-/** Present hook: show the refreshed framebuffer when a window is open. */
 static void engine_present(void * user)
 {
     engine_t * engine = (engine_t *)user;
@@ -442,7 +427,6 @@ static void engine_real_input(void * user, const window_event_t * event)
     }
 }
 
-/** Execute one protocol line. Returns false when the session should end. */
 static bool process_command(engine_t * engine, FILE * out, char * line)
 {
     command_t command;

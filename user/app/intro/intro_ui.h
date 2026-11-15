@@ -70,7 +70,7 @@ typedef struct {
 } intro_seg_t;
 
 typedef struct {
-    uint8_t type;          /* 0 = box, 1 = image */
+    uint8_t type;
     uint8_t action;
     uint8_t tag;
     uint8_t opa;
@@ -97,14 +97,14 @@ typedef struct {
 typedef struct {
     int16_t x;
     int16_t y;
-    uint16_t w;        /* target line width */
-    uint16_t clip_w;   /* visible width when clipped; 0 = no clip */
+    uint16_t w;
+    uint16_t clip_w;
     const intro_seg_t * segs;
     uint8_t seg_count;
     uint32_t color;
     uint8_t opa;
     int8_t letter_space;
-    uint8_t flags;     /* bit 0: ellipsis, bit 1: clipped */
+    uint8_t flags;
 } intro_text_t;
 
 typedef struct {
@@ -117,7 +117,6 @@ typedef struct {
 
 void intro_ui_create(void);
 
-/* Shared helpers used by the hand-written dynamic screens. */
 lv_font_t * intro_font(intro_font_id_t id);
 lv_obj_t * intro_text_line(lv_obj_t * parent, int32_t x, int32_t y,
                           const intro_seg_t * segs, uint8_t seg_count,
@@ -131,6 +130,6 @@ void intro_show_screen(uint8_t screen, bool animate);
 void intro_set_tab_focus(uint8_t screen);
 void intro_action_attach(lv_obj_t * obj, uint8_t action);
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4 */
+#endif
 
-#endif /* INTRO_UI_H */
+#endif

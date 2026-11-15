@@ -1,8 +1,3 @@
-"""Black-box release artifact test: build the zip, unpack it, run it.
-
-This is the artifact seam.  It does not import release.py or inspect its
-internals; it executes the public script and treats the zip as a product.
-"""
 
 from __future__ import annotations
 
@@ -130,7 +125,6 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
             )
             summary = json_line(result)
-            # The release directory itself is a usable skill directory.
             published = out_dir / "lvgl-verify-loop"
             self.assertEqual(Path(summary["package"]), published)
             self.assertTrue((published / "SKILL.md").is_file())
@@ -251,7 +245,6 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 archive.extractall(package)
             pkg = package / "lvgl-verify-loop"
 
-            # The manifest describes the files that are actually in the zip.
             manifest_names = {
                 f"lvgl-verify-loop/{relative}"
                 for relative in release_manifest["files"]
@@ -265,7 +258,6 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 sha256_file(pkg / "sdk" / "9.6" / "manifest.json"),
             )
 
-            # No development absolute path survives in text or binaries.
             needles = {
                 str(REPO_ROOT.resolve()).encode("utf-8"),
                 str(REPO_ROOT.resolve()).replace("\\", "/").encode("utf-8"),
@@ -343,8 +335,6 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             self.assertTrue((session / "manifest.json").is_file())
             self.assertTrue(any((session / "frames").glob("*.png")))
 
-            # The same unzipped package must also build user/app without
-            # LVGL source or CMake.
             build_run = subprocess.run(
                 [
                     os.environ.get("COMSPEC", "cmd.exe"), "/c",

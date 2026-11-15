@@ -19,7 +19,7 @@ from .common import AppCChanged, AppError
 
 
 class InvalidTrashId(AppError):
-    """The trash id is syntactically invalid (unlike corrupt metadata)."""
+    pass
 
 
 def delete_app(repo_root: str | Path, name: str) -> dict[str, Any]:
@@ -318,11 +318,6 @@ def _rollback_transaction(
     app_first: bool,
     restore_app_c: bool = True,
 ) -> list[str]:
-    """Undo moves made by delete/restore, restore app.c, collect warnings.
-
-    ``restore_app_c`` is false when the compare-before-write guard caught an
-    external edit; rewriting app.c then would discard that edit.
-    """
     warnings: list[str] = []
 
     def undo_app() -> None:

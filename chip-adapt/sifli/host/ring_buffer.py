@@ -1,11 +1,3 @@
-"""Cursor-addressed receive ring for the serial broker.
-
-Byte ranges are identified by a monotonically increasing sequence number, so
-any number of readers can ask for "everything after N" without consuming data
-from anyone else.  ``RingBuffer`` is deliberately not thread-safe: the broker
-holds its condition lock around every call.
-"""
-
 from __future__ import annotations
 
 from collections import deque
@@ -33,8 +25,6 @@ class RingBuffer:
                 self._chunks.popleft()
                 self.buffered -= len(chunk)
                 continue
-            # Keep the tail of an oversized chunk instead of dropping the
-            # whole read; a single 4 KiB read must not empty a 1 KiB ring.
             self._chunks[0] = (chunk_start + overflow, chunk[overflow:])
             self.buffered -= overflow
             break
@@ -42,12 +32,6 @@ class RingBuffer:
         self.first_seq = self._chunks[0][0] if self._chunks else self.next_seq
 
     def read(self, since: int, limit: int) -> dict:
-        """Return up to ``limit`` bytes starting at ``since``.
-
-        ``truncated`` is true when ``since`` predates the oldest retained
-        byte; callers should resume from ``first_seq`` instead.
-        """
-
         requested = int(since)
         start = requested
         truncated = False

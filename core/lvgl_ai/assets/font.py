@@ -189,7 +189,6 @@ def _glyph_top(freetype: object, face: object, char: str, flags: int) -> int:
 
 
 def _estimate_cmap_split(codepoints: list[int]) -> list[tuple[str, list[int]]]:
-    """Port of lv_font_conv's breadth-first cmap optimiser."""
     count = len(codepoints)
     paths: list[tuple[float, int, int, str]] = []
     infinity = float("inf")

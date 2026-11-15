@@ -33,8 +33,6 @@ from ..control.input import TOKEN_PATTERN, is_token
 from ..control.recording import Recording
 from ..control.runtime import Runtime
 
-# Re-exported: the docs single-source test reads the pattern from here.
-SESSION_ID_RE = session_schema.SESSION_ID_RE
 from ..scenario import scenario_index
 from . import page_render, replay_model, whiteboards
 from .annotations import AnnotationError, delete_note, write_note
@@ -48,28 +46,19 @@ from .urls import page_url
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 MAX_BODY_BYTES = 1024 * 1024
-# A whiteboard payload carries a base64 PNG plus the Fabric object tree.
 WHITEBOARD_BODY_BYTES = 12 * 1024 * 1024
-# An annotation payload may carry one composed PNG per anchor frame.
 ANNOTATION_BODY_BYTES = 12 * 1024 * 1024
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-# Page tracking for --exit-on-close: the page refreshes its id every 10 s (the
-# interval lives in web/wire.py); a page unseen for two minutes is treated as
-# gone. Closing the last browser page stops the server after a short grace so a
-# reload can re-open it.
 PAGE_HEARTBEAT_TTL_S = 120.0
 PAGE_CLOSE_GRACE_S = 0.5
-# Reasonable oversized bodies are drained before the 413 so Windows does not
-# reset the connection while the client is still writing (which would hide the
-# 4xx response behind a ConnectionAbortedError).
+# Oversized bodies are drained before the 413: Windows otherwise resets the
+# connection while the client is still writing, hiding the 4xx response
+# behind a ConnectionAbortedError.
 MAX_DRAIN_BYTES = 16 * 1024 * 1024
 FILE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*\.png$")
 PAGE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 APP_REQUEST_HEADER = "X-LVGL-AI-Request"
 APP_REQUEST_VALUE = "1"
-# The app domain carries no HTTP status; the adapter maps the domain code to
-# the status it has always returned. ``invalid_trash`` covers both a malformed
-# id (400) and corrupt metadata (409); ``InvalidTrashId`` selects the former.
 APP_ERROR_STATUS = {
     "app_c_missing": 500,
     "app_conflict": 409,
@@ -88,8 +77,6 @@ APP_ERROR_STATUS = {
     "unknown_trash": 404,
     "unsafe_path": 400,
 }
-# The live domain carries no HTTP status either; this adapter maps each code
-# to the status the routes have always returned.
 LIVE_ERROR_STATUS = {
     "invalid_input": 400,
     "invalid_key": 400,
@@ -101,10 +88,6 @@ LIVE_ERROR_STATUS = {
     "live_starting": 409,
     "live_stop_error": 500,
 }
-# The annotation transaction carries no HTTP status either; this adapter maps
-# its domain codes to the statuses the route has always returned.
-# ``internal_error`` is the historical generic 500 for an unexpected I/O
-# failure while reading or preparing evidence; the JSON is unchanged.
 ANNOTATION_ERROR_STATUS = {
     "annotations_unreadable": 409,
     "annotations_write_error": 500,
@@ -128,7 +111,6 @@ CSP = (
 
 
 def _input_app(value: Any) -> str | None:
-    """Validate an optional app name from the query string or a test call."""
     if value is None or value == "":
         return None
     if not is_token(value):
@@ -141,7 +123,6 @@ def _input_app(value: Any) -> str | None:
 
 
 class HttpError(Exception):
-    """An error that maps directly to an HTTP status and JSON body."""
 
     def __init__(
         self,
@@ -175,7 +156,6 @@ def _live_http_error(exc: LiveError) -> HttpError:
 
 
 class WebApp:
-    """State and behavior behind the HTTP routes."""
 
     def __init__(
         self,
@@ -203,25 +183,18 @@ class WebApp:
         )
         self._apps_lock = threading.RLock()
         self._last_app_operation: dict[str, Any] | None = None
-        # The live runtime, hub, ticker, test-session root, selected app and
-        # state machine all live behind this seam; WebApp only composes it.
         self.live = LiveSession(
             self.sessions_root,
             runtime_factory=runtime_factory,
             lvgl=self.lvgl,
             build=self.build,
         )
-        # Browser page tracking; the exit watchdog only reads this in
-        # --exit-on-close mode, but registering is harmless otherwise. The
-        # clock is injectable so heartbeat/grace behavior is testable without
-        # patching the global ``time`` module.
         self._page_clock = page_clock if page_clock is not None else time.monotonic
         self._page_lock = threading.Lock()
         self._pages: dict[str, float] = {}
         self._seen_page = False
         self._last_page_change = 0.0
 
-    # ---- sessions and replay ------------------------------------------
 
     def sessions(self) -> list[dict[str, Any]]:
         root = self.sessions_root
@@ -260,12 +233,6 @@ class WebApp:
         return entries
 
     def scenario_apps(self) -> list[dict[str, Any]]:
-        """Apps declared by user scenarios, for the live app selector.
-
-        The tool does not know app names: whichever scenario declares ``app``
-        becomes a choice. Invalid scenarios are ignored so one broken file
-        cannot take down the page.
-        """
         with self._apps_lock:
             return self._scenario_apps_locked()
 
@@ -290,7 +257,6 @@ class WebApp:
         return sorted(apps.values(), key=lambda entry: (entry["name"], entry["app"]))
 
     def _scenario_display(self, app: str | None) -> tuple[int, int] | None:
-        """The display declared by the first sorted scenario for ``app``."""
         if app is None:
             return None
         with self._apps_lock:
@@ -302,7 +268,6 @@ class WebApp:
                     return display["width"], display["height"]
         return None
 
-    # ---- app management -------------------------------------------------
 
     @staticmethod
     def _app_error(exc: app_store.AppError) -> HttpError:
@@ -421,8 +386,6 @@ class WebApp:
         selected_app = self.live.selected_app(app)
         selected = session_id
         if selected is None:
-            # Prefer a replayable session; a failed build can leave the
-            # newest directory with no frames at all.
             selected = next(
                 (
                     entry["id"]
@@ -454,8 +417,6 @@ class WebApp:
             else:
                 try:
                     replay = replay_model.load(recording)
-                    # The page renders every section; prime them so a bad
-                    # evidence file still turns into the same notice page.
                     replay.prime()
                 except (OSError, ValueError) as exc:
                     page_error = {
@@ -522,7 +483,6 @@ class WebApp:
             ) from model.annotations_error
         return {"annotations": model.annotations}
 
-    # ---- annotations ---------------------------------------------------
 
     def add_annotation(
         self, session_id: str, payload: dict[str, Any]
@@ -553,7 +513,6 @@ class WebApp:
             "deleted": note_id,
         }
 
-    # ---- whiteboards ---------------------------------------------------
 
     def whiteboards_payload(self, session_id: str) -> dict[str, Any]:
         recording = self.open_recording(session_id)
@@ -597,10 +556,8 @@ class WebApp:
             "deleted": whiteboard_id,
         }
 
-    # ---- browser page tracking ----------------------------------------
 
     def page_open(self, page_id: str) -> dict[str, Any]:
-        """Register a page or refresh its heartbeat."""
         now = self._page_clock()
         with self._page_lock:
             self._pages[page_id] = now
@@ -609,7 +566,6 @@ class WebApp:
         return {"ok": True}
 
     def page_close(self, page_id: str) -> dict[str, Any]:
-        """Forget a page the browser says it is leaving."""
         now = self._page_clock()
         with self._page_lock:
             self._pages.pop(page_id, None)
@@ -617,7 +573,6 @@ class WebApp:
         return {"ok": True}
 
     def should_exit_on_close(self) -> bool:
-        """True once every registered page has closed or gone stale."""
         now = self._page_clock()
         with self._page_lock:
             if not self._seen_page:
@@ -630,13 +585,6 @@ class WebApp:
             return now - self._last_page_change >= PAGE_CLOSE_GRACE_S
 
     def shutdown(self) -> None:
-        """Stop the live Runtime when the HTTP server goes away.
-
-        Ctrl+C on ``web.py`` must follow the documented quit -> wait ->
-        terminate path, otherwise the engine is left with an unfinished
-        manifest. A start that is still building gets a short grace period;
-        interrupting ``Runtime.start()`` from another thread would race.
-        """
         deadline = time.monotonic() + 5.0
         while self.live.is_starting() and time.monotonic() < deadline:
             time.sleep(0.05)
@@ -676,7 +624,6 @@ class _WebHandler(BaseHTTPRequestHandler):
     def do_DELETE(self) -> None:
         self._dispatch("DELETE")
 
-    # ---- dispatch ------------------------------------------------------
 
     def _dispatch(self, method: str) -> None:
         try:
@@ -704,8 +651,6 @@ class _WebHandler(BaseHTTPRequestHandler):
             )
 
     def _route(self, method: str, path: str, query: dict[str, list[str]]) -> None:
-        # The route table lives in ``routes.py``; import lazily so webapp can
-        # import the route module's shared constants without a cycle.
         from .routes import route
 
         return route(self, method, path, query)
@@ -817,13 +762,6 @@ class _WebHandler(BaseHTTPRequestHandler):
                 pass
 
     def _serve_live_stream(self) -> None:
-        """Stream raw preview frames until the live session or client ends.
-
-        The body is close-delimited HTTP/1.1: there is no Content-Length and
-        each frame is a fixed header plus pixels. The handler writes on its own
-        thread and never holds the live lock; the stream handle keeps this
-        response bound to the session that was running when it connected.
-        """
         stream = self.app.live.open_stream()
         self.close_connection = True
         try:
@@ -890,8 +828,6 @@ class _WebHandler(BaseHTTPRequestHandler):
             raise HttpError(
                 HTTPStatus.INTERNAL_SERVER_ERROR, "read_error", str(exc)
             ) from exc
-        # Frames and snapshots are immutable once written; caching lets the
-        # replay viewer preload a frame and swap it without a black gap.
         self._send(
             HTTPStatus.OK,
             data,
@@ -899,7 +835,6 @@ class _WebHandler(BaseHTTPRequestHandler):
             cache_control="public, max-age=31536000, immutable",
         )
 
-    # ---- responses -----------------------------------------------------
 
     def _send(
         self,

@@ -8,7 +8,7 @@ HOST_DIR = Path(__file__).resolve().parents[1]
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
-from ring_buffer import RingBuffer  # noqa: E402
+from ring_buffer import RingBuffer
 
 
 class RingBufferTest(unittest.TestCase):

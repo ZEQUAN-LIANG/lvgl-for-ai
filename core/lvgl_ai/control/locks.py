@@ -27,7 +27,6 @@ else:
 
 
 class BuildLock:
-    """One exclusive lock on ``<build_dir>/.build.lock``."""
 
     def __init__(
         self, build_dir: str | Path, *, timeout: float = BUILD_LOCK_TIMEOUT_S

@@ -22,7 +22,6 @@ from .webapp import (
 
 
 def route(web: Any, method: str, path: str, query: dict[str, list[str]]) -> None:
-    """Dispatch one request; ``web`` is the active ``_WebHandler``."""
     if path == "/":
         web._require(method, ("GET",))
         session_id = (query.get("session") or [None])[0]
@@ -235,7 +234,6 @@ def route(web: Any, method: str, path: str, query: dict[str, list[str]]) -> None
 def _start_live(web: Any, query: dict[str, list[str]]) -> None:
     mode = (query.get("mode") or ["record"])[0]
     app = (query.get("app") or [None])[0]
-    # Keep the old validation order: an unknown mode wins over a bad app.
     validate_live_kind(mode)
     app = _input_app(app)
     display = web.app._scenario_display(app)

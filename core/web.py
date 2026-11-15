@@ -9,6 +9,7 @@ this file only parses flags and starts the server. It works from any working
 directory and does not require a browser to be present.
 """
 
+
 from __future__ import annotations
 
 import argparse
@@ -20,8 +21,8 @@ TOOL_ROOT = Path(__file__).resolve().parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
-from lvgl_ai.control.input import TOKEN_PATTERN, is_token  # noqa: E402
-from lvgl_ai.web import (  # noqa: E402
+from lvgl_ai.control.input import TOKEN_PATTERN, is_token
+from lvgl_ai.web import (
     DEFAULT_HOST,
     DEFAULT_PORT,
     serve,

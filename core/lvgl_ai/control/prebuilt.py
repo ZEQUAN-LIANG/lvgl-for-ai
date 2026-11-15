@@ -96,19 +96,12 @@ def _version_tuple(text: str) -> tuple[int, ...]:
 
 
 def versions_match(left: str, right: str) -> bool:
-    """Compare compiler versions, padding ``15.2`` to ``15.2.0``.
-
-    An unreadable version on either side is a mismatch: the SDK ABI guard
-    must not pass just because a manifest or compiler probe is incomplete.
-    """
     if not left or not right or left == "unknown" or right == "unknown":
         return False
     return _version_tuple(left) == _version_tuple(right)
 
 
 class HostSdk:
-    """One exported host SDK directory and its validated manifest."""
-
     def __init__(
         self,
         root: Path,
@@ -325,11 +318,6 @@ def resolve_compiler(
     override: str | Path | None = None,
     version: str | None = None,
 ) -> tuple[str, str]:
-    """Return ``(compiler_path, version)`` in the documented order.
-
-    ``LVGL_AI_GCC`` -> ``PATH``.  ``version`` is a test seam that skips running
-    ``--version``.
-    """
     if override is not None:
         compiler = str(override)
     else:
@@ -373,7 +361,6 @@ class CompileStep:
 
 
 class PrebuiltBuild:
-    """Compile/link commands for one SDK, user app directory and build dir."""
 
     def __init__(
         self,
@@ -398,7 +385,6 @@ class PrebuiltBuild:
         self._steps: list[CompileStep] | None = None
         self._link_command: list[str] | None = None
 
-    # ---- validation ---------------------------------------------------
 
     def preflight(self) -> None:
         if not self.user_app_dir.is_dir():
@@ -414,7 +400,6 @@ class PrebuiltBuild:
             path for path in self.user_app_dir.rglob("*.c") if path.is_file()
         )
 
-    # ---- commands -----------------------------------------------------
 
     @property
     def steps(self) -> list[CompileStep]:
@@ -517,7 +502,6 @@ class PrebuiltBuild:
                 digest.update(b"\0")
         return digest.hexdigest()
 
-    # ---- cache and marker ---------------------------------------------
 
     def prune_objects(self) -> None:
         keep = {step.object_path.name for step in self.steps}
@@ -531,7 +515,6 @@ class PrebuiltBuild:
                     pass
 
     def install_runtime_dlls(self) -> None:
-        """Copy SDK runtime DLLs next to the linked engine."""
         if not self.sdk.runtime_dll_paths:
             return
         self.engine_path.parent.mkdir(parents=True, exist_ok=True)
@@ -551,7 +534,6 @@ class PrebuiltBuild:
             encoding="utf-8",
         )
 
-    # ---- evidence -----------------------------------------------------
 
     def log_header(self) -> str:
         return "\n".join(

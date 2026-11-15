@@ -1,8 +1,3 @@
-/**
- * @file xhs_page.c
- * The phone shell: decorative backdrop, status bar, root-tab host, overlay
- * host and the bottom navigation bar. Pages live in their own modules.
- */
 
 #include "app.h"
 #include "xhs_page.h"
@@ -154,7 +149,6 @@ void xhs_page_create(void)
     lv_obj_set_style_bg_grad_dir(screen, LV_GRAD_DIR_VER, 0);
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
 
-    /* Soft backdrop behind the phone. */
     lv_obj_t * blob = lv_obj_create(screen);
     lv_obj_set_pos(blob, -190, -230);
     lv_obj_set_size(blob, 520, 520);
@@ -189,7 +183,6 @@ void xhs_page_create(void)
     lv_obj_set_scrollable(ring, false);
     lv_obj_set_clickable(ring, false);
 
-    /* Phone frame. */
     lv_obj_t * phone = lv_obj_create(screen);
     lv_obj_set_pos(phone, 238, 8);
     lv_obj_set_size(phone, 324, 584);
@@ -207,7 +200,6 @@ void xhs_page_create(void)
     lv_obj_set_scrollable(phone, false);
     lv_obj_set_clickable(phone, false);
 
-    /* Side buttons. */
     lv_obj_t * button;
     button = lv_obj_create(screen);
     lv_obj_set_pos(button, 234, 154);
@@ -239,7 +231,6 @@ void xhs_page_create(void)
     lv_obj_set_scrollable(button, false);
     lv_obj_set_clickable(button, false);
 
-    /* Screen. */
     lv_obj_t * panel = lv_obj_create(phone);
     lv_obj_set_pos(panel, 10, 10);
     lv_obj_set_size(panel, XHS_SCREEN_W, XHS_SCREEN_H);
@@ -264,7 +255,6 @@ void xhs_page_create(void)
     root_pages[2] = xhs_messages_create(tab_host);
     root_pages[3] = xhs_profile_create(tab_host);
 
-    /* Dynamic island overlays the status bar. */
     lv_obj_t * notch = xhs_box(panel, 115, 7, 74, 20);
     lv_obj_set_style_radius(notch, 10, 0);
     lv_obj_set_style_bg_color(notch, lv_color_hex(0x0B0B0D), 0);
@@ -280,4 +270,4 @@ void xhs_page_create(void)
     printf("[xhs] page ready notes=%d\n", XHS_NOTE_COUNT);
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

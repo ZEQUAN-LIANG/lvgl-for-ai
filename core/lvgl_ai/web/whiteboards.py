@@ -25,7 +25,6 @@ from ..control import session_schema
 from ..control.documents import DocumentError, image_references
 from ..control.recording import Recording
 
-# Re-exported for callers that imported the layout from this module.
 WHITEBOARDS_FILE = session_schema.WHITEBOARDS_FILE
 WHITEBOARDS_DIR = session_schema.WHITEBOARDS_DIR
 WHITEBOARDS_SCHEMA = session_schema.WHITEBOARDS_SCHEMA
@@ -49,7 +48,6 @@ MAX_IMAGE_DIMENSION = 4096
 
 
 class WhiteboardError(ValueError):
-    """The whiteboard contract rejected a read, payload or write."""
 
     code = "invalid_whiteboard"
 
@@ -60,7 +58,7 @@ class WhiteboardError(ValueError):
 
 
 class WhiteboardNotFound(WhiteboardError):
-    """The whiteboard id is not in the document."""
+    pass
 
     code = "unknown_whiteboard"
 
@@ -160,7 +158,6 @@ def _decode_png(value: Any) -> bytes:
 
 
 def validate_whiteboard(payload: Any) -> tuple[dict[str, Any], bytes]:
-    """Validate one payload and return ``(item without image, png bytes)``."""
     if not isinstance(payload, dict):
         raise WhiteboardError("whiteboard must be an object")
     unknown = sorted(set(payload) - set(ITEM_FIELDS))
@@ -233,8 +230,6 @@ def read_whiteboards(recording: Recording) -> dict[str, Any]:
     return _read_document(recording)
 
 
-# One lock for the whole transaction: two concurrent saves must not append
-# from the same snapshot or interleave image files for one whiteboard.
 _WRITE_LOCK = threading.Lock()
 
 
@@ -245,7 +240,6 @@ def _image_name(item_id: str, data: bytes) -> str:
 
 
 def _prune_images(store: Any, document: dict[str, Any]) -> None:
-    """Remove whiteboard PNGs the saved document no longer references."""
     store.remove_unreferenced(
         session_schema.WHITEBOARDS_DIR,
         image_references(document, "whiteboards"),
@@ -255,12 +249,6 @@ def _prune_images(store: Any, document: dict[str, Any]) -> None:
 def save_whiteboard(
     recording: Recording, payload: Any
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Upsert one whiteboard and return ``(document, saved item)``.
-
-    The image is written before the document inside the shared transaction.
-    If the document cannot be replaced, the new image is removed; an image
-    that already existed with the same content is left alone.
-    """
     with _WRITE_LOCK:
         store = recording.whiteboards_store
         try:
@@ -308,7 +296,6 @@ def save_whiteboard(
 def delete_whiteboard(
     recording: Recording, whiteboard_id: str
 ) -> dict[str, Any]:
-    """Remove one whiteboard and return the new document."""
     if not isinstance(whiteboard_id, str) or not whiteboard_id:
         raise WhiteboardNotFound("whiteboard id is required")
     with _WRITE_LOCK:

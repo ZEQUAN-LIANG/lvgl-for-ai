@@ -1,9 +1,3 @@
-"""Scenario schema, command expansion, and the settings scenario on real LVGL.
-
-Unit tests use ``FakeRuntime`` and never spawn a process. The integration test
-plays ``user/scenarios/settings.json`` against the real engine; the demo
-button covers x=32..192, y=300..348, so its center is (112, 324).
-"""
 
 from __future__ import annotations
 
@@ -212,7 +206,6 @@ class ScenarioExpansionTest(unittest.TestCase):
             play_scenario(self.runtime, steps)
             from_list = list(self.runtime.commands)
         self.assertEqual(from_path, from_list)
-        # click_at: 3 commands; wait: 1; drag: down + 2 moves + up + snapshot.
         self.assertEqual(len(from_path), 3 + 1 + 5)
 
     def test_play_scenario_does_not_manage_the_runtime_lifecycle(self) -> None:

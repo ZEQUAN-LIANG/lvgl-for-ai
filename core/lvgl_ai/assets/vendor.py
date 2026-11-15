@@ -48,17 +48,14 @@ def _load(name: str) -> ModuleType:
 
 
 def load_freetype() -> ModuleType:
-    """Return the bundled ``freetype`` module, loading its DLL lazily."""
     return _load("freetype")
 
 
 def load_png() -> ModuleType:
-    """Return the bundled ``png`` (pypng) module."""
     return _load("png")
 
 
 def versions() -> dict[str, str]:
-    """Return diagnostic versions for the ``assets doctor`` command."""
     freetype = load_freetype()
     png = load_png()
     ft_version = ".".join(str(part) for part in freetype.version())

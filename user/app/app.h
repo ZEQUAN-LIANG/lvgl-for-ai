@@ -100,13 +100,9 @@ static inline void app_obj_set_hidden(lv_obj_t * obj, bool en)
 #endif
 }
 
-/* Internal to user/app: app.c builds the screen and delegates the panel. */
 void app_panel_create(void);
 lv_obj_t * app_panel_get(void);
 
-/* The original demo tree is kept because the tool's integration tests use its
- * named button at (32,300,160,48) as a stable hit target. On 9.6 the page is
- * hidden underneath the Xiaohongshu screen; older targets show it. */
 void demo_harness_create(bool visible);
 
-#endif /* APP_H */
+#endif

@@ -1,9 +1,3 @@
-"""Shared primitives for the app domain package.
-
-Path resolution, name validation, atomic file helpers and the domain error
-live here so registry, scaffold, trash and views share one definition.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -58,7 +52,7 @@ class AppError(Exception):
 
 
 class AppCChanged(AppError):
-    """app.c changed or disappeared after it was read for a write."""
+    pass
 
 
 def resolve_repo_root(value: str | Path | None = None) -> Path:
@@ -131,10 +125,6 @@ def _require_plain_name(name: Any, *, create: bool = False) -> str:
     return name
 
 
-# ---------------------------------------------------------------------------
-# filesystem helpers
-
-
 def _read_source(path: Path) -> tuple[bytes, str, bool, str]:
     data = path.read_bytes()
     bom = data.startswith(b"\xef\xbb\xbf")
@@ -152,7 +142,6 @@ def _encode_source(text: str, bom: bool, eol: str) -> bytes:
 
 
 def _ensure_unchanged(path: Path, expected: bytes) -> None:
-    """Abort when *path* no longer matches the bytes read at transaction start."""
     try:
         current = path.read_bytes()
     except OSError as exc:

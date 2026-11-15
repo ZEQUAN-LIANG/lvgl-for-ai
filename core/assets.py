@@ -10,6 +10,7 @@ session.  The generated headers are plain LVGL C and do not need this tool at
 build or run time.
 """
 
+
 from __future__ import annotations
 
 import argparse
@@ -22,8 +23,8 @@ TOOL_ROOT = Path(__file__).resolve().parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
-from lvgl_ai import paths  # noqa: E402
-from lvgl_ai.assets import (  # noqa: E402
+from lvgl_ai import paths
+from lvgl_ai.assets import (
     AssetError,
     FontOptions,
     ImageOptions,
@@ -32,10 +33,10 @@ from lvgl_ai.assets import (  # noqa: E402
     generate_image,
     resolve_lvgl_version,
 )
-from lvgl_ai.assets.corpus import build_charset  # noqa: E402
-from lvgl_ai.assets.emit import sanitize_identifier  # noqa: E402
-from lvgl_ai.assets.version import version_available  # noqa: E402
-from lvgl_ai.assets.vendor import versions as vendor_versions  # noqa: E402
+from lvgl_ai.assets.corpus import build_charset
+from lvgl_ai.assets.emit import sanitize_identifier
+from lvgl_ai.assets.version import version_available
+from lvgl_ai.assets.vendor import versions as vendor_versions
 
 _APP_RE = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 

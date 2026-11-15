@@ -1,8 +1,3 @@
-"""Scaffold and minimal runtime lifecycle.
-
-Integration tests use the real engine and a temporary session root. The only
-unit-level test avoids the engine by pointing Runtime at a missing binary.
-"""
 
 from __future__ import annotations
 
@@ -165,20 +160,20 @@ class RuntimeIntegrationTest(unittest.TestCase):
         self.assertFalse(rt.is_running)
         self.assertTrue(rt._store.record)
         self.assertEqual(rt.mode, "headless")
-        rt.stop()  # stop before start is a no-op
+        rt.stop()
 
         with rt as active:
             self.assertIs(active, rt)
             self.assertTrue(rt.is_running)
             session_id = rt.session_id
-            rt.start()  # second start must not spawn a second session
+            rt.start()
             self.assertEqual(rt.session_id, session_id)
             self.assertTrue(rt.is_running)
 
         self.assertFalse(rt.is_running)
-        rt.stop()  # second stop is a no-op
+        rt.stop()
         with self.assertRaises(RuntimeError):
-            rt.start()  # one Runtime instance owns exactly one session
+            rt.start()
 
     def test_sessions_root_env_override(self) -> None:
         env_root = Path(self._tmp.name) / "env-sessions"
@@ -213,7 +208,6 @@ class RuntimeIntegrationTest(unittest.TestCase):
 
 
 class RuntimeSessionOptionTest(unittest.TestCase):
-    """Session options are stored once, by SessionStore; Runtime is constructor-only."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -265,7 +259,6 @@ class RuntimeSessionOptionTest(unittest.TestCase):
 
 
 class RuntimeSessionSurfaceTest(unittest.TestCase):
-    """Session options live in SessionStore; Runtime keeps the RuntimeLike surface."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -331,7 +324,6 @@ class RuntimeSessionSurfaceTest(unittest.TestCase):
 
 
 class RuntimeProcessSeamTest(unittest.TestCase):
-    """Unit tests with a fake engine process; no LVGL build is involved."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()

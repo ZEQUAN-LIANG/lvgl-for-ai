@@ -1,8 +1,3 @@
-/**
- * @file xhs_market.c
- * The 市集 tab: banner, category chips, a two-column product grid and the
- * product detail overlay with an add-to-cart action.
- */
 
 #include "xhs_ui.h"
 
@@ -180,7 +175,6 @@ static void xhs_product_build(lv_obj_t * page, int index)
     lv_obj_set_style_bg_opa(top_line, LV_OPA_COVER, 0);
 
     lv_obj_t * content = xhs_scroll(page, 0, 44, XHS_SCREEN_W, 440);
-    /* Products reuse the note covers; cover_index is already a note index. */
     int cover_h = xhs_cover_height(product->cover_index);
     xhs_cover_scaled(content, product->cover_index, 200, 152, 10);
     int cover_bottom = 10 + cover_h * 2;
@@ -300,4 +294,4 @@ lv_obj_t * xhs_market_create(lv_obj_t * parent)
     return market_page;
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Upload release assets to GitHub and Gitee Releases.
 
 Tokens come only from the environment:
@@ -19,6 +18,7 @@ Usage::
     python -I core/tools/upload_release.py --dry-run
 """
 
+
 from __future__ import annotations
 
 import argparse
@@ -37,8 +37,8 @@ _TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(_TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(_TOOL_ROOT))
 
-from lvgl_ai import paths  # noqa: E402
-from tools import release_bundle  # noqa: E402
+from lvgl_ai import paths
+from tools import release_bundle
 
 DEFAULT_GITHUB_REPO = "ZEQUAN-LIANG/lvgl-for-ai"
 DEFAULT_GITEE_REPO = "liang-zequan/lvgl-for-ai"
@@ -49,7 +49,7 @@ USER_AGENT = "lvgl-verify-loop-release"
 
 
 class UploadError(Exception):
-    """A user-facing upload failure."""
+    pass
 
 
 SUMMARY_SCHEMA = release_bundle.BUNDLE_SCHEMA
@@ -59,7 +59,6 @@ BUNDLE_KEYS = ("full", "full_sifli")
 def _manifest_assets(
     assets_dir: Path, manifest_path: Path, version: str
 ) -> list[Path]:
-    """Select the assets declared by the double-bundle summary."""
     try:
         payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -94,14 +93,11 @@ def _manifest_assets(
 
 
 def release_assets(assets_dir: Path, version: str) -> list[Path]:
-    """Return the two zips, their checksums and the summary in stable order."""
     if not re.fullmatch(r"[0-9A-Za-z._-]+", version):
         raise UploadError(f"invalid release version: {version!r}")
     manifest_path = assets_dir / "release.json"
     if manifest_path.is_file():
         return _manifest_assets(assets_dir, manifest_path, version)
-    # Older release directories have no summary manifest; keep the glob
-    # fallback for them.
     zips = [
         path
         for path in assets_dir.glob(f"lvgl-verify-loop-{version}-*.zip")
@@ -120,7 +116,6 @@ def release_assets(assets_dir: Path, version: str) -> list[Path]:
 
 
 def resolve_token(env_name: str, provider: str) -> str:
-    """Return a token from the environment, or fail with instructions."""
     token = os.environ.get(env_name, "").strip()
     if token:
         return token
@@ -132,7 +127,6 @@ def resolve_token(env_name: str, provider: str) -> str:
 
 
 def load_notes(assets_dir: Path, notes_file: Path | None) -> str | None:
-    """Read release notes, or return None to keep the current release body."""
     path = notes_file or (assets_dir / "RELEASE_NOTES.md")
     if not path.is_file():
         if notes_file is not None:
@@ -142,7 +136,6 @@ def load_notes(assets_dir: Path, notes_file: Path | None) -> str | None:
 
 
 def log(message: str) -> None:
-    """Write progress to stderr so ``--json`` keeps stdout machine-readable."""
     print(message, file=sys.stderr)
 
 
@@ -151,7 +144,6 @@ def redact(text: str, token: str) -> str:
 
 
 class UrllibTransport:
-    """Production transport: one urllib request, JSON on success."""
 
     def request(
         self,
@@ -200,7 +192,6 @@ def request(
     content_type: str | None = None,
     allow_404: bool = False,
 ) -> tuple[int, Any]:
-    """Perform one API request through the default urllib transport."""
     return DEFAULT_TRANSPORT.request(
         method,
         url,
@@ -213,7 +204,6 @@ def request(
 
 
 def multipart(filename: str, data: bytes, token: str) -> tuple[bytes, str]:
-    """Build the Gitee attach_files multipart body."""
     boundary = "----lvgl-verify-loop-" + uuid.uuid4().hex
     safe_name = filename.replace('"', "")
     chunks = [
@@ -277,7 +267,6 @@ def upload_github(
     uploads_base: str = GITHUB_UPLOADS,
     transport: Any = None,
 ) -> str:
-    """Create or update the GitHub release, then upload the assets."""
     client = transport or DEFAULT_TRANSPORT
     base = f"{api_base}/repos/{repo}"
     url = f"https://github.com/{repo}/releases/tag/{tag}"
@@ -367,7 +356,6 @@ def upload_gitee(
     api_base: str = GITEE_API,
     transport: Any = None,
 ) -> str:
-    """Create or update the Gitee release, then upload the assets."""
     client = transport or DEFAULT_TRANSPORT
     page = f"https://gitee.com/{repo}/releases/tag/{tag}"
     if dry_run:
@@ -418,7 +406,6 @@ def upload_gitee(
         if not release.get("id"):
             raise UploadError("Gitee did not return a release with an id")
         # Gitee requires ``body`` on PATCH. When no notes file was given,
-        # resend the online body so the release text is preserved.
         body = notes if notes is not None else release.get("body")
         patch = {
             "tag_name": tag,

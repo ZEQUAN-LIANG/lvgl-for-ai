@@ -25,10 +25,6 @@ from .wire import page_config
 _TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 _TEMPLATE_PATH = _TEMPLATE_DIR / "page.html"
 
-# The app manager dialog owns one style block, one markup block and three
-# script regions inside the page IIFE.  Each partial is substituted at its
-# original position, so the inline script keeps the same scope and boot order;
-# the rendered page keeps the same DOM, style and script as before the split.
 _APP_MANAGER_PARTIALS = {
     "{{APP_MANAGER_STYLE}}": "app_manager.css",
     "{{APP_MANAGER_HTML}}": "app_manager.html",
@@ -39,14 +35,10 @@ _APP_MANAGER_PARTIALS = {
 
 
 def _partial(name: str) -> str:
-    # ``read_text`` normalizes line endings; the placeholder line in page.html
-    # owns the surrounding newlines, so strip the partial's file-ending one.
     return (_TEMPLATE_DIR / name).read_text(encoding="utf-8").rstrip("\n")
 
 
 def _template() -> str:
-    # Read per render: editing page.html or an app manager partial should not
-    # require restarting web.py.
     markup = _TEMPLATE_PATH.read_text(encoding="utf-8")
     for placeholder, name in _APP_MANAGER_PARTIALS.items():
         markup = markup.replace(placeholder, _partial(name))
@@ -123,11 +115,6 @@ def _render_options(
 def _render_app_picker(
     apps: list[dict[str, Any]], selected_app: str | None
 ) -> str:
-    """Live app selector populated from scenarios that declare ``app``.
-
-    The first scenario app is the default; there is no empty "default"
-    option, because selecting an app is how the live preview starts.
-    """
     if not apps:
         return ""
     known = {entry["app"] for entry in apps}
@@ -412,7 +399,6 @@ def _render_notes(
     views: list[dict[str, Any]],
     error: Exception | None,
 ) -> str:
-    """The only note renderer: field/label/region/URL rules live in the model."""
     parts = []
     if error:
         parts.append(

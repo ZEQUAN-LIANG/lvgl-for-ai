@@ -1,4 +1,3 @@
-"""Tests for the built-in font/image -> LVGL C array converter."""
 
 from __future__ import annotations
 
@@ -18,9 +17,9 @@ TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
-import assets as assets_cli  # noqa: E402
-from lvgl_ai import paths  # noqa: E402
-from lvgl_ai.assets import (  # noqa: E402
+import assets as assets_cli
+from lvgl_ai import paths
+from lvgl_ai.assets import (
     AssetError,
     FontOptions,
     ImageOptions,
@@ -30,17 +29,17 @@ from lvgl_ai.assets import (  # noqa: E402
     rasterize_font,
     resolve_lvgl_version,
 )
-from lvgl_ai.assets.corpus import build_charset, parse_ranges, scan_c_strings  # noqa: E402
-from lvgl_ai.assets.emit import (  # noqa: E402
+from lvgl_ai.assets.corpus import build_charset, parse_ranges, scan_c_strings
+from lvgl_ai.assets.emit import (
     MANIFEST_SCHEMA,
     merge_manifest_entry,
     sanitize_identifier,
     write_if_changed,
 )
-from lvgl_ai.assets.font import render_font_header  # noqa: E402
-from lvgl_ai.assets.image import render_image_header  # noqa: E402
-from lvgl_ai.assets.vendor import load_png, versions  # noqa: E402
-from lvgl_ai.assets.version import parse_version, version_available  # noqa: E402
+from lvgl_ai.assets.font import render_font_header
+from lvgl_ai.assets.image import render_image_header
+from lvgl_ai.assets.vendor import load_png, versions
+from lvgl_ai.assets.version import parse_version, version_available
 
 REPO_ROOT = paths.REPO_ROOT
 ASSETS_PY = REPO_ROOT / "core" / "assets.py"

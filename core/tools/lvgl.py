@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Unified entry for the distributable skill package.
 
 ``bin/lvgl.cmd`` calls this file from any working directory.  It only maps a
@@ -19,7 +18,7 @@ TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
-from lvgl_ai import paths  # noqa: E402
+from lvgl_ai import paths
 
 COMMANDS = {
     "run": ("cli", "build and play a scenario, then print the session summary"),
@@ -49,12 +48,6 @@ def _usage() -> str:
 
 
 def _packaged_bundle() -> bool:
-    """Return true when this is the release package layout.
-
-    The release zip keeps ``SKILL.md`` at the package root and metadata under
-    ``meta/``.  The development checkout keeps ``core/SKILL.md`` instead, but
-    also keeps its metadata under ``meta/``.
-    """
     return (
         (paths.REPO_ROOT / "SKILL.md").is_file()
         and paths.metadata_file("VERSION.json").is_file()
@@ -78,9 +71,6 @@ def main(argv: list[str] | None = None) -> int:
     if command == "run" and _packaged_bundle():
         build_flags = {"--build", "--no-build", "--prebuilt", "--source"}
         if not any(arg in build_flags for arg in args):
-            # The release package ships a prebuilt engine but no compiler.
-            # A bare ``run`` means "play the existing engine"; an explicit
-            # build flag still rebuilds.
             args.append("--no-build")
     module_name = entry[0]
     module = __import__(module_name)

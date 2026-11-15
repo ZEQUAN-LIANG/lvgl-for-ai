@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Build the two default release bundles.
 
 The default release contains exactly two zips:
@@ -11,6 +10,7 @@ release directory.  Tokens are never part of this build.  Files that are
 identical in every host SDK (the FreeType DLL, its import library and the
 shared zlib/libpng/FreeType headers) are stored once under ``sdk/common``.
 """
+
 
 from __future__ import annotations
 
@@ -26,23 +26,22 @@ _BOOTSTRAP_TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(_BOOTSTRAP_TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(_BOOTSTRAP_TOOL_ROOT))
 
-from lvgl_ai import paths, versions  # noqa: E402
-from lvgl_ai.control.errors import BuildError  # noqa: E402
+from lvgl_ai import paths, versions
+from lvgl_ai.control.errors import BuildError
 
 _TOOLS_DIR = Path(__file__).resolve().parent
 if str(_TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_DIR))
 
-import export_sdk  # noqa: E402
-import release as release_tool  # noqa: E402
-import release_bundle  # noqa: E402
+import export_sdk
+import release as release_tool
+import release_bundle
 
 FULL_ASSET = "lvgl-verify-loop-{version}-full-win64.zip"
 FULL_SIFLI_ASSET = "lvgl-verify-loop-{version}-full-sifli-win64.zip"
 
 
 def version_plan(repo_root: Path) -> dict[str, Any]:
-    """Render the version index for the two bundle builds."""
     return {
         "supported": versions.supported(repo_root),
         "default": versions.default(repo_root),
@@ -56,7 +55,6 @@ LAUNCHER_SUFFIXES = frozenset({".c", ".rc", ".ico", ".py"})
 
 
 def _ensure_launchers(repo: Path, *, force: bool = False) -> dict[str, Any]:
-    """Build the Windows launcher once per launcher-source digest."""
     exe = repo / release_tool.RELEASE_VIEWER_PATH
     cache_meta = (
         repo / release_tool.RELEASE_ENGINE_CACHE_DIR / "launcher.json"
@@ -137,7 +135,6 @@ def _stage_legacy_app(repo: Path, target: Path) -> None:
 
 
 def _release_build_dir(repo: Path, version: str) -> Path:
-    """Release engines live apart from the daily ``build/lvgl_<token>/`` tree."""
     return (
         repo
         / release_tool.RELEASE_ENGINE_CACHE_DIR
@@ -223,8 +220,6 @@ def _stage_full_package(
     engines: dict[str, dict[str, Any]] = {}
     for version in supported:
         _ensure_sdk(repo, version)
-    # Non-default intro engines use the intro-only app; legacy engines keep
-    # the demo harness.
     for version in supported:
         if version == base_version:
             continue
@@ -269,7 +264,6 @@ def _stage_full_package(
             smoke_root = Path(raw)
             for version in supported:
                 if version in legacy_versions:
-                    # Keep the legacy smoke fixture out of the shipped package.
                     scenario = smoke_root / f"legacy_{version}.json"
                     shutil.copy2(
                         repo / "user" / "scenarios" / "settings.json",
@@ -422,7 +416,6 @@ def _sifli_cmd() -> str:
 
 
 def _clean_output(out: Path) -> None:
-    """Keep only the two bundles this script produces."""
     if not out.is_dir():
         return
     for path in out.iterdir():

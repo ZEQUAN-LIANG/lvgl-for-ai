@@ -1,10 +1,3 @@
-"""BuildPlan seam: preflight, cache check, configure/build, engine resolution.
-
-These tests drive the plan with a scripted runner, so no CMake, Ninja or
-compiler is required. They pin the behavior ``Runtime`` relies on: the
-actionable preflight error, the CMake-cache trigger, typed build/link failures
-with phase logs, and build output -> missing engine resolution.
-"""
 
 from __future__ import annotations
 
@@ -32,13 +25,12 @@ def build_result(
 
 
 class ScriptedRunner:
-    """Return scripted results; records every command the plan runs."""
 
     def __init__(self, *results: BuildResult | BaseException) -> None:
         self.results = list(results)
         self.calls: list[dict] = []
 
-    def __call__(self, command, *, timeout, env=None):  # noqa: ANN001
+    def __call__(self, command, *, timeout, env=None):
         self.calls.append(
             {"command": list(command), "timeout": timeout, "env": env}
         )
@@ -86,8 +78,6 @@ class BuildPlanCase(unittest.TestCase):
             "user_app_dir": self.user_app_dir,
             "zlib_src": self.zlib_src,
             "libpng_src": self.libpng_src,
-            # Keep these tests independent of a real sdk/<version> in the
-            # checkout; prebuilt selection is covered in test_prebuilt.py.
             "sdk_dir": self.root / "sdk" / "9.6",
             "ccache": False,
             "missing_tools": lambda: [],
@@ -184,7 +174,6 @@ class PreflightTest(BuildPlanCase):
             build=["gcc", "app.c"],
             missing_tools=missing_tools,
         )
-        # An embedding/test toolchain needs no CMake.
         self.assertIsNone(plan.preflight())
         self.assertEqual(checked, [], "the default tool check must not run")
 

@@ -92,4 +92,4 @@ void frame_diff_close(frame_diff_t * diff);
 }
 #endif
 
-#endif /* FRAME_DIFF_H */
+#endif

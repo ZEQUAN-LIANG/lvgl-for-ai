@@ -1,12 +1,3 @@
-/**
- * @file textarea_evidence.c
- * Minimal real textarea for the ticket 07 evidence scenario.
- *
- * The textarea is in a focus group attached to the standard keypad/encoder
- * indevs, so the scenario ``text`` step (key press/release ``CHAR_<code>``)
- * reaches the control. Every value change prints the full text, which lands in
- * ``engine.log`` and proves the characters entered the control.
- */
 
 #include "app.h"
 #include "textarea_evidence.h"

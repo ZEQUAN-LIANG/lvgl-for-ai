@@ -7,4 +7,4 @@
 void intro_create(void);
 #endif
 
-#endif /* INTRO_H */
+#endif

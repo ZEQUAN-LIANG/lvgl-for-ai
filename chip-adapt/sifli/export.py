@@ -6,6 +6,7 @@ copied as-is; an app must already use APIs available in LVGL 9.4. Apps that use
 9.5/9.6-only APIs are rejected with a diagnostic instead of being rewritten.
 """
 
+
 from __future__ import annotations
 
 import argparse
@@ -22,16 +23,14 @@ for _path in (CORE_ROOT, ADAPTER_DIR):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-import layout  # noqa: E402
-from lvgl_ai.apps import common, registry  # noqa: E402
-from asset_plan import AssetPlan, ExportError, plan_assets  # noqa: E402
+import layout
+from lvgl_ai.apps import common, registry
+from asset_plan import AssetPlan, ExportError, plan_assets
 
 ADAPTER_SCHEMA = "lvgl-ai-chip-adapter-v1"
 EXPORT_SCHEMA = "lvgl-ai-export-v1"
 SDK_INCLUDE = '#include "lvgl_ai_sdk.h"\n'
 TEXT_SUFFIXES = {".c", ".h"}
-# Browser prototypes and source art are true sources for `core/assets.py`, not
-# firmware inputs; copying them would only bloat the exported project.
 EXCLUDED_SOURCE_DIRS = {"design", "covers_src"}
 INCOMPATIBLE_APIS = {
     "lv_obj_set_clickable": (
@@ -187,9 +186,6 @@ def _registered_symbol(root: Path, app: str) -> str:
     for name, symbol in registry.parse_app_entries(text):
         if name == app:
             return symbol
-    # The release core registers only ``intro`` in app.c.  A standalone app
-    # drop-in (for example the sift_watch demo shipped with sifli-tools) is
-    # still exportable when its header declares the conventional symbol.
     header = root / "user" / "app" / app / f"{app}.h"
     try:
         header_text = header.read_text(encoding="utf-8-sig")

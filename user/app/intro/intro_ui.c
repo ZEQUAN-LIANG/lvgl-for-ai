@@ -72,9 +72,6 @@ static const intro_tab_spec_t intro_tab_specs[6] = {
     {"06", "START",    462, 75, 478, 11, 494, 26},
 };
 
-/* --------------------------------------------------------------------------
-   Fonts
-   -------------------------------------------------------------------------- */
 
 static lv_font_t * intro_make_font(const char * path, uint32_t size,
                                  int32_t weight, bool bold_face)
@@ -168,9 +165,6 @@ lv_font_t * intro_font(intro_font_id_t id)
     return intro_fonts[id];
 }
 
-/* --------------------------------------------------------------------------
-   Small helpers
-   -------------------------------------------------------------------------- */
 
 static lv_obj_t * intro_new_obj(lv_obj_t * parent, int32_t x, int32_t y,
                               int32_t w, int32_t h)
@@ -269,9 +263,6 @@ static lv_obj_t * intro_simple_text(lv_obj_t * parent, const char * text,
                          target_w, 0, 0);
 }
 
-/* --------------------------------------------------------------------------
-   Text builder
-   -------------------------------------------------------------------------- */
 
 static int32_t intro_font_dy(uint8_t font)
 {
@@ -294,7 +285,6 @@ lv_obj_t * intro_text_line(lv_obj_t * parent, int32_t x, int32_t y,
     lv_font_t * font = intro_font((intro_font_id_t)segs[0].font);
 
     if((flags & 1) != 0) {
-        /* ellipsis: fixed width, natural size */
         lv_obj_t * label = lv_label_create(parent);
         app_obj_set_scrollable(label, false);
         lv_label_set_text(label, segs[0].text);
@@ -309,7 +299,6 @@ lv_obj_t * intro_text_line(lv_obj_t * parent, int32_t x, int32_t y,
     }
 
     if((flags & 2) != 0 && clip_w > 0) {
-        /* horizontally clipped by an ancestor */
         lv_obj_t * label = lv_label_create(parent);
         app_obj_set_scrollable(label, false);
         lv_label_set_text(label, segs[0].text);
@@ -427,9 +416,6 @@ lv_obj_t * intro_text_line(lv_obj_t * parent, int32_t x, int32_t y,
     return first;
 }
 
-/* --------------------------------------------------------------------------
-   Generated backgrounds / images
-   -------------------------------------------------------------------------- */
 
 static void intro_bg_build(lv_obj_t * parent, const intro_bg_t * b)
 {
@@ -483,9 +469,6 @@ static void intro_build_screen_content(lv_obj_t * content, const intro_screen_t 
     }
 }
 
-/* --------------------------------------------------------------------------
-   Loop screen (dynamic)
-   -------------------------------------------------------------------------- */
 
 typedef struct {
     const char * n;
@@ -778,7 +761,6 @@ static void intro_loop_build(lv_obj_t * content)
 {
     uint8_t i;
 
-    /* Stepper panel. */
     lv_obj_t * panel = intro_grad_box(content, 28, 129, 250, 453,
                                     0x0d1822, 0x0a121a, COL_LINE, 255, 1, 12);
     intro_loop_panel_shadow(panel);
@@ -825,7 +807,6 @@ static void intro_loop_build(lv_obj_t * content)
         intro_loop_leds[i] = led;
     }
 
-    /* Gauge. */
     intro_loop_gauge = lv_arc_create(content);
     lv_obj_remove_style_all(intro_loop_gauge);
     app_obj_set_scrollable(intro_loop_gauge, false);
@@ -881,7 +862,6 @@ static void intro_loop_build(lv_obj_t * content)
     lv_obj_set_pos(intro_loop_gauge_pct, 309, 280);
     lv_obj_set_size(intro_loop_gauge_pct, 152, LV_SIZE_CONTENT);
 
-    /* Console copy. */
     lv_obj_t * tags = intro_new_obj(content, 479, 207, 276, 18);
     lv_obj_set_flex_flow(tags, LV_FLEX_FLOW_ROW);
     lv_obj_set_style_pad_all(tags, 0, 0);
@@ -910,7 +890,6 @@ static void intro_loop_build(lv_obj_t * content)
                                        COL_LINE, 255, 0, 0, 0, 2, 255);
     }
 
-    /* Code block. */
     intro_box(content, 325, 358, 414, 148, 0x050a0f, 255,
             COL_LINE, 255, 1, 7, 255);
     for(i = 0; i < 8; i++) {
@@ -925,7 +904,6 @@ static void intro_loop_build(lv_obj_t * content)
         app_obj_set_hidden(intro_loop_code[i], true);
     }
 
-    /* Console footer + play button. */
     intro_simple_text(content, "Click a step \xc2\xb7 illustrative flow",
                     INTRO_F_MONO_7, COL_DIM, 255, 309, 523, 115, 0);
     intro_loop_play = intro_box(content, 680, 515, 75, 27, COL_CYAN, 13,
@@ -947,9 +925,6 @@ static void intro_loop_build(lv_obj_t * content)
     intro_loop_update_play_button();
 }
 
-/* --------------------------------------------------------------------------
-   Versions screen (dynamic)
-   -------------------------------------------------------------------------- */
 
 typedef struct {
     const char * tag;
@@ -1110,9 +1085,6 @@ static void intro_versions_build(lv_obj_t * content)
     intro_versions_render(0, false);
 }
 
-/* --------------------------------------------------------------------------
-   Animated media
-   -------------------------------------------------------------------------- */
 
 static const void * intro_frame_ptrs[5];
 static const void * intro_watch_frame_ptrs[8];
@@ -1147,9 +1119,6 @@ static void intro_watch_build(lv_obj_t * content)
     lv_animimg_start(anim);
 }
 
-/* --------------------------------------------------------------------------
-   Actions and screen switching
-   -------------------------------------------------------------------------- */
 
 static void intro_anim_opa_cb(void * var, int32_t value)
 {
@@ -1280,16 +1249,12 @@ static void intro_tab_key_cb(lv_event_t * event)
     }
 }
 
-/* --------------------------------------------------------------------------
-   Shell
-   -------------------------------------------------------------------------- */
 
 static void intro_shell_app_bar(lv_obj_t * screen)
 {
     intro_box(screen, 0, 0, INTRO_W, INTRO_APPBAR, 0x070d13, 255, 0, 0, 0, 0, 255);
     intro_box(screen, 0, INTRO_APPBAR - 1, INTRO_W, 1, COL_LINE, 255, 0, 0, 0, 0, 255);
 
-    /* brand mark (approximates the inline SVG) */
     intro_grad_box(screen, 24, 18, 23, 23, 0x0d2330, 0x08121a,
                  0x24475d, 255, 1, 5);
     intro_box(screen, 26, 20, 19, 19, 0x000000, 0, COL_CYAN, 255, 1, 4, 255);
@@ -1309,7 +1274,6 @@ static void intro_shell_app_bar(lv_obj_t * screen)
     intro_action_attach(intro_new_obj(screen, 24, 18, 162, 23),
                       INTRO_ACT_SCREEN_OVERVIEW);
 
-    /* chips */
     intro_box(screen, 556, 20, 60, 19, 0x0a141e, 179,
             0x34d399, 87, 1, 4, 255);
     intro_led(screen, 563, 27, 5, COL_GREEN, 6);
@@ -1394,9 +1358,6 @@ static void intro_shell_statusbar(lv_obj_t * screen)
                     736, y + 9, 50, 1);
 }
 
-/* --------------------------------------------------------------------------
-   Entry
-   -------------------------------------------------------------------------- */
 
 static void intro_stop_loop_playback(void)
 {
@@ -1450,7 +1411,6 @@ void intro_ui_create(void)
     intro_versions_build(intro_contents[4]);
     intro_watch_build(intro_contents[4]);
 
-    /* Attach the keypad/encoder to our tab group. */
     lv_indev_t * indev = lv_indev_get_next(NULL);
     while(indev) {
         lv_indev_type_t type = lv_indev_get_type(indev);
@@ -1467,4 +1427,4 @@ void intro_ui_create(void)
     printf("[intro] ui created, %u fonts\n", (unsigned)INTRO_F_COUNT);
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4 */
+#endif

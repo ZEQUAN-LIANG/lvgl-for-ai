@@ -25,8 +25,8 @@ HOST_DIR = Path(__file__).resolve().parent
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
-from config import ensure_runtime_dirs, load_config, public_base_url  # noqa: E402
-from jobs import TERMINAL_STATUSES  # noqa: E402
+from config import ensure_runtime_dirs, load_config, public_base_url
+from jobs import TERMINAL_STATUSES
 
 _CREATE_NO_WINDOW = (
     getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
@@ -258,9 +258,6 @@ def _job_exit(
 ) -> int:
     job = _job_wait(client, job_id, as_json=as_json)
     return 0 if job["status"] == "ok" else 1
-
-
-# -- commands ----------------------------------------------------------
 
 
 def cmd_serve(args: argparse.Namespace, config: dict[str, Any]) -> int:
@@ -568,9 +565,6 @@ def cmd_events(args: argparse.Namespace, config: dict[str, Any]) -> int:
             time.sleep(0.35)
     except KeyboardInterrupt:
         return 0
-
-
-# -- parser ------------------------------------------------------------
 
 
 @dataclass(frozen=True)

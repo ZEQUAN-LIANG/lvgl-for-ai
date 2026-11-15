@@ -20,9 +20,9 @@ TOOL_ROOT = Path(__file__).resolve().parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
-from lvgl_ai import paths, summarize_session  # noqa: E402
-from lvgl_ai.control.recording import snapshot_label  # noqa: E402
-from lvgl_ai.png_codec import (  # noqa: E402
+from lvgl_ai import paths, summarize_session
+from lvgl_ai.control.recording import snapshot_label
+from lvgl_ai.png_codec import (
     DEFAULT_CONTACT_COLUMNS,
     DEFAULT_CONTACT_TILE_HEIGHT,
     DEFAULT_CONTACT_TILE_WIDTH,
@@ -463,7 +463,6 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def latest_session(root: str | Path | None = None) -> Path:
-    """Newest session directory with a manifest under ``root``."""
     root_path = paths.sessions_root_from_env() if root is None else Path(root)
     if not root_path.is_dir():
         raise FileNotFoundError(f"sessions root not found: {root_path}")
@@ -478,7 +477,6 @@ def latest_session(root: str | Path | None = None) -> Path:
 
 
 def format_summary(summary: dict) -> str:
-    """Render the evidence summary for a human; paths stay absolute."""
     display = summary["display"]
     lines = [
         f"session: {summary['session_id']}",

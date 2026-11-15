@@ -5,4 +5,4 @@
 
 void asset_probe_create(void);
 
-#endif /* ASSET_PROBE_H */
+#endif

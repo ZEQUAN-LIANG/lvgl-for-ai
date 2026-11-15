@@ -1,4 +1,3 @@
-"""PNG -> LVGL image C array conversion."""
 
 from __future__ import annotations
 
@@ -61,7 +60,8 @@ class ImageData:
 def _parse_background(value: str | int | tuple[int, int, int]) -> tuple[int, int, int]:
     if isinstance(value, tuple):
         require(len(value) == 3, "background must have three channels")
-        return tuple(int(channel) & 0xFF for channel in value)  # type: ignore[return-value]
+        red, green, blue = (int(channel) & 0xFF for channel in value)
+        return red, green, blue
     if isinstance(value, int):
         color = value
     else:

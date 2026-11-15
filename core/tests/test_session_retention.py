@@ -1,8 +1,3 @@
-"""Session retention: newest N kept, build_error always dropped.
-
-Pure unit tests: sessions are fake directories with a minimal manifest, so no
-engine is started and the real ``sessions/`` is never touched.
-"""
 
 from __future__ import annotations
 

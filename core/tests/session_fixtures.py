@@ -1,9 +1,3 @@
-"""Finished-session fixtures shared by the evidence tests.
-
-The builders write ``sessions/<id>/`` directly; no engine and no web server is
-started. ``make_summary_session`` is the shape the report/CLI tests read;
-``make_recording_session`` is the smaller shape ``Recording`` tests need.
-"""
 
 from __future__ import annotations
 
@@ -49,7 +43,6 @@ def make_session(
     error: dict | None = None,
     timeline: str = "summary",
 ) -> Path:
-    """Write one finished session and return its directory."""
     session = root / name
     (session / "frames").mkdir(parents=True)
     if with_frames:
@@ -170,7 +163,6 @@ def make_session(
 
 
 def make_summary_session(root: Path, **overrides) -> Path:
-    """Session shaped like the report/CLI tests: timeline, frames, snapshot."""
     options = dict(
         timeline="summary",
         with_snapshot=True,
@@ -183,7 +175,6 @@ def make_summary_session(root: Path, **overrides) -> Path:
 
 
 def make_recording_session(root: Path, **overrides) -> Path:
-    """Minimal session shaped like the ``Recording`` tests."""
     options = dict(
         timeline="minimal",
         with_snapshot=False,

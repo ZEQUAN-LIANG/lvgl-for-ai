@@ -1,9 +1,3 @@
-"""The shared JSON-document + image transaction used by annotations and boards.
-
-The store owns one document file and every image side effect around it: read
-and validate, atomically replace, roll back images written by a failed
-transaction, and remove images the document no longer references.
-"""
 
 from __future__ import annotations
 

@@ -1,18 +1,3 @@
-"""wait_stable: the engine ``wait`` changed flag, Runtime polling, and the
-scenario step.
-
-The unit tests use ``fake_engine.py`` and never compile LVGL. The engine mode
-is selected with ``FAKE_WAIT_CHANGED``:
-
-- ``never``: every wait reports no painted refresh (immediately stable);
-- ``always``: every wait reports a painted refresh (never stable);
-- ``flaky``: painted and unpainted refreshes alternate, so a two-frame streak
-  never completes before the ``max_ms`` cap;
-- unset: the reply omits ``changed``, like an engine older than this Runtime.
-
-The integration test at the end uses the real engine to prove the adapter flush
-flag reaches the wait reply with and without changed-only recording.
-"""
 
 from __future__ import annotations
 
@@ -95,12 +80,9 @@ class WaitStableRuntimeTest(unittest.TestCase):
         message = str(caught.exception)
         self.assertIn("changed", message)
         self.assertIn("--build", message)
-        # The first missing flag stops polling instead of waiting forever.
         self.assertEqual(rt.t_ms, 16)
 
     def test_wait_stable_uses_changed_not_retained_frames(self) -> None:
-        # changed-only may retain no new frame while the engine still reports
-        # painted refreshes: the retained frame count must not look stable.
         changing = self._runtime(
             "always",
             record_changed_only=True,
@@ -113,8 +95,6 @@ class WaitStableRuntimeTest(unittest.TestCase):
         self.assertEqual(result["stable_frames"], 0)
         self.assertEqual(changing.frame_count, 1)
 
-        # The inverse also holds: growing retained frames with unchanged
-        # replies are stable because the flag, not the frame count, decides.
         static = self._runtime(
             "never",
             record_changed_only=False,

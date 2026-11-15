@@ -12,6 +12,7 @@ engine builds and smoke checks stay in the entry points (or in ``release.py``)
 until the shared orchestration layer is in place.
 """
 
+
 from __future__ import annotations
 
 import json
@@ -32,7 +33,6 @@ BUNDLE_SCHEMA = "lvgl-verify-loop-release-v2"
 
 
 def git_commit(repo_root: Path) -> str:
-    """Return the current commit, or ``"unknown"`` outside a git checkout."""
     try:
         result = subprocess.run(
             ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
@@ -47,7 +47,6 @@ def git_commit(repo_root: Path) -> str:
 
 
 def build_zip(package: Path, zip_path: Path) -> str:
-    """Write a deterministic zip; return its sha256."""
     zip_path.parent.mkdir(parents=True, exist_ok=True)
     files = sorted(
         (path for path in package.rglob("*") if path.is_file()),
@@ -67,7 +66,6 @@ def build_zip(package: Path, zip_path: Path) -> str:
 
 
 def file_hashes(package: Path) -> dict[str, str]:
-    """Hash every packaged file relative to the package root."""
     paths = sorted(
         (path for path in package.rglob("*") if path.is_file()),
         key=lambda path: path.relative_to(package).as_posix(),
@@ -87,7 +85,6 @@ def package_stats(package: Path) -> dict[str, int]:
 
 
 def write_checksum(zip_path: Path, digest: str | None = None) -> Path:
-    """Write ``<zip>.sha256`` and return its path."""
     digest = digest or sha256_file(zip_path)
     path = zip_path.with_name(zip_path.name + ".sha256")
     path.write_text(f"{digest}  {zip_path.name}\n", encoding="utf-8")
@@ -115,7 +112,6 @@ def build_manifest(
     digest: str | None = None,
     sdk_manifest: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build the ``lvgl-ai-release-v1`` payload for one package zip."""
     if sdk_manifest is None:
         manifest_path = package / "sdk" / lvgl_version / "manifest.json"
         sdk_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -162,7 +158,6 @@ def write_manifest(
     digest: str | None = None,
     sdk_manifest: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], Path]:
-    """Write ``<zip stem>.release.json`` and return ``(payload, path)``."""
     payload = build_manifest(
         package,
         zip_path,
@@ -180,7 +175,6 @@ def write_manifest(
 
 
 def write_summary(out_dir: Path, payload: dict[str, Any]) -> Path:
-    """Write the double-bundle ``release.json`` summary."""
     return write_json(out_dir / "release.json", payload)
 
 
@@ -191,7 +185,6 @@ def run_command(
     env: dict[str, str] | None = None,
     timeout: float = 300.0,
 ) -> subprocess.CompletedProcess[str]:
-    """Run one release subprocess with captured UTF-8 output."""
     return subprocess.run(
         list(command),
         cwd=str(cwd),
@@ -207,7 +200,6 @@ def run_command(
 def json_line(
     result: subprocess.CompletedProcess[str], *, label: str = "release smoke"
 ) -> dict[str, Any]:
-    """Parse the single JSON line a CLI smoke command prints."""
     lines = [line for line in result.stdout.splitlines() if line.strip()]
     if len(lines) != 1:
         raise BuildError(
@@ -224,7 +216,6 @@ def json_line(
 
 
 def smoke_environment(workspace: Path) -> dict[str, str]:
-    """Return a clean CLI environment rooted at ``workspace``."""
     env = os.environ.copy()
     env["LVGL_AI_SESSIONS_ROOT"] = str(workspace / "sessions")
     env.pop("LVGL_AI_LVGL_SRC", None)
@@ -265,7 +256,6 @@ def smoke_scenario(
     timeout: float = 180.0,
     run: Callable[..., subprocess.CompletedProcess[str]] | None = None,
 ) -> dict[str, Any]:
-    """Run one packaged scenario and verify its status, evidence and markers."""
     common = (*extra, "--scenario", str(scenario), "--json")
     if via_wrapper:
         command = cmd_wrapper(package, "run", "--lvgl", lvgl_version, *common)

@@ -21,20 +21,14 @@ _SNAPSHOT_NUMBER_PREFIX = re.compile(r"^\d+_")
 
 
 def snapshot_label(path: Path) -> str:
-    """Drop the ``NNN_`` ordering prefix from a snapshot file name."""
     return _SNAPSHOT_NUMBER_PREFIX.sub("", path.stem)
 
 
 def tail_lines(text: str, n: int) -> list[str]:
-    """Last ``n`` lines of ``text``; ``n <= 0`` returns ``[]``."""
     if n <= 0:
         return []
     return text.splitlines()[-n:]
 
-# The schema, file names and validation are shared with SessionStore, the
-# write side. This module reads the module attributes at call time, so the
-# layout has exactly one owner; the names below stay re-exported for callers
-# that import them from here.
 from . import session_schema
 from .documents import DocumentStore
 
@@ -55,7 +49,6 @@ TIMELINE_ROW_TYPES = session_schema.TIMELINE_ROW_TYPES
 TIMELINE_SCHEMA = session_schema.TIMELINE_SCHEMA
 _list_pngs = session_schema.list_pngs
 _validate_manifest = session_schema.validate_manifest
-# Re-exported: the manifest rule now lives with the rest of the contract.
 manifest_is_recorded = session_schema.manifest_describes_recording
 
 
@@ -86,17 +79,14 @@ class Recording:
         if raw.is_file() and raw.name == session_schema.MANIFEST_FILE:
             raw = raw.parent
         self.path = raw
-        # Rows cached for frame_views()/snapshot_views(); None means unread.
         self._timeline_rows: list[dict[str, Any]] | None = None
 
     @classmethod
     def open(cls, path: str | Path) -> Recording:
-        """Open a session directory (or its manifest.json) without an engine."""
         recording = cls(path)
         recording._validate_session()
         return recording
 
-    # ---- session validation -------------------------------------------
 
     def _validate_session(self) -> None:
         if not self.path.is_dir():
@@ -113,40 +103,32 @@ class Recording:
         if not path.is_file():
             raise FileNotFoundError(f"required session file is missing: {path}")
 
-    # ---- evidence ------------------------------------------------------
 
     @property
     def manifest(self) -> dict[str, Any]:
-        """The session manifest, re-read on every access."""
         path = self.path / session_schema.MANIFEST_FILE
         return session_schema.validate_manifest(_read_json_object(path), path)
 
     @property
     def recorded(self) -> bool:
-        """Manifest intent plus both recording files, the shared rule."""
         return session_schema.session_is_recorded(self.manifest, self.path)
 
     def timeline(self) -> list[dict[str, Any]]:
-        """Parsed ``timeline.ndjson`` rows."""
         rows = _read_ndjson(
             self.path / session_schema.TIMELINE_FILE,
             session_schema.TIMELINE_SCHEMA,
             session_schema.TIMELINE_ROW_TYPES,
         )
-        # Seed the cache shared by frame_views()/snapshot_views(), so a caller
-        # that already parsed the timeline does not make them read it again.
         self._timeline_rows = rows
         return rows
 
     def frame_diffs(self) -> list[dict[str, Any]]:
-        """Parsed ``frame_diffs.ndjson`` rows."""
         return _read_ndjson(
             self.path / session_schema.FRAME_DIFFS_FILE,
             session_schema.FRAME_DIFFS_SCHEMA,
         )
 
     def reference_diffs(self) -> list[dict[str, Any]] | None:
-        """Parsed ``reference_diffs.ndjson``, or None when no reference was used."""
         path = self.path / session_schema.REFERENCE_DIFFS_FILE
         if not path.is_file():
             return None
@@ -154,23 +136,15 @@ class Recording:
 
     @property
     def frames(self) -> list[Path]:
-        """Every full-frame PNG, sorted by frame number."""
         return session_schema.list_pngs(self.path / session_schema.FRAMES_DIR)
 
     @property
     def snapshots(self) -> list[Path]:
-        """Every named snapshot PNG, sorted by snapshot number."""
         return session_schema.list_pngs(
             self.path / session_schema.SNAPSHOTS_DIR
         )
 
     def frame_views(self) -> list[dict[str, Any]]:
-        """Retained frames as ``file``, ``frame_no`` and ``t_ms`` entries.
-
-        The timeline is read at most once per recording and shared with
-        ``snapshot_views()``. A missing or corrupt timeline degrades to file
-        numbers and ``t_ms = 0``. Entries carry no URLs.
-        """
         by_file = _rows_by_file(self._shared_timeline_rows(), "frame")
         views: list[dict[str, Any]] = []
         for index, path in enumerate(self.frames, start=1):
@@ -190,11 +164,6 @@ class Recording:
         return views
 
     def snapshot_views(self) -> list[dict[str, Any]]:
-        """Snapshots as ``file``, ``frame_no``, ``t_ms`` and ``label`` entries.
-
-        The label falls back to the file stem when the timeline has no row or
-        no label. Entries carry no URLs.
-        """
         by_file = _rows_by_file(self._shared_timeline_rows(), "snapshot")
         views: list[dict[str, Any]] = []
         for path in self.snapshots:
@@ -213,11 +182,6 @@ class Recording:
         return views
 
     def latest_frame(self) -> dict[str, Any] | None:
-        """The newest retained frame, or ``None`` when the session has none.
-
-        ``t_ms`` comes from a bounded tail read of ``timeline.ndjson``; the
-        frame number comes from the file name, like the live status reports it.
-        """
         frames = self.frames
         if not frames:
             return None
@@ -241,22 +205,17 @@ class Recording:
         return self._timeline_rows
 
     def log(self) -> str:
-        """Full ``engine.log`` text (stdout and stderr)."""
         return _read_text(self.path / session_schema.ENGINE_LOG_FILE)
 
     def log_tail(self, n: int = 40) -> list[str]:
-        """Last ``n`` lines of ``engine.log``; ``n <= 0`` returns ``[]``."""
         return tail_lines(self.log(), n)
 
     def build_log(self) -> str:
-        """Full ``build.log`` text."""
         return _read_text(self.path / session_schema.BUILD_LOG_FILE)
 
-    # ---- annotations (writable) ---------------------------------------
 
     @property
     def annotations_store(self) -> DocumentStore:
-        """The shared JSON + image transaction for ``annotations.json``."""
         return DocumentStore(
             self.path,
             filename=session_schema.ANNOTATIONS_FILE,
@@ -276,11 +235,9 @@ class Recording:
             raise FileNotFoundError(f"session directory not found: {self.path}")
         self.annotations_store.write(value)
 
-    # ---- whiteboards (writable) ---------------------------------------
 
     @property
     def whiteboards_store(self) -> DocumentStore:
-        """The shared JSON + image transaction for ``whiteboards.json``."""
         return DocumentStore(
             self.path,
             filename=session_schema.WHITEBOARDS_FILE,
@@ -325,14 +282,6 @@ def _rows_by_file(
 
 
 def _latest_frame_t_ms(path: Path, frame_file: str) -> int | None:
-    """Read the newest matching frame row from the tail of timeline.ndjson.
-
-    Live sessions are polled every few seconds; reading the whole timeline on
-    each poll would grow with the recording. Async recording writes frame rows
-    as soon as a raw frame is queued, so the newest published PNG can trail the
-    file end by the encoder backlog; 256 KiB covers max_frames and input rows
-    for the supported display sizes.
-    """
     try:
         with path.open("rb") as handle:
             handle.seek(0, 2)

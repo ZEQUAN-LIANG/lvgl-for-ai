@@ -1,14 +1,3 @@
-/**
- * @file adapter_9x.c
- * LVGL 9.x adapter primitives: display/indev creation, one indev read, hit
- * testing, refresh/tick/timer forwarding and lodepng encode/decode.
- *
- * This is the 9.x engine source that includes LVGL headers; its 8.x peer is
- * adapter_8x.c. Everything version-independent (state machines, hit reply
- * buffers, RGBA conversion, file IO, lifecycle) lives in adapter_common.c.
- * The narrow interface consumed by the engine is adapter.h.
- */
-
 #include "adapter.h"
 #include "adapter_internal.h"
 

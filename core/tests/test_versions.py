@@ -1,10 +1,3 @@
-"""The LVGL version matrix comes only from ``meta/versions.json``.
-
-Every consumer keeps its own rendering (tuples, tags, CLI choices), but the
-membership and flags must follow the version index.  The synthetic index below
-uses versions that do not exist in the real repository, so a consumer that
-still carries a hard-coded list fails here.
-"""
 
 from __future__ import annotations
 

@@ -1,9 +1,3 @@
-"""Private seam tests for the apps package: registry, scaffold, trash, views.
-
-Public behavior is covered by ``test_apps.py`` and ``test_web_apps.py``; this
-module reaches into the internal seams to cover branches that the lifecycle
-API only hits indirectly.
-"""
 
 from __future__ import annotations
 
@@ -211,13 +205,10 @@ class PolicySeamTest(_TempRepo):
             + 'static const char * alias = "latte";\n',
             encoding="utf-8",
         )
-        # Deletion policy names are always reserved, even with no target.
         self.assertTrue(policy.is_reserved_create_name(self.root, "coffee"))
         self.assertTrue(policy.is_reserved_create_name(self.root, "xhs"))
-        # Derived identities with an existing target keep app_exists/--force.
         self.assertFalse(policy.is_reserved_create_name(self.root, "gamma"))
         self.assertFalse(policy.is_reserved_create_name(self.root, "promo"))
-        # A literal-only alias has no other target, so it is reserved.
         self.assertTrue(policy.is_reserved_create_name(self.root, "latte"))
 
     def test_scenario_declared_names_keep_the_existing_create_path(self) -> None:

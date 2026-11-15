@@ -37,7 +37,6 @@ SNAPSHOTS_DIR = "snapshots"
 REGIONS_DIR = "regions"
 WHITEBOARDS_DIR = "whiteboards"
 WHITEBOARDS_SCHEMA = "lvgl-ai-whiteboards-v1"
-# Transient raw preview for the web live stream; never an evidence artifact.
 PREVIEW_FILE = "live.rgba"
 
 # Full write-side field order. The manifest JSON keeps this order.
@@ -62,32 +61,24 @@ MANIFEST_FIELDS = (
     "error",
     "artifacts",
 )
-# ``app``, ``display`` and ``record_changed_only`` were added after the first
-# sessions, so they stay optional and old sessions keep opening.
 MANIFEST_OPTIONAL_FIELDS = ("app", "display", "record_changed_only")
 MANIFEST_REQUIRED_FIELDS = tuple(
     field for field in MANIFEST_FIELDS if field not in MANIFEST_OPTIONAL_FIELDS
 )
 TIMELINE_ROW_TYPES = frozenset({"frame", "input", "wait", "mark", "snapshot", "end"})
 
-# The scenario, the ready announcement and the manifest share one dimension
-# rule: a positive integer, capped for scenario display requests.
 MAX_DISPLAY_DIMENSION = 4096
 
-# One session directory name: local timestamp plus four lowercase hex chars.
-# Retention, the writer and the web adapter all validate with this rule.
 SESSION_ID_PATTERN = r"\d{8}-\d{6}-[0-9a-f]{4}"
 SESSION_ID_RE = re.compile(r"^" + SESSION_ID_PATTERN + r"\Z")
 
 
 def new_session_id(now: _dt.datetime | None = None) -> str:
-    """Return ``YYYYMMDD-HHMMSS-4hex`` in local time."""
     stamp = (now or _dt.datetime.now()).strftime("%Y%m%d-%H%M%S")
     return f"{stamp}-{secrets.token_hex(2)}"
 
 
 def is_session_id(value: Any) -> bool:
-    """True when ``value`` is a canonical session directory name."""
     return isinstance(value, str) and SESSION_ID_RE.fullmatch(value) is not None
 
 # Optional evidence file -> manifest artifacts key, in listing order.
@@ -108,11 +99,6 @@ def dimension_problem(
     minimum: int = 1,
     maximum: int | None = None,
 ) -> str | None:
-    """Diagnostic for one display dimension, or ``None`` when it is valid.
-
-    ``bool`` is rejected even though it subclasses ``int``. The message text is
-    shared by the scenario, ready-announcement and manifest callers.
-    """
     if isinstance(value, bool) or not isinstance(value, int):
         return f"{name} must be an integer"
     if value < minimum:
@@ -130,7 +116,6 @@ def display_problem(
     maximum: int | None = None,
     reject_unknown: bool = False,
 ) -> str | None:
-    """Diagnostic for a ``{width, height}`` object, or ``None`` when valid."""
     if value is None:
         if allow_none:
             return None
@@ -161,12 +146,6 @@ def validate_display(
     maximum: int | None = None,
     reject_unknown: bool = False,
 ) -> dict[str, int] | None:
-    """Validate a display object and return its width and height.
-
-    ``None`` is only accepted with ``allow_none`` (an optional manifest
-    display). The returned mapping drops unrelated fields such as the ready
-    announcement's pixel format.
-    """
     problem = display_problem(
         value,
         label=label,
@@ -183,11 +162,6 @@ def validate_display(
 
 
 def build_manifest(**values: Any) -> dict[str, Any]:
-    """Stamp the manifest schema and order ``values`` by :data:`MANIFEST_FIELDS`.
-
-    The field set is strict in both directions: a missing or unexpected value
-    is a programming error in the writer, not a silently malformed manifest.
-    """
     missing = [field for field in MANIFEST_FIELDS[1:] if field not in values]
     unexpected = sorted(set(values) - set(MANIFEST_FIELDS[1:]))
     if missing or unexpected:
@@ -204,12 +178,6 @@ def build_manifest(**values: Any) -> dict[str, Any]:
 
 
 def validate_manifest(data: dict[str, Any], path: Path) -> dict[str, Any]:
-    """Validate a manifest read from ``path`` with the shared schema.
-
-    Raises ``ValueError`` with the same messages the reader always used; old
-    sessions stay readable because only :data:`MANIFEST_REQUIRED_FIELDS` are
-    mandatory.
-    """
     if data.get("schema") != MANIFEST_SCHEMA:
         raise ValueError(
             f"{path}: schema must be {MANIFEST_SCHEMA!r}, "
@@ -240,13 +208,6 @@ def validate_manifest(data: dict[str, Any], path: Path) -> dict[str, Any]:
 
 
 def manifest_describes_recording(manifest: Mapping[str, Any]) -> bool:
-    """True when the manifest says this session recorded evidence.
-
-    ``frame_count > 0`` covers a session whose changed-only run retained at
-    least one frame; the ``timeline`` / ``frame_diffs`` artifact keys cover a
-    run that recorded only input rows. A record=False manifest has neither,
-    so a stray file in its directory does not turn it into a recording.
-    """
     artifacts = manifest.get("artifacts")
     if not isinstance(artifacts, Mapping):
         return False
@@ -258,11 +219,6 @@ def manifest_describes_recording(manifest: Mapping[str, Any]) -> bool:
 def session_is_recorded(
     manifest: Mapping[str, Any], session_dir: str | Path
 ) -> bool:
-    """True when the manifest intends a recording and both files exist.
-
-    This is the single rule behind ``summarize_session``'s ``recorded`` flag:
-    manifest intent alone is not enough, and files alone are not enough.
-    """
     if not manifest_describes_recording(manifest):
         return False
     root = Path(session_dir)
@@ -272,7 +228,6 @@ def session_is_recorded(
 
 
 def list_pngs(directory: Path) -> list[Path]:
-    """Every PNG directly under ``directory``, sorted by file name."""
     if not directory.is_dir():
         return []
     return sorted(path for path in directory.glob("*.png") if path.is_file())

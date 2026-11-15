@@ -36,7 +36,7 @@ static inline lv_obj_t * lv_button_create(lv_obj_t * parent)
     return lv_btn_create(parent);
 }
 
-#endif /* LVGL_VERSION_MAJOR < 9 */
+#endif
 
 /* Image recolor style was renamed together with the image widget. */
 static inline void app_image_set_recolor(lv_obj_t * obj, lv_color_t color, lv_opa_t opa)
@@ -50,4 +50,4 @@ static inline void app_image_set_recolor(lv_obj_t * obj, lv_color_t color, lv_op
 #endif
 }
 
-#endif /* LVGL_COMPAT_H */
+#endif

@@ -49,9 +49,6 @@ def _tail(lines: list[str], count: int = 20) -> str:
     return "\n".join(lines[-count:]) if lines else ""
 
 
-# -- discovery ---------------------------------------------------------
-
-
 def _versioned_tool_files(root: Path, name: str, filename: str) -> list[Path]:
     base = root / "tools" / name
     if not base.is_dir():
@@ -263,9 +260,6 @@ def build_sftool_command(
     return command
 
 
-# -- build environment -------------------------------------------------
-
-
 def _toolchain_bin_dirs(root: Path | None) -> list[Path]:
     if root is None:
         return []
@@ -380,9 +374,6 @@ def toolchain_env(config: dict[str, Any]) -> dict[str, str]:
     return env
 
 
-# -- build command selection -------------------------------------------
-
-
 def _configured_build_command(
     config: dict[str, Any],
     board: str,
@@ -473,9 +464,6 @@ def resolve_build_command(
     )
 
 
-# -- process execution -------------------------------------------------
-
-
 def _stop_process(process: subprocess.Popen) -> None:
     process.terminate()
     try:
@@ -560,9 +548,6 @@ def run_streaming(
     for thread in threads:
         thread.join(timeout=2)
     return int(process.returncode or 0), stdout_lines, stderr_lines
-
-
-# -- export / build ----------------------------------------------------
 
 
 def _find_json_payload(
@@ -692,9 +677,6 @@ def run_build(
     }
 
 
-# -- flash -------------------------------------------------------------
-
-
 def _resolve_flash_build_dir(
     config: dict[str, Any],
     *,
@@ -808,9 +790,6 @@ def run_flash(
         "command": command,
         "duration_s": round(time.monotonic() - started, 3),
     }
-
-
-# -- official Web Flasher package --------------------------------------
 
 
 def _stage_images(

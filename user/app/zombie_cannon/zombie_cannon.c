@@ -184,4 +184,4 @@ void zombie_cannon_create(void)
            (long)screen_w, (long)screen_h, s_w, s_h);
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

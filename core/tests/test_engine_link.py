@@ -1,9 +1,3 @@
-"""EngineLink: the engine process seam and the line protocol.
-
-These tests drive ``EngineLink`` with scripted pipes instead of a real child
-process, so out-of-order/late replies, EOF, timeouts, ready validation and
-quit -> terminate -> kill can be exercised directly and quickly.
-"""
 
 from __future__ import annotations
 
@@ -53,7 +47,6 @@ def reply_line(seq: int, **overrides: object) -> str:
 
 
 class ScriptedPipe:
-    """Iterable line pipe; tests feed lines or close it to signal EOF."""
 
     def __init__(self) -> None:
         self._lines: queue.Queue[object] = queue.Queue()
@@ -104,7 +97,6 @@ class BrokenStdin:
 
 
 class ScriptedProcess:
-    """Popen double with scripted stdout/stderr and controllable exit."""
 
     def __init__(self, *, exit_on_terminate: bool = True) -> None:
         self.stdout = ScriptedPipe()
@@ -185,7 +177,6 @@ class EngineLinkTest(unittest.TestCase):
         self.process.exit(0)
         link.shutdown(send_quit=False)
 
-    # ---- spawn and pumps ----------------------------------------------
 
     def test_start_passes_command_environment_and_cwd_to_spawn(self) -> None:
         captured: dict[str, object] = {}
@@ -231,7 +222,6 @@ class EngineLinkTest(unittest.TestCase):
         self._shutdown(link)
         self.assertEqual(self.logs, [])
 
-    # ---- ready validation ---------------------------------------------
 
     def test_valid_ready_is_returned(self) -> None:
         link = self._started_link()
@@ -315,7 +305,6 @@ class EngineLinkTest(unittest.TestCase):
         self.assertEqual(caught.exception.log_tail, ["[boot] starting"])
         self._shutdown(link)
 
-    # ---- request/reply sequencing -------------------------------------
 
     def test_late_and_duplicate_replies_are_skipped(self) -> None:
         link = self._started_link()
@@ -381,7 +370,6 @@ class EngineLinkTest(unittest.TestCase):
         self.assertEqual(caught.exception.exit_code, 3)
         self.assertTrue(link.unexpected_exit)
 
-    # ---- check accounting ---------------------------------------------
 
     def test_check_hook_receives_each_command_and_reply(self) -> None:
         link = self._started_link()
@@ -407,7 +395,6 @@ class EngineLinkTest(unittest.TestCase):
         self.assertIsNone(self.checks[-1][2])
         self.assertTrue(self.checks[-1][3])
 
-    # ---- shutdown ------------------------------------------------------
 
     def test_shutdown_sends_quit_and_does_not_terminate(self) -> None:
         link = self._started_link()
@@ -451,7 +438,6 @@ class EngineLinkTest(unittest.TestCase):
         self.assertTrue(self.process.stdout.closed)
         self.assertTrue(self.process.stderr.closed)
 
-    # ---- crash completion ---------------------------------------------
 
     def test_crash_factory_carries_exit_code_tail_and_path(self) -> None:
         link = self._started_link(

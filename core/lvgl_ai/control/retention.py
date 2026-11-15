@@ -19,10 +19,7 @@ from pathlib import Path
 from . import session_schema
 
 DEFAULT_SESSION_LIMIT = 10
-# Re-exported for callers that imported the old name.
 SESSION_DIR_RE = session_schema.SESSION_ID_RE
-# Only a finalized build failure is safe to drop: it has no frames and its
-# error is already reported by the start() call that produced it.
 DISCARDED_STATUSES = frozenset({"build_error"})
 
 
@@ -32,14 +29,6 @@ def prune_sessions(
     limit: int | None = DEFAULT_SESSION_LIMIT,
     keep: str | Path | None = None,
 ) -> list[Path]:
-    """Delete expired sessions under ``root``; return the removed paths.
-
-    ``limit=None`` disables cleanup. ``keep`` names the session that must
-    survive (the Runtime passes its own, freshly reserved directory). A
-    session expires when its status is in :data:`DISCARDED_STATUSES` or when
-    it is older than the newest ``limit`` sessions. Failures are swallowed so
-    a locked directory can never fail a run.
-    """
     if limit is None or limit < 0:
         return []
     root_path = Path(root)
@@ -58,9 +47,6 @@ def prune_sessions(
     sessions.sort(key=lambda item: item[0].name, reverse=True)
 
     removed: list[Path] = []
-    # The kept session is the newest one by definition (Runtime reserves it
-    # right before pruning) and counts toward the limit, even though it has no
-    # manifest yet and the scan below cannot see it.
     survivors: list[Path] = []
     if (
         keep_path is not None

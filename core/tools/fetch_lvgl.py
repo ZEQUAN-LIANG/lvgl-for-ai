@@ -21,6 +21,7 @@ Usage:
     python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --patch-dir my-patches
 """
 
+
 from __future__ import annotations
 
 import argparse
@@ -38,7 +39,7 @@ _TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(_TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(_TOOL_ROOT))
 
-from lvgl_ai import versions  # noqa: E402
+from lvgl_ai import versions
 
 TAGS = versions.tags()
 
@@ -149,7 +150,6 @@ def extract(archive: Path, extract_root: Path) -> Path:
     with tarfile.open(archive, "r:gz") as tar:
         root = tar.getmembers()[0].name.split("/")[0]
         for member in tar.getmembers():
-            # Reject absolute or parent-traversing members before writing.
             if member.issym() or member.islnk():
                 raise SystemExit(f"unsafe archive member: {member.name}")
             target = (extract_root / member.name).resolve()
@@ -159,7 +159,6 @@ def extract(archive: Path, extract_root: Path) -> Path:
             tar.extractall(extract_root, filter="data")
         except TypeError:
             # Python < 3.12 has no extraction filters; the member check above
-            # already rejects absolute and parent-traversing names.
             tar.extractall(extract_root)
     tree = extract_root / root
     if not tree.is_dir():
@@ -170,7 +169,6 @@ def extract(archive: Path, extract_root: Path) -> Path:
 def verify_tree(tree: Path, version: str) -> tuple[int, int, int]:
     actual = parse_version_header(tree)
     # The tag is the release identity, including patch-level tags such as
-    # v8.3.11; the version macros must name exactly that release.
     tag = TAGS[version]
     expected = tuple(int(part) for part in tag.lstrip("v").split("."))
     if actual != expected:
@@ -215,11 +213,6 @@ def _read_series(series: Path) -> list[str]:
 
 
 def discover_patches(patch_dir: Path) -> list[Path]:
-    """Return the patches to apply, in order.
-
-    ``series`` is authoritative when present.  Without it, every ``*.patch`` in
-    the version directory is applied in lexical order.
-    """
     if not patch_dir.is_dir():
         return []
     series = patch_dir / "series"
@@ -243,8 +236,6 @@ def _git_apply(tree: Path, patch: Path, *, check: bool) -> None:
     command.append(str(patch))
     # The installed tree can live inside the tool repository (lvgl-src/) or a
     # temp directory under it. Stop repository discovery at the tree's parent
-    # so git treats the tree as a plain directory and resolves patch paths
-    # relative to it instead of silently skipping them.
     env = os.environ.copy()
     env["GIT_CEILING_DIRECTORIES"] = str(tree.resolve().parent)
     try:

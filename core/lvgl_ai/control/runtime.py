@@ -41,7 +41,6 @@ STALE_ENGINE_HINT = "engine 产物早于当前 Runtime，请用 --build 重建"
 
 
 def _stale_engine_argument(log_tail: list[str]) -> str | None:
-    """Return the CLI flag an old engine rejected before announcing ready."""
     for line in log_tail:
         if "unknown argument" not in line:
             continue
@@ -70,7 +69,6 @@ def _env_positive_int(name: str, default: int) -> int:
 
 
 class RuntimeLike(Protocol):
-    """The Runtime surface shared by LiveSession and scenario execution."""
 
     session_id: str | None
     session_dir: Path | None
@@ -181,40 +179,27 @@ class Runtime:
             )
 
         self.lvgl = lvgl or paths.lvgl_version_from_env()
-        # ``app`` selects the user app variant through the documented LVGL_AI_DEMO
-        # contract. An explicit value wins; otherwise the inherited environment
-        # is used and recorded so evidence is self-describing.
         resolved_app = (
             app
             if app is not None
             else (os.environ.get("LVGL_AI_DEMO") or None)
         )
-        # ``None`` means the engine default; otherwise both dimensions exist.
         self.width = None if display is None else display[0]
         self.height = None if display is None else display[1]
         resolved_build = bool(build)
         resolved_record = bool(record)
-        # Keep one overwritten live.rgba raw preview for the web stream. It
-        # works with record=True as well and is never part of the evidence.
         resolved_live_frame = bool(live_frame)
-        # Skip PNGs that are pixel-identical to the previous retained frame.
-        # frame_no counts retained frames, not ticks.
         resolved_record_changed_only = bool(record_changed_only)
-        # ``window=True`` or ``headless=False`` asks for the real window;
-        # ``window=True`` wins so callers do not need to pass both.
         self.window = bool(window) or not bool(headless)
         self.headless = not self.window
         resolved_mode = "window" if self.window else "headless"
         self.timeout = float(timeout)
         self.diff_threshold = diff_threshold
-        # Full frames are capped so a long animation cannot exhaust disk or
-        # context; the manifest and the timeline end row report truncation.
         if max_frames is None:
             max_frames = _env_positive_int("LVGL_AI_MAX_FRAMES", DEFAULT_MAX_FRAMES)
         self.max_frames = _positive_int(
             max_frames, "max_frames", default=DEFAULT_MAX_FRAMES
         )
-        # engine.log keeps its tail; RuntimeCrash.log_tail must stay usable.
         if max_log_bytes is None:
             max_log_bytes = _env_positive_int(
                 "LVGL_AI_MAX_LOG_BYTES", DEFAULT_MAX_LOG_BYTES
@@ -222,8 +207,6 @@ class Runtime:
         resolved_max_log_bytes = _positive_int(
             max_log_bytes, "max_log_bytes", default=DEFAULT_MAX_LOG_BYTES
         )
-        # Older sessions are pruned right after the new session directory is
-        # reserved; None disables pruning for embedders and tests.
         if session_retention is not None and (
             isinstance(session_retention, bool)
             or not isinstance(session_retention, int)
@@ -233,17 +216,11 @@ class Runtime:
                 "session_retention must be a non-negative integer or None; "
                 f"got {session_retention!r}"
             )
-        # The engine runs with cwd=REPO_ROOT, so a relative reference must be
-        # anchored to the caller's cwd here, not there.
         self.reference = (
             None if reference is None else Path(reference).expanduser().resolve()
         )
         if self.reference is not None and not self.reference.is_file():
             raise FileNotFoundError(f"reference image not found: {self.reference}")
-        # BuildPlan owns preflight, the CMake cache check, configure/build and
-        # engine path resolution. An explicit engine path is a test/embedding
-        # seam and is never replaced. Runtime mirrors the resolved paths for
-        # callers and session evidence.
         self._plan = BuildPlan(
             self.lvgl,
             configure=_configure_command,
@@ -253,7 +230,6 @@ class Runtime:
         )
         self.build_dir = self._plan.build_dir
         self.engine_path = self._plan.engine_path
-        # Resolved mode (auto -> source/prebuilt); evidence lives in build.log.
         self.build_mode = self._plan.mode
         self._engine_command = list(_engine_command) if _engine_command else None
         resolved_sessions_root = (
@@ -261,8 +237,6 @@ class Runtime:
             if sessions_root is not None
             else paths.sessions_root_from_env()
         )
-        # SessionStore owns this session's options and evidence: the
-        # directory, manifest, build log, engine log, preview and retention.
         self._store = SessionStore(
             resolved_sessions_root,
             record=resolved_record,
@@ -281,27 +255,12 @@ class Runtime:
         self.engine_log_path: Path | None = None
         self.manifest_path: Path | None = None
 
-        # Process and line-protocol ownership lives in EngineLink; Runtime
-        # keeps the public actions and build orchestration, SessionStore owns
-        # the session evidence.
         self._link: EngineLink | None = None
         self._session_used = False
-        # Newest reserved frame number the engine reported. Recording uses a
-        # background encoder, so the PNG for the newest frame may still be
-        # queued; stop() drains it before the final manifest is written.
         self.frame_count = 0
-        # Current virtual time from the newest engine reply. Static live
-        # screens keep frame_count unchanged but t_ms keeps advancing.
         self.t_ms = 0
-        # The typed failure that made the session stop early; stop() maps it
-        # to the manifest status instead of reporting "ok".
         self._failure: BaseException | None = None
 
-    # ---- session readouts (RuntimeLike) --------------------------------
-    #
-    # Session options are constructor keywords only and live once in the
-    # SessionStore. Runtime keeps just the three readouts that LiveSession and
-    # the RuntimeLike protocol consume.
 
     @property
     def app(self) -> str | None:
@@ -315,7 +274,6 @@ class Runtime:
     def ready(self) -> dict[str, Any] | None:
         return self._store.ready
 
-    # ---- lifecycle -----------------------------------------------------
 
     @property
     def is_running(self) -> bool:
@@ -323,17 +281,14 @@ class Runtime:
 
     @property
     def pid(self) -> int | None:
-        """OS process id of the engine, or ``None`` before ``start()``."""
         return None if self._link is None else self._link.pid
 
     @property
     def exit_code(self) -> int | None:
-        """Engine exit code once it stopped, or ``None`` while running."""
         return None if self._link is None else self._link.exit_code
 
     @property
     def recording(self) -> Recording:
-        """Read-only evidence view of this session; annotations stay writable."""
         if self.session_dir is None:
             raise RuntimeError("no session yet; call start() first")
         return Recording.open(self.session_dir)
@@ -348,8 +303,6 @@ class Runtime:
             )
 
         self._session_used = True
-        # The session exists before the build so a build/link failure or a
-        # missing engine still leaves build.log + manifest.json behind.
         self._open_session()
         self._store.prune()
 
@@ -365,9 +318,6 @@ class Runtime:
                 self._store.close_log()
                 raise
         else:
-            # The plan resolves before composing build.log, so the evidence
-            # names the engine that will actually run, not only the
-            # source-build path.
             outcome = self._plan.execute(build=False)
         self.engine_path = outcome.engine_path
         self._store.write_build_log(outcome.log_text)
@@ -411,14 +361,11 @@ class Runtime:
                         "[harness] window requested but the engine reported "
                         f"mode={self.mode}; continuing headless"
                     )
-                # Keep the attributes truthful when the platform falls back.
                 self.window = False
                 self.headless = True
             self._store.write_manifest(SessionOutcome.ok())
         except BaseException as exc:
             self._failure = exc
-            # The EOF was seen before the process was reaped; fill in the
-            # exit code and the complete tail now that both pumps joined.
             exit_code = (
                 None
                 if self._link is None
@@ -460,14 +407,10 @@ class Runtime:
             shutdown_error = exc
             exit_code = link.exit_code
         finally:
-            # Release the evidence handles even when shutdown itself fails;
-            # otherwise Windows keeps the session directory undeletable.
             self._store.close_log()
             self._store.discard_preview()
 
         if shutdown_error is not None and self._failure is None:
-            # shutdown() already reaped or abandoned the process; record a
-            # typed crash instead of leaving the manifest at its startup "ok".
             self._failure = RuntimeCrash(
                 f"engine did not exit cleanly: {shutdown_error}",
                 exit_code=exit_code,
@@ -490,13 +433,6 @@ class Runtime:
             raise shutdown_error
 
     def record_error(self, error: BaseException) -> None:
-        """Remember a harness-side failure for the final manifest.
-
-        The CLI (or another loop owner) calls this when an error happened
-        outside a Runtime command — for example a scenario that failed
-        validation before its first step. ``stop()`` then writes
-        ``harness_error`` with this error instead of ``ok``.
-        """
         if self.session_dir is None or self._failure is error:
             return
         self._failure = error
@@ -508,14 +444,8 @@ class Runtime:
         self.stop()
         return False
 
-    # ---- input and time ------------------------------------------------
 
     def pointer(self, action: str, x: int, y: int) -> dict[str, Any]:
-        """Drive the standard virtual pointer indev at ``(x, y)``.
-
-        The reply carries ``hit`` (object name, ``""`` when unnamed) and
-        ``hit_class`` (e.g. ``"lv_button"``) from a real LVGL hit test.
-        """
         require_action("pointer", action)
         point_x = require_non_negative_int(x, "x")
         point_y = require_non_negative_int(y, "y")
@@ -524,15 +454,6 @@ class Runtime:
         return reply
 
     def key(self, action: str, key: str) -> dict[str, Any]:
-        """Deliver a key press or release to the standard virtual keypad indev.
-
-        ``key`` is an LVGL ``LV_KEY_*`` name such as ``"ENTER"`` or
-        ``"LV_KEY_ENTER"`` (case-insensitive), or a printable ASCII
-        ``CHAR_<code>`` token such as ``"CHAR_65"`` for ``A``. Unknown names and
-        out-of-range codes raise :class:`ScenarioError` before any command is
-        sent. The reply carries ``delivered``: true when LVGL read the keypad
-        indev.
-        """
         require_action("key", action)
         try:
             canonical, code = resolve_key(key)
@@ -544,12 +465,6 @@ class Runtime:
         return reply
 
     def encoder(self, action: str, diff: int) -> dict[str, Any]:
-        """Turn the standard virtual encoder indev by ``diff`` steps.
-
-        Positive turns move focus forward (LVGL ``enc_diff > 0``); negative
-        turns move backward. The reply carries ``delivered``: true when LVGL
-        read the encoder indev.
-        """
         require_action("encoder", action)
         steps = require_int16(diff, "diff")
         reply = self._command("encoder", "turn", str(steps))
@@ -557,19 +472,12 @@ class Runtime:
         return reply
 
     def tick(self, ms: int, *, track_check: bool = True) -> dict[str, Any]:
-        """Advance virtual time by ``ms`` and record the refreshed frame.
-
-        With ``record_changed_only`` an identical frame is skipped and the
-        frame number stays unchanged. ``track_check=False`` is used by the web
-        live ticker so repetitive ticks do not grow ``manifest.checks``.
-        """
         interval = require_non_negative_int(ms, "ms")
         return self._command(
             "tick", str(interval), track_check=track_check
         )
 
     def wait(self, ms: int | None = None, *, frames: int | None = None) -> dict[str, Any]:
-        """Advance virtual time in 16 ms slices, or by a fixed frame count."""
         if (ms is None) == (frames is None):
             raise ValueError("wait needs exactly one of ms or frames")
         if frames is not None:
@@ -581,19 +489,6 @@ class Runtime:
     def wait_stable(
         self, max_ms: int, stable_frames: int
     ) -> dict[str, Any]:
-        """Wait until the picture stops changing, up to ``max_ms``.
-
-        Polls ``wait`` in 16 ms steps (the engine's own wait step) and counts
-        consecutive replies whose ``changed`` flag is false. It returns as soon
-        as ``stable_frames`` unchanged steps accumulate, or when ``max_ms`` is
-        spent. ``changed`` comes from the adapter flush flag and is independent
-        of recording and changed-only frame retention, so a skipped frame is
-        never mistaken for a stable picture.
-
-        Returns ``waited_ms``, ``stable_frames`` (the achieved streak) and
-        ``stable``. An engine without the ``changed`` field is rejected on the
-        first poll instead of waiting forever.
-        """
         limit = require_non_negative_int(max_ms, "max_ms")
         target = require_integer(stable_frames, "stable_frames", minimum=1)
         waited_ms = 0
@@ -613,24 +508,16 @@ class Runtime:
         }
 
     def snapshot(self, label: str) -> dict[str, Any]:
-        """Write ``snapshots/NNN_<label>.png`` and a timeline snapshot row."""
         token = require_token(label, "snapshot label")
         reply = self._command("snapshot", token)
         self._require_reply(reply, ("file",), "snapshot")
         return reply
 
     def mark(self, mark_id: str) -> dict[str, Any]:
-        """Write a timeline mark row with ``id``."""
         token = require_token(mark_id, "mark id")
         return self._command("mark", token)
 
     def input(self, events) -> list[dict[str, Any]]:
-        """Replay a ``lvgl-ai-input-v1`` list, stably sorted by ``at_ms``.
-
-        ``at_ms`` is an offset from the start of this call. Time advances with
-        ``wait`` semantics, so frames are recorded while the gesture plays.
-        Invalid events raise :class:`ScenarioError` before any command is sent.
-        """
         try:
             ordered = normalize_input_events(events)
         except ScenarioError as exc:
@@ -654,7 +541,6 @@ class Runtime:
             return self.key(event["action"], event["key"])
         return self.encoder("turn", event["diff"])
 
-    # ---- protocol ------------------------------------------------------
 
     def _engine_command_line(self) -> list[str]:
         assert self.session_dir is not None
@@ -727,7 +613,6 @@ class Runtime:
         return reply
 
     def _set_ready_frames(self, frames: int) -> None:
-        """Mirror ``ready.frames`` once it validates, as the inline check did."""
         self.frame_count = frames
 
     def _record_reply(
@@ -737,7 +622,6 @@ class Runtime:
         reply: dict | None,
         track_check: bool,
     ) -> None:
-        """Account for one command reply; the link never judges the picture."""
         if reply is not None and reply.get("truncated") is True:
             self._store.note_truncated()
         self._record_check(
@@ -757,7 +641,6 @@ class Runtime:
         *,
         append: bool = True,
     ) -> None:
-        """Log that a protocol command ran; never judges the picture."""
         if isinstance(frame_no, bool) or not isinstance(frame_no, int):
             frame_no = None
         else:
@@ -792,18 +675,13 @@ class Runtime:
             self._failure = exc
             raise
 
-    # ---- engine log ----------------------------------------------------
 
     def log_tail(self, n: int = 40) -> list[str]:
-        """Last ``n`` lines of engine.log (stdout and stderr)."""
         return self._store.log_tail(n)
 
-    # ---- session -------------------------------------------------------
 
     def _open_session(self) -> None:
         self._store.create()
-        # Public attributes mirror the store so callers (CLI, web, tests) keep
-        # reading the same names.
         self.session_id = self._store.session_id
         self.session_dir = self._store.session_dir
         self.engine_log_path = self._store.engine_log_path

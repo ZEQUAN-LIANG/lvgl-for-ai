@@ -1,4 +1,3 @@
-"""Runtime option assembly and the RuntimeLike behavior seam."""
 
 from __future__ import annotations
 
@@ -15,7 +14,6 @@ FAKE_ENGINE = Path(__file__).with_name("fake_engine.py")
 
 
 class RuntimeOptionCharacterizationTest(unittest.TestCase):
-    """Lock the 18 Runtime keywords and the SessionStore values they produce."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -83,7 +81,6 @@ class RuntimeOptionBagRemovedTest(unittest.TestCase):
 
 
 class RuntimeLikeBehaviorTest(unittest.TestCase):
-    """Runtime and FakeRuntime answer the calls LiveSession and scenarios make."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()

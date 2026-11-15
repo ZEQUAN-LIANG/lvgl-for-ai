@@ -1,4 +1,3 @@
-"""Tests for the maintainer-only release uploader."""
 
 from __future__ import annotations
 

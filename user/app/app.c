@@ -1,19 +1,3 @@
-/**
- * @file app.c
- * The user entry point: lvgl_engine calls exactly this function.
- *
- * LVGL_AI_DEMO selects the app variant from the apps[] table below. The CLI
- * and web set it from a scenario's "app" field, so the same value is recorded
- * in the session manifest. The development tree keeps a hidden demo harness
- * for the tool's integration tests; the release package uses
- * core/tools/release_app.c and ships only the intro app.
- *
- * Every app exposes the same ``void create(void)`` entry. Adding an app means
- * one row in ``apps`` plus its implementation; the tool layer never learns app
- * names. The development-only asset_probe is the one cross-version exception:
- * it is dispatched on 8.x/9.1 too, so generated font/image data can be checked
- * on every supported target.
- */
 
 #include "lvgl.h"
 
@@ -100,8 +84,6 @@ void app_create(void)
         exit(1);
     }
 
-    /* The development harness (when present) stays transparent behind every
-     * app because the tool's integration tests target its named button. */
     demo_harness_create(false);
     printf("[app] app=%s\n", app->name);
     app->create();
