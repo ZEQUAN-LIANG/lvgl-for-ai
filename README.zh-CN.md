@@ -223,7 +223,7 @@ Windows 推荐 MSYS2 UCRT64。完整安装步骤、PATH 配置、首次运行说
 
 ## 更多文档
 
-- `core/README.md`：工具用法、环境安装、常见错误、测试。
+- `core/README.md`：工具用法、环境安装、常见错误、测试、静态检查与格式化。
 - `user/app/GUIDE.md`：写用户应用。
 - `docs/index.html`：英文项目介绍页；`docs/app.html` / `docs/scenario-server.html`：应用变体、场景与服务端常量索引。
 - `chip-adapt/README.md` / `chip-adapt/docs/sifli.html`：SiFli 适配层与能力边界。

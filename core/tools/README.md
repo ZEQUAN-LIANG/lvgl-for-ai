@@ -48,4 +48,5 @@ manifest 或 GCC 版本未变时不再重编，只重新打包。`--force-build`
 | `contract_snapshot.py` | 录制 / 比较外部契约快照 |
 | `check_version_boundaries.py` | 校验版本边界 |
 | `check_api_nav.py` | 校验 `api-nav/` |
+| `lint.py` | ruff / clang-format / cppcheck 的统一入口（不进发布包） |
 | `sync_github.py` | Gitee → GitHub 镜像（分支 + 标签） |

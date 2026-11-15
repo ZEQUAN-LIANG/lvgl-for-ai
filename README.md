@@ -228,7 +228,7 @@ On Windows, MSYS2 UCRT64 is recommended. Full installation steps, PATH setup, fi
 
 ## More docs
 
-- `core/README.md`: tool usage, environment setup, common errors, tests.
+- `core/README.md`: tool usage, environment setup, common errors, tests, lint and formatting.
 - `user/app/GUIDE.md`: writing user apps.
 - `docs/index.html`: project introduction page; `docs/app.html` / `docs/scenario-server.html`: indexes for app variants, scenarios and server constants.
 - `chip-adapt/README.md` / `chip-adapt/docs/sifli.html`: SiFli adaptation layer and capabilities.
