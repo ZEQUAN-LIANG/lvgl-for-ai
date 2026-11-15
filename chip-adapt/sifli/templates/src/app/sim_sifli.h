@@ -1,5 +1,5 @@
-#ifndef LVGL_AI_SIM_SIFLI_H
-#define LVGL_AI_SIM_SIFLI_H
+#ifndef LVGL_VERIFY_LOOP_SIM_SIFLI_H
+#define LVGL_VERIFY_LOOP_SIM_SIFLI_H
 
 #include <stdint.h>
 

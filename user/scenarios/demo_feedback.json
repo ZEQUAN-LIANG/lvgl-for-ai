@@ -1,5 +1,5 @@
 {
-  "schema": "lvgl-ai-scenario-v1",
+  "schema": "lvgl-verify-loop-scenario-v1",
   "name": "demo_feedback",
   "app": "demo_feedback",
   "display": {"width": 320, "height": 240},

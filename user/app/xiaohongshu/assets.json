@@ -105,6 +105,6 @@
     }
   },
   "generator": "legacy (gen_xhs_assets.py, removed)",
-  "schema": "lvgl-ai-assets-v1",
+  "schema": "lvgl-verify-loop-assets-v1",
   "target_lvgl": "9.6"
 }

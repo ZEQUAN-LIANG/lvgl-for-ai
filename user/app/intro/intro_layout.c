@@ -411,7 +411,7 @@ static const intro_seg_t intro_seg_evidence_17[] = {
     {"OPEN DIRECTORY", INTRO_F_MONO_7},
 };
 static const intro_seg_t intro_seg_evidence_18[] = {
-    {"sessions/20261114-095536-1d9d/", INTRO_F_MONO_9},
+    {"user/sessions/20261114-095536-1d9d/", INTRO_F_MONO_9},
 };
 static const intro_seg_t intro_seg_evidence_19[] = {
     {"├── manifest.json          ", INTRO_F_MONO_9},
@@ -471,7 +471,7 @@ static const intro_seg_t intro_seg_evidence_37[] = {
     {"CLI --JSON · LAST LINE", INTRO_F_MONO_7},
 };
 static const intro_seg_t intro_seg_evidence_38[] = {
-    {"{\"session_id\":\"20261114-095536-1d9d\",\"session_dir\":\"sessions/20261114-095536-1d9d\",\"status\":\"ok\",\"app\":\"coffee\",\"display\":{\"width\":800,\"height\":600},\"frame_count\":305,\"error\":null}", INTRO_F_MONO_9},
+    {"{\"session_id\":\"20261114-095536-1d9d\",\"session_dir\":\"user/sessions/20261114-095536-1d9d\",\"status\":\"ok\",\"app\":\"coffee\",\"display\":{\"width\":800,\"height\":600},\"frame_count\":305,\"error\":null}", INTRO_F_MONO_9},
 };
 static const intro_seg_t intro_seg_evidence_39[] = {
     {"HOW AI READS IT", INTRO_F_MONO_8},
@@ -863,7 +863,7 @@ static const intro_seg_t intro_seg_versions_3[] = {
     {"both count.", INTRO_F_DISP_27},
 };
 static const intro_seg_t intro_seg_versions_4[] = {
-    {"The same user/app and the same scenario run ", INTRO_F_BODY_12},
+    {"The same apps and the same scenario run ", INTRO_F_BODY_12},
 };
 static const intro_seg_t intro_seg_versions_5[] = {
     {"on six LVGL versions. Device apps target the 9.4 ", INTRO_F_BODY_12},
@@ -914,7 +914,7 @@ static const intro_seg_t intro_seg_versions_20[] = {
     {" reuses ", INTRO_F_BODY_9},
 };
 static const intro_seg_t intro_seg_versions_21[] = {
-    {"sdk/<version>/", INTRO_F_MONO_8},
+    {"dist/lvgl/<version>/", INTRO_F_MONO_8},
 };
 static const intro_seg_t intro_seg_versions_22[] = {
     {"; ", INTRO_F_BODY_9},
@@ -1198,7 +1198,7 @@ static const intro_seg_t intro_seg_start_15[] = {
     {"# fetch LVGL 9.6; default source=auto tries codeload, then the Gitee mirror", INTRO_F_MONO_7},
 };
 static const intro_seg_t intro_seg_start_16[] = {
-    {"python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root .", INTRO_F_MONO_10},
+    {"python -I scripts/fetch_lvgl.py --version 9.6 --repo-root .", INTRO_F_MONO_10},
 };
 static const intro_seg_t intro_seg_start_17[] = {
     {"03", INTRO_F_MONO_7},
@@ -1207,7 +1207,7 @@ static const intro_seg_t intro_seg_start_18[] = {
     {"# fetch PNG encoder dependencies (zlib / libpng)", INTRO_F_MONO_7},
 };
 static const intro_seg_t intro_seg_start_19[] = {
-    {"python -I core/tools/fetch_png.py --repo-root .", INTRO_F_MONO_10},
+    {"python -I scripts/fetch_png.py --repo-root .", INTRO_F_MONO_10},
 };
 static const intro_seg_t intro_seg_start_20[] = {
     {"04", INTRO_F_MONO_7},
@@ -1216,7 +1216,7 @@ static const intro_seg_t intro_seg_start_21[] = {
     {"# run a scenario; the first run builds the engine", INTRO_F_MONO_7},
 };
 static const intro_seg_t intro_seg_start_22[] = {
-    {"python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json", INTRO_F_MONO_10},
+    {"python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json", INTRO_F_MONO_10},
 };
 static const intro_seg_t intro_seg_start_23[] = {
     {"05", INTRO_F_MONO_7},
@@ -1225,7 +1225,7 @@ static const intro_seg_t intro_seg_start_24[] = {
     {"# open the web inspector: live preview, replay, annotations, whiteboards", INTRO_F_MONO_7},
 };
 static const intro_seg_t intro_seg_start_25[] = {
-    {"python -I core/web.py --open", INTRO_F_MONO_10},
+    {"python -I console/entrypoints/serve.py --open", INTRO_F_MONO_10},
 };
 static const intro_seg_t intro_seg_start_26[] = {
     {"python -I · no pip install", INTRO_F_MONO_7},
@@ -1294,7 +1294,7 @@ static const intro_seg_t intro_seg_start_47[] = {
     {"Claude Code, Cursor or another harness reads ", INTRO_F_BODY_10},
 };
 static const intro_seg_t intro_seg_start_48[] = {
-    {"core/SKILL.md", INTRO_F_MONO_9},
+    {"SKILL.md", INTRO_F_MONO_9},
 };
 static const intro_seg_t intro_seg_start_49[] = {
     {" and ", INTRO_F_BODY_10},

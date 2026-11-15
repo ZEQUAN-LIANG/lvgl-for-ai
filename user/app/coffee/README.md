@@ -9,16 +9,16 @@ LVGL 9.6 默认启动本应用；`user/scenarios/coffee.json` 已声明 `"app": 
 
 ```bash
 # 无窗口、录制并回放完整场景
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/coffee.json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/coffee.json
 
 # 保持会话直到 Ctrl+C（headless）
-python -I core/cli.py --lvgl 9.6 --app coffee --idle
+python -I console/entrypoints/cli.py --lvgl 9.6 --app coffee --idle
 ```
 
 切到小红书应用时用对应 scenario（或网页端顶部「应用」下拉）：
 
 ```bash
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/xiaohongshu.json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/xiaohongshu.json
 ```
 
 网页 live 录制/测试模式每 100 ms 推进一次虚拟时间（10 fps），吐司、时钟、萃取和养护进度会持续变化。网页 live 默认只保留变化帧：画面不变时不会产生新 PNG，也不消耗 600 帧预算；HUD 的 `t_ms` 仍持续前进。动画密集时 600 个保留帧约对应 60 s。
@@ -26,7 +26,7 @@ python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/xiaohongshu.json
 CLI 场景默认仍逐帧录制：场景约 55 s 虚拟时间，默认 600 帧上限会让 manifest 标记 `truncated`，但 28 张 snapshots 仍完整写入。需要完整帧时显式提高上限（帧体积较大）：
 
 ```bash
-LVGL_AI_MAX_FRAMES=4000 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/coffee.json
+LVGL_VERIFY_LOOP_MAX_FRAMES=4000 python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/coffee.json
 ```
 
 ## 功能

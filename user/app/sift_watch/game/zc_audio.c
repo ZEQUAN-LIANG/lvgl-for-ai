@@ -1,11 +1,11 @@
 #include "zc_audio.h"
 #include "zc_synth.h"
 
-#if defined(LVGL_AI_EZIP_ASSETS)
+#if defined(LVGL_VERIFY_LOOP_EZIP_ASSETS)
 #include "rtthread.h"
 #endif
 
-#if defined(LVGL_AI_EZIP_ASSETS) && defined(PA_USING_AW8155)
+#if defined(LVGL_VERIFY_LOOP_EZIP_ASSETS) && defined(PA_USING_AW8155)
 
 #include "rtdevice.h"
 #include "bf0_hal.h"

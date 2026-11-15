@@ -17,18 +17,18 @@ from typing import Any, Sequence
 
 ADAPTER_DIR = Path(__file__).resolve().parent
 REPO_ROOT = ADAPTER_DIR.parents[1]
-CORE_ROOT = REPO_ROOT / "core"
-for _path in (CORE_ROOT, ADAPTER_DIR):
+CONSOLE_ROOT = REPO_ROOT / "console"
+for _path in (CONSOLE_ROOT, ADAPTER_DIR):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
 import layout
-from lvgl_ai.apps import common, registry
+from appmgr import common, registry
 from asset_plan import AssetPlan, ExportError, plan_assets
 
-ADAPTER_SCHEMA = "lvgl-ai-chip-adapter-v1"
-EXPORT_SCHEMA = "lvgl-ai-export-v1"
-SDK_INCLUDE = '#include "lvgl_ai_sdk.h"\n'
+ADAPTER_SCHEMA = "lvgl-verify-loop-chip-adapter-v1"
+EXPORT_SCHEMA = "lvgl-verify-loop-export-v1"
+SDK_INCLUDE = '#include "lvgl_verify_loop_sdk.h"\n'
 TEXT_SUFFIXES = {".c", ".h"}
 EXCLUDED_SOURCE_DIRS = {"design", "covers_src"}
 INCOMPATIBLE_APIS = {
@@ -126,8 +126,8 @@ def export_app(
     commands = [
         f"cd {destination / 'project'} && scons --board={adapter['board']} -j8",
         (
-            f'LVGL_AI_USER_APP_DIR="{destination / "src" / "app"}" '
-            f"python -I core/cli.py --lvgl {adapter['lvgl_version']} "
+            f'LVGL_VERIFY_LOOP_USER_APP_DIR="{destination / "src" / "app"}" '
+            f"python -I console/entrypoints/cli.py --lvgl {adapter['lvgl_version']} "
             f"--scenario user/scenarios/{app}.json"
         ),
     ]
@@ -287,7 +287,7 @@ def _entry_source(app_symbol: str, *, app: str, has_assets: bool) -> str:
     include = f'#include "{app}/assets.h"\n' if has_assets else ""
     init = "    app_assets_init();\n" if has_assets else ""
     return (
-        '#include "lvgl_ai_sdk.h"\n'
+        '#include "lvgl_verify_loop_sdk.h"\n'
         '#include "lvgl.h"\n'
         f"{include}"
         "\n"
@@ -319,8 +319,8 @@ def _export_readme(app: str, app_symbol: str, lvgl_version: str) -> str:
         "## 运行时验证\n"
         "\n"
         "```bash\n"
-        f'LVGL_AI_USER_APP_DIR="chip-adapt/exports/{app}/src/app" '
-        f"python -I core/cli.py --lvgl {lvgl_version} "
+        f'LVGL_VERIFY_LOOP_USER_APP_DIR="chip-adapt/exports/{app}/src/app" '
+        f"python -I console/entrypoints/cli.py --lvgl {lvgl_version} "
         f"--scenario user/scenarios/{app}.json\n"
         "```\n"
     )

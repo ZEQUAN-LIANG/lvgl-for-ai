@@ -1,6 +1,6 @@
 /**
  * @file demo_assets.h
- * Demo assets referenced by the user/app C files as C arrays.
+ * Demo assets referenced by the apps C files as C arrays.
  *
  * No asset pipeline yet: the font and the image live in this header and are
  * compiled into the app TU that includes it.

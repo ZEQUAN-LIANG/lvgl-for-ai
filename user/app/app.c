@@ -73,7 +73,7 @@ void app_create(void)
     printf("[app] app_create\n");
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
-    const char * requested = getenv("LVGL_AI_DEMO");
+    const char * requested = getenv("LVGL_VERIFY_LOOP_DEMO");
     const char * name = (requested == NULL || requested[0] == '\0')
                             ? apps[0].name
                             : app_canonical(requested);
@@ -90,7 +90,7 @@ void app_create(void)
     printf("[app] app=%s\n", app->name);
     app->create();
 #else
-    const char * requested = getenv("LVGL_AI_DEMO");
+    const char * requested = getenv("LVGL_VERIFY_LOOP_DEMO");
     if(requested != NULL && strcmp(requested, "asset_probe") == 0) {
         demo_harness_create(false);
         printf("[app] app=asset_probe (LVGL < 9.6)\n");

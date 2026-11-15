@@ -76,8 +76,8 @@ PC 上可以先听合成器的离线渲染：
 ## 本地预览
 
 ```bash
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch.json
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch_zombie.json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch.json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch_zombie.json
 ```
 
 390×450 像素设计预览在 `user/app/sift_watch/design/watch-app.html`，用浏览器直接打开；
@@ -109,8 +109,8 @@ HTML 预览和板端 `sift_watch.c` 使用同一套低成本伪 3D：
 
 ```bash
 python -I chip-adapt/sifli/export.py sift_watch --force
-LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/exports/sift_watch/src/app" \
-  python -I core/cli.py --lvgl 9.4 --scenario user/scenarios/sift_watch_zombie.json
+LVGL_VERIFY_LOOP_APPS_DIR="$PWD/chip-adapt/exports/sift_watch/src/app" \
+  python -I console/entrypoints/cli.py --lvgl 9.4 --scenario user/scenarios/sift_watch_zombie.json
 ```
 
 `game/` 下的 `.c/.h` 会随 `sift_watch` 递归复制和编译；导出器按 LVGL 9.4 基线扫描，
@@ -154,7 +154,7 @@ pitch = (filtered_y - base_y) * 60 / 1000   clamp ±32
 
 ## 物理按键与振动
 
-SDK 构建（`LVGL_AI_EZIP_ASSETS`）里应用直接轮询 GPIO，不依赖 button 中间件：
+SDK 构建（`LVGL_VERIFY_LOOP_EZIP_ASSETS`）里应用直接轮询 GPIO，不依赖 button 中间件：
 
 - KEY1：`BSP_KEY1_PIN`（默认 34 / PA34）→ `sift_handle_key(LV_KEY_HOME)`，在应用页返回，
   表盘页不切页

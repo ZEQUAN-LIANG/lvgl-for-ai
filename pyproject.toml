@@ -1,29 +1,30 @@
 # Tool configuration only. The project has no Python packaging metadata.
-# Entry point: python -I core/tools/lint.py check|format|hook
+# Entry point: python -I scripts/lint.py check|format|hook
 
 [tool.ruff]
 line-length = 79
 target-version = "py39"
-src = ["core"]
+src = [
+    "console",
+    "scripts",
+    "user",
+    "chip-adapt/sifli",
+]
 respect-gitignore = true
 extend-exclude = [
     ".claude",
     ".scratch",
     "build",
-    "release",
-    "sdk",
-    "sessions",
-    "lvgl-src",
-    "third_party",
+    "dist",
     "licenses",
-    "patches",
-    "runtime",
+    "sessions",
+    "engine/lvgl",
+    "engine/third_party",
+    "console/assets/vendor",
     "chip-adapt/vendor",
     "chip-adapt/exports",
     "chip-adapt/sifli/host/vendor",
     "chip-adapt/sifli/host/.cache",
-    "core/engine/freetype",
-    "core/lvgl_ai/assets/vendor",
     ".test-tmp",
     ".test-sessions",
 ]

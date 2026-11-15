@@ -20,15 +20,15 @@ from typing import Any, Sequence
 
 ADAPTER_DIR = Path(__file__).resolve().parent
 REPO_ROOT = ADAPTER_DIR.parents[1]
-CORE_ROOT = REPO_ROOT / "core"
-for _path in (CORE_ROOT, ADAPTER_DIR):
+CONSOLE_ROOT = REPO_ROOT / "console"
+for _path in (CONSOLE_ROOT, ADAPTER_DIR):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
 import layout
-from lvgl_ai.apps import common
+from appmgr import common
 
-ASSET_SCHEMA = "lvgl-ai-assets-v1"
+ASSET_SCHEMA = "lvgl-verify-loop-assets-v1"
 ASSET_MODES = {"ezip", "raw"}
 ASSET_PLACEMENTS = {"flash", "psram", "sram"}
 ASSET_TRANSFORMS = {"none", "rotate", "scale", "rotate_scale"}
@@ -457,16 +457,16 @@ def _generate_assets(
         f"#ifndef {guard}",
         f"#define {guard}",
         "",
-        '#include "lvgl_ai_sdk.h"',
+        '#include "lvgl_verify_loop_sdk.h"',
         '#include "lvgl.h"',
         "",
-        "#if defined(LVGL_AI_EZIP_ASSETS)",
+        "#if defined(LVGL_VERIFY_LOOP_EZIP_ASSETS)",
         "",
     ]
     body = [
-        '#include "lvgl_ai_sdk.h"',
+        '#include "lvgl_verify_loop_sdk.h"',
         "",
-        "#if defined(LVGL_AI_EZIP_ASSETS)",
+        "#if defined(LVGL_VERIFY_LOOP_EZIP_ASSETS)",
         "",
         '#include "lvgl.h"',
         '#include "app_mem.h"',

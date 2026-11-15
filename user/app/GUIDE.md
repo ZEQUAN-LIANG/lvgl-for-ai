@@ -1,7 +1,7 @@
 # 写一个应用变体
 
 本文只讲把界面代码写进 `user/app/` 的最小闭环。按版本的 API 细节见
-`core/api-nav/<version>.md`；工具与证据的完整约定见包根 `SKILL.md`。
+`docs/api-nav/<version>.md`；工具与证据的完整约定见包根 `SKILL.md`。
 
 命令从包根执行。改过 C 代码后必须重新构建，`--no-build` 只复用当前 engine。
 
@@ -118,7 +118,7 @@ static const app_entry_t apps[] = {
 
 ```json
 {
-  "schema": "lvgl-ai-scenario-v1",
+  "schema": "lvgl-verify-loop-scenario-v1",
   "name": "hello",
   "app": "hello",
   "steps": [
@@ -141,7 +141,7 @@ static const app_entry_t apps[] = {
 
 ```bat
 :: 跑场景；改过 C 后加 --build
-bin\lvgl.cmd run --build --scenario user\scenarios\hello.json --json
+bin\lvgl.cmd run --build --scenario scenarios\hello.json --json
 
 :: 网页端
 bin\lvgl.cmd serve
@@ -232,7 +232,7 @@ lv_timer_create(tick_cb, 16, NULL);
 |---|---|
 | 网页下拉里没有新应用 | `user/scenarios/<name>.json` 是否存在、JSON 是否合法、顶层是否有 `app` |
 | engine 启动即退出，日志有 `unknown app=` | `apps[]` 名字与场景 `app` 是否完全一致 |
-| `build_error` | `sessions/<id>/build.log`；常见是 include 路径、版本门漏了、9.6 不存在的 API |
+| `build_error` | `user/sessions/<id>/build.log`；常见是 include 路径、版本门漏了、9.6 不存在的 API |
 | `link_error` | 声明了 `<name>_create` 但没有定义，或版本门把定义排除了 |
 | `harness_error` | 场景字段拼写、未知字段、类型不匹配 |
 | 画面空白 | 看 `snapshots/`；确认控件创建在 screen 上、尺寸非零、没有被父对象裁剪 |

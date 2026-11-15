@@ -1,5 +1,5 @@
 {
-  "schema": "lvgl-ai-scenario-v1",
+  "schema": "lvgl-verify-loop-scenario-v1",
   "name": "asset_probe",
   "app": "asset_probe",
   "steps": [

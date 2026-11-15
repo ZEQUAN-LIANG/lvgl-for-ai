@@ -62,7 +62,7 @@ class AssetPlanTest(unittest.TestCase):
 
     def _write_manifest(self, assets, *, cache=None, local_header=""):
         payload = {
-            "schema": "lvgl-ai-assets-v1",
+            "schema": "lvgl-verify-loop-assets-v1",
             "local_header": local_header,
             "assets": assets,
         }

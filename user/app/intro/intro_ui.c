@@ -516,7 +516,7 @@ static const intro_loop_step_t intro_loop_steps[6] = {
      "The first build fetches sources and compiles the engine; the prebuilt "
      "host SDK needs GCC only.",
      {
-         "$ python -I core/cli.py --lvgl 9.6 ...",
+         "$ python -I console/entrypoints/cli.py --lvgl 9.6 ...",
          "[build] lvgl_9_6 \xc2\xb7 lvgl_engine.exe",
          "[build] app variants: coffee",
          "[build] ok \xc2\xb7 engine ready",
@@ -529,7 +529,7 @@ static const intro_loop_step_t intro_loop_steps[6] = {
      "Virtual input and virtual time drive real LVGL; the last stdout line is "
      "the session path.",
      {
-         "$ python -I core/cli.py --lvgl 9.6 \\",
+         "$ python -I console/entrypoints/cli.py --lvgl 9.6 \\",
          "    --scenario user/scenarios/coffee.json --json",
          "",
          "{\"session_id\":\"20261114-095536-1d9d\",",
@@ -545,7 +545,7 @@ static const intro_loop_step_t intro_loop_steps[6] = {
      "Full PNGs, timeline, per-frame diffs and engine logs; only changed "
      "frames are written.",
      {
-         "sessions/20261114-095536-1d9d/",
+         "user/sessions/20261114-095536-1d9d/",
          "  manifest.json          status ok \xc2\xb7 app coffee \xc2\xb7 305 "
          "frames",
          "  timeline.ndjson        hit / hit_class / frame spans",
@@ -577,7 +577,7 @@ static const int16_t intro_loop_row_y[6] = {161, 219, 292, 364, 437, 510};
 static const int16_t intro_loop_row_h[6] = {58, 73, 73, 73, 73, 72};
 static const char * intro_loop_desc_lines[6][2] = {
     {"Humans set the goal and the bar; no C.", NULL},
-    {"AI edits user/app directly; C is the source ", "of truth."},
+    {"AI edits apps directly; C is the source ", "of truth."},
     {"First build compiles the engine; prebuilt ", "needs GCC only."},
     {"Virtual input and virtual time drive real ", "LVGL."},
     {"Frames, timeline, diffs and logs land in the ", "session."},

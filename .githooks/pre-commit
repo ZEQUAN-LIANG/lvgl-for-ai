@@ -1,21 +1,21 @@
 #!/bin/sh
 # Enable with:   git config core.hooksPath .githooks
 # Disable with:  git config --unset core.hooksPath
-# Emergency skip: LVGL_AI_SKIP_LINT=1 git commit ...
+# Emergency skip: LVGL_VERIFY_LOOP_SKIP_LINT=1 git commit ...
 set -u
 
-if [ "${LVGL_AI_SKIP_LINT:-0}" = "1" ]; then
+if [ "${LVGL_VERIFY_LOOP_SKIP_LINT:-0}" = "1" ]; then
     exit 0
 fi
 
 root=$(git rev-parse --show-toplevel) || exit 0
 cd "$root" || exit 0
 
-python -I core/tools/lint.py check \
+python -I scripts/lint.py check \
     --tools ruff,clang-format --skip-missing || exit $?
 
-python -I core/tools/lint.py check \
+python -I scripts/lint.py check \
     --tools cppcheck --lvgl 9.6 --skip-missing || exit $?
 
-python -I core/tools/lint.py check \
+python -I scripts/lint.py check \
     --tools cppcheck --lvgl 8.4 --skip-missing || exit $?

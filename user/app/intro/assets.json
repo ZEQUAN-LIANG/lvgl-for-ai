@@ -306,6 +306,6 @@
     }
   },
   "generator": "lvgl-verify-loop 0.2.0",
-  "schema": "lvgl-ai-assets-v1",
+  "schema": "lvgl-verify-loop-assets-v1",
   "target_lvgl": "9.6"
 }

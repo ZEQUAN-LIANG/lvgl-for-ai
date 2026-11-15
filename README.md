@@ -1,14 +1,10 @@
-# LVGL AI
-
-<img src="docs/img/badge-license.svg" alt="MIT"> <img src="docs/img/badge-python.svg" alt="Python ≥ 3.9">
+# LVGL Verify Loop
 
 English | [简体中文](README.zh-CN.md)
 
 **AI writes LVGL. AI verifies it. Humans only provide intent and feedback.**
 
 An AI-first development and verification platform for LVGL: a real headless LVGL host, virtual input and virtual time, frame-by-frame session evidence, a web inspector, and an export path to real SiFli hardware.
-
-<p align="center"><img src="docs/img/web-inspector.png" width="880" alt="LVGL inspector: replaying a real LVGL frame, with annotation tools and saved annotations on the right"></p>
 
 ## Why AI-first
 
@@ -28,18 +24,16 @@ It suits teams that write LVGL UIs with AI and need replayable evidence; it is n
 
 ## What it does
 
-### Default intro: the LVGL AI console
+### Default intro: the LVGL Verify Loop console
 
-`user/app/intro/` is the skill's default app and default template: an 800×600 port of `docs/index.html`. The GIF below is assembled from real session snapshots (`user/scenarios/intro.json`):
-
-<p align="center"><img src="docs/img/intro-demo.gif" width="800" alt="LVGL AI default intro"></p>
+`user/app/intro/` is the skill's default app and default template: an 800×600 showcase assembled from real session snapshots (`user/scenarios/intro.json`).
 
 ### The AI loop: edit C → run a scenario → read evidence → judge
 
 AI edits `user/app/**/*.c` directly, then builds and plays a scenario with one command:
 
 ```bash
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/coffee.json --json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/coffee.json --json
 ```
 
 stdout is a single line of JSON pointing to a session; the session contains full PNG frames, the timeline, per-frame diffs and the engine log. AI reads this evidence against the human-provided acceptance criteria, then decides whether to change anything. The tool never outputs pass/fail; acceptance criteria come from humans.
@@ -49,7 +43,7 @@ There is no object tree, `inspect`, property read or `set`: exact internal state
 ### Web inspector: live preview, replay, annotations, whiteboards
 
 ```bash
-python -I core/web.py --open
+python -I console/entrypoints/serve.py --open
 ```
 
 Fixed at `127.0.0.1:8765`. The page shows frames from the real LVGL runtime, either live or replayed from a recorded session; on the right is the annotation tool, where humans circle problems and write a note, saved as an annotation.
@@ -62,13 +56,11 @@ AI reads these materials directly:
 - User code: `user/app/**/*.c` is the only source of truth; widget creation, `lv_obj_add_event_cb` bindings and state live in C;
 - Run trace: `timeline.ndjson` records the object name and class hit by each input (`hit` / `hit_class`), and `frame_diffs.ndjson` records changed bboxes.
 
-With the three aligned, AI can tell which code created a widget, which callback an event is bound to, who was hit by an input, and which area changed afterwards — then modify the code based on the annotations and whiteboards. The animation below comes from real per-frame PNGs of a session:
-
-<p align="center"><img src="docs/img/sift-watch.gif" width="300" alt="A pixel watch rendered by real LVGL"></p>
+With the three aligned, AI can tell which code created a widget, which callback an event is bound to, who was hit by an input, and which area changed afterwards — then modify the code based on the annotations and whiteboards.
 
 ### Multi-version verification: one app, six LVGL versions
 
-The same `user/app` and the same scenario run on LVGL 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3, selected with `--lvgl <version>`. Cross-version comparison covers event semantics and the set of session files, not pixels.
+The same `apps` and the same scenario run on LVGL 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3, selected with `--lvgl <version>`. Cross-version comparison covers event semantics and the set of session files, not pixels.
 
 Device apps are written against the LVGL 9.4 baseline; export only checks compatibility and rejects 9.5/9.6-only APIs.
 
@@ -88,16 +80,16 @@ Huangshan Pai (SiFli SF32LB52x, board `sf32lb52-lchspi-ulp`) in real use; the de
 
 [Open the video](docs/media/huangshanpai.mp4)
 
-Two more points: a prebuilt host SDK lets you run with just GCC installed (`--prebuilt`); the tools are independent of harnesses like Claude Code and Cursor and are not tied to any model.
+Two more points: prebuilt LVGL libraries let you run with just GCC installed (`--prebuilt`); the tools are independent of harnesses like Claude Code and Cursor and are not tied to any model.
 
 ## Install the skill
 
-The release zip **is** the skill. Download one of the two 0.2.1 bundles from
+The release zip **is** the skill. Download one of the two 0.2.2 bundles from
 [GitHub Releases](https://github.com/ZEQUAN-LIANG/lvgl-for-ai/releases) or
 [Gitee Releases](https://gitee.com/liang-zequan/lvgl-for-ai/releases):
 
-- `lvgl-verify-loop-0.2.1-full-win64.zip`: all six LVGL versions and the viewer.
-- `lvgl-verify-loop-0.2.1-full-sifli-win64.zip`: the same bundle plus the SiFli tools.
+- `lvgl-verify-loop-0.2.2-full-win64.zip`: all six LVGL versions and the viewer.
+- `lvgl-verify-loop-0.2.2-full-sifli-win64.zip`: the same bundle plus the SiFli tools.
 
 Python 3.9+ must be on PATH (`python`/`pythonw`, or `py`/`pyw`); the package
 does not bundle Python. Running the bundled apps needs no CMake or GCC.
@@ -105,7 +97,7 @@ does not bundle Python. Running the bundled apps needs no CMake or GCC.
 Install it as a personal Claude Code skill with one command (Windows PowerShell):
 
 ```powershell
-Expand-Archive .\lvgl-verify-loop-0.2.1-full-win64.zip "$env:USERPROFILE\.claude\skills"
+Expand-Archive .\lvgl-verify-loop-0.2.2-full-win64.zip "$env:USERPROFILE\.claude\skills"
 ```
 
 The zip contains a single top-level `lvgl-verify-loop\` folder, so this creates
@@ -120,11 +112,11 @@ Restart Claude Code, then run:
 ```
 
 Or simply describe the LVGL UI you want. The skill edits `user/app/**/*.c`, runs
-scenarios and reads the session evidence. The bundle carries the SDKs and
+scenarios and reads the session evidence. The bundle carries the prebuilt LVGL libraries and
 prebuilt engines for 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3, and the viewer. Running
 them needs only Python 3.9+; no CMake, administrator rights or version
 downloads. Rebuilding after the AI edits C needs GCC 15.2.0 (MinGW-w64 64-bit),
-matching the compiler recorded in the bundled SDKs. CMake and Ninja are only
+matching the compiler recorded in the bundled LVGL libraries. CMake and Ninja are only
 needed to build LVGL itself from source, which the release bundle does not do.
 
 Without an AI, open the extracted `lvgl-verify-loop` folder and double-click
@@ -147,30 +139,30 @@ git clone https://gitee.com/liang-zequan/lvgl-for-ai.git lvgl-for-agent
 cd lvgl-for-agent
 
 # 1. Download and install LVGL 9.6 sources
-python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root .
+python -I scripts/fetch_lvgl.py --version 9.6 --repo-root .
 
 # 2. Download PNG encoder sources (zlib / libpng)
-python -I core/tools/fetch_png.py --repo-root .
+python -I scripts/fetch_png.py --repo-root .
 
 # 3. Run a scenario (the first run builds the engine; usually takes a few minutes)
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json
 
 # 4. Open the web inspector
-python -I core/web.py --open
+python -I console/entrypoints/serve.py --open
 ```
 
 On success the exit code is `0`, the last stdout line is the session directory, and `manifest.json` has `status: ok`. The default `--source auto` tries GitHub codeload first and the Gitee mirror second; the Gitee LVGL mirror can return HTML/400, so use the default or a version pack when that happens.
 
 Working from source? Open this repository in Claude Code; `CLAUDE.md` covers the
-repo workflow and `core/SKILL.md` is the skill entry. No separate skill install
+repo workflow and `SKILL.md` is the skill entry. No separate skill install
 is needed.
 
 ## Reading the evidence
 
-A session is the `sessions/<id>/` directory:
+A session is the `user/sessions/<id>/` directory:
 
 ```text
-sessions/<id>/
+user/sessions/<id>/
   manifest.json          # status, app, resolution, frame count
   timeline.ndjson        # input events, frame spans, marks
   frame_diffs.ndjson     # per-frame changed bboxes
@@ -184,30 +176,27 @@ sessions/<id>/
 stdout with `--json` is a single line, e.g. (key fields only, paths simplified):
 
 ```json
-{"session_id": "20261114-095536-1d9d", "session_dir": "sessions/20261114-095536-1d9d", "status": "ok", "app": "coffee", "display": {"width": 800, "height": 600}, "frame_count": 305, "error": null}
+{"session_id": "20261114-095536-1d9d", "session_dir": "user/sessions/20261114-095536-1d9d", "status": "ok", "app": "coffee", "display": {"width": 800, "height": 600}, "frame_count": 305, "error": null}
 ```
 
-Twelve full PNG frames from one session:
-
-<p align="center"><img src="docs/img/frame-grid.png" width="880" alt="Twelve full PNG frames from one session"></p>
 
 AI conclusions must point at these files. `status: ok` means the session ended normally; whether the UI meets the acceptance criteria is decided by humans.
 
 ## Versions and real hardware
 
 - Host default is LVGL 9.6, for daily preview and evidence collection; the package's `intro` app targets 9.4+.
-- The 0.2.1 release publishes exactly two zips: `full` contains all six LVGL versions and their engines; `full-sifli` adds the SiFli tools. Both require Python 3.9+ on the host and do not bundle it; there is no per-version download step.
-- The bundled SDKs were exported with GCC 15.2.0. Rebuilding user C through the prebuilt path requires the same GCC version; CMake/Ninja are only for LVGL source builds.
+- The 0.2.2 release publishes exactly two zips: `full` contains all six LVGL versions and their engines; `full-sifli` adds the SiFli tools. Both require Python 3.9+ on the host and do not bundle it; there is no per-version download step.
+- The bundled LVGL libraries were exported with GCC 15.2.0. Rebuilding user C through the prebuilt path requires the same GCC version; CMake/Ninja are only for LVGL source builds.
 - Device apps are written against the LVGL 9.4 baseline; export only checks compatibility and never rewrites sources.
 - Inspect versions or use source installation only for a custom build:
 
   ```bash
-  python -I core/tools/install_version.py --list
-  python -I core/tools/install_version.py --lvgl 9.4 --mode source
+  python -I scripts/install_version.py --list
+  python -I scripts/install_version.py --lvgl 9.4 --mode source
   ```
 
   Source mode needs CMake/Ninja/GCC. A scenario may set `"lvgl": "9.4"`;
-  `--lvgl` wins over the scenario, then `LVGL_AI_LVGL_VERSION`.
+  `--lvgl` wins over the scenario, then `LVGL_VERIFY_LOOP_LVGL_VERSION`.
 - SiFli is only in `full-sifli`: the self-developed export/host layer,
   `SiFli-Host.exe`, pyserial/xterm, `sift_watch` source and an exported example.
   It does not include the SiFli SDK, ARM toolchain, sftool or firmware. SDK,
@@ -218,24 +207,24 @@ AI conclusions must point at these files. `status: ok` means the session ended n
 | Dependency | Requirement | Notes |
 | --- | --- | --- |
 | Python | 3.9+ on PATH; not bundled | Tool layer uses the standard library; asset conversion uses bundled FreeType/pypng, no `pip install` or Node.js; the engine also links the bundled FreeType 2.13.2 with `LV_USE_FREETYPE=1` on every version; always run with `python -I` |
-| GCC | MinGW-w64 64-bit, 15.2.0 | Only when rebuilding user C; must match the bundled SDK manifest. The prebuilt engine does not need it |
+| GCC | MinGW-w64 64-bit, 15.2.0 | Only when rebuilding user C; must match the bundled LVGL manifest. The prebuilt engine does not need it |
 | CMake | ≥ 3.20 | LVGL source builds only; not needed for the release bundles |
 | Ninja | any recent version | LVGL source builds only; not needed for the release bundles |
 | curl | any recent version | Only for downloading LVGL / PNG sources |
 | Disk | ~1 GB free | LVGL sources and build artifacts |
 
-On Windows, MSYS2 UCRT64 is recommended. Full installation steps, PATH setup, first-run notes and common errors are in `core/README.md`.
+On Windows, MSYS2 UCRT64 is recommended. Full installation steps, PATH setup, first-run notes and common errors are in `console/README.md`.
 
 ## More docs
 
-- `core/README.md`: tool usage, environment setup, common errors, tests, lint and formatting.
+- `console/README.md`: tool usage, environment setup, common errors, tests, lint and formatting.
 - `user/app/GUIDE.md`: writing user apps.
-- `docs/index.html`: project introduction page; `docs/app.html` / `docs/scenario-server.html`: indexes for app variants, scenarios and server constants.
-- `chip-adapt/README.md` / `chip-adapt/docs/sifli.html`: SiFli adaptation layer and capabilities.
+- `docs/skill/`: the skill contract (`SKILL.md`) and per-version `api-nav/`.
+- `chip-adapt/sifli/README.md` / `chip-adapt/docs/sifli.html`: SiFli adaptation layer and capabilities.
 - `CONTEXT.md`: domain glossary.
 - `CLAUDE.md`: repository working notes for AI coding agents.
-- `SKILL.md` at the release package root (source: `core/SKILL.md`): the AI entry contract and agent workflow for the installed skill.
+- `SKILL.md` at the release package root (source: `docs/skill/SKILL.md`): the AI entry contract and agent workflow for the installed skill.
 
 ## License
 
-Project source is MIT; see `LICENSE`. Full license texts for LVGL, lodepng, zlib, libpng, freetype-py, FreeType, pypng and the lv_font_conv algorithm reference are in `licenses/`; notices are in `core/THIRD_PARTY_NOTICES.md`.
+Project source is MIT; see `LICENSE`. Full license texts for LVGL, lodepng, zlib, libpng, freetype-py, FreeType, pypng and the lv_font_conv algorithm reference are in `docs/licenses/`.

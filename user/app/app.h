@@ -6,7 +6,7 @@
 #include "lvgl.h"
 #include "lvgl_compat.h"
 
-/* Version differences stay inside user/app. Names exist from LVGL 9.2; 9.1
+/* Version differences stay inside apps. Names exist from LVGL 9.2; 9.1
  * and 8.x have neither the API nor LV_USE_OBJ_NAME, so the tool reports
  * hit_class only. Branches on LVGL_VERSION_MAJOR / LVGL_VERSION_MINOR keep
  * this file compiling against every target version without a tool-side

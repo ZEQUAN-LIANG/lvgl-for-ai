@@ -36,13 +36,13 @@
 ## 场景
 
 ```bash
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/spectrum.json
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/spectrum.json --record-changed-only
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/spectrum.json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/spectrum.json --record-changed-only
 ```
 
 场景会依次进入六种模式并快照，再验证切歌、换调色板、收藏、暂停、拖动进度与音量。交互坐标直接来自 `spectrum_page.c` 的布局常量。
 
-网页端启动 `python -I core/web.py` 后，顶部「应用」下拉会多出 `spectrum`（来自场景的 `app` 字段）；测试模式可以实时看动画。
+网页端启动 `python -I console/entrypoints/serve.py` 后，顶部「应用」下拉会多出 `spectrum`（来自场景的 `app` 字段）；测试模式可以实时看动画。
 
 ## 实现要点
 

@@ -8,8 +8,6 @@
 </head>
 <body>
 <nav>
-  <a href="../../docs/app.html">应用变体</a>
-  <a href="../../docs/scenario-server.html">场景与服务端常量</a>
   <a href="sifli.html" aria-current="page">SiFli SDK 图形能力</a>
   <a href="../../CONTEXT.md">CONTEXT.md</a>
   <a href="../../CLAUDE.md">CLAUDE.md</a>
@@ -475,9 +473,9 @@ while (1) {
     <li><a href="../sifli/export.py">chip-adapt/sifli/export.py</a> 负责复制 <code>user/app</code> 源码、生成 SCons 工程、调用 <code>ezip.exe</code> 生成资源 C 数组；导出产物在 <code>chip-adapt/exports/&lt;app&gt;/</code>，不写入下载的 SDK。</li>
     <li>资源由 <code>user/app/&lt;app&gt;/assets.json</code> 声明：冷图用 <code>mode=ezip</code>，旋转/缩放/热图用 <code>mode=raw</code>；导出器生成 <code>src/app/&lt;app&gt;/assets.h</code>、<code>assets.c</code> 和 <code>app_assets_init()</code>，并把缓存配置写进 <code>project/proj.conf</code>。</li>
     <li>导出的 <code>src/main.c</code> 是官方最小工程写法：<code>littlevgl2rtt_init("lcd")</code> → <code>app_create()</code> → <code>lv_task_handler()</code> 循环。应用入口是 <code>void &lt;app&gt;_create(void)</code>；<code>src/app/app.c</code> 先调 <code>app_assets_init()</code>，再调应用入口。</li>
-    <li><code>src/app/lvgl_ai_sdk.h</code> 用 <code>__has_include("littlevgl2rtt.h")</code> 区分 SDK 构建与本地 headless 验证：SDK 构建拿真实头，本地验证拿 <code>sim_sifli.h</code> 桩。桩只用于验证，不代表 EPIC、触摸或真实刷新行为。</li>
+    <li><code>src/app/lvgl_verify_loop_sdk.h</code> 用 <code>__has_include("littlevgl2rtt.h")</code> 区分 SDK 构建与本地 headless 验证：SDK 构建拿真实头，本地验证拿 <code>sim_sifli.h</code> 桩。桩只用于验证，不代表 EPIC、触摸或真实刷新行为。</li>
     <li>应用必须按 LVGL 9.4 基线编写；导出器扫描 9.5/9.6-only API，发现时返回 <code>unsupported_api</code>，不生成会编译失败的工程。</li>
-    <li>真源：<a href="../sifli/README.md">chip-adapt/sifli/README.md</a>、<a href="../sifli/templates/src/main.c">templates/src/main.c</a>、<a href="../sifli/templates/src/app/lvgl_ai_sdk.h">templates/src/app/lvgl_ai_sdk.h</a>。</li>
+    <li>真源：<a href="../sifli/README.md">chip-adapt/sifli/README.md</a>、<a href="../sifli/templates/src/main.c">templates/src/main.c</a>、<a href="../sifli/templates/src/app/lvgl_verify_loop_sdk.h">templates/src/app/lvgl_verify_loop_sdk.h</a>。</li>
   </ul>
 
   <h2>7. 黄山派落地清单</h2>

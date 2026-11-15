@@ -1,5 +1,5 @@
 {
-  "schema": "lvgl-ai-scenario-v1",
+  "schema": "lvgl-verify-loop-scenario-v1",
   "name": "intro",
   "app": "intro",
   "display": {

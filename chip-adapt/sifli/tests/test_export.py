@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import re
 import shutil
 import struct
 import sys
@@ -64,7 +65,7 @@ class SifliExportTest(unittest.TestCase):
         for name, (width, height) in dimensions.items():
             write_png(assets / f"{name}.png", width, height)
         manifest = {
-            "schema": "lvgl-ai-assets-v1",
+            "schema": "lvgl-verify-loop-assets-v1",
             "local_header": "watch_assets.h",
             "assets": {
                 name: {
@@ -143,8 +144,8 @@ class SifliExportTest(unittest.TestCase):
         ported = (
             self.output / "src" / "app" / "sift_watch" / "sift_watch.c"
         ).read_text(encoding="utf-8")
-        self.assertTrue(ported.startswith('#include "lvgl_ai_sdk.h"'))
-        self.assertNotIn("lvgl_ai_94_compat.h", ported)
+        self.assertTrue(ported.startswith('#include "lvgl_verify_loop_sdk.h"'))
+        self.assertNotIn("lvgl_verify_loop_94_compat.h", ported)
         self.assertIn("LVGL_VERSION_MINOR >= 4", ported)
         self.assertNotIn("LVGL_VERSION_MINOR >= 6", ported)
         original = (
@@ -152,12 +153,12 @@ class SifliExportTest(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertEqual(ported.split("\n", 1)[1], original)
 
-        header = (self.output / "src" / "app" / "lvgl_ai_sdk.h").read_text(
+        header = (self.output / "src" / "app" / "lvgl_verify_loop_sdk.h").read_text(
             encoding="utf-8"
         )
-        self.assertIn("LVGL_AI_EZIP_ASSETS", header)
+        self.assertIn("LVGL_VERIFY_LOOP_EZIP_ASSETS", header)
         self.assertFalse(
-            (self.output / "src" / "app" / "lvgl_ai_94_compat.h").exists()
+            (self.output / "src" / "app" / "lvgl_verify_loop_94_compat.h").exists()
         )
 
     def test_images_follow_asset_manifest(self):
@@ -214,7 +215,7 @@ class SifliExportTest(unittest.TestCase):
         cli_commands = [
             command
             for command in result["commands"]
-            if "core/cli.py" in command
+            if "console/entrypoints/cli.py" in command
         ]
         self.assertEqual(len(cli_commands), 1)
         self.assertIn("--lvgl 9.4", cli_commands[0])
@@ -388,14 +389,19 @@ class SifliExportTest(unittest.TestCase):
         self.assertFalse(self.output.exists())
 
     def test_unsupported_api_is_reported(self):
-        bad = self.user_app / "coffee"
+        registry = (
+            REPO / "user" / "app" / "app.c"
+        ).read_text(encoding="utf-8-sig")
+        names = re.findall(r'\{"([^"]+)"', registry)
+        name = next(item for item in names if item != "sift_watch")
+        bad = self.user_app / name
         bad.mkdir()
-        (bad / "coffee_ui.c").write_text(
+        (bad / "bad_ui.c").write_text(
             "void bad(lv_obj_t * obj) { lv_obj_set_clickable(obj, false); }\n",
             encoding="utf-8",
         )
         with self.assertRaises(sifli_export.ExportError) as raised:
-            self._export("coffee", output_dir=self.output)
+            self._export(name, output_dir=self.output)
         self.assertEqual(raised.exception.code, "unsupported_api")
         self.assertFalse(self.output.exists())
 

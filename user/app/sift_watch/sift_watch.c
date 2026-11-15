@@ -6,7 +6,7 @@
 #include "game/zc_audio.h"
 #include "game/zc_game.h"
 
-#if defined(LVGL_AI_EZIP_ASSETS) && defined(RT_USING_FINSH)
+#if defined(LVGL_VERIFY_LOOP_EZIP_ASSETS) && defined(RT_USING_FINSH)
 #include "finsh.h"
 #endif
 
@@ -17,7 +17,7 @@
 #include <string.h>
 #include <time.h>
 
-#if defined(LVGL_AI_EZIP_ASSETS) &&                                            \
+#if defined(LVGL_VERIFY_LOOP_EZIP_ASSETS) &&                                   \
     (defined(ACC_USING_LSM6DSL) || defined(CONFIG_ACC_USING_LSM6DSL))
 #define SIFT_HAS_IMU 1
 #include "rtthread.h"
@@ -32,9 +32,10 @@
 #define SIFT_CLOCK_EPOCH_2026_01_01 1767225600U
 
 /* Physical keys and the vibration motor only exist on the SiFli SDK build.
- * The exporter prepends lvgl_ai_sdk.h, which defines LVGL_AI_EZIP_ASSETS and
- * pulls in rtthread.h; headless builds get empty stubs. */
-#if defined(LVGL_AI_EZIP_ASSETS)
+ * The exporter prepends lvgl_verify_loop_sdk.h, which defines
+ * LVGL_VERIFY_LOOP_EZIP_ASSETS and pulls in rtthread.h; headless builds get
+ * empty stubs. */
+#if defined(LVGL_VERIFY_LOOP_EZIP_ASSETS)
 #define SIFT_HAS_KEY 1
 #include "rtdevice.h"
 #if defined(BSP_KEY1_PIN)
@@ -2970,7 +2971,7 @@ void sift_watch_create(void)
            (long)screen_h);
 }
 
-#if defined(LVGL_AI_EZIP_ASSETS) && defined(RT_USING_FINSH)
+#if defined(LVGL_VERIFY_LOOP_EZIP_ASSETS) && defined(RT_USING_FINSH)
 static int sift_zgame(int argc, char ** argv)
 {
     (void)argc;

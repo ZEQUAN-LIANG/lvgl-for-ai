@@ -2,7 +2,7 @@
  * @file lvgl_compat.h
  * Minimal 8.x shims so shared user code can keep the 9.x spelling.
  *
- * Version differences stay inside user/app; the engine and the tool never see
+ * Version differences stay inside apps; the engine and the tool never see
  * this header. app.c includes it through app.h.
  */
 
