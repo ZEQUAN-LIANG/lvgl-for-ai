@@ -127,7 +127,9 @@ def check_document(root: Path, version: str, shims: set[str]) -> list[str]:
         if "→" in line and "`lvgl-src/" in line
     ]
     if len(index_rows) < 8:
-        errors.append(f"{doc_path.name}: {len(index_rows)} task-index rows (<8)")
+        errors.append(
+            f"{doc_path.name}: {len(index_rows)} task-index rows (<8)"
+        )
 
     symbols: list[tuple[int, str, str]] = []
     path_spans: list[tuple[int, str]] = []
@@ -137,14 +139,20 @@ def check_document(root: Path, version: str, shims: set[str]) -> list[str]:
     for lineno, line in enumerate(lines, 1):
         for span in CODE_SPAN.findall(line):
             if "/" in span or span.endswith(".h"):
-                if PATH_SPAN.match(span) and not any(ch in span for ch in "*<>"):
+                if PATH_SPAN.match(span) and not any(
+                    ch in span for ch in "*<>"
+                ):
                     path_spans.append((lineno, span))
                 continue
             for symbol in LV_SYMBOL.findall(span):
                 symbols.append((lineno, symbol, line))
                 if symbol in header_ids:
                     continue
-                if version in ("8.4", "8.3") and symbol in SHIMS and symbol in shims:
+                if (
+                    version in ("8.4", "8.3")
+                    and symbol in SHIMS
+                    and symbol in shims
+                ):
                     exceptions.append((lineno, symbol, "8.x shim"))
                     continue
                 if DIFF_MARKER.search(line):
@@ -159,10 +167,14 @@ def check_document(root: Path, version: str, shims: set[str]) -> list[str]:
         seen_paths.add(path_text)
         target = root / path_text
         if not target.exists():
-            errors.append(f"{doc_path.name}:{lineno}: path does not exist: {path_text}")
+            errors.append(
+                f"{doc_path.name}:{lineno}: path does not exist: {path_text}"
+            )
 
     for lineno, symbol in missing:
-        errors.append(f"{doc_path.name}:{lineno}: symbol not in {version} headers: {symbol}")
+        errors.append(
+            f"{doc_path.name}:{lineno}: symbol not in {version} headers: {symbol}"
+        )
 
     unique_symbols = {symbol for _, symbol, _ in symbols}
     print(

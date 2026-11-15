@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import contextlib
@@ -31,8 +30,9 @@ def free_port() -> int:
 def request(method: str, url: str, timeout: float = 5.0) -> tuple[int, bytes]:
     try:
         with urllib.request.urlopen(
-            urllib.request.Request(url, data=b"" if method == "POST" else None,
-                                   method=method),
+            urllib.request.Request(
+                url, data=b"" if method == "POST" else None, method=method
+            ),
             timeout=timeout,
         ) as response:
             return response.status, response.read()

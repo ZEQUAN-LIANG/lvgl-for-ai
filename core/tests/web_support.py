@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -86,7 +85,10 @@ def make_web_session(
         snapshot_rel = "snapshots/001_after_click.png"
         (session / "snapshots").mkdir()
         write_png_rgb(
-            session / snapshot_rel, 2, 2, [(9, 9, 9), (9, 9, 9), (9, 9, 9), (9, 9, 9)]
+            session / snapshot_rel,
+            2,
+            2,
+            [(9, 9, 9), (9, 9, 9), (9, 9, 9), (9, 9, 9)],
         )
         snapshots.append(snapshot_rel)
         timeline.append(
@@ -181,7 +183,9 @@ def make_web_session(
     (session / "engine.log").write_text(
         "[app] app_create\n[app] marker line\n", encoding="utf-8"
     )
-    (session / "build.log").write_text("# phase: build\nbuilt\n", encoding="utf-8")
+    (session / "build.log").write_text(
+        "# phase: build\nbuilt\n", encoding="utf-8"
+    )
 
     artifacts: dict = {
         "manifest": "manifest.json",
@@ -225,7 +229,6 @@ def make_web_session(
 
 
 class WebHarness:
-
     def __init__(
         self,
         sessions_root,

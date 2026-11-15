@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -23,7 +22,9 @@ class PrebuiltAutoSelectionIntegrationTest(unittest.TestCase):
     def setUpClass(cls) -> None:
         support.ensure_host_sdk("9.6")
 
-    def test_missing_source_auto_selects_prebuilt_and_writes_evidence(self) -> None:
+    def test_missing_source_auto_selects_prebuilt_and_writes_evidence(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory(prefix="lvgl-ai-prebuilt-") as raw:
             root = Path(raw)
             app_dir = root / "user" / "app"
@@ -40,10 +41,13 @@ class PrebuiltAutoSelectionIntegrationTest(unittest.TestCase):
             result = subprocess.run(
                 [
                     sys.executable,
-                    "-I", "-B",
+                    "-I",
+                    "-B",
                     str(CLI),
-                    "--lvgl", "9.6",
-                    "--scenario", str(SCENARIO),
+                    "--lvgl",
+                    "9.6",
+                    "--scenario",
+                    str(SCENARIO),
                     "--json",
                 ],
                 cwd=str(work),
@@ -60,7 +64,9 @@ class PrebuiltAutoSelectionIntegrationTest(unittest.TestCase):
                 0,
                 msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
             )
-            lines = [line for line in result.stdout.splitlines() if line.strip()]
+            lines = [
+                line for line in result.stdout.splitlines() if line.strip()
+            ]
             self.assertEqual(len(lines), 1)
             payload = json.loads(lines[0])
             self.assertEqual(payload["status"], "ok", msg=payload.get("error"))

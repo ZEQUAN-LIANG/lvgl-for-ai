@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import importlib.util
@@ -33,7 +32,9 @@ class LauncherConfigTest(unittest.TestCase):
         self.assertEqual(entry["cwd"], r"..")
         self.assertEqual(entry["args"], ())
         self.assertNotIn("python", entry)
-        self.assertEqual(entry["output"], REPO_ROOT / "bin" / "LVGL-AI-Viewer.exe")
+        self.assertEqual(
+            entry["output"], REPO_ROOT / "bin" / "LVGL-AI-Viewer.exe"
+        )
 
     def test_host_launcher_lives_in_the_sifli_tools_directory(self) -> None:
         entry = self.entries["sifli-host"]
@@ -42,7 +43,8 @@ class LauncherConfigTest(unittest.TestCase):
         self.assertEqual(entry["args"], ("--open",))
         self.assertNotIn("python", entry)
         self.assertEqual(
-            entry["output"], REPO_ROOT / "chip-adapt" / "sifli" / "tools" / "SiFli-Host.exe"
+            entry["output"],
+            REPO_ROOT / "chip-adapt" / "sifli" / "tools" / "SiFli-Host.exe",
         )
 
     def test_launchers_use_python_from_path(self) -> None:
@@ -58,7 +60,13 @@ class LauncherConfigTest(unittest.TestCase):
 
     def test_launchers_do_not_embed_viewer_logic(self) -> None:
         source = (LAUNCHERS_DIR / "launcher.c").read_text(encoding="utf-8")
-        for retired in ("http://", "--manage", "?manage=1", "cmd.exe", "netstat"):
+        for retired in (
+            "http://",
+            "--manage",
+            "?manage=1",
+            "cmd.exe",
+            "netstat",
+        ):
             self.assertNotIn(retired, source)
 
     def test_viewer_defaults_to_no_build(self) -> None:
@@ -93,8 +101,19 @@ class IconTest(unittest.TestCase):
                 self.assertEqual(count, len(self.icons.SIZES))
                 sizes = []
                 for index in range(count):
-                    entry = struct.unpack_from("<BBBBHHII", data, 6 + 16 * index)
-                    width, height, colors, entry_reserved, planes, bits, length, offset = entry
+                    entry = struct.unpack_from(
+                        "<BBBBHHII", data, 6 + 16 * index
+                    )
+                    (
+                        width,
+                        height,
+                        colors,
+                        entry_reserved,
+                        planes,
+                        bits,
+                        length,
+                        offset,
+                    ) = entry
                     sizes.append(width or 256)
                     self.assertEqual(width, height)
                     self.assertEqual(colors, 0)

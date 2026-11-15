@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import struct
@@ -30,7 +29,9 @@ class PngCropTest(unittest.TestCase):
 
     def test_rgb_roundtrip_and_crop(self) -> None:
         image = decode_png(self.png)
-        self.assertEqual((image.width, image.height, image.color_type), (3, 2, 2))
+        self.assertEqual(
+            (image.width, image.height, image.color_type), (3, 2, 2)
+        )
         self.assertEqual(image.rows, self.rows)
 
         cropped, box, _ = crop_png(self.png, Region(1, 0, 2, 2))
@@ -133,9 +134,7 @@ class CompareImagesTest(unittest.TestCase):
 
     def test_heatmap_marks_changed_pixels_by_delta(self) -> None:
         left = _rgb_png(3, 1, [(0, 0, 0)] * 3)
-        right = _rgb_png(
-            3, 1, [(255, 0, 0), (10, 0, 0), (0, 0, 0)]
-        )
+        right = _rgb_png(3, 1, [(255, 0, 0), (10, 0, 0), (0, 0, 0)])
 
         comparison = compare_png(left, right, heatmap=True)
 
@@ -151,9 +150,7 @@ class CompareImagesTest(unittest.TestCase):
 
 
 def _solid_png(rgb: tuple[int, int, int], size: int = 8) -> bytes:
-    return encode_png(
-        PngImage(size, size, 2, (bytes(rgb) * size,) * size)
-    )
+    return encode_png(PngImage(size, size, 2, (bytes(rgb) * size,) * size))
 
 
 def _rgb_png(
@@ -162,10 +159,7 @@ def _rgb_png(
     pixels: list[tuple[int, int, int]],
 ) -> bytes:
     rows = tuple(
-        b"".join(
-            bytes(pixel)
-            for pixel in pixels[y * width:(y + 1) * width]
-        )
+        b"".join(bytes(pixel) for pixel in pixels[y * width : (y + 1) * width])
         for y in range(height)
     )
     return encode_png(PngImage(width, height, 2, rows))
@@ -181,11 +175,7 @@ def _png_with_header(width: int, height: int) -> bytes:
         )
 
     ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
-    return (
-        PNG_SIGNATURE
-        + chunk(b"IHDR", ihdr)
-        + chunk(b"IEND", b"")
-    )
+    return PNG_SIGNATURE + chunk(b"IHDR", ihdr) + chunk(b"IEND", b"")
 
 
 class ContactSheetTest(unittest.TestCase):
@@ -201,14 +191,17 @@ class ContactSheetTest(unittest.TestCase):
             items, columns=2, tile_width=64, tile_height=48
         )
 
-        self.assertEqual([tile.label for tile in sheet.tiles], [
-            "first", "second", "third"
-        ])
+        self.assertEqual(
+            [tile.label for tile in sheet.tiles], ["first", "second", "third"]
+        )
         self.assertEqual((sheet.columns, sheet.rows), (2, 2))
         self.assertEqual(len(sheet.tiles), 3)
         self.assertEqual((sheet.image.width, sheet.image.height), (152, 120))
         self.assertEqual(
-            [(tile.x, tile.y, tile.width, tile.height) for tile in sheet.tiles],
+            [
+                (tile.x, tile.y, tile.width, tile.height)
+                for tile in sheet.tiles
+            ],
             [(8, 8, 64, 48), (80, 8, 64, 48), (8, 64, 64, 48)],
         )
         png = sheet.to_png()
@@ -226,18 +219,14 @@ class ContactSheetTest(unittest.TestCase):
             [("B", image)], columns=1, tile_width=64, tile_height=48
         )
 
-        self.assertNotEqual(
-            with_label_a.image.rows, with_label_b.image.rows
-        )
+        self.assertNotEqual(with_label_a.image.rows, with_label_b.image.rows)
         tile = with_label_a.tiles[0]
-        label_rows = with_label_a.image.rows[
-            tile.y:tile.image_y
-        ]
+        label_rows = with_label_a.image.rows[tile.y : tile.image_y]
         white = sum(
             1
             for row in label_rows
             for index in range(0, len(row), 3)
-            if tuple(row[index:index + 3]) == (255, 255, 255)
+            if tuple(row[index : index + 3]) == (255, 255, 255)
         )
         self.assertGreater(white, 0)
 
@@ -246,9 +235,7 @@ class ContactSheetTest(unittest.TestCase):
         with self.assertRaises(PngError):
             build_contact_sheet([])
         with self.assertRaises(PngError) as caught:
-            build_contact_sheet(
-                [("tile", png)] * (MAX_CONTACT_TILES + 1)
-            )
+            build_contact_sheet([("tile", png)] * (MAX_CONTACT_TILES + 1))
         self.assertIn(str(MAX_CONTACT_TILES), str(caught.exception))
 
     def test_rejects_an_oversized_source_before_decoding(self) -> None:

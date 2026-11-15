@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -82,7 +81,9 @@ class DocumentStoreTest(unittest.TestCase):
         real_replace = Path.replace
 
         def failing_replace(path: Path, target: Path):
-            if path.name.startswith("doc.json.") and path.name.endswith(".tmp"):
+            if path.name.startswith("doc.json.") and path.name.endswith(
+                ".tmp"
+            ):
                 raise OSError("disk full")
             return real_replace(path, target)
 
@@ -125,9 +126,7 @@ class DocumentStoreTest(unittest.TestCase):
         (folder / "drop.png").write_bytes(b"drop")
         (folder / "note.txt").write_bytes(b"not an image")
 
-        removed = self.store.remove_unreferenced(
-            "images", {"images/keep.png"}
-        )
+        removed = self.store.remove_unreferenced("images", {"images/keep.png"})
 
         self.assertEqual(removed, [folder / "drop.png"])
         self.assertTrue((folder / "keep.png").is_file())

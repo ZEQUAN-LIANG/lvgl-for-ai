@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import subprocess
@@ -25,7 +24,6 @@ def build_result(
 
 
 class ScriptedRunner:
-
     def __init__(self, *results: BuildResult | BaseException) -> None:
         self.results = list(results)
         self.calls: list[dict] = []
@@ -34,11 +32,7 @@ class ScriptedRunner:
         self.calls.append(
             {"command": list(command), "timeout": timeout, "env": env}
         )
-        result = (
-            self.results.pop(0)
-            if self.results
-            else build_result()
-        )
+        result = self.results.pop(0) if self.results else build_result()
         if isinstance(result, BaseException):
             raise result
         return BuildResult(
@@ -97,7 +91,9 @@ class BuildPlanCase(unittest.TestCase):
     ) -> None:
         self.build_dir.mkdir(parents=True, exist_ok=True)
         values = {
-            "LVGL_AI_LVGL_SRC": self.lvgl_src if lvgl_src is None else lvgl_src,
+            "LVGL_AI_LVGL_SRC": self.lvgl_src
+            if lvgl_src is None
+            else lvgl_src,
             "LVGL_AI_LVGL_VERSION": version,
             "LVGL_AI_USER_APP_DIR": (
                 self.user_app_dir if user_app_dir is None else user_app_dir
@@ -108,7 +104,9 @@ class BuildPlanCase(unittest.TestCase):
                 self.engine_dir if home is None else home
             ),
         }
-        lines = [f"{name}:UNINITIALIZED={value}" for name, value in values.items()]
+        lines = [
+            f"{name}:UNINITIALIZED={value}" for name, value in values.items()
+        ]
         (self.build_dir / "CMakeCache.txt").write_text(
             "\n".join(lines) + "\n", encoding="utf-8"
         )
@@ -151,13 +149,13 @@ class PreflightTest(BuildPlanCase):
         self.assertEqual(caught.exception.command, plan.configure_command)
 
     def test_missing_tools_are_named_with_the_install_hint(self) -> None:
-        plan = self.plan(
-            missing_tools=lambda: ["cmake", "ninja", "gcc"]
-        )
+        plan = self.plan(missing_tools=lambda: ["cmake", "ninja", "gcc"])
         with self.assertRaises(BuildError) as caught:
             plan.preflight()
         message = str(caught.exception)
-        self.assertIn("build tools not found on PATH: cmake, ninja, gcc", message)
+        self.assertIn(
+            "build tools not found on PATH: cmake, ninja, gcc", message
+        )
         self.assertIn("CMake >= 3.20", message)
         self.assertIn("--no-build", message)
         self.assertEqual(caught.exception.command, plan.configure_command)
@@ -201,7 +199,6 @@ class ConfigureTriggerTest(BuildPlanCase):
         self.assertEqual(call["env"]["TEMP"], str(temp_dir))
         self.assertTrue(temp_dir.is_dir())
 
-
     def test_an_absent_cache_requires_configure(self) -> None:
         self.assertTrue(self.plan().needs_configure())
 
@@ -218,7 +215,9 @@ class ConfigureTriggerTest(BuildPlanCase):
             "version": {"version": "9.5"},
             "lvgl source": {"lvgl_src": self.root / "other-lvgl"},
             "user app": {"user_app_dir": self.root / "other-app"},
-            "moved checkout": {"home": self.root / "old-checkout" / "core" / "engine"},
+            "moved checkout": {
+                "home": self.root / "old-checkout" / "core" / "engine"
+            },
         }
         for name, overrides in cases.items():
             with self.subTest(name=name):
@@ -236,7 +235,9 @@ class ConfigureTriggerTest(BuildPlanCase):
         cache.write_text("\n".join(kept) + "\n", encoding="utf-8")
         self.assertTrue(self.plan().needs_configure())
 
-    def test_the_plan_engine_directory_participates_in_the_cache_check(self) -> None:
+    def test_the_plan_engine_directory_participates_in_the_cache_check(
+        self,
+    ) -> None:
         moved = self.root / "moved" / "core" / "engine"
         self.write_cache()
         self.assertTrue(self.plan(engine_dir=moved).needs_configure())
@@ -286,7 +287,9 @@ class ConfigureTriggerTest(BuildPlanCase):
         self.assertEqual(outcome.engine_path, self.built_engine_path())
         self.assertFalse(outcome.engine_path.exists())
 
-    def test_a_matching_cache_skips_configure_and_records_the_skip(self) -> None:
+    def test_a_matching_cache_skips_configure_and_records_the_skip(
+        self,
+    ) -> None:
         self.write_cache()
         runner = ScriptedRunner()
         plan = self.plan(runner)
@@ -315,7 +318,9 @@ class ConfigureTriggerTest(BuildPlanCase):
 
 
 class BuildFailureTest(BuildPlanCase):
-    def test_configure_failure_is_a_build_error_with_the_phase_log(self) -> None:
+    def test_configure_failure_is_a_build_error_with_the_phase_log(
+        self,
+    ) -> None:
         runner = ScriptedRunner(
             build_result(returncode=1, stdout="CMake Error: no generator\n")
         )
@@ -343,14 +348,18 @@ class BuildFailureTest(BuildPlanCase):
         error = caught.exception
         self.assertEqual(error.command, plan.build_command)
         self.assertTrue(
-            error.log_text.startswith("# build mode: source\n# phase: configure\n")
+            error.log_text.startswith(
+                "# build mode: source\n# phase: configure\n"
+            )
         )
         self.assertIn("# phase: build\n", error.log_text)
         self.assertEqual(error.first_error["file"], "app.c")
         self.assertEqual(error.first_error["line"], 3)
         self.assertIn("app.c:3:5: expected ';'", str(error))
 
-    def test_build_failure_after_a_skipped_configure_keeps_the_skip_row(self) -> None:
+    def test_build_failure_after_a_skipped_configure_keeps_the_skip_row(
+        self,
+    ) -> None:
         self.write_cache()
         runner = ScriptedRunner(
             build_result(returncode=1, stderr="ninja: build stopped\n")
@@ -368,7 +377,9 @@ class BuildFailureTest(BuildPlanCase):
         )
         self.assertIn("ninja: build stopped", error.log_text)
 
-    def test_link_failure_is_a_link_error_with_unresolved_symbols(self) -> None:
+    def test_link_failure_is_a_link_error_with_unresolved_symbols(
+        self,
+    ) -> None:
         runner = ScriptedRunner(
             build_result(),
             build_result(
@@ -416,8 +427,12 @@ class BuildFailureTest(BuildPlanCase):
 
 
 class EngineResolutionTest(BuildPlanCase):
-    def test_missing_engines_resolve_to_the_expected_build_output(self) -> None:
-        self.assertEqual(self.plan().resolve_engine(), self.built_engine_path())
+    def test_missing_engines_resolve_to_the_expected_build_output(
+        self,
+    ) -> None:
+        self.assertEqual(
+            self.plan().resolve_engine(), self.built_engine_path()
+        )
 
     def test_an_explicit_engine_path_is_never_replaced(self) -> None:
         explicit = self.root / "chosen-engine"
@@ -425,14 +440,16 @@ class EngineResolutionTest(BuildPlanCase):
         self.assertEqual(plan.engine_path, explicit)
         self.assertEqual(plan.resolve_engine(), explicit)
 
-    def test_no_build_execution_names_the_build_engine_in_the_log(self) -> None:
+    def test_no_build_execution_names_the_build_engine_in_the_log(
+        self,
+    ) -> None:
         built = self.write_built_engine()
         runner = ScriptedRunner()
         outcome = self.plan(runner).execute(build=False)
         self.assertEqual(outcome.engine_path, built)
         self.assertEqual(
             outcome.log_text,
-            "# build skipped (build=False)\n" f"# engine: {built}\n",
+            f"# build skipped (build=False)\n# engine: {built}\n",
         )
         self.assertEqual(runner.calls, [])
 
@@ -480,9 +497,7 @@ class BuildDirIsolationTest(unittest.TestCase):
             self.assertEqual(first_dir, paths.build_dir_for("9.6", first))
             self.assertIn("_export_", first_dir.name)
             self.assertNotEqual(first_dir, paths.build_dir_for("9.6"))
-            self.assertNotEqual(
-                first_dir, paths.build_dir_for("9.6", second)
-            )
+            self.assertNotEqual(first_dir, paths.build_dir_for("9.6", second))
 
 
 class BuildLockTest(unittest.TestCase):

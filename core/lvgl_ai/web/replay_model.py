@@ -159,7 +159,6 @@ def _note_view(
 
 
 class ReplayModel:
-
     def __init__(self, recording: Recording | None = None) -> None:
         self._recording = recording
 
@@ -319,15 +318,17 @@ class ReplayModel:
         _ = self.timeline
 
     def prime(self) -> None:
-        self.manifest
-        self.timeline
-        self.frame_diffs
-        self.reference_diffs
-        self.annotations
-        self.build_log_tail
-        self.frames
-        self.snapshots
-        self.log_tail
+        _ = (
+            self.manifest,
+            self.timeline,
+            self.frame_diffs,
+            self.reference_diffs,
+            self.annotations,
+            self.build_log_tail,
+            self.frames,
+            self.snapshots,
+            self.log_tail,
+        )
 
 
 def load(recording: Recording) -> ReplayModel:

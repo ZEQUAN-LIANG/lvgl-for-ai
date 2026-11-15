@@ -89,7 +89,9 @@ class BuildPlan:
             )
         self.version = version
         self.lvgl_src = (
-            Path(lvgl_src) if lvgl_src is not None else paths.lvgl_src_for(version)
+            Path(lvgl_src)
+            if lvgl_src is not None
+            else paths.lvgl_src_for(version)
         )
         self.user_app_dir = (
             Path(user_app_dir)
@@ -111,7 +113,9 @@ class BuildPlan:
             Path(libpng_src) if libpng_src is not None else paths.libpng_src()
         )
         self.sdk_dir = (
-            Path(sdk_dir) if sdk_dir is not None else paths.sdk_dir_for(version)
+            Path(sdk_dir)
+            if sdk_dir is not None
+            else paths.sdk_dir_for(version)
         )
         self._build_explicit = build is not None
         self._engine_explicit = engine_path is not None
@@ -152,7 +156,9 @@ class BuildPlan:
                 )
             )
             self.build_command = (
-                list(build) if build is not None else build_command(self.build_dir)
+                list(build)
+                if build is not None
+                else build_command(self.build_dir)
             )
         self.engine_path = (
             Path(engine_path)
@@ -236,8 +242,7 @@ class BuildPlan:
         engine_path = self.resolve_engine()
         if log_text is None:
             log_text = (
-                "# build skipped (build=False)\n"
-                f"# engine: {engine_path}\n"
+                f"# build skipped (build=False)\n# engine: {engine_path}\n"
             )
         return BuildOutcome(engine_path=engine_path, log_text=log_text)
 

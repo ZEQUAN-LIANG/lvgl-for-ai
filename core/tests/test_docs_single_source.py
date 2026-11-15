@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import re
@@ -107,9 +106,7 @@ def _parse_page(path: Path) -> _PageParser:
 
 
 EXTERNAL_HREF_PREFIXES = ("#", "http://", "https://", "mailto:")
-MISSING_DOWNLOAD_DIRS = (
-    Path("chip-adapt") / "vendor" / "sifli-sdk",
-)
+MISSING_DOWNLOAD_DIRS = (Path("chip-adapt") / "vendor" / "sifli-sdk",)
 
 
 def _within(path: Path, root: Path) -> bool:
@@ -123,9 +120,7 @@ def _optional_target(target: Path, repo_root: Path) -> bool:
     )
 
 
-def broken_links(
-    page: Path, *, base_dir: Path, repo_root: Path
-) -> list[str]:
+def broken_links(page: Path, *, base_dir: Path, repo_root: Path) -> list[str]:
     parser = _PageParser()
     parser.feed(page.read_text(encoding="utf-8"))
     parser.close()
@@ -194,9 +189,7 @@ class DocsLinkPolicyTest(unittest.TestCase):
         self.page = self.docs_dir / "page.html"
 
     def _check(self, href: str) -> list[str]:
-        self.page.write_text(
-            f'<a href="{href}">link</a>', encoding="utf-8"
-        )
+        self.page.write_text(f'<a href="{href}">link</a>', encoding="utf-8")
         return broken_links(
             self.page, base_dir=self.docs_dir, repo_root=self.repo_root
         )
@@ -218,6 +211,7 @@ class DocsLinkPolicyTest(unittest.TestCase):
             self._check("../chip-adapt/vendor/sifli-sdk/version.txt"), []
         )
 
+
 class DocsEntryPageTest(unittest.TestCase):
     def test_index_page_is_link_checked(self) -> None:
         self.assertIn("index.html", LINK_PAGES)
@@ -233,9 +227,7 @@ class DocsEntryPageTest(unittest.TestCase):
 class DocsSingleSourceTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.pages = {
-            name: _parse_page(DOCS_DIR / name) for name in PAGE_NAMES
-        }
+        cls.pages = {name: _parse_page(DOCS_DIR / name) for name in PAGE_NAMES}
         app_c = (paths.USER_APP_DIR / "app.c").read_text(encoding="utf-8-sig")
         cls.app_names = [name for name, _symbol in parse_app_entries(app_c)]
 
@@ -276,7 +268,9 @@ class DocsSingleSourceTest(unittest.TestCase):
                 self.assertNotIn(name, PAGE_NAMES)
                 self.assertNotIn(name, LINK_PAGES)
 
-    def test_every_symbol_pointer_names_something_in_the_linked_file(self) -> None:
+    def test_every_symbol_pointer_names_something_in_the_linked_file(
+        self,
+    ) -> None:
         for name, page in self.pages.items():
             self.assertTrue(page.pointers, f"{name}: no symbol pointers found")
             for href, pointer in page.pointers:

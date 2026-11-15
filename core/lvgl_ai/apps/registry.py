@@ -30,7 +30,7 @@ def parse_app_entries(text: str) -> list[tuple[str, str]]:
     open_index = _apps_open_index(lines)
     close_index = _apps_close_index(lines, open_index)
     entries: list[tuple[str, str]] = []
-    for line in lines[open_index + 1:close_index]:
+    for line in lines[open_index + 1 : close_index]:
         match = ENTRY_RE.match(line)
         if match:
             entries.append((match.group(1), match.group(2)))
@@ -140,7 +140,9 @@ def _normalized_lines(text: str) -> list[str]:
     return lines
 
 
-def _insert_include(lines: list[str], include_line: str) -> tuple[list[str], bool]:
+def _insert_include(
+    lines: list[str], include_line: str
+) -> tuple[list[str], bool]:
     for index, line in enumerate(lines):
         if not VERSION_GATE_RE.match(line):
             continue
@@ -223,7 +225,7 @@ def _insert_entry(
     if entries:
         last_index = entries[-1][2]
         last_line = lines[last_index]
-        indent = last_line[:len(last_line) - len(last_line.lstrip())]
+        indent = last_line[: len(last_line) - len(last_line.lstrip())]
         if not last_line.rstrip().endswith(","):
             lines[last_index] = last_line.rstrip() + ","
     else:

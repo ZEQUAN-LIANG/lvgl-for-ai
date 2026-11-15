@@ -35,7 +35,9 @@ _CHINA_MIRROR_TRUTHY = {"1", "true", "yes", "on"}
 
 
 class BuildFlashError(RuntimeError):
-    def __init__(self, message: str, *, code: str = "build_flash_error") -> None:
+    def __init__(
+        self, message: str, *, code: str = "build_flash_error"
+    ) -> None:
         super().__init__(message)
         self.code = code
 
@@ -67,7 +69,9 @@ def find_sftool(config: dict[str, Any]) -> Path:
         toolchain_root / "sftool" / "sftool.exe",
         *(_versioned_tool_files(toolchain_root, "sftool", "sftool.exe")),
         *(
-            _versioned_tool_files(Path.home() / ".sifli", "sftool", "sftool.exe")
+            _versioned_tool_files(
+                Path.home() / ".sifli", "sftool", "sftool.exe"
+            )
             if toolchain_root != Path.home() / ".sifli"
             else []
         ),
@@ -134,9 +138,7 @@ def find_build_dir(project_dir: str | Path, board: str) -> Path:
             code="build_dir_missing",
         )
     if len(found) > 1:
-        preferred = [
-            path for path in found if board in path.parent.name
-        ]
+        preferred = [path for path in found if board in path.parent.name]
         if len(preferred) == 1:
             return preferred[0]
         found.sort(key=lambda path: path.stat().st_mtime, reverse=True)
@@ -270,7 +272,9 @@ def _toolchain_bin_dirs(root: Path | None) -> list[Path]:
         Path("sftool"),
         Path("sdk-py"),
     )
-    dirs = [root / relative for relative in relatives if (root / relative).is_dir()]
+    dirs = [
+        root / relative for relative in relatives if (root / relative).is_dir()
+    ]
     tools_root = root / "tools"
     for name, relative in (
         ("arm-none-eabi-gcc", "bin"),
@@ -329,7 +333,9 @@ def _apply_china_mirror(env: dict[str, str]) -> None:
     enabled = env.get(_CHINA_MIRROR_ENV, "").strip().lower()
     if enabled not in _CHINA_MIRROR_TRUTHY:
         return
-    env.setdefault("UV_DEFAULT_INDEX", "https://mirrors.ustc.edu.cn/pypi/simple")
+    env.setdefault(
+        "UV_DEFAULT_INDEX", "https://mirrors.ustc.edu.cn/pypi/simple"
+    )
     env.setdefault(
         "UV_PYTHON_DOWNLOADS_JSON_URL",
         "https://uv.agentsmirror.com/metadata/python-downloads.json",
@@ -616,9 +622,13 @@ def _resolve_build_project(
     app: str | None,
     project_dir: str | Path | None,
 ) -> Path:
-    resolved = run_export(config, job, app) if app else resolve_project_dir(
-        project_dir,
-        config,
+    resolved = (
+        run_export(config, job, app)
+        if app
+        else resolve_project_dir(
+            project_dir,
+            config,
+        )
     )
     if resolved is None:
         raise BuildFlashError(
@@ -706,7 +716,9 @@ def _flash_options(
     after: str | None,
 ) -> tuple[bool, bool, str]:
     return (
-        bool(config.get("flash_verify", True)) if verify is None else bool(verify),
+        bool(config.get("flash_verify", True))
+        if verify is None
+        else bool(verify),
         (
             bool(config.get("flash_erase_all", False))
             if erase_all is None
@@ -832,7 +844,9 @@ def _write_staged_param(
 
 
 def _zip_staging(staging: Path, target: Path) -> None:
-    with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+    with zipfile.ZipFile(
+        target, "w", compression=zipfile.ZIP_DEFLATED
+    ) as archive:
         for path in sorted(staging.iterdir()):
             archive.write(path, path.name)
 

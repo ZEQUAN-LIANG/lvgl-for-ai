@@ -12,7 +12,9 @@ _VERSION_RE = re.compile(r"^(\d+)\.(\d+)$")
 def parse_version(text: str) -> tuple[int, int]:
     match = _VERSION_RE.fullmatch(text.strip())
     if not match:
-        raise ValueError(f"invalid LVGL version: {text!r} (expected MAJOR.MINOR)")
+        raise ValueError(
+            f"invalid LVGL version: {text!r} (expected MAJOR.MINOR)"
+        )
     return int(match.group(1)), int(match.group(2))
 
 

@@ -108,7 +108,9 @@ class Job:
         cancelled: bool = False,
     ) -> None:
         with self._cond:
-            self.status = "cancelled" if cancelled else ("ok" if ok else "failed")
+            self.status = (
+                "cancelled" if cancelled else ("ok" if ok else "failed")
+            )
             self.result = result
             self.error = error
             self.ended_at = now_iso()

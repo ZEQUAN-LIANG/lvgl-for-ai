@@ -9,7 +9,6 @@ this file only parses flags and starts the server. It works from any working
 directory and does not require a browser to be present.
 """
 
-
 from __future__ import annotations
 
 import argparse

@@ -33,8 +33,11 @@ def delete_app(repo_root: str | Path, name: str) -> dict[str, Any]:
 
     original_bytes, text, bom, eol = common._read_source(app_c)
     entries = registry.parse_app_entries(text)
-    matches = [(entry_name, symbol) for entry_name, symbol in entries
-               if entry_name == name]
+    matches = [
+        (entry_name, symbol)
+        for entry_name, symbol in entries
+        if entry_name == name
+    ]
     if not matches:
         raise AppError("unknown_app", f'app "{name}" is not registered')
     if len(matches) > 1:
@@ -178,12 +181,11 @@ def restore_app(repo_root: str | Path, trash_id: str) -> dict[str, Any]:
             source = trash_dir / "scenarios" / basename
             if source.is_symlink():
                 raise AppError(
-                    "unsafe_path", f"scenario {basename} must not be a symlink",
+                    "unsafe_path",
+                    f"scenario {basename} must not be a symlink",
                 )
             if not source.is_file():
-                raise AppError(
-                    "unknown_trash", f"missing scenario {basename}"
-                )
+                raise AppError("unknown_trash", f"missing scenario {basename}")
             common._move_path(source, target)
             moved_scenarios.append((source, target))
         if app_present:
@@ -249,9 +251,7 @@ def permanently_delete(
     try:
         shutil.rmtree(trash_dir)
     except OSError as exc:
-        raise AppError(
-            "app_io_error", f"永久删除未完成：{exc}"
-        ) from exc
+        raise AppError("app_io_error", f"永久删除未完成：{exc}") from exc
     return {
         "ok": True,
         "action": "purge",
@@ -295,16 +295,18 @@ def list_trash(repo_root: str | Path) -> list[dict[str, Any]]:
         except AppError as exc:
             entry["error"] = exc.message
         else:
-            entry.update({
-                "name": name,
-                "deleted_at": meta.get("deleted_at"),
-                "scenario_files": scenarios,
-                "scenario_paths": [
-                    common._relative(path / "scenarios" / basename, root)
-                    for basename in scenarios
-                ],
-                "valid": True,
-            })
+            entry.update(
+                {
+                    "name": name,
+                    "deleted_at": meta.get("deleted_at"),
+                    "scenario_files": scenarios,
+                    "scenario_paths": [
+                        common._relative(path / "scenarios" / basename, root)
+                        for basename in scenarios
+                    ],
+                    "valid": True,
+                }
+            )
         result.append(entry)
     return result
 
@@ -360,7 +362,9 @@ def _new_trash_id(trash_root: Path) -> str:
 
 
 def _trash_dir(root: Path, trash_id: Any) -> Path:
-    if not isinstance(trash_id, str) or not common.TRASH_ID_RE.fullmatch(trash_id):
+    if not isinstance(trash_id, str) or not common.TRASH_ID_RE.fullmatch(
+        trash_id
+    ):
         raise InvalidTrashId("invalid_trash", "invalid trash id")
     trash_root = common._trash_root(root)
     raw = trash_root / trash_id
@@ -370,7 +374,9 @@ def _trash_dir(root: Path, trash_id: Any) -> Path:
     try:
         resolved.relative_to(trash_root.resolve())
     except ValueError as exc:
-        raise AppError("unsafe_path", "trash entry escapes the trash root") from exc
+        raise AppError(
+            "unsafe_path", "trash entry escapes the trash root"
+        ) from exc
     if resolved.parent != trash_root.resolve() or not resolved.is_dir():
         raise AppError("unknown_trash", f"unknown trash entry: {trash_id}")
     return resolved
@@ -381,7 +387,9 @@ def _read_trash_meta(trash_dir: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
-        raise AppError("invalid_trash", f"cannot read trash metadata: {exc}") from exc
+        raise AppError(
+            "invalid_trash", f"cannot read trash metadata: {exc}"
+        ) from exc
     if not isinstance(payload, dict):
         raise AppError("invalid_trash", "trash metadata must be an object")
     if payload.get("schema") != common.TRASH_SCHEMA:

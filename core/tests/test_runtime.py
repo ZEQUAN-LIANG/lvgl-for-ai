@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -31,7 +30,9 @@ class RuntimeIntegrationTest(unittest.TestCase):
         self.addCleanup(self._tmp.cleanup)
         self.sessions_root = Path(self._tmp.name) / "sessions"
 
-    def test_start_writes_ready_session_manifest_logs_and_first_frame(self) -> None:
+    def test_start_writes_ready_session_manifest_logs_and_first_frame(
+        self,
+    ) -> None:
         rt = Runtime(lvgl="9.6", build=True, sessions_root=self.sessions_root)
         self.addCleanup(rt.stop)
         rt.start()
@@ -81,7 +82,9 @@ class RuntimeIntegrationTest(unittest.TestCase):
         width, height, _ = read_png_rgb(frame_path)
         self.assertEqual((width, height), (800, 600))
         colors = distinct_rgb(frame_path)
-        self.assertGreaterEqual(len(colors), 2, "frame must not be a solid color")
+        self.assertGreaterEqual(
+            len(colors), 2, "frame must not be a solid color"
+        )
 
         log_text = engine_log.read_text(encoding="utf-8")
         self.assertIn("[app] app_create", log_text)
@@ -133,7 +136,9 @@ class RuntimeIntegrationTest(unittest.TestCase):
             (diff_rows[0]["width"], diff_rows[0]["height"]), (640, 480)
         )
 
-    def test_app_is_forwarded_as_demo_and_recorded_in_the_manifest(self) -> None:
+    def test_app_is_forwarded_as_demo_and_recorded_in_the_manifest(
+        self,
+    ) -> None:
         rt = Runtime(
             lvgl="9.6",
             app="xiaohongshu",
@@ -177,7 +182,9 @@ class RuntimeIntegrationTest(unittest.TestCase):
 
     def test_sessions_root_env_override(self) -> None:
         env_root = Path(self._tmp.name) / "env-sessions"
-        with mock.patch.dict(os.environ, {"LVGL_AI_SESSIONS_ROOT": str(env_root)}):
+        with mock.patch.dict(
+            os.environ, {"LVGL_AI_SESSIONS_ROOT": str(env_root)}
+        ):
             rt = Runtime(lvgl="9.6", build=True)
             self.addCleanup(rt.stop)
             rt.start()
@@ -186,7 +193,9 @@ class RuntimeIntegrationTest(unittest.TestCase):
             self.assertTrue(rt.session_dir.is_dir())
             rt.stop()
 
-    def test_engine_missing_raises_engine_not_found_with_commands(self) -> None:
+    def test_engine_missing_raises_engine_not_found_with_commands(
+        self,
+    ) -> None:
         missing = Path(self._tmp.name) / "missing-engine" / "lvgl_engine"
         rt = Runtime(
             lvgl="9.6",
@@ -208,7 +217,6 @@ class RuntimeIntegrationTest(unittest.TestCase):
 
 
 class RuntimeSessionOptionTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -259,7 +267,6 @@ class RuntimeSessionOptionTest(unittest.TestCase):
 
 
 class RuntimeSessionSurfaceTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -324,7 +331,6 @@ class RuntimeSessionSurfaceTest(unittest.TestCase):
 
 
 class RuntimeProcessSeamTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -440,7 +446,8 @@ class RuntimeProcessSeamTest(unittest.TestCase):
                 rt.start()
 
         self.assertIn(
-            "[fake_engine] crashing before ready", "\n".join(caught.exception.log_tail)
+            "[fake_engine] crashing before ready",
+            "\n".join(caught.exception.log_tail),
         )
         self.assertIn(
             "engine closed stdout before announcing ready",
@@ -457,7 +464,9 @@ class RuntimeProcessSeamTest(unittest.TestCase):
         self.assertEqual(manifest["error"]["code"], "crash")
         rt.stop()
 
-    def test_window_fallback_writes_the_ready_mode_back_to_the_store(self) -> None:
+    def test_window_fallback_writes_the_ready_mode_back_to_the_store(
+        self,
+    ) -> None:
         rt = Runtime(
             lvgl="9.6",
             build=False,
@@ -491,7 +500,9 @@ class RuntimeProcessSeamTest(unittest.TestCase):
 
         recording = Recording.open(rt.session_dir)
         self.assertEqual(recording.frames, [])
-        self.assertEqual(recording.manifest["frame_count"], len(recording.frames))
+        self.assertEqual(
+            recording.manifest["frame_count"], len(recording.frames)
+        )
         self.assertEqual(recording.manifest["frame_count"], 0)
         self.assertEqual(rt.frame_count, reserved)
 
@@ -528,10 +539,14 @@ class RuntimeProcessSeamTest(unittest.TestCase):
 
         error = caught.exception
         message = str(error)
-        self.assertIn("engine 产物早于当前 Runtime，请用 --build 重建", message)
+        self.assertIn(
+            "engine 产物早于当前 Runtime，请用 --build 重建", message
+        )
         self.assertIn("--record-changed-only", message)
         self.assertEqual(error.exit_code, 2)
-        self.assertTrue(any("unknown argument" in line for line in error.log_tail))
+        self.assertTrue(
+            any("unknown argument" in line for line in error.log_tail)
+        )
         self.assertIsNotNone(error.log_path)
         self.assertTrue(Path(error.log_path).is_file())
 
@@ -575,11 +590,15 @@ class RuntimeProcessSeamTest(unittest.TestCase):
         )
         self.assertEqual(manifest["status"], "crash")
         self.assertEqual(manifest["error"]["code"], "crash")
-        self.assertIn("engine did not exit cleanly", manifest["error"]["message"])
+        self.assertIn(
+            "engine did not exit cleanly", manifest["error"]["message"]
+        )
         self.assertIn("shutdown boom", manifest["error"]["message"])
         self.addCleanup(rt.stop)
 
-    def test_shutdown_failure_does_not_replace_an_existing_failure(self) -> None:
+    def test_shutdown_failure_does_not_replace_an_existing_failure(
+        self,
+    ) -> None:
         rt = self._runtime()
         rt.start()
         link = rt._link

@@ -13,7 +13,6 @@ import session_report
 from lvgl_ai import session_index
 from lvgl_ai.control.evidence import INDEX_FIELDS
 from session_fixtures import (
-    FRAME_1,
     FRAME_2,
     SESSION_NAME,
     SNAPSHOT,
@@ -305,7 +304,9 @@ class SessionIndexTest(unittest.TestCase):
         self.assertEqual(index["snapshots"]["count"], 0)
         self.assertEqual(index["frames"]["count"], 0)
 
-    def test_crash_session_without_recording_files_keeps_its_error(self) -> None:
+    def test_crash_session_without_recording_files_keeps_its_error(
+        self,
+    ) -> None:
         error = {
             "code": "crash",
             "message": "engine exited with 3",
@@ -342,7 +343,11 @@ class SessionIndexTest(unittest.TestCase):
         )
         (missing_log / "engine.log").unlink()
 
-        for path in (session / "does-not-exist", missing_manifest, missing_log):
+        for path in (
+            session / "does-not-exist",
+            missing_manifest,
+            missing_log,
+        ):
             with self.subTest(path=path.name):
                 with self.assertRaises(FileNotFoundError):
                     session_index(path)
@@ -373,7 +378,9 @@ def run_report(argv: list[str]) -> tuple[int, str, str]:
 def one_json(text: str) -> dict:
     lines = text.splitlines()
     if len(lines) != 1:
-        raise AssertionError(f"expected exactly one stdout line, got {lines!r}")
+        raise AssertionError(
+            f"expected exactly one stdout line, got {lines!r}"
+        )
     return json.loads(lines[0])
 
 
@@ -396,7 +403,9 @@ class SessionReportTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(err, "")
         payload = one_json(out)
-        self.assertEqual(payload, json.loads(json.dumps(session_index(session))))
+        self.assertEqual(
+            payload, json.loads(json.dumps(session_index(session)))
+        )
         self.assertEqual(payload["session_id"], SESSION_NAME)
         self.assertEqual(payload["schema"], "lvgl-ai-session-index-v1")
 
@@ -703,9 +712,7 @@ class QueryCommandTest(unittest.TestCase):
         payload = one_json(out)
         self.assertEqual(payload["schema"], "lvgl-ai-context-v1")
         self.assertLessEqual(len(out.encode("utf-8")), 5 * 1024)
-        self.assertEqual(
-            [row["seq"] for row in payload["inputs"]], [1, 2]
-        )
+        self.assertEqual([row["seq"] for row in payload["inputs"]], [1, 2])
         self.assertTrue(payload["diffs"])
 
     def test_query_help_lists_the_bound_commands(self) -> None:
@@ -713,8 +720,15 @@ class QueryCommandTest(unittest.TestCase):
 
         self.assertEqual(code, 0, err)
         for command in (
-            "timeline", "diffs", "frames", "notes", "resolve", "context",
-            "feedback", "crop", "compare",
+            "timeline",
+            "diffs",
+            "frames",
+            "notes",
+            "resolve",
+            "context",
+            "feedback",
+            "crop",
+            "compare",
         ):
             with self.subTest(command=command):
                 self.assertIn(command, out)
@@ -860,7 +874,9 @@ class VisualEvidenceCommandTest(unittest.TestCase):
             (self.frame.read_bytes(), snapshot.read_bytes()), before
         )
 
-    def test_visual_outputs_refuse_to_write_inside_session_evidence(self) -> None:
+    def test_visual_outputs_refuse_to_write_inside_session_evidence(
+        self,
+    ) -> None:
         snapshot = (self.session / SNAPSHOT).resolve()
         crop_out = self.session / "frames" / "crop.png"
         sheet_out = self.session / "sheet.png"
@@ -910,7 +926,9 @@ class CompareCommandTest(unittest.TestCase):
         write_png_rgb(self.left, 2, 2, self.left_pixels)
         write_png_rgb(self.right, 2, 2, self.right_pixels)
 
-    def test_compare_two_pngs_writes_explicit_heatmap_and_metrics(self) -> None:
+    def test_compare_two_pngs_writes_explicit_heatmap_and_metrics(
+        self,
+    ) -> None:
         left_before = self.left.read_bytes()
         right_before = self.right.read_bytes()
 
@@ -931,9 +949,7 @@ class CompareCommandTest(unittest.TestCase):
         self.assertEqual(payload["left"], str(self.left.resolve()))
         self.assertEqual(payload["right"], str(self.right.resolve()))
         self.assertEqual((payload["width"], payload["height"]), (2, 2))
-        self.assertEqual(
-            payload["bbox"], {"x": 1, "y": 1, "w": 1, "h": 1}
-        )
+        self.assertEqual(payload["bbox"], {"x": 1, "y": 1, "w": 1, "h": 1})
         self.assertEqual(payload["changed_px"], 1)
         self.assertEqual(payload["changed_ratio"], 0.25)
         self.assertAlmostEqual(payload["max_delta"], 10 / 255)
@@ -964,9 +980,7 @@ class CompareCommandTest(unittest.TestCase):
         right_session = make_summary_session(
             self.root, name="20260108-000000-bbbb"
         )
-        write_png_rgb(
-            left_session / SNAPSHOT, 2, 2, [(10, 20, 30)] * 4
-        )
+        write_png_rgb(left_session / SNAPSHOT, 2, 2, [(10, 20, 30)] * 4)
         write_png_rgb(
             right_session / SNAPSHOT,
             2,
@@ -1000,9 +1014,7 @@ class CompareCommandTest(unittest.TestCase):
         right_session = make_summary_session(
             self.root, name="20260110-000000-dddd", with_snapshot=False
         )
-        write_png_rgb(
-            right_session / FRAME_2, 2, 2, [(0, 0, 255)] * 4
-        )
+        write_png_rgb(right_session / FRAME_2, 2, 2, [(0, 0, 255)] * 4)
 
         code, out, err = run_report(
             [
@@ -1081,9 +1093,7 @@ class CompareCommandTest(unittest.TestCase):
         self.assertEqual(self.left.read_bytes(), before)
 
     def test_compare_refuses_a_heatmap_inside_session_evidence(self) -> None:
-        session = make_summary_session(
-            self.root, name="20260112-000000-ffff"
-        )
+        session = make_summary_session(self.root, name="20260112-000000-ffff")
         output = session / "compare.png"
 
         code, out, err = run_report(

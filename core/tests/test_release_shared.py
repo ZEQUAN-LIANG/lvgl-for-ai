@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -25,7 +24,9 @@ SDK_MANIFEST = {
 }
 
 
-def completed(stdout: str, returncode: int = 0, stderr: str = "") -> subprocess.CompletedProcess[str]:
+def completed(
+    stdout: str, returncode: int = 0, stderr: str = ""
+) -> subprocess.CompletedProcess[str]:
     return subprocess.CompletedProcess(
         args=["fake"], returncode=returncode, stdout=stdout, stderr=stderr
     )
@@ -34,7 +35,9 @@ def completed(stdout: str, returncode: int = 0, stderr: str = "") -> subprocess.
 class JsonReplyTest(unittest.TestCase):
     def test_one_json_line_is_required(self) -> None:
         self.assertEqual(
-            release_bundle.json_line(completed('{"status":"ok"}\n'), label="smoke"),
+            release_bundle.json_line(
+                completed('{"status":"ok"}\n'), label="smoke"
+            ),
             {"status": "ok"},
         )
         with self.assertRaises(BuildError):
@@ -118,7 +121,9 @@ class ScenarioSmokeTest(unittest.TestCase):
             self.assertEqual(len(calls), 1)
             command, cwd, env, timeout = calls[0]
             self.assertEqual(cwd, workspace)
-            self.assertEqual(env["LVGL_AI_SESSIONS_ROOT"], str(workspace / "sessions"))
+            self.assertEqual(
+                env["LVGL_AI_SESSIONS_ROOT"], str(workspace / "sessions")
+            )
             self.assertEqual(timeout, 180.0)
             if os.name == "nt":
                 self.assertEqual(
@@ -147,11 +152,11 @@ class ScenarioSmokeTest(unittest.TestCase):
             def fake_run(command, *, cwd, env, timeout):
                 session = Path(env["LVGL_AI_SESSIONS_ROOT"]) / "session"
                 session.mkdir(parents=True)
-                (session / "engine.log").write_text("nothing\n", encoding="utf-8")
+                (session / "engine.log").write_text(
+                    "nothing\n", encoding="utf-8"
+                )
                 return completed(
-                    json.dumps(
-                        {"status": "ok", "session_dir": str(session)}
-                    )
+                    json.dumps({"status": "ok", "session_dir": str(session)})
                 )
 
             with self.assertRaises(BuildError):
@@ -213,7 +218,9 @@ def stage_tiny_package(package: Path, tool_version: str) -> dict:
 
 
 class ArtifactContractTest(unittest.TestCase):
-    def test_single_and_double_bundles_write_the_same_package_manifest(self) -> None:
+    def test_single_and_double_bundles_write_the_same_package_manifest(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
             repo = root / "repo"
@@ -242,11 +249,14 @@ class ArtifactContractTest(unittest.TestCase):
                 staged.update({"shared": {}, "engines": {}})
                 return staged
 
-            with mock.patch.object(
-                release, "stage_package", side_effect=fake_stage_package
-            ), mock.patch.object(release, "smoke_package"), mock.patch.object(
-                release, "clean_build_dir"
-            ), mock.patch.object(release, "purge_caches"):
+            with (
+                mock.patch.object(
+                    release, "stage_package", side_effect=fake_stage_package
+                ),
+                mock.patch.object(release, "smoke_package"),
+                mock.patch.object(release, "clean_build_dir"),
+                mock.patch.object(release, "purge_caches"),
+            ):
                 single = release.release(
                     repo_root=repo,
                     out_dir=out_single,
@@ -255,11 +265,19 @@ class ArtifactContractTest(unittest.TestCase):
                     sdk_dir=sdk,
                     smoke=False,
                 )
-            with mock.patch.object(
-                release_all, "_ensure_launchers", return_value={"status": "reused"}
-            ), mock.patch.object(
-                release_all, "_stage_full_package", side_effect=fake_stage_full
-            ), mock.patch.object(release_all, "_overlay_sifli"):
+            with (
+                mock.patch.object(
+                    release_all,
+                    "_ensure_launchers",
+                    return_value={"status": "reused"},
+                ),
+                mock.patch.object(
+                    release_all,
+                    "_stage_full_package",
+                    side_effect=fake_stage_full,
+                ),
+                mock.patch.object(release_all, "_overlay_sifli"),
+            ):
                 double = release_all.build_release(
                     repo_root=repo,
                     out_dir=out_double,
@@ -269,9 +287,10 @@ class ArtifactContractTest(unittest.TestCase):
 
             single_zip = Path(single["zip"])
             full_zip = Path(double["full"]["zip"])
-            with zipfile.ZipFile(single_zip) as left, zipfile.ZipFile(
-                full_zip
-            ) as right:
+            with (
+                zipfile.ZipFile(single_zip) as left,
+                zipfile.ZipFile(full_zip) as right,
+            ):
                 self.assertEqual(left.namelist(), right.namelist())
                 self.assertEqual(
                     [left.read(name) for name in left.namelist()],

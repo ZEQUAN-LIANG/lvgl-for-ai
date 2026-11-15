@@ -10,7 +10,7 @@ from .control import (
     Runtime,
     RuntimeCrash,
     ScenarioError,
-    ToolError,
+    ToolError,  # noqa: F401 - re-exported for `from lvgl_ai import ToolError`
     session_index,
 )
 from .paths import TOOL_VERSION

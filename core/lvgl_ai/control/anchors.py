@@ -18,7 +18,11 @@ from .recording import Recording
 
 ANCHOR_KINDS = ("click", "input", "mark", "t_ms", "step")
 RESOLVE_STATUSES = (
-    "resolved", "fallback", "ambiguous", "missing", "no_timeline"
+    "resolved",
+    "fallback",
+    "ambiguous",
+    "missing",
+    "no_timeline",
 )
 
 
@@ -212,11 +216,7 @@ def _result(
             "candidates": candidates,
         }
     resolved_t_ms = item["t_ms"]
-    delta = (
-        None
-        if requested_t_ms is None
-        else resolved_t_ms - requested_t_ms
-    )
+    delta = None if requested_t_ms is None else resolved_t_ms - requested_t_ms
     snapshot = item["label"] if item["kind"] == "snapshot" else None
     return {
         "resolved": True,
@@ -271,9 +271,7 @@ def _input_anchor(
             requested_t_ms=t_ms,
             basis=f"input_{seq}_event",
             status="resolved" if item else "missing",
-            relation=_relation(
-                None if item is None else item["t_ms"], t_ms
-            ),
+            relation=_relation(None if item is None else item["t_ms"], t_ms),
             evidence=evidence,
             row_index=row_index,
         )
@@ -352,9 +350,7 @@ def _click_anchor(
             requested_t_ms=down_t,
             basis=f"click_{seq_down}_event",
             status="resolved" if item else "missing",
-            relation=_relation(
-                None if item is None else item["t_ms"], down_t
-            ),
+            relation=_relation(None if item is None else item["t_ms"], down_t),
             evidence=evidence,
             row_index=down_index,
             frame_before=frame_before,
@@ -369,9 +365,7 @@ def _click_anchor(
             requested_t_ms=up_t,
             basis=f"click_{seq_up}_fallback",
             status="fallback" if item else "missing",
-            relation=_relation(
-                None if item is None else item["t_ms"], up_t
-            ),
+            relation=_relation(None if item is None else item["t_ms"], up_t),
             evidence=evidence,
             row_index=up_index,
             frame_before=frame_before,
@@ -437,7 +431,9 @@ def _mark_anchor(
             result["status"] = "ambiguous"
             result["approximate"] = True
         return result
-    item = _snapshot_at(evidence, row_index, t_ms) if t_ms is not None else None
+    item = (
+        _snapshot_at(evidence, row_index, t_ms) if t_ms is not None else None
+    )
     if item is not None:
         return _result(
             recording,
@@ -467,7 +463,11 @@ def _mark_anchor(
         item=item,
         requested_t_ms=t_ms,
         basis=f"mark_{mark_id}_fallback",
-        status="missing" if item is None else "ambiguous" if ambiguous else "fallback",
+        status="missing"
+        if item is None
+        else "ambiguous"
+        if ambiguous
+        else "fallback",
         relation="before" if item is not None else "exact",
         evidence=evidence,
         row_index=row_index,
@@ -563,9 +563,7 @@ def resolve_anchor(
     rows = timeline_rows(recording)
     evidence = _evidence(recording, rows)
     kind = anchor.get("kind")
-    offset = (
-        anchor.get("offset_ms", 0) if offset_ms is None else offset_ms
-    )
+    offset = anchor.get("offset_ms", 0) if offset_ms is None else offset_ms
     if not _is_int(offset):
         offset = 0
     if not rows:
@@ -686,13 +684,12 @@ def derive_anchor(
     if _is_int(frame_no):
         position = _row_index(
             rows,
-            lambda row: row.get("type") == "frame"
-            and row.get("frame_no") == frame_no,
+            lambda row: (
+                row.get("type") == "frame" and row.get("frame_no") == frame_no
+            ),
         )
     if position is None and _is_int(t_ms):
-        position = _row_index(
-            rows, lambda row: (_row_time(row) or -1) >= t_ms
-        )
+        position = _row_index(rows, lambda row: (_row_time(row) or -1) >= t_ms)
     if position is None:
         position = len(rows) - 1
     note_t = t_ms if _is_int(t_ms) else _row_time(rows[position]) or 0

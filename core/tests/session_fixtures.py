@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -57,9 +56,7 @@ def make_session(
         frame_count = frames if with_timeline else 0
 
     if with_timeline:
-        rows = _timeline_rows(
-            timeline, frames, with_snapshot, frame_count
-        )
+        rows = _timeline_rows(timeline, frames, with_snapshot, frame_count)
         (session / "timeline.ndjson").write_text(
             "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
         )

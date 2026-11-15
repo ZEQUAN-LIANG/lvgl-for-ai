@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import contextlib
@@ -17,6 +16,7 @@ if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
 import contract_snapshot as cs
+
 # Side effect: install the Windows-safe TemporaryDirectory before setUp runs.
 import support  # noqa: F401,E402
 
@@ -37,11 +37,9 @@ class ContractSnapshotTest(unittest.TestCase):
 
     def _probe(self, name: str) -> dict:
         probes = {
-            probe["name"]: probe
-            for probe in self._section("http")["probes"]
+            probe["name"]: probe for probe in self._section("http")["probes"]
         }
         return probes[name]
-
 
     def test_snapshot_has_the_six_contract_sections(self) -> None:
         self.assertEqual(self.snapshot["schema"], cs.SNAPSHOT_SCHEMA)
@@ -81,9 +79,7 @@ class ContractSnapshotTest(unittest.TestCase):
         )
         self.assertEqual(self._probe("method_get_start")["status"], 405)
         self.assertEqual(self._probe("method_post_live")["status"], 405)
-        self.assertEqual(
-            self._probe("method_get_apps_create")["status"], 405
-        )
+        self.assertEqual(self._probe("method_get_apps_create")["status"], 405)
         self.assertEqual(self._probe("method_post_timeline")["status"], 405)
         self.assertEqual(self._probe("method_put")["status"], 501)
         self.assertEqual(self._probe("method_delete")["status"], 405)
@@ -104,13 +100,16 @@ class ContractSnapshotTest(unittest.TestCase):
         self.assertEqual(stream["height"], 2)
         self.assertEqual(stream["pixel_bytes"], 16)
 
-        self.assertEqual(
-            http["trash_meta_schema"], "lvgl-ai-app-trash-v1"
-        )
+        self.assertEqual(http["trash_meta_schema"], "lvgl-ai-app-trash-v1")
         self.assertEqual(
             http["trash_layout"],
-            ["app", "app/alpha.c", "meta.json", "scenarios",
-             "scenarios/alpha.json"],
+            [
+                "app",
+                "app/alpha.c",
+                "meta.json",
+                "scenarios",
+                "scenarios/alpha.json",
+            ],
         )
 
     def test_cli_parsers_help_exit_codes_and_json(self) -> None:
@@ -124,8 +123,14 @@ class ContractSnapshotTest(unittest.TestCase):
             for option in action["option_strings"]
         }
         self.assertTrue(
-            {"--record", "--no-record", "--build",
-             "--scenario", "--idle", "--json"}.issubset(options)
+            {
+                "--record",
+                "--no-record",
+                "--build",
+                "--scenario",
+                "--idle",
+                "--json",
+            }.issubset(options)
         )
         self.assertEqual(cli["cli"]["help"]["exit"], 0)
         self.assertNotIn("--record-changed-only", cli["cli"]["help"]["text"])
@@ -140,9 +145,7 @@ class ContractSnapshotTest(unittest.TestCase):
             cli["cli"]["json_build_error"]["error_code"], "build_error"
         )
         self.assertTrue(cli["cli"]["json_build_error"]["session_id_present"])
-        self.assertTrue(
-            cli["cli"]["json_build_error"]["session_dir_present"]
-        )
+        self.assertTrue(cli["cli"]["json_build_error"]["session_dir_present"])
         self.assertIn("schema", cli["cli"]["json_build_error"]["keys"])
         report = cli["session_report"]
         self.assertEqual(report["json_index"]["exit"], 0)
@@ -151,19 +154,34 @@ class ContractSnapshotTest(unittest.TestCase):
         self.assertIn("next_reads", report["json_index"]["keys"])
         self.assertEqual(report["full_exit"], 2)
         self.assertEqual(report["timeline"]["exit"], 0)
-        self.assertEqual(report["timeline"]["keys"], [
-            "returned", "rows", "schema", "session_dir", "total", "truncated"
-        ])
+        self.assertEqual(
+            report["timeline"]["keys"],
+            [
+                "returned",
+                "rows",
+                "schema",
+                "session_dir",
+                "total",
+                "truncated",
+            ],
+        )
         web_options = {
             option
             for action in cli["web"]["parser"]["actions"]
             for option in action["option_strings"]
         }
         self.assertTrue(
-            {"--host", "--port", "--sessions-root", "--lvgl", "--build",
-             "--app", "--manage", "--open", "--exit-on-close"}.issubset(
-                web_options
-            )
+            {
+                "--host",
+                "--port",
+                "--sessions-root",
+                "--lvgl",
+                "--build",
+                "--app",
+                "--manage",
+                "--open",
+                "--exit-on-close",
+            }.issubset(web_options)
         )
         self.assertEqual(cli["new_app"]["json_success"]["exit"], 0)
         self.assertIn(
@@ -192,8 +210,16 @@ class ContractSnapshotTest(unittest.TestCase):
         self.assertFalse(protocol["protocol_versions"]["lvgl-ai-engine-v0"])
         required = set(protocol["required_ready_keys"])
         self.assertTrue(
-            {"protocol", "seq", "lvgl", "display", "mode", "inputs",
-             "capabilities", "frames"}.issubset(required)
+            {
+                "protocol",
+                "seq",
+                "lvgl",
+                "display",
+                "mode",
+                "inputs",
+                "capabilities",
+                "frames",
+            }.issubset(required)
         )
         self.assertTrue(
             {"adapter", "max_frames", "truncated"}.issubset(
@@ -213,9 +239,7 @@ class ContractSnapshotTest(unittest.TestCase):
             protocol["reply_shapes"]["wait"]["object"]["changed"], "boolean"
         )
         self.assertEqual(protocol["error_reply_outcome"], "ProtocolError")
-        self.assertIn(
-            "error", protocol["error_reply_shape"]["object"]
-        )
+        self.assertIn("error", protocol["error_reply_shape"]["object"])
         self.assertEqual(
             protocol["engine_args"],
             [
@@ -269,29 +293,32 @@ class ContractSnapshotTest(unittest.TestCase):
         )
         self.assertEqual(
             session["required_files"],
-            ["engine.log", "frame_diffs.ndjson", "manifest.json",
-             "timeline.ndjson"],
+            [
+                "engine.log",
+                "frame_diffs.ndjson",
+                "manifest.json",
+                "timeline.ndjson",
+            ],
         )
         self.assertIn("build.log", session["optional_files"])
-        self.assertIn(
-            "annotations.json", session["optional_files"]
-        )
+        self.assertIn("annotations.json", session["optional_files"])
         self.assertEqual(
             session["optional_manifest_fields"],
             ["app", "display", "record_changed_only"],
         )
-        self.assertIn(
-            "artifacts", session["required_manifest_fields"]
+        self.assertIn("artifacts", session["required_manifest_fields"])
+        self.assertEqual(
+            session["manifest_values"]["schema"], "lvgl-ai-session-v1"
         )
-        self.assertEqual(session["manifest_values"]["schema"],
-                         "lvgl-ai-session-v1")
         self.assertEqual(session["manifest_values"]["status"], "ok")
         self.assertEqual(
             session["manifest_values"]["display"],
             {"width": 800, "height": 600},
         )
-        self.assertEqual(session["manifest_values"]["build"],
-                         {"status": "skipped", "log": "build.log"})
+        self.assertEqual(
+            session["manifest_values"]["build"],
+            {"status": "skipped", "log": "build.log"},
+        )
         self.assertEqual(session["manifest_values"]["frame_count"], 2)
         self.assertIn("timeline", session["complete_artifacts"])
         self.assertIn("frames", session["complete_artifacts"])
@@ -321,9 +348,7 @@ class ContractSnapshotTest(unittest.TestCase):
         self.assertFalse(session["timeline_types"]["other"])
         self.assertTrue(session["live_rgba"]["present_while_recording"])
         self.assertTrue(session["live_rgba"]["removed_after_stop"])
-        self.assertTrue(
-            session["live_rgba"]["present_while_record_false"]
-        )
+        self.assertTrue(session["live_rgba"]["present_while_record_false"])
         self.assertTrue(
             session["live_rgba"]["removed_after_stop_record_false"]
         )
@@ -428,7 +453,6 @@ class ContractSnapshotTest(unittest.TestCase):
         ):
             self.assertIn(name, apps)
 
-
     def test_snapshot_is_deterministic(self) -> None:
         second = cs.record_snapshot()
         self.assertEqual(
@@ -458,7 +482,6 @@ class ContractSnapshotTest(unittest.TestCase):
             cs.render_diff_report(differences),
         )
 
-
     def test_compare_reports_no_difference_for_identical_values(self) -> None:
         self.assertEqual(
             cs.compare_snapshots(self.snapshot, copy.deepcopy(self.snapshot)),
@@ -469,7 +492,9 @@ class ContractSnapshotTest(unittest.TestCase):
             "[contract] snapshot: snapshot.json\n[contract] differences: 0",
         )
 
-    def test_compare_reports_changed_missing_and_unexpected_paths(self) -> None:
+    def test_compare_reports_changed_missing_and_unexpected_paths(
+        self,
+    ) -> None:
         changed = copy.deepcopy(self.snapshot)
         changed["sections"]["http"]["probes"][0]["status"] = 599
         differences = cs.compare_snapshots(self.snapshot, changed)
@@ -487,9 +512,7 @@ class ContractSnapshotTest(unittest.TestCase):
         missing = copy.deepcopy(self.snapshot)
         del missing["sections"]["cli"]["web"]["help"]
         differences = cs.compare_snapshots(self.snapshot, missing)
-        self.assertTrue(
-            any(item["kind"] == "missing" for item in differences)
-        )
+        self.assertTrue(any(item["kind"] == "missing" for item in differences))
 
         unexpected = copy.deepcopy(self.snapshot)
         unexpected["sections"]["python"]["lvgl_ai"]["members"]["extra"] = {
@@ -499,7 +522,6 @@ class ContractSnapshotTest(unittest.TestCase):
         self.assertTrue(
             any(item["kind"] == "unexpected" for item in differences)
         )
-
 
     def test_record_and_compare_commands(self) -> None:
         recorded_path = self.root / "recorded.json"
@@ -522,7 +544,9 @@ class ContractSnapshotTest(unittest.TestCase):
             )
         self.assertEqual(code, 0)
         self.assertIn("differences: 0", output.getvalue())
-        self.assertIn("differences: 0", report_path.read_text(encoding="utf-8"))
+        self.assertIn(
+            "differences: 0", report_path.read_text(encoding="utf-8")
+        )
 
         changed = copy.deepcopy(self.snapshot)
         changed["sections"]["session"]["manifest_values"]["status"] = "crash"

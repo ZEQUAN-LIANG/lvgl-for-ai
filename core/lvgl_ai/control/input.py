@@ -37,9 +37,9 @@ from .errors import ScenarioError
 from .keys import (
     ASCII_PRINTABLE_MAX,
     ASCII_PRINTABLE_MIN,
-    char_key,
     resolve_key,
 )
+from .keys import char_key as char_key
 from .session_schema import (
     MAX_DISPLAY_DIMENSION,
     display_problem as _shared_display_problem,
@@ -192,9 +192,7 @@ def require_non_negative_int(value: Any, name: str) -> int:
     return require_integer(value, name, minimum=0)
 
 
-def require_display_pair(
-    width: Any, height: Any
-) -> tuple[int, int] | None:
+def require_display_pair(width: Any, height: Any) -> tuple[int, int] | None:
     if width is None and height is None:
         return None
     if width is None or height is None:
@@ -217,7 +215,9 @@ def require_int16(value: Any, name: str) -> int:
     return value
 
 
-def normalize_input_events(events: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+def normalize_input_events(
+    events: Iterable[dict[str, Any]],
+) -> list[dict[str, Any]]:
     if isinstance(events, (str, bytes)) or not isinstance(events, Iterable):
         raise ScenarioError("input events must be a list of objects")
 
@@ -230,7 +230,9 @@ def normalize_input_events(events: Iterable[dict[str, Any]]) -> list[dict[str, A
 
 def _normalize_event(index: int, event: Any) -> dict[str, Any]:
     if not isinstance(event, dict):
-        raise ScenarioError(f"step {index}: event must be an object", step=index)
+        raise ScenarioError(
+            f"step {index}: event must be an object", step=index
+        )
 
     device = event.get("device")
     if device not in _DEVICE_FIELDS:
@@ -249,7 +251,11 @@ def _normalize_event(index: int, event: Any) -> dict[str, Any]:
 
     at_ms = _event_integer(index, event, "at_ms", minimum=0)
     action = event.get("action")
-    normalized: dict[str, Any] = {"at_ms": at_ms, "device": device, "action": action}
+    normalized: dict[str, Any] = {
+        "at_ms": at_ms,
+        "device": device,
+        "action": action,
+    }
 
     if device == "pointer":
         _event_action(index, device, action)

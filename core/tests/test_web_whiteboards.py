@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import base64
@@ -115,7 +114,9 @@ class WhiteboardApiTest(unittest.TestCase):
     def test_invalid_payloads_are_rejected_without_files(self) -> None:
         cases = [
             self.payload(scope={"kind": "frame"}),
-            self.payload(scope={"kind": "range", "frame_start": 4, "frame_end": 3}),
+            self.payload(
+                scope={"kind": "range", "frame_start": 4, "frame_end": 3}
+            ),
             self.payload(scope={"kind": "global", "frame_no": 1}),
             self.payload(scope={"kind": "session"}),
             self.payload(labels=["x", 1]),
@@ -123,15 +124,18 @@ class WhiteboardApiTest(unittest.TestCase):
             self.payload(confirmed="yes"),
             self.payload(unknown_field=1),
             self.payload(image="data:image/png;base64,bm90IGEgcG5n"),
-            self.payload(image="data:image/jpeg;base64," + base64.b64encode(
-                self.png
-            ).decode("ascii")),
+            self.payload(
+                image="data:image/jpeg;base64,"
+                + base64.b64encode(self.png).decode("ascii")
+            ),
         ]
         for payload in cases:
             with self.subTest(payload=str(payload)[:80]):
                 status, _, response = self.post(payload)
                 self.assertEqual(status, 400, response)
-                self.assertEqual(response["error"]["code"], "invalid_whiteboard")
+                self.assertEqual(
+                    response["error"]["code"], "invalid_whiteboard"
+                )
                 self.assertFalse(self.document_path.exists())
                 self.assertFalse((self.session / "whiteboards").exists())
 
@@ -145,7 +149,9 @@ class WhiteboardApiTest(unittest.TestCase):
 
     def test_delete_whiteboard_removes_it_and_its_png(self) -> None:
         first = self.post(self.payload(id="wb-one"))[2]["whiteboard"]
-        second = self.post(self.payload(id="wb-two", scope=GLOBAL))[2]["whiteboard"]
+        second = self.post(self.payload(id="wb-two", scope=GLOBAL))[2][
+            "whiteboard"
+        ]
         for item in (first, second):
             self.assertTrue((self.session / item["image"]).is_file())
         status, _, response = self.harness.json(
@@ -160,7 +166,9 @@ class WhiteboardApiTest(unittest.TestCase):
         self.assertFalse((self.session / first["image"]).is_file())
         self.assertTrue((self.session / second["image"]).is_file())
         saved = json.loads(self.document_path.read_text(encoding="utf-8"))
-        self.assertEqual([item["id"] for item in saved["whiteboards"]], ["wb-two"])
+        self.assertEqual(
+            [item["id"] for item in saved["whiteboards"]], ["wb-two"]
+        )
 
     def test_delete_unknown_whiteboard_is_404(self) -> None:
         status, _, response = self.harness.json(
@@ -215,10 +223,9 @@ class WhiteboardTransactionTest(unittest.TestCase):
         real_replace = Path.replace
 
         def failing_replace(path, target):
-            if (
-                path.name.startswith("whiteboards.json.")
-                and path.name.endswith(".tmp")
-            ):
+            if path.name.startswith(
+                "whiteboards.json."
+            ) and path.name.endswith(".tmp"):
                 raise OSError("disk full")
             return real_replace(path, target)
 
@@ -227,11 +234,12 @@ class WhiteboardTransactionTest(unittest.TestCase):
                 save_whiteboard(self.recording, self.payload())
         self.assertEqual(caught.exception.code, "whiteboards_write_error")
         self.assertFalse((self.session / "whiteboards.json").exists())
-        self.assertEqual(list((self.session / "whiteboards").glob("*.png")), [])
+        self.assertEqual(
+            list((self.session / "whiteboards").glob("*.png")), []
+        )
 
 
 class WhiteboardDocumentSeamTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -260,7 +268,6 @@ class WhiteboardDocumentSeamTest(unittest.TestCase):
 
     def test_save_and_read_use_only_the_recording_document_seam(self) -> None:
         class SeamRecording:
-
             def __init__(self, recording: Recording) -> None:
                 self._recording = recording
 
@@ -282,7 +289,9 @@ class WhiteboardDocumentSeamTest(unittest.TestCase):
         seam = SeamRecording(self.recording)
         document, item = save_whiteboard(seam, self.payload(id="seam"))
 
-        self.assertEqual([entry["id"] for entry in document["whiteboards"]], ["seam"])
+        self.assertEqual(
+            [entry["id"] for entry in document["whiteboards"]], ["seam"]
+        )
         self.assertEqual(read_whiteboards(seam), document)
         self.assertTrue((self.session / item["image"]).is_file())
 
@@ -314,7 +323,8 @@ class WhiteboardDocumentSeamTest(unittest.TestCase):
             items = list(pool.map(save, range(5)))
 
         self.assertEqual(
-            sorted(item["id"] for item in items), ["wb0", "wb1", "wb2", "wb3", "wb4"]
+            sorted(item["id"] for item in items),
+            ["wb0", "wb1", "wb2", "wb3", "wb4"],
         )
         saved = json.loads(
             (self.session / "whiteboards.json").read_text(encoding="utf-8")

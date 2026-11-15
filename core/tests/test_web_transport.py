@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import http.client
@@ -77,7 +76,6 @@ class LiveFrameHubTest(unittest.TestCase):
 
 
 class _StreamRuntime(FakeRuntime):
-
     def __init__(self, session_dir: Path, width: int = 2, height: int = 1):
         super().__init__(record=False)
         self._session = session_dir
@@ -169,7 +167,9 @@ class LiveStreamHttpTest(unittest.TestCase):
             "the page must define its stream parser config exactly once",
         )
         match = re.search(r"const LIVE_WIRE = (\{.*?\});", html)
-        self.assertIsNotNone(match, "the page must inject its stream parser config")
+        self.assertIsNotNone(
+            match, "the page must inject its stream parser config"
+        )
         assert match is not None
         config = json.loads(match.group(1))
         self.assertGreater(
@@ -194,10 +194,10 @@ class LiveStreamHttpTest(unittest.TestCase):
 
             def uint_field(name: str) -> int:
                 offset = config["headerFields"][name]
-                return int.from_bytes(header[offset:offset + 4], "little")
+                return int.from_bytes(header[offset : offset + 4], "little")
 
             magic_start = config["headerFields"]["magic"]
-            magic = header[magic_start:magic_start + len(config["magic"])]
+            magic = header[magic_start : magic_start + len(config["magic"])]
             self.assertEqual(
                 magic.decode("ascii"),
                 config["magic"],

@@ -99,7 +99,6 @@ class PngHeader:
 
 @dataclass(frozen=True)
 class ImageComparison:
-
     width: int
     height: int
     bbox: Region | None
@@ -119,14 +118,14 @@ def _read_chunks(data: bytes) -> Iterable[tuple[bytes, bytes]]:
         raise PngError("not a PNG (bad signature)")
     pos = len(PNG_SIGNATURE)
     while pos + 8 <= len(data):
-        length = struct.unpack(">I", data[pos:pos + 4])[0]
-        chunk_type = data[pos + 4:pos + 8]
+        length = struct.unpack(">I", data[pos : pos + 4])[0]
+        chunk_type = data[pos + 4 : pos + 8]
         start = pos + 8
         end = start + length
         if end + 4 > len(data):
             raise PngError(f"truncated {chunk_type!r} chunk")
         payload = data[start:end]
-        expected_crc = struct.unpack(">I", data[end:end + 4])[0]
+        expected_crc = struct.unpack(">I", data[end : end + 4])[0]
         actual_crc = zlib.crc32(chunk_type + payload) & 0xFFFFFFFF
         if actual_crc != expected_crc:
             raise PngError(f"bad CRC for {chunk_type!r} chunk")
@@ -137,9 +136,15 @@ def _read_chunks(data: bytes) -> Iterable[tuple[bytes, bytes]]:
 def _parse_ihdr(payload: bytes) -> PngHeader:
     if len(payload) != 13:
         raise PngError("malformed IHDR")
-    (width, height, bit_depth, color_type,
-     compression, filter_method, interlace) = struct.unpack(
-        ">IIBBBBB", payload)
+    (
+        width,
+        height,
+        bit_depth,
+        color_type,
+        compression,
+        filter_method,
+        interlace,
+    ) = struct.unpack(">IIBBBBB", payload)
     if compression != 0 or filter_method != 0:
         raise PngError("unsupported PNG compression/filter method")
     if bit_depth != 8:
@@ -148,8 +153,7 @@ def _parse_ihdr(payload: bytes) -> PngHeader:
         raise PngError("interlaced PNGs are not supported")
     if color_type not in CHANNELS:
         raise PngError(
-            f"unsupported PNG color type {color_type} "
-            "(supported: 0, 2, 4, 6)"
+            f"unsupported PNG color type {color_type} (supported: 0, 2, 4, 6)"
         )
     if width <= 0 or height <= 0:
         raise PngError(f"invalid PNG size {width}x{height}")
@@ -197,7 +201,7 @@ def decode_png(data: bytes) -> PngImage:
     for _ in range(height):
         filter_type = raw[pos]
         pos += 1
-        filtered = raw[pos:pos + stride]
+        filtered = raw[pos : pos + stride]
         pos += stride
         if filter_type == 0:
             row = filtered
@@ -304,7 +308,7 @@ def crop_png(data: bytes, region: Region) -> tuple[bytes, Region, PngImage]:
     channels = CHANNELS[image.color_type]
     start = box.x * channels
     end = box.x1 * channels
-    rows = tuple(row[start:end] for row in image.rows[box.y:box.y1])
+    rows = tuple(row[start:end] for row in image.rows[box.y : box.y1])
     cropped = PngImage(box.w, box.h, image.color_type, rows)
     return encode_png(cropped), box, cropped
 
@@ -367,11 +371,11 @@ def compare_png(
             if left_gray:
                 left_pixel = (left_row[left_offset],) * 3
             else:
-                left_pixel = left_row[left_offset:left_offset + 3]
+                left_pixel = left_row[left_offset : left_offset + 3]
             if right_gray:
                 right_pixel = (right_row[right_offset],) * 3
             else:
-                right_pixel = right_row[right_offset:right_offset + 3]
+                right_pixel = right_row[right_offset : right_offset + 3]
             delta = max(
                 abs(left_pixel[0] - right_pixel[0]),
                 abs(left_pixel[1] - right_pixel[1]),
@@ -379,7 +383,7 @@ def compare_png(
             )
             if delta == 0:
                 if target is not None:
-                    target[x * 3:x * 3 + 3] = _HEATMAP_BACKGROUND_BYTES
+                    target[x * 3 : x * 3 + 3] = _HEATMAP_BACKGROUND_BYTES
                 continue
             changed_px += 1
             max_delta = max(max_delta, delta)
@@ -388,9 +392,7 @@ def compare_png(
             max_x = max(max_x, x)
             max_y = max(max_y, y)
             if target is not None:
-                target[x * 3:x * 3 + 3] = bytes(
-                    (255, 255 - delta, 0)
-                )
+                target[x * 3 : x * 3 + 3] = bytes((255, 255 - delta, 0))
         if target is not None:
             heatmap_rows.append(bytes(target))
 
@@ -399,9 +401,7 @@ def compare_png(
         bbox = Region(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1)
     heatmap_image = None
     if heatmap:
-        heatmap_image = PngImage(
-            width, height, 2, tuple(heatmap_rows)
-        )
+        heatmap_image = PngImage(width, height, 2, tuple(heatmap_rows))
     return ImageComparison(
         width=width,
         height=height,
@@ -429,7 +429,6 @@ def pixel_at(image: PngImage, x: int, y: int) -> tuple[int, int, int]:
 
 @dataclass(frozen=True)
 class ContactTile:
-
     label: str
     x: int
     y: int
@@ -443,7 +442,6 @@ class ContactTile:
 
 @dataclass(frozen=True)
 class ContactSheet:
-
     image: PngImage
     tiles: tuple[ContactTile, ...]
     columns: int
@@ -479,9 +477,7 @@ def build_contact_sheet(
         )
 
     background = bytes(_BACKGROUND)
-    sheet_rows = [
-        bytearray(background * width) for _ in range(height)
-    ]
+    sheet_rows = [bytearray(background * width) for _ in range(height)]
     tiles: list[ContactTile] = []
     for index, (label, data) in enumerate(entries):
         header = read_png_header(data)
@@ -498,12 +494,24 @@ def build_contact_sheet(
         tile_x = gap + column * (tile_width + gap)
         tile_y = gap + row * (tile_height + gap)
         _fill_rect(
-            sheet_rows, width, height, tile_x, tile_y, tile_width,
-            tile_height, _TILE_BACKGROUND,
+            sheet_rows,
+            width,
+            height,
+            tile_x,
+            tile_y,
+            tile_width,
+            tile_height,
+            _TILE_BACKGROUND,
         )
         _stroke_rect(
-            sheet_rows, width, height, tile_x, tile_y, tile_width,
-            tile_height, _TILE_BORDER,
+            sheet_rows,
+            width,
+            height,
+            tile_x,
+            tile_y,
+            tile_width,
+            tile_height,
+            _TILE_BORDER,
         )
         _draw_label(
             sheet_rows,
@@ -518,9 +526,7 @@ def build_contact_sheet(
         area_y = tile_y + _LABEL_BAND
         area_width = tile_width - 2 * _TILE_PADDING
         area_height = tile_height - _LABEL_BAND - _TILE_PADDING
-        scale = min(
-            area_width / image.width, area_height / image.height, 1.0
-        )
+        scale = min(area_width / image.width, area_height / image.height, 1.0)
         image_width = max(1, int(image.width * scale))
         image_height = max(1, int(image.height * scale))
         image_x = area_x + (area_width - image_width) // 2
@@ -548,7 +554,9 @@ def build_contact_sheet(
             )
         )
     return ContactSheet(
-        image=PngImage(width, height, 2, tuple(bytes(row) for row in sheet_rows)),
+        image=PngImage(
+            width, height, 2, tuple(bytes(row) for row in sheet_rows)
+        ),
         tiles=tuple(tiles),
         columns=columns,
         rows=rows,
@@ -623,7 +631,7 @@ def _fill_rect(
         return
     pixel = bytes(color) * (x1 - x0)
     for row in range(y0, y1):
-        rows[row][x0 * 3:x1 * 3] = pixel
+        rows[row][x0 * 3 : x1 * 3] = pixel
 
 
 def _stroke_rect(
@@ -637,9 +645,13 @@ def _stroke_rect(
     color: tuple[int, int, int],
 ) -> None:
     _fill_rect(rows, sheet_width, sheet_height, x, y, width, 1, color)
-    _fill_rect(rows, sheet_width, sheet_height, x, y + height - 1, width, 1, color)
+    _fill_rect(
+        rows, sheet_width, sheet_height, x, y + height - 1, width, 1, color
+    )
     _fill_rect(rows, sheet_width, sheet_height, x, y, 1, height, color)
-    _fill_rect(rows, sheet_width, sheet_height, x + width - 1, y, 1, height, color)
+    _fill_rect(
+        rows, sheet_width, sheet_height, x + width - 1, y, 1, height, color
+    )
 
 
 def _draw_label(
@@ -686,7 +698,7 @@ def _blit_rgb(
         target_y = y + offset
         if 0 <= target_y < len(rows):
             start = x * 3
-            rows[target_y][start:start + width * 3] = source_row
+            rows[target_y][start : start + width * 3] = source_row
 
 
 def _scale_rgb_rows(
@@ -704,9 +716,9 @@ def _scale_rgb_rows(
             offset = source_x * channels
             if grayscale:
                 gray = source_row[offset]
-                output[x * 3:x * 3 + 3] = bytes((gray, gray, gray))
+                output[x * 3 : x * 3 + 3] = bytes((gray, gray, gray))
             else:
-                output[x * 3:x * 3 + 3] = source_row[offset:offset + 3]
+                output[x * 3 : x * 3 + 3] = source_row[offset : offset + 3]
         scaled.append(bytes(output))
     return tuple(scaled)
 

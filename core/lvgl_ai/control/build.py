@@ -61,9 +61,12 @@ def configure_command(
     libpng_path = libpng_src if libpng_src is not None else paths.libpng_src()
     command = [
         "cmake",
-        "-S", str(engine_dir),
-        "-B", str(build_dir),
-        "-G", "Ninja",
+        "-S",
+        str(engine_dir),
+        "-B",
+        str(build_dir),
+        "-G",
+        "Ninja",
         "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
         "-DCMAKE_C_COMPILER=gcc",
         f"-DLVGL_AI_LVGL_SRC={lvgl_src}",
@@ -92,9 +95,7 @@ def run_capture(
     # stops each incremental build from flashing a console window.
     flags: dict[str, object] = {}
     if os.name == "nt":
-        flags["creationflags"] = getattr(
-            subprocess, "CREATE_NO_WINDOW", 0
-        )
+        flags["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     proc = subprocess.run(
         list(command),
         capture_output=True,
@@ -162,19 +163,28 @@ def parse_diagnostics(text: str) -> tuple[list[dict], list[str], list[str]]:
     return diagnostics, link_lines, unresolved
 
 
-def build_failure(result: BuildResult, log_text: str) -> BuildError | LinkError:
+def build_failure(
+    result: BuildResult, log_text: str
+) -> BuildError | LinkError:
     diagnostics, link_lines, unresolved = parse_diagnostics(result.output)
     compiler_errors = [
-        item for item in diagnostics if item["severity"] in ("fatal error", "error")
+        item
+        for item in diagnostics
+        if item["severity"] in ("fatal error", "error")
     ]
     if link_lines and not compiler_errors:
         return LinkError(
-            "link failed: " + (link_lines[0].strip() or "unknown linker error"),
+            "link failed: "
+            + (link_lines[0].strip() or "unknown linker error"),
             unresolved_symbols=unresolved,
             log_text=log_text,
             command=result.command,
         )
-    first = compiler_errors[0] if compiler_errors else (diagnostics[0] if diagnostics else None)
+    first = (
+        compiler_errors[0]
+        if compiler_errors
+        else (diagnostics[0] if diagnostics else None)
+    )
     if first is not None:
         message = (
             f"build failed: {first['file']}:{first['line']}"
@@ -214,13 +224,17 @@ def needs_configure(
         "LVGL_AI_LVGL_SRC": lvgl_src,
         "LVGL_AI_LVGL_VERSION": lvgl_version,
         "LVGL_AI_USER_APP_DIR": user_app_dir,
-        "LVGL_AI_ZLIB_SRC": zlib_src if zlib_src is not None else paths.zlib_src(),
+        "LVGL_AI_ZLIB_SRC": zlib_src
+        if zlib_src is not None
+        else paths.zlib_src(),
         "LVGL_AI_LIBPNG_SRC": (
             libpng_src if libpng_src is not None else paths.libpng_src()
         ),
         # Moving the checkout leaves the LVGL_AI_* values unchanged, but the
         # generated build files still embed the old engine directory.
-        "CMAKE_HOME_DIRECTORY": paths.ENGINE_DIR if engine_dir is None else engine_dir,
+        "CMAKE_HOME_DIRECTORY": paths.ENGINE_DIR
+        if engine_dir is None
+        else engine_dir,
     }
     cached = _read_cache(cache_path)
     for name, value in expected.items():

@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -52,7 +51,6 @@ class FakeRuntime:
         self.t_ms = 0
         self._snapshots = 0
 
-
     def start(self) -> FakeRuntime:
         self.start_calls += 1
         if self.start_error is not None:
@@ -96,11 +94,14 @@ class FakeRuntime:
         if error is not None:
             raise error
 
-
     def pointer(self, action: str, x: int, y: int) -> dict[str, Any]:
         self._raise_if("pointer")
         self.commands.append(("pointer", action, x, y))
-        return {"seq": len(self.commands), "hit": "fake_button", "hit_class": "lv_button"}
+        return {
+            "seq": len(self.commands),
+            "hit": "fake_button",
+            "hit_class": "lv_button",
+        }
 
     def key(self, action: str, key: str) -> dict[str, Any]:
         self._raise_if("key")
@@ -122,7 +123,9 @@ class FakeRuntime:
             "t_ms": self.t_ms,
         }
 
-    def wait(self, ms: int | None = None, *, frames: int | None = None) -> dict[str, Any]:
+    def wait(
+        self, ms: int | None = None, *, frames: int | None = None
+    ) -> dict[str, Any]:
         self._raise_if("wait")
         if (ms is None) == (frames is None):
             raise ValueError("wait needs exactly one of ms or frames")
@@ -132,9 +135,7 @@ class FakeRuntime:
             self.commands.append(("wait", ms))
         return {"seq": len(self.commands)}
 
-    def wait_stable(
-        self, max_ms: int, stable_frames: int
-    ) -> dict[str, Any]:
+    def wait_stable(self, max_ms: int, stable_frames: int) -> dict[str, Any]:
         self._raise_if("wait_stable")
         self.commands.append(("wait_stable", max_ms, stable_frames))
         return {

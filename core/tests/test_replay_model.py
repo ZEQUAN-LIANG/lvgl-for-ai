@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -12,7 +11,6 @@ from web_support import SESSION_ID, make_web_session
 
 
 class _CountingRecording(Recording):
-
     def __init__(self, path) -> None:
         super().__init__(path)
         self.reads = {
@@ -61,7 +59,9 @@ class ReplayModelLoadTest(unittest.TestCase):
             json.dumps(document, indent=2) + "\n", encoding="utf-8"
         )
 
-    def test_one_timeline_read_feeds_frames_snapshots_and_timeline(self) -> None:
+    def test_one_timeline_read_feeds_frames_snapshots_and_timeline(
+        self,
+    ) -> None:
         recording = _CountingRecording(self.session)
         model = replay_model.load(recording)
         self.assertEqual(recording.timeline_reads, 0)
@@ -72,7 +72,9 @@ class ReplayModelLoadTest(unittest.TestCase):
         self.assertEqual(
             [frame["frame_no"] for frame in model.frames], [1, 2, 3]
         )
-        self.assertEqual([frame["t_ms"] for frame in model.frames], [0, 16, 32])
+        self.assertEqual(
+            [frame["t_ms"] for frame in model.frames], [0, 16, 32]
+        )
         self.assertEqual(model.frames[0]["file"], "frames/000001.png")
         self.assertEqual(
             model.frames[0]["url"], f"/frames/{SESSION_ID}/000001.png"
@@ -94,7 +96,9 @@ class ReplayModelLoadTest(unittest.TestCase):
         self.assertEqual(
             [frame["frame_no"] for frame in model.frames], [1, 2, 3]
         )
-        self.assertEqual([frame["t_ms"] for frame in model.frames], [0, 16, 32])
+        self.assertEqual(
+            [frame["t_ms"] for frame in model.frames], [0, 16, 32]
+        )
         self.assertEqual(model.snapshots[0]["label"], "after_click")
         self.assertTrue(model.timeline)
         self.assertEqual(recording.reads["timeline"], 1)
@@ -123,7 +127,9 @@ class ReplayModelLoadTest(unittest.TestCase):
         )
         self.assertEqual(model.snapshots[0]["label"], "001_after_click")
 
-    def test_corrupt_diffs_and_annotations_degrade_with_their_errors(self) -> None:
+    def test_corrupt_diffs_and_annotations_degrade_with_their_errors(
+        self,
+    ) -> None:
         (self.session / "frame_diffs.ndjson").write_text(
             "{broken\n", encoding="utf-8"
         )
@@ -145,7 +151,9 @@ class ReplayModelLoadTest(unittest.TestCase):
         self.assertIsNone(model.reference_diffs)
         self.assertIsNone(model.reference_diffs_error)
 
-    def test_corrupt_reference_diffs_are_flagged_for_the_json_endpoint(self) -> None:
+    def test_corrupt_reference_diffs_are_flagged_for_the_json_endpoint(
+        self,
+    ) -> None:
         (self.session / "reference_diffs.ndjson").write_text(
             "{broken\n", encoding="utf-8"
         )
@@ -192,7 +200,12 @@ class ReplayModelLoadTest(unittest.TestCase):
         self.assertEqual(view["text"], "button is too low")
         self.assertEqual(
             view["crops"],
-            [{"url": f"/regions/{SESSION_ID}/note-1-0.png", "alt": "标注区域图"}],
+            [
+                {
+                    "url": f"/regions/{SESSION_ID}/note-1-0.png",
+                    "alt": "标注区域图",
+                }
+            ],
         )
 
     def test_note_without_frame_number_has_no_jump_attribute(self) -> None:

@@ -54,12 +54,18 @@ def char_key(char: str) -> str:
 def resolve_key(name: Any, *, step: int | None = None) -> tuple[str, int]:
     prefix = "" if step is None else f"step {step}: "
     if not isinstance(name, str):
-        raise ScenarioError(f"{prefix}key must be a string; got {name!r}", step=step)
+        raise ScenarioError(
+            f"{prefix}key must be a string; got {name!r}", step=step
+        )
 
     upper = name.upper()
     if upper.startswith(CHAR_PREFIX):
         return _resolve_char_key(name, upper, prefix, step)
-    canonical = upper[len(LV_KEY_PREFIX):] if upper.startswith(LV_KEY_PREFIX) else upper
+    canonical = (
+        upper[len(LV_KEY_PREFIX) :]
+        if upper.startswith(LV_KEY_PREFIX)
+        else upper
+    )
     code = LV_KEYS.get(canonical)
     if code is None:
         expected = ", ".join(KEY_NAMES)

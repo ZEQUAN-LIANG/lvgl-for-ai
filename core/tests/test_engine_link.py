@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -47,7 +46,6 @@ def reply_line(seq: int, **overrides: object) -> str:
 
 
 class ScriptedPipe:
-
     def __init__(self) -> None:
         self._lines: queue.Queue[object] = queue.Queue()
         self.closed = False
@@ -97,7 +95,6 @@ class BrokenStdin:
 
 
 class ScriptedProcess:
-
     def __init__(self, *, exit_on_terminate: bool = True) -> None:
         self.stdout = ScriptedPipe()
         self.stderr = ScriptedPipe()
@@ -177,7 +174,6 @@ class EngineLinkTest(unittest.TestCase):
         self.process.exit(0)
         link.shutdown(send_quit=False)
 
-
     def test_start_passes_command_environment_and_cwd_to_spawn(self) -> None:
         captured: dict[str, object] = {}
 
@@ -211,17 +207,20 @@ class EngineLinkTest(unittest.TestCase):
         link.await_ready(0.5)
         self._shutdown(link)
 
-        stdout_lines = [line for line in self.logs if not line.startswith("[stderr]")]
+        stdout_lines = [
+            line for line in self.logs if not line.startswith("[stderr]")
+        ]
         self.assertEqual(stdout_lines, ["[app] boot", '{"hello": "world"}'])
         self.assertIn("[stderr] warning: x", self.logs)
 
     def test_protocol_lines_are_not_logged(self) -> None:
         link = self._started_link()
-        self.process.on_line = lambda line: self.process.stdout.feed(reply_line(1))
+        self.process.on_line = lambda line: self.process.stdout.feed(
+            reply_line(1)
+        )
         link.command("tick", "16")
         self._shutdown(link)
         self.assertEqual(self.logs, [])
-
 
     def test_valid_ready_is_returned(self) -> None:
         link = self._started_link()
@@ -231,7 +230,9 @@ class EngineLinkTest(unittest.TestCase):
         self.assertTrue(link.is_running)
         self.assertEqual(link.pid, 4321)
 
-    def test_ready_frames_callback_runs_before_later_ready_checks(self) -> None:
+    def test_ready_frames_callback_runs_before_later_ready_checks(
+        self,
+    ) -> None:
         self.process.stdout.feed(ready_line(max_frames=-1))
         link = self._link()
         link.start()
@@ -242,9 +243,16 @@ class EngineLinkTest(unittest.TestCase):
         self.assertEqual(frames, [1])
         self._shutdown(link)
 
-    def test_malformed_ready_is_a_protocol_error_with_raw_and_seq(self) -> None:
+    def test_malformed_ready_is_a_protocol_error_with_raw_and_seq(
+        self,
+    ) -> None:
         raw = json.dumps(
-            {"protocol": PROTOCOL_VERSION, "ready": True, "seq": 0, "lvgl": "9.6.0"}
+            {
+                "protocol": PROTOCOL_VERSION,
+                "ready": True,
+                "seq": 0,
+                "lvgl": "9.6.0",
+            }
         )
         self.process.stdout.feed(raw)
         link = self._link()
@@ -289,22 +297,27 @@ class EngineLinkTest(unittest.TestCase):
         link.start()
         with self.assertRaises(ProtocolError) as caught:
             link.await_ready(0.5)
-        self.assertIn("unexpected protocol line before ready", str(caught.exception))
+        self.assertIn(
+            "unexpected protocol line before ready", str(caught.exception)
+        )
         self.assertEqual(caught.exception.seq, 1)
         self._shutdown(link)
 
-    def test_eof_before_ready_is_a_crash_and_marks_unexpected_exit(self) -> None:
+    def test_eof_before_ready_is_a_crash_and_marks_unexpected_exit(
+        self,
+    ) -> None:
         self.process.stdout.feed("[boot] starting")
         self.process.stdout.close()
         link = self._link(log_tail=lambda: list(self.logs))
         link.start()
         with self.assertRaises(RuntimeCrash) as caught:
             link.await_ready(0.5)
-        self.assertIn("closed stdout before announcing ready", str(caught.exception))
+        self.assertIn(
+            "closed stdout before announcing ready", str(caught.exception)
+        )
         self.assertTrue(link.unexpected_exit)
         self.assertEqual(caught.exception.log_tail, ["[boot] starting"])
         self._shutdown(link)
-
 
     def test_late_and_duplicate_replies_are_skipped(self) -> None:
         link = self._started_link()
@@ -314,13 +327,17 @@ class EngineLinkTest(unittest.TestCase):
         first = link.command("tick", "16")
         self.assertEqual(first["seq"], 1)
 
-        self.process.on_line = lambda line: self.process.stdout.feed(reply_line(2))
+        self.process.on_line = lambda line: self.process.stdout.feed(
+            reply_line(2)
+        )
         second = link.command("tick", "16")
         self.assertEqual(second["seq"], 2)
 
     def test_reply_with_a_higher_seq_is_a_protocol_error(self) -> None:
         link = self._started_link()
-        self.process.on_line = lambda line: self.process.stdout.feed(reply_line(2))
+        self.process.on_line = lambda line: self.process.stdout.feed(
+            reply_line(2)
+        )
         with self.assertRaises(ProtocolError) as caught:
             link.command("tick", "16")
         self.assertIn("expected 1, got 2", str(caught.exception))
@@ -345,7 +362,9 @@ class EngineLinkTest(unittest.TestCase):
         self.assertIn("engine did not reply to", str(caught.exception))
         self.assertFalse(link.unexpected_exit)
 
-    def test_eof_during_a_reply_is_a_crash_and_marks_unexpected_exit(self) -> None:
+    def test_eof_during_a_reply_is_a_crash_and_marks_unexpected_exit(
+        self,
+    ) -> None:
         link = self._started_link()
         self.process.on_line = lambda line: self.process.stdout.close()
         with self.assertRaises(RuntimeCrash) as caught:
@@ -353,7 +372,9 @@ class EngineLinkTest(unittest.TestCase):
         self.assertIn("exited before replying", str(caught.exception))
         self.assertTrue(link.unexpected_exit)
 
-    def test_broken_pipe_on_send_is_a_crash_and_marks_unexpected_exit(self) -> None:
+    def test_broken_pipe_on_send_is_a_crash_and_marks_unexpected_exit(
+        self,
+    ) -> None:
         link = self._started_link()
         self.process.stdin = BrokenStdin()
         with self.assertRaises(RuntimeCrash) as caught:
@@ -370,17 +391,20 @@ class EngineLinkTest(unittest.TestCase):
         self.assertEqual(caught.exception.exit_code, 3)
         self.assertTrue(link.unexpected_exit)
 
-
     def test_check_hook_receives_each_command_and_reply(self) -> None:
         link = self._started_link()
-        self.process.on_line = lambda line: self.process.stdout.feed(reply_line(1))
+        self.process.on_line = lambda line: self.process.stdout.feed(
+            reply_line(1)
+        )
         reply = link.command("tick", "16")
         self.assertEqual(len(self.checks), 1)
         self.assertTrue(self.checks[0][1])
         self.assertIs(self.checks[0][2], reply)
         self.assertTrue(self.checks[0][3])
 
-        self.process.on_line = lambda line: self.process.stdout.feed(reply_line(2))
+        self.process.on_line = lambda line: self.process.stdout.feed(
+            reply_line(2)
+        )
         link.command("tick", "16", track_check=False)
         self.assertTrue(self.checks[-1][1])
         self.assertEqual(self.checks[-1][2]["seq"], 2)
@@ -388,17 +412,20 @@ class EngineLinkTest(unittest.TestCase):
 
     def test_failed_command_is_recorded_even_without_track_check(self) -> None:
         link = self._started_link()
-        self.process.on_line = lambda line: self.process.stdout.feed(reply_line(5))
+        self.process.on_line = lambda line: self.process.stdout.feed(
+            reply_line(5)
+        )
         with self.assertRaises(ProtocolError):
             link.command("mark", "x", track_check=False)
         self.assertFalse(self.checks[-1][1])
         self.assertIsNone(self.checks[-1][2])
         self.assertTrue(self.checks[-1][3])
 
-
     def test_shutdown_sends_quit_and_does_not_terminate(self) -> None:
         link = self._started_link()
-        self.process.on_line = lambda line: self._answer_quit(line, exit_code=0)
+        self.process.on_line = lambda line: self._answer_quit(
+            line, exit_code=0
+        )
         code = link.shutdown(send_quit=True)
         self.assertEqual(code, 0)
         self.assertFalse(self.process.terminated)
@@ -438,7 +465,6 @@ class EngineLinkTest(unittest.TestCase):
         self.assertTrue(self.process.stdout.closed)
         self.assertTrue(self.process.stderr.closed)
 
-
     def test_crash_factory_carries_exit_code_tail_and_path(self) -> None:
         link = self._started_link(
             log_tail=lambda: ["last line"], log_path="engine.log"
@@ -451,7 +477,9 @@ class EngineLinkTest(unittest.TestCase):
 
     def test_complete_crash_fills_fields_after_the_pumps_join(self) -> None:
         self.process.stdout.feed("[boot] line", ready_line())
-        link = self._link(log_tail=lambda: list(self.logs), log_path="engine.log")
+        link = self._link(
+            log_tail=lambda: list(self.logs), log_path="engine.log"
+        )
         link.start()
         link.await_ready(0.5)
         self.process.on_line = lambda line: self.process.stdout.close()

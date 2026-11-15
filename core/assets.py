@@ -10,7 +10,6 @@ session.  The generated headers are plain LVGL C and do not need this tool at
 build or run time.
 """
 
-
 from __future__ import annotations
 
 import argparse
@@ -58,10 +57,18 @@ def _add_common(parser: argparse.ArgumentParser) -> None:
         help="output header path; relative paths resolve against the app dir "
         "when --app is given, otherwise against --repo-root",
     )
-    parser.add_argument("--name", help="C symbol name (default: source + size)")
-    parser.add_argument("--force", action="store_true", help="overwrite a changed output")
-    parser.add_argument("--dry-run", action="store_true", help="validate without writing")
-    parser.add_argument("--json", action="store_true", help="print one JSON line")
+    parser.add_argument(
+        "--name", help="C symbol name (default: source + size)"
+    )
+    parser.add_argument(
+        "--force", action="store_true", help="overwrite a changed output"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="validate without writing"
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="print one JSON line"
+    )
     parser.add_argument(
         "--lvgl",
         default="auto",
@@ -84,12 +91,22 @@ def build_parser() -> argparse.ArgumentParser:
     font = subparsers.add_parser("font", help="convert a TTF/OTF to lv_font_t")
     _add_common(font)
     font.add_argument("--font", required=True, help="TTF/OTF/TTC path")
-    font.add_argument("--face-index", type=int, default=0, help="TTC face index")
-    font.add_argument("--size", type=int, default=16, help="pixel size (default: 16)")
     font.add_argument(
-        "--bpp", type=int, default=4, choices=(1, 2, 4, 8), help="bits per pixel"
+        "--face-index", type=int, default=0, help="TTC face index"
     )
-    font.add_argument("--text", action="append", default=[], help="extra UTF-8 text")
+    font.add_argument(
+        "--size", type=int, default=16, help="pixel size (default: 16)"
+    )
+    font.add_argument(
+        "--bpp",
+        type=int,
+        default=4,
+        choices=(1, 2, 4, 8),
+        help="bits per pixel",
+    )
+    font.add_argument(
+        "--text", action="append", default=[], help="extra UTF-8 text"
+    )
     font.add_argument(
         "--text-file",
         action="append",
@@ -122,7 +139,9 @@ def build_parser() -> argparse.ArgumentParser:
     font.add_argument("--line-height", type=int, default=None)
     font.add_argument("--base-line", type=int, default=None)
 
-    image = subparsers.add_parser("image", help="convert a PNG to lv_image_dsc_t")
+    image = subparsers.add_parser(
+        "image", help="convert a PNG to lv_image_dsc_t"
+    )
     _add_common(image)
     image.add_argument("--input", required=True, help="PNG input path")
     image.add_argument(
@@ -137,7 +156,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="background colour for formats without alpha (default: black)",
     )
     image.add_argument(
-        "--dither", action="store_true", help="Floyd-Steinberg dithering for RGB565"
+        "--dither",
+        action="store_true",
+        help="Floyd-Steinberg dithering for RGB565",
     )
 
     doctor = subparsers.add_parser("doctor", help="check bundled dependencies")
@@ -183,12 +204,17 @@ def _resolve_output(
             output = output.with_suffix(".h")
         return output.resolve()
     if app_dir is None:
-        raise AssetError("pass --app or --output to choose where the header goes")
+        raise AssetError(
+            "pass --app or --output to choose where the header goes"
+        )
     return (app_dir / f"{name}.h").resolve()
 
 
 def _resolve_manifest(
-    args: argparse.Namespace, repo_root: Path, app_dir: Path | None, dry_run: bool
+    args: argparse.Namespace,
+    repo_root: Path,
+    app_dir: Path | None,
+    dry_run: bool,
 ) -> Path | None:
     if args.manifest:
         manifest = Path(args.manifest).expanduser()
@@ -294,7 +320,11 @@ def _run_font(args: argparse.Namespace) -> dict[str, object]:
     result["warnings"] = list(result.get("warnings", [])) + warnings
     result["charset"] = {
         "codepoints": len(codepoints),
-        **{key: value for key, value in corpus_meta.items() if key != "codepoint_count"},
+        **{
+            key: value
+            for key, value in corpus_meta.items()
+            if key != "codepoint_count"
+        },
     }
     return result
 

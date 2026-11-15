@@ -29,7 +29,6 @@ else:
 
 
 class BuildLock:
-
     def __init__(
         self, build_dir: str | Path, *, timeout: float = BUILD_LOCK_TIMEOUT_S
     ) -> None:
@@ -48,13 +47,13 @@ class BuildLock:
         while True:
             try:
                 _try_lock(handle)
-            except OSError:
+            except OSError as exc:
                 if time.monotonic() >= deadline:
                     handle.close()
                     raise BuildError(
                         f"build lock timeout: {self.path}",
                         command=["build-lock", str(self.path)],
-                    )
+                    ) from exc
                 time.sleep(RETRY_INTERVAL_S)
                 continue
             self._handle = handle
@@ -97,10 +96,12 @@ class FileLock:
         while True:
             try:
                 _try_lock(handle)
-            except OSError:
+            except OSError as exc:
                 if time.monotonic() >= deadline:
                     handle.close()
-                    raise TimeoutError(f"file lock timeout: {self.path}")
+                    raise TimeoutError(
+                        f"file lock timeout: {self.path}"
+                    ) from exc
                 time.sleep(RETRY_INTERVAL_S)
                 continue
             self._handle = handle

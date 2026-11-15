@@ -29,6 +29,7 @@ def tail_lines(text: str, n: int) -> list[str]:
         return []
     return text.splitlines()[-n:]
 
+
 from . import session_schema
 from .documents import DocumentStore
 
@@ -87,10 +88,11 @@ class Recording:
         recording._validate_session()
         return recording
 
-
     def _validate_session(self) -> None:
         if not self.path.is_dir():
-            raise FileNotFoundError(f"session directory not found: {self.path}")
+            raise FileNotFoundError(
+                f"session directory not found: {self.path}"
+            )
         manifest = self.manifest
         self._require_file(self.path / session_schema.ENGINE_LOG_FILE)
 
@@ -101,8 +103,9 @@ class Recording:
     @staticmethod
     def _require_file(path: Path) -> None:
         if not path.is_file():
-            raise FileNotFoundError(f"required session file is missing: {path}")
-
+            raise FileNotFoundError(
+                f"required session file is missing: {path}"
+            )
 
     @property
     def manifest(self) -> dict[str, Any]:
@@ -170,7 +173,9 @@ class Recording:
             relative = path.relative_to(self.path).as_posix()
             row = by_file.get(relative, {})
             label = row.get("label")
-            label_text = label if isinstance(label, str) and label else path.stem
+            label_text = (
+                label if isinstance(label, str) and label else path.stem
+            )
             views.append(
                 {
                     "file": relative,
@@ -213,7 +218,6 @@ class Recording:
     def build_log(self) -> str:
         return _read_text(self.path / session_schema.BUILD_LOG_FILE)
 
-
     @property
     def annotations_store(self) -> DocumentStore:
         return DocumentStore(
@@ -232,9 +236,10 @@ class Recording:
     @annotations.setter
     def annotations(self, value: Any) -> None:
         if not self.path.is_dir():
-            raise FileNotFoundError(f"session directory not found: {self.path}")
+            raise FileNotFoundError(
+                f"session directory not found: {self.path}"
+            )
         self.annotations_store.write(value)
-
 
     @property
     def whiteboards_store(self) -> DocumentStore:
@@ -255,7 +260,9 @@ class Recording:
     @whiteboards.setter
     def whiteboards(self, value: Any) -> None:
         if not self.path.is_dir():
-            raise FileNotFoundError(f"session directory not found: {self.path}")
+            raise FileNotFoundError(
+                f"session directory not found: {self.path}"
+            )
         self.whiteboards_store.write(value)
 
 

@@ -10,7 +10,9 @@ from timeutil import now_iso
 
 class EventHub:
     def __init__(self, *, maxlen: int = 800) -> None:
-        self._events: deque[dict[str, Any]] = deque(maxlen=max(50, int(maxlen)))
+        self._events: deque[dict[str, Any]] = deque(
+            maxlen=max(50, int(maxlen))
+        )
         self._seq = 0
         self._lock = threading.RLock()
         self._cond = threading.Condition(self._lock)

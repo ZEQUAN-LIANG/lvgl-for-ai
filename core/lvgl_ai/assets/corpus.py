@@ -47,15 +47,21 @@ def parse_ranges(values: Sequence[str]) -> set[int]:
                     start = _parse_int(start_text)
                     end = _parse_int(end_text)
                 except ValueError as exc:
-                    raise AssetError(f"invalid --range item: {item!r}") from exc
+                    raise AssetError(
+                        f"invalid --range item: {item!r}"
+                    ) from exc
                 if start > end:
-                    raise AssetError(f"invalid --range item (start > end): {item!r}")
+                    raise AssetError(
+                        f"invalid --range item (start > end): {item!r}"
+                    )
                 result.update(range(start, end + 1))
             else:
                 try:
                     result.add(_parse_int(item))
                 except ValueError as exc:
-                    raise AssetError(f"invalid --range item: {item!r}") from exc
+                    raise AssetError(
+                        f"invalid --range item: {item!r}"
+                    ) from exc
     return result
 
 
@@ -85,27 +91,35 @@ def _decode_c_literal(raw: str) -> str:
         if escaped == "x":
             digits = raw[index : index + 2]
             if len(digits) != 2 or not re.fullmatch(r"[0-9A-Fa-f]{2}", digits):
-                raise AssetError(f"invalid \\x escape in C string: \\x{digits}")
+                raise AssetError(
+                    f"invalid \\x escape in C string: \\x{digits}"
+                )
             parts.append(bytes([int(digits, 16)]))
             index += 2
             continue
         if escaped == "u":
             digits = raw[index : index + 4]
             if len(digits) != 4 or not re.fullmatch(r"[0-9A-Fa-f]{4}", digits):
-                raise AssetError(f"invalid \\u escape in C string: \\u{digits}")
+                raise AssetError(
+                    f"invalid \\u escape in C string: \\u{digits}"
+                )
             parts.append(chr(int(digits, 16)).encode("utf-8"))
             index += 4
             continue
         if escaped == "U":
             digits = raw[index : index + 8]
             if len(digits) != 8 or not re.fullmatch(r"[0-9A-Fa-f]{8}", digits):
-                raise AssetError(f"invalid \\U escape in C string: \\U{digits}")
+                raise AssetError(
+                    f"invalid \\U escape in C string: \\U{digits}"
+                )
             parts.append(chr(int(digits, 16)).encode("utf-8"))
             index += 8
             continue
         if escaped in "01234567":
             digits = escaped
-            while index < length and len(digits) < 3 and raw[index] in "01234567":
+            while (
+                index < length and len(digits) < 3 and raw[index] in "01234567"
+            ):
                 digits += raw[index]
                 index += 1
             parts.append(bytes([int(digits, 8) & 0xFF]))

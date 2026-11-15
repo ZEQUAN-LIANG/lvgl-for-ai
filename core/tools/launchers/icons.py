@@ -38,7 +38,9 @@ class Canvas:
         self.size = size
         self.buf = array("f", [0.0]) * (size * size * 4)
 
-    def blend(self, pixel: int, red: float, green: float, blue: float, alpha: float) -> None:
+    def blend(
+        self, pixel: int, red: float, green: float, blue: float, alpha: float
+    ) -> None:
         if alpha <= 0.0:
             return
         if alpha > 1.0:
@@ -101,10 +103,14 @@ def fill_rounded_rect(
         for px in range(first, last + 1):
             cover = min(px + 1.0, xb) - max(float(px), xa)
             if cover > 0.0:
-                canvas.blend(row + px, red, green, blue, alpha * cover * row_cover)
+                canvas.blend(
+                    row + px, red, green, blue, alpha * cover * row_cover
+                )
 
 
-def fill_circle(canvas: Canvas, cx: float, cy: float, radius: float, color: Color) -> None:
+def fill_circle(
+    canvas: Canvas, cx: float, cy: float, radius: float, color: Color
+) -> None:
     scale = canvas.size / DESIGN
     cx *= scale
     cy *= scale
@@ -124,7 +130,9 @@ def fill_circle(canvas: Canvas, cx: float, cy: float, radius: float, color: Colo
         for px in range(first, last + 1):
             cover = min(px + 1.0, xb) - max(float(px), xa)
             if cover > 0.0:
-                canvas.blend(row + px, color[0], color[1], color[2], color[3] * cover)
+                canvas.blend(
+                    row + px, color[0], color[1], color[2], color[3] * cover
+                )
 
 
 def _draw_background(canvas: Canvas) -> None:
@@ -149,10 +157,18 @@ def _draw_host(canvas: Canvas, size: int) -> None:
     thickness = 54.0 if size > 32 else 72.0
     half = thickness / 2.0
     for center in centers:
-        fill_rounded_rect(canvas, 146, center - half, 306, center + half, 24, AMBER)
-        fill_rounded_rect(canvas, 718, center - half, 878, center + half, 24, AMBER)
-        fill_rounded_rect(canvas, center - half, 146, center + half, 306, 24, AMBER)
-        fill_rounded_rect(canvas, center - half, 718, center + half, 878, 24, AMBER)
+        fill_rounded_rect(
+            canvas, 146, center - half, 306, center + half, 24, AMBER
+        )
+        fill_rounded_rect(
+            canvas, 718, center - half, 878, center + half, 24, AMBER
+        )
+        fill_rounded_rect(
+            canvas, center - half, 146, center + half, 306, 24, AMBER
+        )
+        fill_rounded_rect(
+            canvas, center - half, 718, center + half, 878, 24, AMBER
+        )
     fill_rounded_rect(canvas, 296, 296, 728, 728, 96, NAVY)
     fill_rounded_rect(canvas, 372, 372, 652, 652, 44, AMBER, ORANGE)
     fill_circle(canvas, 512, 512, 58, WHITE)
@@ -192,7 +208,9 @@ def _downsample(canvas: Canvas, size: int) -> bytes:
             out[target] = max(0, min(255, int(round(sr / sa * 255.0))))
             out[target + 1] = max(0, min(255, int(round(sg / sa * 255.0))))
             out[target + 2] = max(0, min(255, int(round(sb / sa * 255.0))))
-            out[target + 3] = max(0, min(255, int(round(sa * inv_area * 255.0))))
+            out[target + 3] = max(
+                0, min(255, int(round(sa * inv_area * 255.0)))
+            )
     return bytes(out)
 
 
@@ -217,7 +235,14 @@ def _bmp_entry(size: int, rgba: bytes) -> bytes:
         base = y * size * 4
         for x in range(size):
             index = base + x * 4
-            pixels += bytes((rgba[index + 2], rgba[index + 1], rgba[index], rgba[index + 3]))
+            pixels += bytes(
+                (
+                    rgba[index + 2],
+                    rgba[index + 1],
+                    rgba[index],
+                    rgba[index + 3],
+                )
+            )
     mask = bytearray(mask_stride * size)
     for y in range(size):
         base = y * size * 4
@@ -235,10 +260,14 @@ def write_ico(path: Path, name: str) -> None:
     for size in SIZES:
         blob = _bmp_entry(size, render_icon(name, size))
         dimension = 0 if size == 256 else size
-        entries += struct.pack("<BBBBHHII", dimension, dimension, 0, 0, 1, 32, len(blob), offset)
+        entries += struct.pack(
+            "<BBBBHHII", dimension, dimension, 0, 0, 1, 32, len(blob), offset
+        )
         images += blob
         offset += len(blob)
-    path.write_bytes(struct.pack("<HHH", 0, 1, len(SIZES)) + bytes(entries) + bytes(images))
+    path.write_bytes(
+        struct.pack("<HHH", 0, 1, len(SIZES)) + bytes(entries) + bytes(images)
+    )
 
 
 def write_all(output_dir: Path = ICON_DIR) -> list:
@@ -253,7 +282,9 @@ def write_all(output_dir: Path = ICON_DIR) -> list:
 
 
 def main(argv: list | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Generate launcher .ico files.")
+    parser = argparse.ArgumentParser(
+        description="Generate launcher .ico files."
+    )
     parser.add_argument("--output-dir", type=Path, default=ICON_DIR)
     args = parser.parse_args(argv)
     for path in write_all(args.output_dir):

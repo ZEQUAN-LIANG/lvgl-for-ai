@@ -6,7 +6,6 @@ copied as-is; an app must already use APIs available in LVGL 9.4. Apps that use
 9.5/9.6-only APIs are rejected with a diagnostic instead of being rewritten.
 """
 
-
 from __future__ import annotations
 
 import argparse
@@ -109,7 +108,9 @@ def export_app(
         app_symbol, app=app, has_assets=asset_plan.has_assets
     ).encode("utf-8")
     _apply_cache_config(plan, asset_plan.cache)
-    plan["export.json"] = _export_manifest(app, app_symbol, asset_plan).encode("utf-8")
+    plan["export.json"] = _export_manifest(app, app_symbol, asset_plan).encode(
+        "utf-8"
+    )
     warnings = _adapter_warnings(adapter_dir, adapter)
 
     created: list[str] = []
@@ -167,7 +168,9 @@ def _load_adapter(adapter_dir: Path) -> dict[str, Any]:
             f"unexpected adapter schema in {path}",
             detail={"schema": payload.get("schema")},
         )
-    missing = [key for key in ("board", "lvgl_version") if not payload.get(key)]
+    missing = [
+        key for key in ("board", "lvgl_version") if not payload.get(key)
+    ]
     if missing:
         raise ExportError(
             "adapter_invalid",
@@ -182,7 +185,9 @@ def _registered_symbol(root: Path, app: str) -> str:
     try:
         text = app_c.read_text(encoding="utf-8-sig")
     except OSError as exc:
-        raise ExportError("app_missing", f"cannot read {app_c}: {exc}") from exc
+        raise ExportError(
+            "app_missing", f"cannot read {app_c}: {exc}"
+        ) from exc
     for name, symbol in registry.parse_app_entries(text):
         if name == app:
             return symbol
@@ -214,7 +219,9 @@ def _build_plan(
 
     for path in sorted(templates_dir.rglob("*")):
         if path.is_file():
-            plan[path.relative_to(templates_dir).as_posix()] = path.read_bytes()
+            plan[path.relative_to(templates_dir).as_posix()] = (
+                path.read_bytes()
+            )
 
     shared_dir = root / "user" / "app"
     for name in ("app.h", "lvgl_compat.h"):
@@ -350,9 +357,7 @@ def _apply_cache_config(plan: dict[str, bytes], cache: dict[str, Any]) -> None:
     plan[path] = ("\n".join(lines) + "\n").encode("utf-8")
 
 
-def _export_manifest(
-    app: str, app_symbol: str, asset_plan: AssetPlan
-) -> str:
+def _export_manifest(app: str, app_symbol: str, asset_plan: AssetPlan) -> str:
     return (
         json.dumps(
             {

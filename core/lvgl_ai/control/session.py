@@ -19,7 +19,12 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from .. import paths
-from .errors import SESSION_STATUSES, RuntimeCrash, dump_error, status_for_error
+from .errors import (
+    SESSION_STATUSES,
+    RuntimeCrash,
+    dump_error,
+    status_for_error,
+)
 from .retention import DEFAULT_SESSION_LIMIT, prune_sessions
 from . import session_schema
 from .session_schema import build_manifest, display_problem, list_pngs
@@ -30,7 +35,6 @@ new_session_id = session_schema.new_session_id
 
 
 class TailLog:
-
     def __init__(
         self, path: Path, *, max_bytes: int = DEFAULT_MAX_LOG_BYTES
     ) -> None:
@@ -49,9 +53,7 @@ class TailLog:
         with self._lock:
             if self._handle is not None and not self._handle.closed:
                 self._handle.close()
-            self._handle = open(
-                self.path, "w", encoding="utf-8", newline="\n"
-            )
+            self._handle = open(self.path, "w", encoding="utf-8", newline="\n")
             self._bytes = 0
             self._truncated = False
 
@@ -96,24 +98,19 @@ class TailLog:
         try:
             raw = self.path.read_bytes()
         except OSError:
-            self._handle = open(
-                self.path, "a", encoding="utf-8", newline="\n"
-            )
+            self._handle = open(self.path, "a", encoding="utf-8", newline="\n")
             return
         tail = raw[-keep_bytes:] if keep_bytes < len(raw) else raw
         newline = tail.find(b"\n")
         if 0 <= newline < len(tail) - 1:
             tail = tail[newline + 1 :]
         self.path.write_bytes(tail)
-        self._handle = open(
-            self.path, "a", encoding="utf-8", newline="\n"
-        )
+        self._handle = open(self.path, "a", encoding="utf-8", newline="\n")
         self._bytes = len(tail)
         self._truncated = True
 
 
 class SessionOutcome:
-
     __slots__ = ("status", "error")
 
     def __init__(
@@ -158,7 +155,6 @@ class SessionOutcome:
 
 
 class SessionStore:
-
     def __init__(
         self,
         sessions_root: str | Path,
@@ -197,7 +193,6 @@ class SessionStore:
         self._ready: dict[str, Any] = {}
         self._truncated = False
         self._checks: list[dict[str, Any]] = []
-
 
     @property
     def engine_log_path(self) -> Path | None:
@@ -258,7 +253,6 @@ class SessionStore:
         except OSError:
             return []
 
-
     def write_build_log(self, text: str) -> None:
         if self.session_dir is None:
             return
@@ -281,7 +275,6 @@ class SessionStore:
         if self._log is not None:
             self._log.close()
 
-
     def discard_preview(self) -> None:
         if not self.live_frame or self.session_dir is None:
             return
@@ -291,7 +284,6 @@ class SessionStore:
             )
         except OSError:
             pass
-
 
     def note_ready(self, ready: Mapping[str, Any]) -> None:
         self._ready = dict(ready)
@@ -388,19 +380,16 @@ class SessionStore:
 
     def _artifacts(self, frames: list[Path]) -> dict[str, Any]:
         assert self.session_dir is not None
-        artifacts: dict[str, Any] = {
-            "manifest": session_schema.MANIFEST_FILE
-        }
+        artifacts: dict[str, Any] = {"manifest": session_schema.MANIFEST_FILE}
         for filename, key in session_schema.ARTIFACT_FILES:
             if (self.session_dir / filename).is_file():
                 artifacts[key] = filename
         if frames:
             artifacts["frames"] = [
-                path.relative_to(self.session_dir).as_posix() for path in frames
+                path.relative_to(self.session_dir).as_posix()
+                for path in frames
             ]
-        snapshots = list_pngs(
-            self.session_dir / session_schema.SNAPSHOTS_DIR
-        )
+        snapshots = list_pngs(self.session_dir / session_schema.SNAPSHOTS_DIR)
         if snapshots:
             artifacts["snapshots"] = [
                 path.relative_to(self.session_dir).as_posix()
@@ -411,7 +400,10 @@ class SessionStore:
 
 def _display_metadata(ready: Mapping[str, Any]) -> dict[str, int] | None:
     display = ready.get("display")
-    if not isinstance(display, Mapping) or display_problem(display) is not None:
+    if (
+        not isinstance(display, Mapping)
+        or display_problem(display) is not None
+    ):
         return None
     return {"width": display["width"], "height": display["height"]}
 

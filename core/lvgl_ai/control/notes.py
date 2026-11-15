@@ -56,9 +56,7 @@ AUTHORS = ("human",)
 SOURCES = ("web", "chat")
 TRANSCRIBERS = ("ai",)
 IMAGE_PATH_RE = re.compile(
-    r"^"
-    + session_schema.REGIONS_DIR
-    + r"/[A-Za-z0-9][A-Za-z0-9._-]*\.png$"
+    r"^" + session_schema.REGIONS_DIR + r"/[A-Za-z0-9][A-Za-z0-9._-]*\.png$"
 )
 
 MAX_ID_LENGTH = 128
@@ -75,7 +73,6 @@ MAX_ANCHOR_TEXT_LENGTH = 128
 
 
 class AnnotationError(ValueError):
-
     code = "invalid_annotation"
 
     def __init__(self, message: str, *, code: str | None = None) -> None:
@@ -125,12 +122,12 @@ def _validate_region(
         raise AnnotationError(f"{name} must be an object")
     unknown = sorted(set(value) - set(REGION_FIELDS))
     if unknown:
-        raise AnnotationError(f"{name} has unknown fields: {', '.join(unknown)}")
+        raise AnnotationError(
+            f"{name} has unknown fields: {', '.join(unknown)}"
+        )
     if "image" in value and not allow_image:
         raise AnnotationError(f"{name}.image is managed by the server")
-    missing = [
-        field for field in ("x", "y", "w", "h") if field not in value
-    ]
+    missing = [field for field in ("x", "y", "w", "h") if field not in value]
     if missing:
         raise AnnotationError(f"{name} is missing {', '.join(missing)}")
     region: dict[str, Any] = {
@@ -143,11 +140,10 @@ def _validate_region(
         if field not in value:
             continue
         if not allow_image:
-            raise AnnotationError(
-                f"{name}.{field} is managed by the server"
-            )
+            raise AnnotationError(f"{name}.{field} is managed by the server")
         path = _require_string(
-            value[field], f"{name}.{field}",
+            value[field],
+            f"{name}.{field}",
             maximum=MAX_IMAGE_PATH_LENGTH,
         )
         if not IMAGE_PATH_RE.fullmatch(path):
@@ -187,7 +183,9 @@ def _validate_anchor(
         raise AnnotationError(f"{name} must be an object")
     unknown = sorted(set(value) - set(ANCHOR_FIELDS))
     if unknown:
-        raise AnnotationError(f"{name} has unknown fields: {', '.join(unknown)}")
+        raise AnnotationError(
+            f"{name} has unknown fields: {', '.join(unknown)}"
+        )
     if "frame_no" not in value:
         raise AnnotationError(f"{name}.frame_no is required")
     frame_no = _require_int(value["frame_no"], f"{name}.frame_no", 1)
@@ -202,14 +200,15 @@ def _validate_anchor(
         value.get("regions", []), f"{name}.regions", allow_image=allow_image
     )
     result: dict[str, Any] = {
-        "frame_no": frame_no, "t_ms": t_ms, "regions": regions
+        "frame_no": frame_no,
+        "t_ms": t_ms,
+        "regions": regions,
     }
     if "annotated" in value:
         annotated = value["annotated"]
         if allow_image:
-            if (
-                not isinstance(annotated, str)
-                or not IMAGE_PATH_RE.fullmatch(annotated)
+            if not isinstance(annotated, str) or not IMAGE_PATH_RE.fullmatch(
+                annotated
             ):
                 raise AnnotationError(
                     f"{name}.annotated must look like regions/<name>.png"
@@ -218,9 +217,7 @@ def _validate_anchor(
             try:
                 decode_png_data_url(annotated)
             except PngDataError as exc:
-                raise AnnotationError(
-                    f"{name}.annotated: {exc}"
-                ) from exc
+                raise AnnotationError(f"{name}.annotated: {exc}") from exc
         result["annotated"] = annotated
     return result
 
@@ -256,7 +253,9 @@ def _validate_feedback_anchor(value: Any, name: str) -> dict[str, Any]:
         )
     unknown = sorted(set(value) - _ANCHOR_FIELDS[kind])
     if unknown:
-        raise AnnotationError(f"{name} has unknown fields: {', '.join(unknown)}")
+        raise AnnotationError(
+            f"{name} has unknown fields: {', '.join(unknown)}"
+        )
     result: dict[str, Any] = {"kind": kind}
     if kind == "click":
         for field in ("seq_down", "seq_up"):
@@ -298,11 +297,11 @@ def validate_note(
     where = "note" if index is None else f"notes[{index}]"
     if not isinstance(note, dict):
         raise AnnotationError(f"{where} must be an object")
-    unknown = sorted(
-        set(note) - set(NOTE_FIELDS) - set(NOTE_OPTIONAL_FIELDS)
-    )
+    unknown = sorted(set(note) - set(NOTE_FIELDS) - set(NOTE_OPTIONAL_FIELDS))
     if unknown:
-        raise AnnotationError(f"{where} has unknown fields: {', '.join(unknown)}")
+        raise AnnotationError(
+            f"{where} has unknown fields: {', '.join(unknown)}"
+        )
 
     note_id = note.get("id")
     if note_id is None:
@@ -399,7 +398,9 @@ def validate_note(
                 f"{where} has at most {MAX_TOTAL_REGIONS} regions across anchors"
             )
         regions = _validate_regions(
-            note.get("regions", []), f"{where}.regions", allow_image=allow_images
+            note.get("regions", []),
+            f"{where}.regions",
+            allow_image=allow_images,
         )
         if not regions and anchors:
             regions = [dict(region) for region in anchors[0]["regions"]]
@@ -408,7 +409,9 @@ def validate_note(
         regions = _validate_regions(
             note.get("regions"), f"{where}.regions", allow_image=allow_images
         )
-        if frame_start is not None and not (frame_start <= frame_no <= frame_end):
+        if frame_start is not None and not (
+            frame_start <= frame_no <= frame_end
+        ):
             raise AnnotationError(
                 f"{where}.frame_no must be within {frame_start}..{frame_end}"
             )
@@ -417,7 +420,9 @@ def validate_note(
     if not isinstance(tags_value, list):
         raise AnnotationError(f"{where}.tags must be a list")
     if len(tags_value) > MAX_TAGS:
-        raise AnnotationError(f"{where}.tags must have at most {MAX_TAGS} entries")
+        raise AnnotationError(
+            f"{where}.tags must have at most {MAX_TAGS} entries"
+        )
     tags = [
         _require_string(
             tag, f"{where}.tags[{position}]", maximum=MAX_TAG_LENGTH
@@ -428,7 +433,10 @@ def validate_note(
     if "text" not in note:
         raise AnnotationError(f"{where}.text is required")
     text = _require_string(
-        note["text"], f"{where}.text", maximum=MAX_TEXT_LENGTH, allow_empty=True
+        note["text"],
+        f"{where}.text",
+        maximum=MAX_TEXT_LENGTH,
+        allow_empty=True,
     )
 
     author = note.get("author")
@@ -587,7 +595,9 @@ def _source_bytes(
                 pass
     if target is not None:
         try:
-            anchor = resolve_anchor(recording, {"kind": "t_ms", "t_ms": target})
+            anchor = resolve_anchor(
+                recording, {"kind": "t_ms", "t_ms": target}
+            )
         except (AttributeError, OSError, ValueError):
             anchor = None
         image = None if anchor is None else anchor.get("image")
@@ -595,15 +605,15 @@ def _source_bytes(
             try:
                 path = (root / image).resolve()
                 path.relative_to(root.resolve())
-                return path.relative_to(root.resolve()).as_posix(), path.read_bytes()
+                return path.relative_to(
+                    root.resolve()
+                ).as_posix(), path.read_bytes()
             except (OSError, ValueError):
                 pass
     return None, None
 
 
-def _crop_png_bytes(
-    data: bytes, region: dict[str, Any], name: str
-) -> bytes:
+def _crop_png_bytes(data: bytes, region: dict[str, Any], name: str) -> bytes:
     try:
         cropped, _clipped, _image = crop_png(
             data,
@@ -637,10 +647,7 @@ def _save_region_crops(
             )
             annotated_path = anchor.get("annotated")
             annotated_data = None
-            if (
-                frame_data is None
-                and not isinstance(annotated_path, str)
-            ):
+            if frame_data is None and not isinstance(annotated_path, str):
                 raise AnnotationError(
                     f"anchors[{ai}]: no evidence image for frame "
                     f"{anchor.get('frame_no')}",
@@ -653,13 +660,13 @@ def _save_region_crops(
                     continue
                 if frame_data is not None:
                     relative = (
-                        f"{session_schema.REGIONS_DIR}/"
-                        f"{stem}-a{ai}-r{ri}.png"
+                        f"{session_schema.REGIONS_DIR}/{stem}-a{ai}-r{ri}.png"
                     )
                     transaction.write_image(
                         relative,
                         _crop_png_bytes(
-                            frame_data, region,
+                            frame_data,
+                            region,
                             f"anchors[{ai}].regions[{ri}]",
                         ),
                     )
@@ -672,7 +679,8 @@ def _save_region_crops(
                     transaction.write_image(
                         relative,
                         _crop_png_bytes(
-                            annotated_data, region,
+                            annotated_data,
+                            region,
                             f"anchors[{ai}].regions[{ri}].annotated",
                         ),
                     )
@@ -722,8 +730,7 @@ def _save_annotated_images(
                 f"anchors[{index}].annotated: {exc}"
             ) from exc
         relative = (
-            f"{session_schema.REGIONS_DIR}/"
-            f"{stem}-a{index}-annotated.png"
+            f"{session_schema.REGIONS_DIR}/{stem}-a{index}-annotated.png"
         )
         transaction.write_image(relative, data)
         anchor["annotated"] = relative
@@ -776,9 +783,7 @@ def add_note(
         data.setdefault("transcribed_by", transcribed_by)
     if "feedback_anchor" not in data:
         data["feedback_anchor"] = _derive(recording, data)
-    lock = FileLock(
-        _lock_path(recording), timeout=ANNOTATIONS_LOCK_TIMEOUT_S
-    )
+    lock = FileLock(_lock_path(recording), timeout=ANNOTATIONS_LOCK_TIMEOUT_S)
     with _WRITE_LOCK:
         try:
             with lock:
@@ -813,9 +818,7 @@ def _write_locked(
             str(exc), code="annotations_write_error"
         ) from exc
     except OSError as exc:
-        raise AnnotationError(
-            str(exc), code="internal_error"
-        ) from exc
+        raise AnnotationError(str(exc), code="internal_error") from exc
     try:
         current = _read_existing(recording)
     except AnnotationError:
@@ -833,9 +836,7 @@ def write_note(
 def delete_note(recording: Recording, note_id: str) -> dict[str, Any]:
     if not isinstance(note_id, str) or not note_id:
         raise AnnotationNotFound("note id is required")
-    lock = FileLock(
-        _lock_path(recording), timeout=ANNOTATIONS_LOCK_TIMEOUT_S
-    )
+    lock = FileLock(_lock_path(recording), timeout=ANNOTATIONS_LOCK_TIMEOUT_S)
     with _WRITE_LOCK:
         try:
             with lock:
@@ -855,9 +856,7 @@ def _delete_locked(recording: Recording, note_id: str) -> dict[str, Any]:
     try:
         document = _read_existing(recording)
     except OSError as exc:
-        raise AnnotationError(
-            str(exc), code="internal_error"
-        ) from exc
+        raise AnnotationError(str(exc), code="internal_error") from exc
     remaining: list[dict[str, Any]] = []
     found = False
     for note in document["notes"]:

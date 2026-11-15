@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import hashlib
@@ -50,7 +49,10 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
         rows = read_ndjson(rt.session_dir / "timeline.ndjson")
         inputs = [row for row in rows if row["type"] == "input"]
         self.assertEqual(
-            [(row["device"], row["action"], row["x"], row["y"]) for row in inputs],
+            [
+                (row["device"], row["action"], row["x"], row["y"])
+                for row in inputs
+            ],
             [("pointer", "down", 112, 324), ("pointer", "up", 112, 324)],
         )
         for row in inputs:
@@ -73,22 +75,33 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
 
         rows = read_ndjson(rt.session_dir / "timeline.ndjson")
         frame_rows = [row for row in rows if row["type"] == "frame"]
-        self.assertEqual([row["frame_no"] for row in frame_rows], [1, 2, 3, 4, 5])
-        self.assertEqual([row["t_ms"] for row in frame_rows], [0, 16, 32, 48, 64])
-        self.assertEqual([row["file"] for row in frame_rows], [
-            "frames/000001.png",
-            "frames/000002.png",
-            "frames/000003.png",
-            "frames/000004.png",
-            "frames/000005.png",
-        ])
+        self.assertEqual(
+            [row["frame_no"] for row in frame_rows], [1, 2, 3, 4, 5]
+        )
+        self.assertEqual(
+            [row["t_ms"] for row in frame_rows], [0, 16, 32, 48, 64]
+        )
+        self.assertEqual(
+            [row["file"] for row in frame_rows],
+            [
+                "frames/000001.png",
+                "frames/000002.png",
+                "frames/000003.png",
+                "frames/000004.png",
+                "frames/000005.png",
+            ],
+        )
 
         wait_rows = [row for row in rows if row["type"] == "wait"]
         self.assertEqual(len(wait_rows), 1)
         wait_row = wait_rows[0]
         self.assertEqual(wait_row["schema"], "lvgl-ai-timeline-v1")
-        self.assertEqual((wait_row["t_ms_start"], wait_row["t_ms_end"]), (16, 64))
-        self.assertEqual((wait_row["frame_start"], wait_row["frame_end"]), (2, 5))
+        self.assertEqual(
+            (wait_row["t_ms_start"], wait_row["t_ms_end"]), (16, 64)
+        )
+        self.assertEqual(
+            (wait_row["frame_start"], wait_row["frame_end"]), (2, 5)
+        )
 
         rt.stop()
         frames = sorted((rt.session_dir / "frames").glob("*.png"))
@@ -119,10 +132,16 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
         self.assertEqual(len(frames), 5)
         rows = read_ndjson(rt.session_dir / "timeline.ndjson")
         frame_rows = [row for row in rows if row["type"] == "frame"]
-        self.assertEqual([row["t_ms"] for row in frame_rows], [0, 16, 32, 48, 64])
+        self.assertEqual(
+            [row["t_ms"] for row in frame_rows], [0, 16, 32, 48, 64]
+        )
         wait_row = [row for row in rows if row["type"] == "wait"][0]
-        self.assertEqual((wait_row["t_ms_start"], wait_row["t_ms_end"]), (16, 64))
-        self.assertEqual((wait_row["frame_start"], wait_row["frame_end"]), (2, 5))
+        self.assertEqual(
+            (wait_row["t_ms_start"], wait_row["t_ms_end"]), (16, 64)
+        )
+        self.assertEqual(
+            (wait_row["frame_start"], wait_row["frame_end"]), (2, 5)
+        )
 
     def test_snapshot_and_mark_leave_named_files_and_rows(self) -> None:
         rt = self._runtime()
@@ -155,9 +174,27 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
 
         replies = rt.input(
             [
-                {"at_ms": 32, "device": "pointer", "action": "up", "x": 112, "y": 324},
-                {"at_ms": 0, "device": "pointer", "action": "down", "x": 112, "y": 324},
-                {"at_ms": 16, "device": "pointer", "action": "move", "x": 112, "y": 324},
+                {
+                    "at_ms": 32,
+                    "device": "pointer",
+                    "action": "up",
+                    "x": 112,
+                    "y": 324,
+                },
+                {
+                    "at_ms": 0,
+                    "device": "pointer",
+                    "action": "down",
+                    "x": 112,
+                    "y": 324,
+                },
+                {
+                    "at_ms": 16,
+                    "device": "pointer",
+                    "action": "move",
+                    "x": 112,
+                    "y": 324,
+                },
             ]
         )
         self.assertEqual(len(replies), 3)
@@ -185,11 +222,23 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
 
         replies = rt.input(
             [
-                {"at_ms": 0, "device": "key", "action": "press", "key": "ENTER"},
-                {"at_ms": 16, "device": "encoder", "action": "turn", "diff": -1},
+                {
+                    "at_ms": 0,
+                    "device": "key",
+                    "action": "press",
+                    "key": "ENTER",
+                },
+                {
+                    "at_ms": 16,
+                    "device": "encoder",
+                    "action": "turn",
+                    "diff": -1,
+                },
             ]
         )
-        self.assertEqual([reply["delivered"] for reply in replies], [True, True])
+        self.assertEqual(
+            [reply["delivered"] for reply in replies], [True, True]
+        )
 
         rows = read_ndjson(rt.session_dir / "timeline.ndjson")
         inputs = [row for row in rows if row["type"] == "input"]

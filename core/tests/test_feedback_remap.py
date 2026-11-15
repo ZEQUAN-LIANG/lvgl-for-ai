@@ -6,10 +6,8 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
 import session_report
-from lvgl_ai.control.recording import Recording
 from support import write_png_rgb
 from test_session_report import make_query_session
 
@@ -58,11 +56,15 @@ def write_note(
     path.write_text(json.dumps(document) + "\n", encoding="utf-8")
 
 
-def set_context(session: Path, scenario: str | None, source: str | None) -> None:
+def set_context(
+    session: Path, scenario: str | None, source: str | None
+) -> None:
     path = session / "manifest.json"
     manifest = json.loads(path.read_text(encoding="utf-8"))
     manifest["scenario"] = (
-        None if scenario is None else {"path": "user/scenarios/x.json", "sha256": scenario}
+        None
+        if scenario is None
+        else {"path": "user/scenarios/x.json", "sha256": scenario}
     )
     manifest["source_digest"] = (
         None
@@ -117,9 +119,7 @@ class FeedbackRemapTest(unittest.TestCase):
         self.assertIn("max_delta", item["pixel_diff"])
         self.assertEqual(item["pixel_diff"]["threshold"], 10)
         self.assertEqual(item["anchor_unreliable_reasons"], [])
-        self.assertEqual(
-            (self.old / "annotations.json").read_bytes(), before
-        )
+        self.assertEqual((self.old / "annotations.json").read_bytes(), before)
         lowered = out.lower()
         for word in ("fixed", "unfixed", "pass", "fail", "approved"):
             with self.subTest(word=word):
@@ -210,9 +210,7 @@ class FeedbackRemapTest(unittest.TestCase):
             ],
         )
         (self.old / "regions").mkdir()
-        write_png_rgb(
-            self.old / "regions/small.png", 1, 1, [(10, 10, 10)]
-        )
+        write_png_rgb(self.old / "regions/small.png", 1, 1, [(10, 10, 10)])
 
         code, out, err = self.feedback()
 
@@ -236,9 +234,7 @@ class FeedbackRemapTest(unittest.TestCase):
             ],
         )
         (self.old / "regions").mkdir()
-        write_png_rgb(
-            self.old / "regions/oob.png", 2, 2, [(10, 10, 10)] * 4
-        )
+        write_png_rgb(self.old / "regions/oob.png", 2, 2, [(10, 10, 10)] * 4)
 
         code, out, err = self.feedback()
 
@@ -259,9 +255,7 @@ class FeedbackRemapTest(unittest.TestCase):
         self.assertEqual(code, 0, err)
         item = json.loads(out)["items"][0]
         self.assertFalse(item["located"])
-        self.assertEqual(
-            json.loads(out)["unmapped"], 1
-        )
+        self.assertEqual(json.loads(out)["unmapped"], 1)
 
     def test_only_eight_human_notes_are_compared(self) -> None:
         for index in range(10):

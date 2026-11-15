@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -57,7 +56,9 @@ class TailLogTest(unittest.TestCase):
         self.assertEqual(log.tail(5), [])
         self.assertFalse(self.path.exists())
 
-    def test_truncation_keeps_a_line_aligned_tail_and_sets_the_flag(self) -> None:
+    def test_truncation_keeps_a_line_aligned_tail_and_sets_the_flag(
+        self,
+    ) -> None:
         log = TailLog(self.path, max_bytes=600)
         log.open()
         for index in range(200):
@@ -111,7 +112,9 @@ class SessionOutcomeTest(unittest.TestCase):
                 self.assertEqual(outcome.status, expected)
                 self.assertIs(outcome.error, error)
 
-    def test_resolve_prefers_a_recorded_failure_over_the_exit_code(self) -> None:
+    def test_resolve_prefers_a_recorded_failure_over_the_exit_code(
+        self,
+    ) -> None:
         error = ScenarioError("bad step")
         outcome = SessionOutcome.resolve(
             error, exit_code=1, unexpected_exit=True
@@ -120,7 +123,9 @@ class SessionOutcomeTest(unittest.TestCase):
         self.assertIs(outcome.error, error)
 
     def test_resolve_exit_zero_is_ok(self) -> None:
-        outcome = SessionOutcome.resolve(None, exit_code=0, unexpected_exit=False)
+        outcome = SessionOutcome.resolve(
+            None, exit_code=0, unexpected_exit=False
+        )
         self.assertEqual(outcome.status, "ok")
         self.assertIsNone(outcome.error)
 
@@ -180,7 +185,9 @@ class SessionStoreTest(unittest.TestCase):
         self.addCleanup(store.close_log)
         return store
 
-    def test_create_reserves_the_session_directory_and_engine_log(self) -> None:
+    def test_create_reserves_the_session_directory_and_engine_log(
+        self,
+    ) -> None:
         store = self.make_store()
         path = store.create()
 
@@ -262,7 +269,9 @@ class SessionStoreTest(unittest.TestCase):
         old = self.sessions_root / "20260101-000000-0000"
         old.mkdir(parents=True)
         (old / "manifest.json").write_text(
-            json.dumps({"schema": MANIFEST_SCHEMA, "id": old.name, "status": "ok"}),
+            json.dumps(
+                {"schema": MANIFEST_SCHEMA, "id": old.name, "status": "ok"}
+            ),
             encoding="utf-8",
         )
         store = self.make_store(retention=None)
@@ -270,7 +279,9 @@ class SessionStoreTest(unittest.TestCase):
         self.assertEqual(store.prune(), [])
         self.assertTrue(old.is_dir())
 
-    def test_manifest_round_trips_through_recording_with_the_same_fields(self) -> None:
+    def test_manifest_round_trips_through_recording_with_the_same_fields(
+        self,
+    ) -> None:
         store = self.make_store(build=True)
         path = store.create()
         store.write_build_log("# phase: build\nok\n")
@@ -325,7 +336,9 @@ class SessionStoreTest(unittest.TestCase):
         self.assertIs(manifest["record_changed_only"], False)
         self.assertEqual(manifest["mode"], "headless")
         self.assertEqual(manifest["input"], ["real", "virtual"])
-        self.assertEqual(manifest["build"], {"status": "ok", "log": "build.log"})
+        self.assertEqual(
+            manifest["build"], {"status": "ok", "log": "build.log"}
+        )
         self.assertEqual(manifest["lvgl"], "9.6.0")
         self.assertEqual(
             manifest["lvgl_src"], str(self.root / "lvgl-src" / "9.6")
@@ -376,7 +389,9 @@ class SessionStoreTest(unittest.TestCase):
         )
         self.assertEqual(manifest["adapter"], "9x")
         self.assertIsNone(manifest["display"])
-        self.assertEqual(manifest["build"], {"status": "skipped", "log": "build.log"})
+        self.assertEqual(
+            manifest["build"], {"status": "skipped", "log": "build.log"}
+        )
         self.assertEqual(manifest["frame_count"], 0)
         self.assertEqual(
             manifest["artifacts"],
@@ -476,7 +491,10 @@ class SessionSchemaTest(unittest.TestCase):
             "log_truncated": False,
             "checks": [],
             "error": None,
-            "artifacts": {"manifest": "manifest.json", "engine_log": "engine.log"},
+            "artifacts": {
+                "manifest": "manifest.json",
+                "engine_log": "engine.log",
+            },
         }
         manifest.update(overrides)
         return manifest
@@ -508,13 +526,19 @@ class SessionSchemaTest(unittest.TestCase):
                 self.assertIn("display", str(caught.exception))
                 shutil.rmtree(session)
 
-    def test_required_fields_and_schema_are_shared_with_recording(self) -> None:
+    def test_required_fields_and_schema_are_shared_with_recording(
+        self,
+    ) -> None:
         from lvgl_ai.control import recording
 
         self.assertIs(recording.MANIFEST_SCHEMA, MANIFEST_SCHEMA)
-        self.assertIs(recording.MANIFEST_REQUIRED_FIELDS, MANIFEST_REQUIRED_FIELDS)
+        self.assertIs(
+            recording.MANIFEST_REQUIRED_FIELDS, MANIFEST_REQUIRED_FIELDS
+        )
 
-    def test_missing_required_manifest_field_is_rejected_with_path(self) -> None:
+    def test_missing_required_manifest_field_is_rejected_with_path(
+        self,
+    ) -> None:
         manifest = self.legacy_manifest()
         manifest.pop("checks")
         session = self.write_session(manifest)

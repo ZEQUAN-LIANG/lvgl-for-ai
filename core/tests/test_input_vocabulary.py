@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import sys
@@ -31,7 +30,9 @@ from lvgl_ai.control.input import (
 from lvgl_ai.control.keys import resolve_key
 
 FAKE_ENGINE = Path(__file__).with_name("fake_engine.py")
-KEY_EXPECTED = "UP, DOWN, RIGHT, LEFT, ESC, DEL, BACKSPACE, ENTER, NEXT, PREV, HOME, END"
+KEY_EXPECTED = (
+    "UP, DOWN, RIGHT, LEFT, ESC, DEL, BACKSPACE, ENTER, NEXT, PREV, HOME, END"
+)
 
 
 class VocabularyTableTest(unittest.TestCase):
@@ -134,13 +135,18 @@ class VocabularyTableTest(unittest.TestCase):
         self.assertEqual(require_action("key", "release"), "release")
         self.assertEqual(require_action("encoder", "turn"), "turn")
         for device, action, message in (
-            ("pointer", "tap", "pointer action must be down, move or up; got 'tap'"),
+            (
+                "pointer",
+                "tap",
+                "pointer action must be down, move or up; got 'tap'",
+            ),
             ("key", "tap", "key action must be press or release; got 'tap'"),
             ("encoder", "push", "encoder action must be turn; got 'push'"),
         ):
-            with self.subTest(device=device), self.assertRaises(
-                ValueError
-            ) as caught:
+            with (
+                self.subTest(device=device),
+                self.assertRaises(ValueError) as caught,
+            ):
                 require_action(device, action)
             self.assertEqual(str(caught.exception), message)
 
@@ -151,9 +157,10 @@ class VocabularyTableTest(unittest.TestCase):
             (-32769, "diff must be within -32768..32767; got -32769"),
             (True, "diff must be an integer"),
         ):
-            with self.subTest(value=value), self.assertRaises(
-                ValueError
-            ) as caught:
+            with (
+                self.subTest(value=value),
+                self.assertRaises(ValueError) as caught,
+            ):
                 require_int16(value, "diff")
             self.assertEqual(str(caught.exception), message)
 
@@ -171,7 +178,13 @@ class VocabularyTableTest(unittest.TestCase):
         )
 
     def test_key_aliases_resolve_through_the_shared_table(self) -> None:
-        for alias in ("ENTER", "enter", "Enter", "LV_KEY_ENTER", "lv_key_enter"):
+        for alias in (
+            "ENTER",
+            "enter",
+            "Enter",
+            "LV_KEY_ENTER",
+            "lv_key_enter",
+        ):
             with self.subTest(alias=alias):
                 self.assertEqual(resolve_key(alias), ("ENTER", 10))
         with self.assertRaises(ScenarioError) as caught:
@@ -327,17 +340,39 @@ class ScenarioVocabularyTest(unittest.TestCase):
 
         cases = [
             (
-                [{"at_ms": 0, "device": "pointer", "action": "tap", "x": 1, "y": 2}],
+                [
+                    {
+                        "at_ms": 0,
+                        "device": "pointer",
+                        "action": "tap",
+                        "x": 1,
+                        "y": 2,
+                    }
+                ],
                 "step 0: pointer.action must be one of ['down', 'move', 'up']; "
                 "got 'tap'",
             ),
             (
-                [{"at_ms": 0, "device": "key", "action": "tap", "key": "ENTER"}],
+                [
+                    {
+                        "at_ms": 0,
+                        "device": "key",
+                        "action": "tap",
+                        "key": "ENTER",
+                    }
+                ],
                 "step 0: key.action must be one of ['press', 'release']; "
                 "got 'tap'",
             ),
             (
-                [{"at_ms": 0, "device": "encoder", "action": "push", "diff": 1}],
+                [
+                    {
+                        "at_ms": 0,
+                        "device": "encoder",
+                        "action": "push",
+                        "diff": 1,
+                    }
+                ],
                 "step 0: encoder.action must be 'turn'; got 'push'",
             ),
             (
@@ -399,25 +434,50 @@ class RuntimeVocabularyTest(unittest.TestCase):
     def test_runtime_actions_and_arguments_keep_their_messages(self) -> None:
         runtime = self._runtime()
         cases = [
-            (lambda: runtime.pointer("tap", 1, 2), "pointer action must be down, move or up; got 'tap'"),
+            (
+                lambda: runtime.pointer("tap", 1, 2),
+                "pointer action must be down, move or up; got 'tap'",
+            ),
             (lambda: runtime.pointer("down", -1, 2), "x must be >= 0; got -1"),
             (lambda: runtime.pointer("down", 1, True), "y must be an integer"),
-            (lambda: runtime.key("tap", "ENTER"), "key action must be press or release; got 'tap'"),
-            (lambda: runtime.encoder("push", 1), "encoder action must be turn; got 'push'"),
-            (lambda: runtime.encoder("turn", 32768), "diff must be within -32768..32767; got 32768"),
-            (lambda: runtime.encoder("turn", -32769), "diff must be within -32768..32767; got -32769"),
+            (
+                lambda: runtime.key("tap", "ENTER"),
+                "key action must be press or release; got 'tap'",
+            ),
+            (
+                lambda: runtime.encoder("push", 1),
+                "encoder action must be turn; got 'push'",
+            ),
+            (
+                lambda: runtime.encoder("turn", 32768),
+                "diff must be within -32768..32767; got 32768",
+            ),
+            (
+                lambda: runtime.encoder("turn", -32769),
+                "diff must be within -32768..32767; got -32769",
+            ),
             (lambda: runtime.tick(-1), "ms must be >= 0; got -1"),
             (lambda: runtime.wait(), "wait needs exactly one of ms or frames"),
-            (lambda: runtime.wait(ms=1, frames=1), "wait needs exactly one of ms or frames"),
+            (
+                lambda: runtime.wait(ms=1, frames=1),
+                "wait needs exactly one of ms or frames",
+            ),
             (lambda: runtime.wait(ms=-1), "ms must be >= 0; got -1"),
             (lambda: runtime.wait(frames=-1), "frames must be >= 0; got -1"),
-            (lambda: runtime.snapshot("bad label"), "snapshot label must match [A-Za-z0-9_-]+"),
-            (lambda: runtime.mark("bad id"), "mark id must match [A-Za-z0-9_-]+"),
+            (
+                lambda: runtime.snapshot("bad label"),
+                "snapshot label must match [A-Za-z0-9_-]+",
+            ),
+            (
+                lambda: runtime.mark("bad id"),
+                "mark id must match [A-Za-z0-9_-]+",
+            ),
         ]
         for call, message in cases:
-            with self.subTest(message=message), self.assertRaises(
-                ValueError
-            ) as caught:
+            with (
+                self.subTest(message=message),
+                self.assertRaises(ValueError) as caught,
+            ):
                 call()
             self.assertEqual(str(caught.exception), message)
 

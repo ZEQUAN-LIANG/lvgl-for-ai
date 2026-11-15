@@ -18,7 +18,9 @@ from typing import Any, Iterable, Iterator, Mapping
 
 
 class DocumentError(ValueError):
-    def __init__(self, message: str, *, code: str = "invalid_document") -> None:
+    def __init__(
+        self, message: str, *, code: str = "invalid_document"
+    ) -> None:
         super().__init__(message)
         self.code = code
 
@@ -181,7 +183,6 @@ class DocumentStore:
 
 
 class DocumentTransaction:
-
     def __init__(self, store: DocumentStore) -> None:
         self._store = store
         self._created: list[str] = []
@@ -207,9 +208,7 @@ class DocumentTransaction:
         self._created = []
 
 
-def image_references(
-    document: Mapping[str, Any], collection: str
-) -> set[str]:
+def image_references(document: Mapping[str, Any], collection: str) -> set[str]:
     references: set[str] = set()
 
     def collect(value: Any) -> None:

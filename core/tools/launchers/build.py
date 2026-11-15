@@ -36,7 +36,11 @@ LAUNCHERS = (
         "target": r"..\host\server.py",
         "cwd": r"..\host",
         "args": ("--open",),
-        "output": REPO_ROOT / "chip-adapt" / "sifli" / "tools" / "SiFli-Host.exe",
+        "output": REPO_ROOT
+        / "chip-adapt"
+        / "sifli"
+        / "tools"
+        / "SiFli-Host.exe",
     },
 )
 
@@ -61,19 +65,25 @@ def _write_config(entry: dict) -> Path:
         f"#define LAUNCHER_CWD {_wide_literal(entry['cwd'])}",
         f"#define LAUNCHER_ARGS {args_literal}",
     )
-    (config_dir / "config.h").write_text("\n".join(lines) + "\n", encoding="ascii")
+    (config_dir / "config.h").write_text(
+        "\n".join(lines) + "\n", encoding="ascii"
+    )
     return config_dir
 
 
 def _toolchain() -> tuple:
     gcc = shutil.which("gcc")
     if gcc is None:
-        raise BuildError("gcc was not found in PATH; install MinGW-w64 and retry")
+        raise BuildError(
+            "gcc was not found in PATH; install MinGW-w64 and retry"
+        )
     windres = Path(gcc).with_name("windres.exe")
     if not windres.is_file():
         found = shutil.which("windres")
         if found is None:
-            raise BuildError("windres.exe was not found next to gcc or in PATH")
+            raise BuildError(
+                "windres.exe was not found next to gcc or in PATH"
+            )
         windres = Path(found)
     return Path(gcc), windres
 
@@ -126,10 +136,15 @@ def _build(entry: dict, gcc: Path, windres: Path) -> None:
 
 
 def main(argv: list | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Build the Windows launcher executables.")
+    parser = argparse.ArgumentParser(
+        description="Build the Windows launcher executables."
+    )
     parser.parse_args(argv)
     if os.name != "nt":
-        print("[launchers] error: the launchers can only be built on Windows", file=sys.stderr)
+        print(
+            "[launchers] error: the launchers can only be built on Windows",
+            file=sys.stderr,
+        )
         return 1
     try:
         for path in icons.write_all(icons.ICON_DIR):

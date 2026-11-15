@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import sys
@@ -14,7 +13,6 @@ FAKE_ENGINE = Path(__file__).with_name("fake_engine.py")
 
 
 class RuntimeOptionCharacterizationTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -23,7 +21,9 @@ class RuntimeOptionCharacterizationTest(unittest.TestCase):
         self.reference = self.root / "reference.png"
         self.reference.write_bytes(b"\x89PNG\r\n\x1a\n")
 
-    def test_all_eighteen_keywords_reach_the_runtime_and_the_store(self) -> None:
+    def test_all_eighteen_keywords_reach_the_runtime_and_the_store(
+        self,
+    ) -> None:
         rt = Runtime(
             lvgl="9.5",
             app="coffee",
@@ -81,7 +81,6 @@ class RuntimeOptionBagRemovedTest(unittest.TestCase):
 
 
 class RuntimeLikeBehaviorTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -120,7 +119,9 @@ class RuntimeLikeBehaviorTest(unittest.TestCase):
         self.assertFalse(rt.is_running)
         return replies
 
-    def test_runtime_and_fake_runtime_share_the_calls_live_session_makes(self) -> None:
+    def test_runtime_and_fake_runtime_share_the_calls_live_session_makes(
+        self,
+    ) -> None:
         for label, factory in (
             ("runtime", self._fake_engine_runtime),
             ("fake", FakeRuntime),
@@ -143,7 +144,9 @@ class RuntimeLikeBehaviorTest(unittest.TestCase):
 
 
 class FakeRuntimeBehaviorTest(unittest.TestCase):
-    def test_fake_runtime_tick_records_the_command_and_advances_time(self) -> None:
+    def test_fake_runtime_tick_records_the_command_and_advances_time(
+        self,
+    ) -> None:
         fake = FakeRuntime()
         reply = fake.tick(33, track_check=False)
         self.assertEqual(fake.commands, [("tick", 33)])

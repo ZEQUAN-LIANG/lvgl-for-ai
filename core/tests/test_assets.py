@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import contextlib
@@ -43,8 +42,24 @@ from lvgl_ai.assets.version import parse_version, version_available
 
 REPO_ROOT = paths.REPO_ROOT
 ASSETS_PY = REPO_ROOT / "core" / "assets.py"
-FONT = REPO_ROOT / "lvgl-src" / "9.6" / "scripts" / "generators" / "built_in_font" / "Montserrat-Medium.ttf"
-CJK_FONT = REPO_ROOT / "lvgl-src" / "9.6" / "scripts" / "generators" / "built_in_font" / "SourceHanSansSC-Normal.otf"
+FONT = (
+    REPO_ROOT
+    / "lvgl-src"
+    / "9.6"
+    / "scripts"
+    / "generators"
+    / "built_in_font"
+    / "Montserrat-Medium.ttf"
+)
+CJK_FONT = (
+    REPO_ROOT
+    / "lvgl-src"
+    / "9.6"
+    / "scripts"
+    / "generators"
+    / "built_in_font"
+    / "SourceHanSansSC-Normal.otf"
+)
 SDK_96 = REPO_ROOT / "sdk" / "9.6"
 SRC_84 = REPO_ROOT / "lvgl-src" / "8.4"
 
@@ -115,18 +130,20 @@ class VersionTest(unittest.TestCase):
 
 class CorpusTest(unittest.TestCase):
     def test_parse_ranges(self) -> None:
-        self.assertEqual(parse_ranges(["0x20-0x22,0x41"]), {0x20, 0x21, 0x22, 0x41})
+        self.assertEqual(
+            parse_ranges(["0x20-0x22,0x41"]), {0x20, 0x21, 0x22, 0x41}
+        )
         with self.assertRaises(AssetError):
             parse_ranges(["0x30-0x20"])
 
     def test_scan_c_strings_skips_comments_and_decodes_escapes(self) -> None:
-        source = r'''
+        source = r"""
         // "ignored"
         const char * a = "你好";
         const char * b = "A\x42你";
         /* "block" */
         char c = '"';
-        '''
+        """
         self.assertEqual(scan_c_strings(source), ["你好", "AB你"])
 
     def test_build_charset_merges_sources(self) -> None:
@@ -180,7 +197,9 @@ class ImageTest(unittest.TestCase):
             rgb = Path(tmp) / "rgb.png"
             _write_png(rgba, _rgba_rows(), alpha=True)
             _write_png(rgb, _rgb_rows(), alpha=False)
-            self.assertEqual(build_image_data(ImageOptions(rgba)).cf, "ARGB8888")
+            self.assertEqual(
+                build_image_data(ImageOptions(rgba)).cf, "ARGB8888"
+            )
             opaque = build_image_data(ImageOptions(rgb))
             self.assertEqual(opaque.cf, "RGB565")
             self.assertFalse(opaque.had_alpha)
@@ -189,7 +208,8 @@ class ImageTest(unittest.TestCase):
                 ImageOptions(rgba, "RGB565", background=(255, 255, 255))
             )
             self.assertEqual(
-                composited.data, bytes([0x00, 0xF8, 0xEF, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF])
+                composited.data,
+                bytes([0x00, 0xF8, 0xEF, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF]),
             )
 
     def test_a8_requires_alpha(self) -> None:
@@ -311,8 +331,12 @@ class FontTest(unittest.TestCase):
             size=16,
         )
         self.assertIn("LVGL_VERSION_MAJOR == 8", text)
-        self.assertIn("LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4", text)
-        self.assertIn("LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6", text)
+        self.assertIn(
+            "LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4", text
+        )
+        self.assertIn(
+            "LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6", text
+        )
         self.assertIn("LV_FONT_KERNING_NONE", text)
         self.assertIn("LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY", text)
         self.assertNotIn(str(FONT), text)
@@ -324,7 +348,9 @@ class FontTest(unittest.TestCase):
         sizes = {}
         for bpp in (1, 4, 8):
             data = rasterize_font(
-                FontOptions(font_path=FONT, size=16, bpp=bpp, codepoints=codepoints)
+                FontOptions(
+                    font_path=FONT, size=16, bpp=bpp, codepoints=codepoints
+                )
             )
             sizes[bpp] = data.total_bitmap_bytes
         self.assertLess(sizes[1], sizes[4])
@@ -396,7 +422,9 @@ class FontTest(unittest.TestCase):
             )
         )
         self.assertEqual(len(data.glyphs), 2)
-        self.assertEqual([glyph.code for glyph in data.glyphs], [ord("你"), ord("好")])
+        self.assertEqual(
+            [glyph.code for glyph in data.glyphs], [ord("你"), ord("好")]
+        )
 
     @unittest.skipUnless(FONT.is_file(), "LVGL test font is unavailable")
     def test_generated_header_compiles(self) -> None:
@@ -441,7 +469,11 @@ class FontTest(unittest.TestCase):
             ]
             result = subprocess.run(
                 common
-                + [f"-I{SDK_96}", f"-I{SDK_96 / 'include'}", f"-I{SDK_96 / 'include' / 'lvgl'}"]
+                + [
+                    f"-I{SDK_96}",
+                    f"-I{SDK_96 / 'include'}",
+                    f"-I{SDK_96 / 'include' / 'lvgl'}",
+                ]
                 + [str(tmp_path / "use.c")],
                 capture_output=True,
                 text=True,
@@ -587,7 +619,9 @@ class ManifestTest(unittest.TestCase):
             self.assertEqual(write_if_changed(path, "one"), "unchanged")
             with self.assertRaises(AssetError):
                 write_if_changed(path, "two")
-            self.assertEqual(write_if_changed(path, "two", force=True), "updated")
+            self.assertEqual(
+                write_if_changed(path, "two", force=True), "updated"
+            )
 
 
 class IdentifierTest(unittest.TestCase):

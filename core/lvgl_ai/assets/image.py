@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
@@ -57,7 +56,9 @@ class ImageData:
     warnings: tuple[str, ...] = ()
 
 
-def _parse_background(value: str | int | tuple[int, int, int]) -> tuple[int, int, int]:
+def _parse_background(
+    value: str | int | tuple[int, int, int],
+) -> tuple[int, int, int]:
     if isinstance(value, tuple):
         require(len(value) == 3, "background must have three channels")
         red, green, blue = (int(channel) & 0xFF for channel in value)
@@ -100,7 +101,11 @@ def _read_rows(path: Path) -> tuple[int, int, list[bytes], bool]:
 
 
 def _composite(
-    red: int, green: int, blue: int, alpha: int, background: tuple[int, int, int]
+    red: int,
+    green: int,
+    blue: int,
+    alpha: int,
+    background: tuple[int, int, int],
 ) -> tuple[int, int, int]:
     if alpha == 0xFF:
         return red, green, blue
@@ -130,7 +135,9 @@ def _convert_rgb565(
         for row in rows:
             for index in range(0, len(row), 4):
                 red, green, blue, alpha = row[index : index + 4]
-                red, green, blue = _composite(red, green, blue, alpha, background)
+                red, green, blue = _composite(
+                    red, green, blue, alpha, background
+                )
                 value = _rgb565(red, green, blue)
                 output += bytes((value & 0xFF, value >> 8))
         return bytes(output)
@@ -192,7 +199,10 @@ def _convert_a8(rows: Sequence[bytes], width: int, height: int) -> bytes:
     output = bytearray()
     for row in rows:
         output += row[3::4]
-    require(len(output) == width * height, "A8 conversion produced an unexpected size")
+    require(
+        len(output) == width * height,
+        "A8 conversion produced an unexpected size",
+    )
     return bytes(output)
 
 
@@ -200,7 +210,9 @@ def build_image_data(options: ImageOptions) -> ImageData:
     requested = options.requested_cf
     if requested not in _CFS:
         choices = ", ".join(_CFS)
-        raise AssetError(f"unsupported --cf {requested!r}; choose one of {choices}")
+        raise AssetError(
+            f"unsupported --cf {requested!r}; choose one of {choices}"
+        )
     path = options.input_path
     if not path.is_file():
         raise AssetError(f"input image not found: {path}")
@@ -210,7 +222,9 @@ def build_image_data(options: ImageOptions) -> ImageData:
         )
 
     width, height, rows, had_alpha = _read_rows(path)
-    require(width > 0 and height > 0, f"PNG {path.name} has zero width or height")
+    require(
+        width > 0 and height > 0, f"PNG {path.name} has zero width or height"
+    )
 
     warnings: list[str] = []
     cf = requested
@@ -224,7 +238,9 @@ def build_image_data(options: ImageOptions) -> ImageData:
         raise AssetError("--cf A8 requires a PNG with an alpha channel")
 
     if cf == "RGB565":
-        data = _convert_rgb565(width, height, rows, options.background, options.dither)
+        data = _convert_rgb565(
+            width, height, rows, options.background, options.dither
+        )
     elif cf == "ARGB8888":
         data = _convert_argb8888(rows)
     elif cf == "RGB888":
@@ -318,8 +334,8 @@ def render_image_header(
                 "};",
                 "",
                 "#else",
-                f'#error "This image header targets LVGL 9.x; regenerate it with '
-                f'--lvgl 9.6 (or 9.4) for this build."',
+                '#error "This image header targets LVGL 9.x; regenerate it with '
+                '--lvgl 9.6 (or 9.4) for this build."',
                 "#endif",
             ]
         )
@@ -377,8 +393,8 @@ def render_image_header(
             [
                 "",
                 "#else",
-                f'#error "This image header targets LVGL 8.x; regenerate it with '
-                f'--lvgl 8.4 for this build."',
+                '#error "This image header targets LVGL 8.x; regenerate it with '
+                '--lvgl 8.4 for this build."',
                 "#endif",
             ]
         )
@@ -432,7 +448,9 @@ def generate_image(
                     "source_sha256": source_hash,
                     "options": {
                         "requested_cf": options.requested_cf,
-                        "effective_cf": _v8_cf(image) if major < 9 else image.cf,
+                        "effective_cf": _v8_cf(image)
+                        if major < 9
+                        else image.cf,
                         "storage_cf": image.cf,
                         "background": "0x%06X"
                         % (

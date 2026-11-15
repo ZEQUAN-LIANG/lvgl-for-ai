@@ -85,17 +85,21 @@ def _scenario_path(root: Path, basename: str) -> Path:
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace(
-        "+00:00", "Z"
+    return (
+        datetime.now(timezone.utc)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
     )
 
 
 def _iso_from_ns(value: int) -> str | None:
     if value <= 0:
         return None
-    return datetime.fromtimestamp(value / 1e9, tz=timezone.utc).isoformat(
-        timespec="seconds"
-    ).replace("+00:00", "Z")
+    return (
+        datetime.fromtimestamp(value / 1e9, tz=timezone.utc)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
+    )
 
 
 def _relative(path: Path, root: Path) -> str:
@@ -118,10 +122,13 @@ def _require_plain_name(name: Any, *, create: bool = False) -> str:
         raise AppError(
             "invalid_name",
             "name must match ^[a-z][a-z0-9_]{0,31}$"
-            if create else "name must match ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+            if create
+            else "name must match ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
         )
     if create and name in WINDOWS_DEVICE_NAMES:
-        raise AppError("invalid_name", f'name "{name}" is a Windows device name')
+        raise AppError(
+            "invalid_name", f'name "{name}" is a Windows device name'
+        )
     return name
 
 
@@ -181,7 +188,9 @@ def _move_path(source: Path, destination: Path) -> None:
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    data = (json.dumps(payload, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    data = (json.dumps(payload, indent=2, ensure_ascii=False) + "\n").encode(
+        "utf-8"
+    )
     _replace_bytes(path, data)
 
 

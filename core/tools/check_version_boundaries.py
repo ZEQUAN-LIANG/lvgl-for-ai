@@ -50,7 +50,9 @@ def check_engine_boundary(failures: list[str]) -> None:
     for adapter in ADAPTERS:
         if not adapter.is_file():
             failures.append(f"{adapter.name}: adapter is missing")
-    for path in sorted(ENGINE_DIR.glob("*.c")) + sorted(ENGINE_DIR.glob("*.h")):
+    for path in sorted(ENGINE_DIR.glob("*.c")) + sorted(
+        ENGINE_DIR.glob("*.h")
+    ):
         text = path.read_text(encoding="utf-8")
         if path in ADAPTERS:
             if '#include "lvgl.h"' not in text:
@@ -58,7 +60,9 @@ def check_engine_boundary(failures: list[str]) -> None:
             continue
         for needle in FORBIDDEN_IN_ENGINE:
             if needle in text:
-                failures.append(f"{path.name}: engine source includes {needle}")
+                failures.append(
+                    f"{path.name}: engine source includes {needle}"
+                )
 
 
 def check_user_version_switches(failures: list[str]) -> None:
@@ -70,7 +74,9 @@ def check_user_version_switches(failures: list[str]) -> None:
     ):
         text = path.read_text(encoding="utf-8")
         if "#if LVGL_VERSION_MAJOR" not in text:
-            failures.append(f"{path.name}: missing #if LVGL_VERSION_MAJOR switch")
+            failures.append(
+                f"{path.name}: missing #if LVGL_VERSION_MAJOR switch"
+            )
 
 
 def check_obj_name_config(failures: list[str]) -> None:
@@ -78,7 +84,9 @@ def check_obj_name_config(failures: list[str]) -> None:
     if "#define LV_USE_OBJ_NAME 1" not in text:
         failures.append("lv_conf.h: LV_USE_OBJ_NAME must be enabled for 9.2+")
     if "#ifdef LVGL_MAJOR_8" not in text:
-        failures.append("lv_conf.h: missing the separate 8.x configuration block")
+        failures.append(
+            "lv_conf.h: missing the separate 8.x configuration block"
+        )
 
 
 def main() -> int:

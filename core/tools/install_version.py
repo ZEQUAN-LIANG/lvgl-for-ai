@@ -24,7 +24,6 @@ whether the shipped intro app supports that version. Older checkouts that
 still keep ``versions.json`` at the workspace root are accepted as a fallback.
 """
 
-
 from __future__ import annotations
 
 import argparse
@@ -153,7 +152,9 @@ def _read_pack_manifest(root: Path) -> dict[str, Any] | None:
     return payload
 
 
-def _check_pack_manifest(repo: Path, version: str, root: Path) -> dict[str, Any] | None:
+def _check_pack_manifest(
+    repo: Path, version: str, root: Path
+) -> dict[str, Any] | None:
     manifest = _read_pack_manifest(root)
     if manifest is None:
         return None
@@ -207,9 +208,7 @@ def _run_script(script: str, args: list[str], *, json_mode: bool) -> None:
         if not result.stderr.endswith("\n"):
             sys.stderr.write("\n")
     if result.returncode != 0:
-        raise ToolError(
-            f"{script} failed with exit code {result.returncode}"
-        )
+        raise ToolError(f"{script} failed with exit code {result.returncode}")
 
 
 def _safe_zip(archive: zipfile.ZipFile, destination: Path) -> None:
@@ -234,9 +233,9 @@ def _pack_root(root: Path, version: str) -> Path:
     for child in sorted(root.iterdir()):
         if not child.is_dir():
             continue
-        if (child / "sdk" / version / "manifest.json").is_file() and _engine_path(
-            child, version
-        ).is_file():
+        if (
+            child / "sdk" / version / "manifest.json"
+        ).is_file() and _engine_path(child, version).is_file():
             return child
     raise InstallError(
         "pack does not contain sdk/{0} and build/lvgl_{1}/{2}".format(
@@ -246,7 +245,9 @@ def _pack_root(root: Path, version: str) -> Path:
 
 
 def _download(url: str, destination: Path) -> None:
-    request = urllib.request.Request(url, headers={"User-Agent": "lvgl-verify-loop"})
+    request = urllib.request.Request(
+        url, headers={"User-Agent": "lvgl-verify-loop"}
+    )
     with urllib.request.urlopen(request, timeout=120) as response:
         destination.write_bytes(response.read())
 
@@ -311,7 +312,11 @@ def _install_pack(
         root = _pack_root(extract, version)
         _check_pack_manifest(repo, version, root)
         _copy_pack(repo, root, version, force)
-        return ["download_pack", "install_pack"] if downloaded else ["install_pack"]
+        return (
+            ["download_pack", "install_pack"]
+            if downloaded
+            else ["install_pack"]
+        )
 
 
 def _copy_pack(repo: Path, root: Path, version: str, force: bool) -> None:
@@ -360,9 +365,12 @@ def _install_source(
         _run_script(
             "fetch_lvgl.py",
             [
-                "--version", version,
-                "--repo-root", str(repo),
-                "--source", lvgl_source,
+                "--version",
+                version,
+                "--repo-root",
+                str(repo),
+                "--source",
+                lvgl_source,
             ]
             + (["--force"] if force else []),
             json_mode=json_mode,
@@ -391,9 +399,12 @@ def _install_source(
             _run_script(
                 "export_sdk.py",
                 [
-                    "--version", version,
-                    "--repo-root", str(repo),
-                    "--out", str(sdk),
+                    "--version",
+                    version,
+                    "--repo-root",
+                    str(repo),
+                    "--out",
+                    str(sdk),
                     "--json",
                 ]
                 + (["--force"] if force and sdk.exists() else []),

@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -56,7 +55,9 @@ def expected_diff(
     changed = 0
     max_delta = 0
     for index, (left, right) in enumerate(zip(before, after)):
-        delta = max(abs(left[channel] - right[channel]) for channel in range(3))
+        delta = max(
+            abs(left[channel] - right[channel]) for channel in range(3)
+        )
         if delta > max_delta:
             max_delta = delta
         if delta > threshold:
@@ -157,7 +158,9 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
                 )
         self.assertEqual(artifacts["frame_diffs"], "frame_diffs.ndjson")
         self.assertEqual(len(artifacts["frames"]), 3)
-        self.assertEqual(artifacts["snapshots"], ["snapshots/001_evidence.png"])
+        self.assertEqual(
+            artifacts["snapshots"], ["snapshots/001_evidence.png"]
+        )
 
         rt.stop()
         final = Recording.open(rt.session_dir).manifest
@@ -170,7 +173,9 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
         self.addCleanup(rt.stop)
         rt.start()
         self.assertTrue((rt.session_dir / "frame_diffs.ndjson").is_file())
-        self.assertEqual(read_ndjson(rt.session_dir / "frame_diffs.ndjson"), [])
+        self.assertEqual(
+            read_ndjson(rt.session_dir / "frame_diffs.ndjson"), []
+        )
 
         rt.tick(16)
         rt.pointer("down", *BUTTON_CENTER)
@@ -184,7 +189,9 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
             [row["schema"] for row in rows], ["lvgl-ai-frame-diffs-v1"] * 5
         )
         self.assertEqual([row["frame_no"] for row in rows], [2, 3, 4, 5, 6])
-        self.assertEqual([row["prev_frame_no"] for row in rows], [1, 2, 3, 4, 5])
+        self.assertEqual(
+            [row["prev_frame_no"] for row in rows], [1, 2, 3, 4, 5]
+        )
         self.assertEqual([row["t_ms"] for row in rows], [16, 32, 48, 64, 80])
         for row in rows:
             self.assertEqual(row["threshold"], 10)
@@ -197,7 +204,9 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
         self.assertEqual(unchanged["max_delta"], 0.0)
 
         for row in rows:
-            previous = rt.session_dir / "frames" / f"{row['prev_frame_no']:06d}.png"
+            previous = (
+                rt.session_dir / "frames" / f"{row['prev_frame_no']:06d}.png"
+            )
             current = rt.session_dir / "frames" / f"{row['frame_no']:06d}.png"
             bbox, changed, ratio, max_delta = expected_diff(previous, current)
             self.assertEqual(row["bbox"], bbox)
@@ -262,7 +271,9 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
         self.assertEqual(recording.annotations["notes"], [])
         self.assertIn("# phase:", recording.build_log())
 
-    def test_runtime_recording_annotations_are_written_to_the_session(self) -> None:
+    def test_runtime_recording_annotations_are_written_to_the_session(
+        self,
+    ) -> None:
         rt = self._runtime()
         self.addCleanup(rt.stop)
         rt.start()
@@ -286,7 +297,9 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
             final.manifest["artifacts"]["annotations"], "annotations.json"
         )
 
-    def test_reference_diffs_compare_every_frame_to_the_reference(self) -> None:
+    def test_reference_diffs_compare_every_frame_to_the_reference(
+        self,
+    ) -> None:
         baseline = self._runtime()
         baseline.start()
         baseline.wait(16)

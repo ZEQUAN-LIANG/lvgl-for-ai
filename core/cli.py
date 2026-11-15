@@ -187,11 +187,15 @@ def main(argv: list[str] | None = None) -> int:
         and args.app is None
     ):
         raise scenario_error
-    app = args.app if args.app is not None else (
-        None if scenario is None else scenario.get("app")
+    app = (
+        args.app
+        if args.app is not None
+        else (None if scenario is None else scenario.get("app"))
     )
-    lvgl = args.lvgl if args.lvgl is not None else (
-        None if scenario is None else scenario.get("lvgl")
+    lvgl = (
+        args.lvgl
+        if args.lvgl is not None
+        else (None if scenario is None else scenario.get("lvgl"))
     )
     effective_lvgl = lvgl or paths.lvgl_version_from_env()
     try:
@@ -270,7 +274,9 @@ def _wait_for_interrupt(runtime: Runtime) -> None:
         time.sleep(IDLE_POLL_S)
 
 
-def _report(error: Exception | None, *, as_json: bool, runtime: Runtime) -> None:
+def _report(
+    error: Exception | None, *, as_json: bool, runtime: Runtime
+) -> None:
     if error is not None:
         print(f"[cli] {error}", file=sys.stderr)
     if as_json:

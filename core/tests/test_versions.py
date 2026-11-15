@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import argparse
@@ -87,9 +86,7 @@ class AssetVersionTest(unittest.TestCase):
             )
             with self.assertRaises(ValueError) as caught:
                 asset_version.resolve_lvgl_version(root, "9.6")
-            self.assertIn(
-                "choose one of 7.0, 9.7", str(caught.exception)
-            )
+            self.assertIn("choose one of 7.0, 9.7", str(caught.exception))
 
     def test_supported_constant_keeps_numeric_order(self) -> None:
         self.assertEqual(
@@ -111,9 +108,7 @@ class AssetVersionTest(unittest.TestCase):
             if isinstance(action, argparse._SubParsersAction)
         )
         font_help = subparsers.choices["font"].format_help()
-        self.assertIn(
-            "--lvgl auto|8.3|8.4|9.1|9.4|9.5|9.6", font_help
-        )
+        self.assertIn("--lvgl auto|8.3|8.4|9.1|9.4|9.5|9.6", font_help)
 
 
 class ToolListTest(unittest.TestCase):
@@ -166,14 +161,14 @@ class PackageCopyTest(unittest.TestCase):
 
             self.assertEqual(source.read_bytes(), original)
             payload = json.loads(
-                (package / "meta" / "versions.json").read_text(encoding="utf-8")
+                (package / "meta" / "versions.json").read_text(
+                    encoding="utf-8"
+                )
             )
             self.assertEqual(
                 payload["core"], {"version": "0.9.9", "platform": "win64"}
             )
-            self.assertEqual(
-                payload["versions"], SYNTHETIC_INDEX["versions"]
-            )
+            self.assertEqual(payload["versions"], SYNTHETIC_INDEX["versions"])
             self.assertEqual(payload["default"], "9.7")
 
 

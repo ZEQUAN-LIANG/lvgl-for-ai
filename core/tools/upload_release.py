@@ -18,7 +18,6 @@ Usage::
     python -I core/tools/upload_release.py --dry-run
 """
 
-
 from __future__ import annotations
 
 import argparse
@@ -63,7 +62,10 @@ def _manifest_assets(
         payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise UploadError(f"cannot read {manifest_path}: {exc}") from exc
-    if not isinstance(payload, dict) or payload.get("schema") != SUMMARY_SCHEMA:
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schema") != SUMMARY_SCHEMA
+    ):
         raise UploadError(
             f"{manifest_path}: schema must be {SUMMARY_SCHEMA!r}"
         )
@@ -144,7 +146,6 @@ def redact(text: str, token: str) -> str:
 
 
 class UrllibTransport:
-
     def request(
         self,
         method: str,
@@ -274,7 +275,10 @@ def upload_github(
         log(f"[github] would upload {len(assets)} assets to {tag}")
         return url
     status, release = client.request(
-        "GET", f"{base}/releases/tags/{tag}", token=token, bearer=True,
+        "GET",
+        f"{base}/releases/tags/{tag}",
+        token=token,
+        bearer=True,
         allow_404=True,
     )
     name = f"LVGL Verify Loop {version}"
@@ -382,9 +386,7 @@ def upload_gitee(
             transport=client,
         )
 
-    _status, release = gitee(
-        "GET", f"/releases/tags/{tag}", allow_404=True
-    )
+    _status, release = gitee("GET", f"/releases/tags/{tag}", allow_404=True)
     name = f"LVGL Verify Loop {version}"
     if not isinstance(release, dict):
         form = urllib.parse.urlencode(
@@ -424,9 +426,7 @@ def upload_gitee(
     if not isinstance(release, dict) or not release.get("id"):
         raise UploadError("Gitee did not return a release with an id")
     release_id = release["id"]
-    _status, attachments = gitee(
-        "GET", f"/releases/{release_id}/attach_files"
-    )
+    _status, attachments = gitee("GET", f"/releases/{release_id}/attach_files")
     existing = {
         item["name"]: item["id"]
         for item in (attachments or [])
@@ -503,8 +503,8 @@ def main(argv: list[str] | None = None) -> int:
             "assets": [path.name for path in assets],
         }
         if args.target in ("all", "github"):
-            token = "" if args.dry_run else resolve_token(
-                "GITHUB_TOKEN", "GitHub"
+            token = (
+                "" if args.dry_run else resolve_token("GITHUB_TOKEN", "GitHub")
             )
             summary["github"] = upload_github(
                 repo=args.github_repo,
@@ -517,7 +517,9 @@ def main(argv: list[str] | None = None) -> int:
                 dry_run=args.dry_run,
             )
         if args.target in ("all", "gitee"):
-            token = "" if args.dry_run else resolve_token("GITEE_TOKEN", "Gitee")
+            token = (
+                "" if args.dry_run else resolve_token("GITEE_TOKEN", "Gitee")
+            )
             summary["gitee"] = upload_gitee(
                 repo=args.gitee_repo,
                 tag=tag,

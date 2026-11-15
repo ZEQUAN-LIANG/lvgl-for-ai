@@ -67,7 +67,9 @@ MANIFEST_OPTIONAL_FIELDS = ("app", "display", "record_changed_only")
 MANIFEST_REQUIRED_FIELDS = tuple(
     field for field in MANIFEST_FIELDS if field not in MANIFEST_OPTIONAL_FIELDS
 )
-TIMELINE_ROW_TYPES = frozenset({"frame", "input", "wait", "mark", "snapshot", "end"})
+TIMELINE_ROW_TYPES = frozenset(
+    {"frame", "input", "wait", "mark", "snapshot", "end"}
+)
 
 MAX_DISPLAY_DIMENSION = 4096
 
@@ -81,7 +83,10 @@ def new_session_id(now: _dt.datetime | None = None) -> str:
 
 
 def is_session_id(value: Any) -> bool:
-    return isinstance(value, str) and SESSION_ID_RE.fullmatch(value) is not None
+    return (
+        isinstance(value, str) and SESSION_ID_RE.fullmatch(value) is not None
+    )
+
 
 # Optional evidence file -> manifest artifacts key, in listing order.
 ARTIFACT_FILES = (
@@ -185,13 +190,19 @@ def validate_manifest(data: dict[str, Any], path: Path) -> dict[str, Any]:
             f"{path}: schema must be {MANIFEST_SCHEMA!r}, "
             f"got {data.get('schema')!r}"
         )
-    missing = [field for field in MANIFEST_REQUIRED_FIELDS if field not in data]
+    missing = [
+        field for field in MANIFEST_REQUIRED_FIELDS if field not in data
+    ]
     if missing:
-        raise ValueError(f"{path}: missing manifest fields: {', '.join(missing)}")
+        raise ValueError(
+            f"{path}: missing manifest fields: {', '.join(missing)}"
+        )
     status = data["status"]
     if status not in SESSION_STATUSES:
         allowed = ", ".join(sorted(SESSION_STATUSES))
-        raise ValueError(f"{path}: status must be one of {allowed}; got {status!r}")
+        raise ValueError(
+            f"{path}: status must be one of {allowed}; got {status!r}"
+        )
     validate_display(data.get("display"), path=path, allow_none=True)
     _validate_optional_object(
         data.get("scenario"),
@@ -260,9 +271,7 @@ def _validate_optional_object(
         raise ValueError(f"{path}: {label} must be null or an object")
     missing = [field for field in fields if field not in value]
     if missing:
-        raise ValueError(
-            f"{path}: {label} is missing {', '.join(missing)}"
-        )
+        raise ValueError(f"{path}: {label} is missing {', '.join(missing)}")
 
 
 def _require_int(data: dict[str, Any], field: str, path: Path) -> None:

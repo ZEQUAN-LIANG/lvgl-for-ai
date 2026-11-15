@@ -65,9 +65,7 @@ class ResolveAnchorTest(unittest.TestCase):
         event = resolve_anchor(
             self.recording, {"kind": "input", "seq": 1}, at="event"
         )
-        result = resolve_anchor(
-            self.recording, {"kind": "input", "seq": 1}
-        )
+        result = resolve_anchor(self.recording, {"kind": "input", "seq": 1})
 
         self.assertEqual(event["frame_no"], 2)
         self.assertEqual(result["frame_no"], 2)
@@ -117,7 +115,9 @@ class ResolveAnchorTest(unittest.TestCase):
         self.assertEqual(result["frame_no"], 3)
 
     def test_frame_lookup_uses_the_frame_number(self) -> None:
-        result = resolve_anchor(self.recording, {"kind": "frame", "frame_no": 1})
+        result = resolve_anchor(
+            self.recording, {"kind": "frame", "frame_no": 1}
+        )
 
         self.assertEqual(result["frame_no"], 1)
         self.assertEqual(result["relation"], "exact")

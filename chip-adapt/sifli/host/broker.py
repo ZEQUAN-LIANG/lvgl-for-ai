@@ -166,7 +166,9 @@ class SerialBroker:
                     read_timeout_ms=self._read_timeout_ms,
                 )
             except Exception as exc:  # noqa: BLE001 - hardware boundary
-                code = exc.code if isinstance(exc, SerialError) else "open_failed"
+                code = (
+                    exc.code if isinstance(exc, SerialError) else "open_failed"
+                )
                 with self._cond:
                     self._state = "error"
                     self._last_error = str(exc)

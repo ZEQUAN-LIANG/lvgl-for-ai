@@ -70,7 +70,9 @@ class SafeJoinTest(unittest.TestCase):
             )
             self.assertEqual(http_layer.safe_join(root, ""), root.resolve())
             self.assertIsNone(http_layer.safe_join(root, "../escape.txt"))
-            self.assertIsNone(http_layer.safe_join(root, "sub/../../escape.txt"))
+            self.assertIsNone(
+                http_layer.safe_join(root, "sub/../../escape.txt")
+            )
 
 
 class BodyTest(unittest.TestCase):
@@ -108,10 +110,14 @@ class MappingTest(unittest.TestCase):
             )
         )
         self.assertTrue(
-            http_layer.content_type_for(Path("style.css")).startswith("text/css")
+            http_layer.content_type_for(Path("style.css")).startswith(
+                "text/css"
+            )
         )
         self.assertTrue(
-            http_layer.content_type_for(Path("index.html")).startswith("text/html")
+            http_layer.content_type_for(Path("index.html")).startswith(
+                "text/html"
+            )
         )
         self.assertIn(
             http_layer.content_type_for(Path("firmware.zip")),

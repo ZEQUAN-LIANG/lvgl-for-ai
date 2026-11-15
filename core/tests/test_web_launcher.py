@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import importlib.util
@@ -48,7 +47,9 @@ class PageUrlTest(unittest.TestCase):
         )
 
     def test_page_url_accepts_a_bound_ephemeral_port(self) -> None:
-        self.assertEqual(page_url(DEFAULT_HOST, 8766), "http://127.0.0.1:8766/")
+        self.assertEqual(
+            page_url(DEFAULT_HOST, 8766), "http://127.0.0.1:8766/"
+        )
 
 
 class PortProbeTest(unittest.TestCase):
@@ -64,7 +65,9 @@ class PortProbeTest(unittest.TestCase):
 
     def test_the_real_web_server_is_detected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            server = create_server(sessions_root=tmp, host=DEFAULT_HOST, port=0)
+            server = create_server(
+                sessions_root=tmp, host=DEFAULT_HOST, port=0
+            )
             self.addCleanup(server.server_close)
             port = int(server.server_address[1])
             self.assertTrue(launcher.port_is_open(DEFAULT_HOST, port))
@@ -72,33 +75,37 @@ class PortProbeTest(unittest.TestCase):
 
 class ReuseRunningViewerTest(unittest.TestCase):
     def test_a_running_viewer_is_reused_by_opening_its_page(self) -> None:
-        with mock.patch.object(
-            launcher, "port_is_open", return_value=True
-        ), mock.patch.object(launcher.webbrowser, "open") as open_page:
+        with (
+            mock.patch.object(launcher, "port_is_open", return_value=True),
+            mock.patch.object(launcher.webbrowser, "open") as open_page,
+        ):
             self.assertTrue(launcher.reuse_running_viewer())
         open_page.assert_called_once_with("http://127.0.0.1:8765/")
 
     def test_a_closed_port_reports_a_cold_start_without_opening(self) -> None:
-        with mock.patch.object(
-            launcher, "port_is_open", return_value=False
-        ), mock.patch.object(launcher.webbrowser, "open") as open_page:
+        with (
+            mock.patch.object(launcher, "port_is_open", return_value=False),
+            mock.patch.object(launcher.webbrowser, "open") as open_page,
+        ):
             self.assertFalse(launcher.reuse_running_viewer())
         open_page.assert_not_called()
 
-    def test_a_browser_error_is_reported_instead_of_exiting_silently(self) -> None:
-        with mock.patch.object(
-            launcher, "port_is_open", return_value=True
-        ), mock.patch.object(
-            launcher.webbrowser, "open", side_effect=OSError("no browser")
+    def test_a_browser_error_is_reported_instead_of_exiting_silently(
+        self,
+    ) -> None:
+        with (
+            mock.patch.object(launcher, "port_is_open", return_value=True),
+            mock.patch.object(
+                launcher.webbrowser, "open", side_effect=OSError("no browser")
+            ),
         ):
             with self.assertRaises(OSError):
                 launcher.reuse_running_viewer()
 
     def test_a_browser_that_does_not_open_is_reported(self) -> None:
-        with mock.patch.object(
-            launcher, "port_is_open", return_value=True
-        ), mock.patch.object(
-            launcher.webbrowser, "open", return_value=False
+        with (
+            mock.patch.object(launcher, "port_is_open", return_value=True),
+            mock.patch.object(launcher.webbrowser, "open", return_value=False),
         ):
             with self.assertRaises(OSError):
                 launcher.reuse_running_viewer()
@@ -108,26 +115,36 @@ class WebPywDecisionTest(unittest.TestCase):
     def setUp(self) -> None:
         self.module = _load_web_pyw()
 
-    def test_a_running_viewer_is_reused_without_starting_the_server(self) -> None:
-        with mock.patch.object(sys, "argv", [str(PYW_LAUNCHER)]), mock.patch.object(
-            self.module.launcher, "port_is_open", return_value=True
-        ), mock.patch.object(
-            self.module.launcher.webbrowser, "open"
-        ) as open_page, mock.patch.object(
-            self.module, "main"
-        ) as start_server:
+    def test_a_running_viewer_is_reused_without_starting_the_server(
+        self,
+    ) -> None:
+        with (
+            mock.patch.object(sys, "argv", [str(PYW_LAUNCHER)]),
+            mock.patch.object(
+                self.module.launcher, "port_is_open", return_value=True
+            ),
+            mock.patch.object(
+                self.module.launcher.webbrowser, "open"
+            ) as open_page,
+            mock.patch.object(self.module, "main") as start_server,
+        ):
             self.assertEqual(self.module._run(), 0)
         open_page.assert_called_once_with("http://127.0.0.1:8765/")
         start_server.assert_not_called()
 
     def test_a_cold_start_runs_the_server_which_opens_the_page(self) -> None:
-        with mock.patch.object(sys, "argv", [str(PYW_LAUNCHER)]), mock.patch.object(
-            self.module.launcher, "port_is_open", return_value=False
-        ), mock.patch.object(
-            self.module.launcher.webbrowser, "open"
-        ) as open_page, mock.patch.object(
-            self.module, "main", return_value=0
-        ) as start_server:
+        with (
+            mock.patch.object(sys, "argv", [str(PYW_LAUNCHER)]),
+            mock.patch.object(
+                self.module.launcher, "port_is_open", return_value=False
+            ),
+            mock.patch.object(
+                self.module.launcher.webbrowser, "open"
+            ) as open_page,
+            mock.patch.object(
+                self.module, "main", return_value=0
+            ) as start_server,
+        ):
             self.assertEqual(self.module._run(), 0)
         open_page.assert_not_called()
         start_server.assert_called_once_with(
@@ -135,17 +152,19 @@ class WebPywDecisionTest(unittest.TestCase):
         )
 
     def test_a_browser_error_shows_the_launcher_error(self) -> None:
-        with mock.patch.object(sys, "argv", [str(PYW_LAUNCHER)]), mock.patch.object(
-            self.module.launcher, "port_is_open", return_value=True
-        ), mock.patch.object(
-            self.module.launcher.webbrowser,
-            "open",
-            side_effect=OSError("no browser"),
-        ), mock.patch.object(
-            self.module, "main"
-        ) as start_server, mock.patch.object(
-            self.module, "_show_error"
-        ) as show_error:
+        with (
+            mock.patch.object(sys, "argv", [str(PYW_LAUNCHER)]),
+            mock.patch.object(
+                self.module.launcher, "port_is_open", return_value=True
+            ),
+            mock.patch.object(
+                self.module.launcher.webbrowser,
+                "open",
+                side_effect=OSError("no browser"),
+            ),
+            mock.patch.object(self.module, "main") as start_server,
+            mock.patch.object(self.module, "_show_error") as show_error,
+        ):
             self.assertEqual(self.module._run(), 1)
         start_server.assert_not_called()
         show_error.assert_called_once()
@@ -160,15 +179,20 @@ class WebPywDecisionTest(unittest.TestCase):
             ["--port", "0"],
         ):
             with self.subTest(flags=flags):
-                with mock.patch.object(
-                    sys, "argv", [str(PYW_LAUNCHER), *flags]
-                ), mock.patch.object(
-                    self.module.launcher, "port_is_open", return_value=True
-                ) as probe, mock.patch.object(
-                    self.module.launcher.webbrowser, "open"
-                ) as open_page, mock.patch.object(
-                    self.module, "main", return_value=0
-                ) as start_server:
+                with (
+                    mock.patch.object(
+                        sys, "argv", [str(PYW_LAUNCHER), *flags]
+                    ),
+                    mock.patch.object(
+                        self.module.launcher, "port_is_open", return_value=True
+                    ) as probe,
+                    mock.patch.object(
+                        self.module.launcher.webbrowser, "open"
+                    ) as open_page,
+                    mock.patch.object(
+                        self.module, "main", return_value=0
+                    ) as start_server,
+                ):
                     self.assertEqual(self.module._run(), 0)
                 probe.assert_not_called()
                 open_page.assert_not_called()

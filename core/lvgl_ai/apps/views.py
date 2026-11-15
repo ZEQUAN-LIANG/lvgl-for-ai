@@ -35,18 +35,22 @@ def list_apps(repo_root: str | Path) -> dict[str, Any]:
     for order, (name, symbol) in enumerate(entries):
         app_dir = common._app_dir(root, name)
         app_scenarios = [
-            item for item in index
+            item
+            for item in index
             if item.get("valid") and item.get("app") == name
         ]
         protected = policy.is_protected_name(name) or any(
             policy.is_protected_scenario(item["basename"])
             for item in app_scenarios
         )
-        canonical = bool(common.APP_NAME_RE.fullmatch(name)) and symbol == f"{name}_create"
+        canonical = (
+            bool(common.APP_NAME_RE.fullmatch(name))
+            and symbol == f"{name}_create"
+        )
         files = _files_under(app_dir)
-        modified_ns = common._max_mtime_ns([app_dir, *(
-            root / item["path"] for item in app_scenarios
-        )])
+        modified_ns = common._max_mtime_ns(
+            [app_dir, *(root / item["path"] for item in app_scenarios)]
+        )
         app_warnings: list[str] = []
         if not app_dir.is_dir():
             app_warnings.append("目录不存在")
@@ -56,30 +60,31 @@ def list_apps(repo_root: str | Path) -> dict[str, Any]:
             app_warnings.append("注册符号不是 <name>_create，管理台不提供删除")
         if app_warnings:
             warnings.append(name + ": " + "；".join(app_warnings))
-        apps.append({
-            "name": name,
-            "symbol": symbol,
-            "registered": True,
-            "order": order,
-            "default": order == 0,
-            "protected": protected,
-            "deletable": bool(canonical and not protected),
-            "app_dir": common._relative(app_dir, root),
-            "app_dir_exists": app_dir.is_dir() and not app_dir.is_symlink(),
-            "scenarios": [item["path"] for item in app_scenarios],
-            "scenario_files": [item["basename"] for item in app_scenarios],
-            "file_count": len(files),
-            "size_bytes": sum(common._file_size(path) for path in files),
-            "modified": common._iso_from_ns(modified_ns),
-            "warnings": app_warnings,
-        })
+        apps.append(
+            {
+                "name": name,
+                "symbol": symbol,
+                "registered": True,
+                "order": order,
+                "default": order == 0,
+                "protected": protected,
+                "deletable": bool(canonical and not protected),
+                "app_dir": common._relative(app_dir, root),
+                "app_dir_exists": app_dir.is_dir()
+                and not app_dir.is_symlink(),
+                "scenarios": [item["path"] for item in app_scenarios],
+                "scenario_files": [item["basename"] for item in app_scenarios],
+                "file_count": len(files),
+                "size_bytes": sum(common._file_size(path) for path in files),
+                "modified": common._iso_from_ns(modified_ns),
+                "warnings": app_warnings,
+            }
+        )
 
     return {
         "app_c_present": True,
         "apps": apps,
-        "orphans": _orphans(
-            root, {name for name, _ in entries}, index
-        ),
+        "orphans": _orphans(root, {name for name, _ in entries}, index),
         "warnings": warnings,
     }
 
@@ -99,14 +104,16 @@ def _orphans(
                 and path.name not in registered
                 and not policy.is_protected_name(path.name)
             ):
-                result.append({
-                    "kind": "directory",
-                    "name": path.name,
-                    "path": common._relative(path, root),
-                    "modified": common._iso_from_ns(
-                        common._max_mtime_ns([path])
-                    ),
-                })
+                result.append(
+                    {
+                        "kind": "directory",
+                        "name": path.name,
+                        "path": common._relative(path, root),
+                        "modified": common._iso_from_ns(
+                            common._max_mtime_ns([path])
+                        ),
+                    }
+                )
     for item in index:
         app = item.get("app")
         if (
@@ -116,14 +123,16 @@ def _orphans(
             and not policy.is_protected_name(app)
             and not policy.is_protected_scenario(item["basename"])
         ):
-            result.append({
-                "kind": "scenario",
-                "name": app,
-                "path": item["path"],
-                "modified": common._iso_from_ns(
-                    common._max_mtime_ns([root / item["path"]])
-                ),
-            })
+            result.append(
+                {
+                    "kind": "scenario",
+                    "name": app,
+                    "path": item["path"],
+                    "modified": common._iso_from_ns(
+                        common._max_mtime_ns([root / item["path"]])
+                    ),
+                }
+            )
     return result
 
 
@@ -145,8 +154,14 @@ def app_tree(
         entries = registry.parse_app_entries(text) if text else []
     except AppError:
         entries = []
-    match = next(((index, symbol) for index, (entry_name, symbol) in enumerate(entries)
-                  if entry_name == name), None)
+    match = next(
+        (
+            (index, symbol)
+            for index, (entry_name, symbol) in enumerate(entries)
+            if entry_name == name
+        ),
+        None,
+    )
     registered = match is not None
     symbol = match[1] if match else None
     order = match[0] if match else None
@@ -197,7 +212,11 @@ def app_tree(
             "children": [],
         }
 
-    tree = node(app_dir, 0) if app_dir.is_dir() and not app_dir.is_symlink() else None
+    tree = (
+        node(app_dir, 0)
+        if app_dir.is_dir() and not app_dir.is_symlink()
+        else None
+    )
     app_c_node = node(app_c, 0) if app_c.is_file() else None
     scenarios = []
     for item in scenarios_for_app(root, name):
@@ -221,7 +240,9 @@ def app_tree(
     }
 
 
-def recent_apps(repo_root: str | Path, *, limit: int = 8) -> list[dict[str, Any]]:
+def recent_apps(
+    repo_root: str | Path, *, limit: int = 8
+) -> list[dict[str, Any]]:
     root = common.resolve_repo_root(repo_root)
     limit = max(1, min(int(limit), 100))
     items: list[dict[str, Any]] = []
@@ -230,13 +251,15 @@ def recent_apps(repo_root: str | Path, *, limit: int = 8) -> list[dict[str, Any]
         if not path.is_file() or path.is_symlink():
             return
         info = common._stat_info(path)
-        items.append({
-            "path": common._relative(path, root),
-            "kind": kind,
-            "size": info["size"],
-            "modified": info["modified"],
-            "modified_ns": info["modified_ns"],
-        })
+        items.append(
+            {
+                "path": common._relative(path, root),
+                "kind": kind,
+                "size": info["size"],
+                "modified": info["modified"],
+                "modified_ns": info["modified_ns"],
+            }
+        )
 
     app_c = common._app_c(root)
     if app_c.is_file():

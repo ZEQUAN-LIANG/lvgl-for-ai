@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -50,7 +49,8 @@ class AppDomainTest(unittest.TestCase):
 
     def _names(self) -> list[str]:
         return [
-            name for name, _ in app_domain.parse_app_entries(
+            name
+            for name, _ in app_domain.parse_app_entries(
                 self.app_c.read_text(encoding="utf-8")
             )
         ]
@@ -76,7 +76,9 @@ class AppDomainTest(unittest.TestCase):
         self.assertEqual(self._names()[-1], "hello")
         self.assertEqual(self._names()[0], "coffee")
         document = json.loads(
-            (self.root / "user/scenarios/hello.json").read_text(encoding="utf-8")
+            (self.root / "user/scenarios/hello.json").read_text(
+                encoding="utf-8"
+            )
         )
         self.assertEqual(document["app"], "hello")
 
@@ -92,13 +94,17 @@ class AppDomainTest(unittest.TestCase):
         self.assertNotIn("hello", self._names())
         self.assertFalse((self.root / "user/app/hello").exists())
         self.assertFalse((self.root / "user/scenarios/hello.json").exists())
-        self.assertFalse((self.root / "user/scenarios/hello_alt.json").exists())
+        self.assertFalse(
+            (self.root / "user/scenarios/hello_alt.json").exists()
+        )
 
         restored = app_domain.restore_app(self.root, result["trash_id"])
         self.assertEqual(restored["action"], "restore")
         self.assertTrue((self.root / "user/app/hello/hello.c").is_file())
         self.assertTrue((self.root / "user/scenarios/hello.json").is_file())
-        self.assertTrue((self.root / "user/scenarios/hello_alt.json").is_file())
+        self.assertTrue(
+            (self.root / "user/scenarios/hello_alt.json").is_file()
+        )
         self.assertIn("hello", self._names())
         self.assertFalse(trash.exists())
 
@@ -141,7 +147,9 @@ class AppDomainTest(unittest.TestCase):
         self.assertTrue((self.root / "user/app/hello/hello.c").is_file())
         self.assertTrue(scenario.is_file())
         self.assertIn("hello", self._names())
-        self.assertFalse(self.trash_root.exists() and any(self.trash_root.iterdir()))
+        self.assertFalse(
+            self.trash_root.exists() and any(self.trash_root.iterdir())
+        )
 
     def test_restore_conflict_keeps_trash(self) -> None:
         self._create("hello")
@@ -152,7 +160,9 @@ class AppDomainTest(unittest.TestCase):
         self.assertEqual(raised.exception.code, "restore_conflict")
         self.assertTrue((self.root / result["trash_dir"]).is_dir())
 
-    def test_restore_ignores_tampered_paths_and_rejects_bad_names(self) -> None:
+    def test_restore_ignores_tampered_paths_and_rejects_bad_names(
+        self,
+    ) -> None:
         self._create("hello")
         result = app_domain.delete_app(self.root, "hello")
         meta_path = self.root / result["trash_dir"] / "meta.json"
@@ -181,7 +191,9 @@ class AppDomainTest(unittest.TestCase):
         self._create("hello")
         orphan = self.root / "user/app/orphan"
         orphan.mkdir()
-        (orphan / "orphan.c").write_text("void orphan_create(void) {}\n", encoding="utf-8")
+        (orphan / "orphan.c").write_text(
+            "void orphan_create(void) {}\n", encoding="utf-8"
+        )
         self._write_scenario("ghost", "ghost")
 
         payload = app_domain.list_apps(self.root)

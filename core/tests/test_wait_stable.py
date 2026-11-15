@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import os
@@ -43,7 +42,9 @@ class WaitStableRuntimeTest(unittest.TestCase):
             rt.start()
         return rt
 
-    def test_wait_stable_returns_after_consecutive_unchanged_frames(self) -> None:
+    def test_wait_stable_returns_after_consecutive_unchanged_frames(
+        self,
+    ) -> None:
         rt = self._runtime("never")
         result = rt.wait_stable(max_ms=64, stable_frames=2)
         self.assertEqual(
@@ -52,7 +53,9 @@ class WaitStableRuntimeTest(unittest.TestCase):
         )
         self.assertEqual(rt.t_ms, 32)
 
-    def test_wait_stable_returns_at_max_ms_while_frames_keep_changing(self) -> None:
+    def test_wait_stable_returns_at_max_ms_while_frames_keep_changing(
+        self,
+    ) -> None:
         rt = self._runtime("always")
         result = rt.wait_stable(max_ms=48, stable_frames=1)
         self.assertEqual(result["waited_ms"], 48)
@@ -73,7 +76,9 @@ class WaitStableRuntimeTest(unittest.TestCase):
         self.assertEqual(result["waited_ms"], 20)
         self.assertEqual(rt.t_ms, 20)
 
-    def test_wait_stable_without_changed_field_reports_old_engine_hint(self) -> None:
+    def test_wait_stable_without_changed_field_reports_old_engine_hint(
+        self,
+    ) -> None:
         rt = self._runtime(None)
         with self.assertRaises(ProtocolError) as caught:
             rt.wait_stable(max_ms=64, stable_frames=1)
@@ -110,9 +115,15 @@ class WaitStableRuntimeTest(unittest.TestCase):
         rt = Runtime(lvgl="9.6", build=False)
         cases = [
             ({"max_ms": -1, "stable_frames": 1}, "max_ms"),
-            ({"max_ms": True, "stable_frames": 1}, "max_ms must be an integer"),
+            (
+                {"max_ms": True, "stable_frames": 1},
+                "max_ms must be an integer",
+            ),
             ({"max_ms": 16, "stable_frames": 0}, "stable_frames must be >= 1"),
-            ({"max_ms": 16, "stable_frames": True}, "stable_frames must be an integer"),
+            (
+                {"max_ms": 16, "stable_frames": True},
+                "stable_frames must be an integer",
+            ),
         ]
         for kwargs, fragment in cases:
             with self.subTest(**kwargs):
@@ -133,8 +144,14 @@ class WaitStableScenarioTest(unittest.TestCase):
 
     def test_wait_stable_step_is_validated_before_any_command(self) -> None:
         cases = [
-            ({"type": "wait_stable", "stable_frames": 2}, "max_ms is required"),
-            ({"type": "wait_stable", "max_ms": 16}, "stable_frames is required"),
+            (
+                {"type": "wait_stable", "stable_frames": 2},
+                "max_ms is required",
+            ),
+            (
+                {"type": "wait_stable", "max_ms": 16},
+                "stable_frames is required",
+            ),
             (
                 {"type": "wait_stable", "max_ms": -1, "stable_frames": 1},
                 "max_ms must be >= 0",
@@ -176,7 +193,9 @@ class WaitStableEngineIntegrationTest(unittest.TestCase):
         self.addCleanup(self._tmp.cleanup)
         self.sessions_root = Path(self._tmp.name) / "sessions"
 
-    def test_static_screen_is_stable_with_and_without_changed_only(self) -> None:
+    def test_static_screen_is_stable_with_and_without_changed_only(
+        self,
+    ) -> None:
         for flag in (False, True):
             with self.subTest(record_changed_only=flag):
                 rt = Runtime(

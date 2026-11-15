@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import tempfile
@@ -28,8 +27,11 @@ LV_KEY_NAMES = (
 
 
 def input_rows(session_dir: Path) -> list[dict]:
-    return [row for row in read_ndjson(session_dir / "timeline.ndjson")
-            if row["type"] == "input"]
+    return [
+        row
+        for row in read_ndjson(session_dir / "timeline.ndjson")
+        if row["type"] == "input"
+    ]
 
 
 def focus_lines(session_dir: Path) -> list[str]:
@@ -48,7 +50,9 @@ class KeypadIntegrationTest(unittest.TestCase):
         self.sessions_root = Path(self._tmp.name) / "sessions"
 
     def _runtime(self) -> Runtime:
-        return Runtime(lvgl="9.6", build=True, sessions_root=self.sessions_root)
+        return Runtime(
+            lvgl="9.6", build=True, sessions_root=self.sessions_root
+        )
 
     def test_keypad_enter_clicks_the_focused_button(self) -> None:
         rt = self._runtime()
@@ -90,11 +94,17 @@ class KeypadIntegrationTest(unittest.TestCase):
         self.assertEqual(len(rows), len(names) * 2)
         self.assertEqual(
             [(row["action"], row["key"]) for row in rows],
-            [(action, name) for name in names for action in ("press", "release")],
+            [
+                (action, name)
+                for name in names
+                for action in ("press", "release")
+            ],
         )
         self.assertTrue(all(row["delivered"] is True for row in rows))
 
-    def test_unknown_key_raises_scenario_error_with_step_and_name(self) -> None:
+    def test_unknown_key_raises_scenario_error_with_step_and_name(
+        self,
+    ) -> None:
         rt = self._runtime()
         self.addCleanup(rt.stop)
         rt.start()
@@ -102,8 +112,18 @@ class KeypadIntegrationTest(unittest.TestCase):
         with self.assertRaises(ScenarioError) as caught:
             rt.input(
                 [
-                    {"at_ms": 0, "device": "key", "action": "press", "key": "UP"},
-                    {"at_ms": 16, "device": "key", "action": "press", "key": "INSERT"},
+                    {
+                        "at_ms": 0,
+                        "device": "key",
+                        "action": "press",
+                        "key": "UP",
+                    },
+                    {
+                        "at_ms": 16,
+                        "device": "key",
+                        "action": "press",
+                        "key": "INSERT",
+                    },
                 ]
             )
         self.assertEqual(caught.exception.step, 1)
@@ -120,9 +140,13 @@ class EncoderIntegrationTest(unittest.TestCase):
         self.sessions_root = Path(self._tmp.name) / "sessions"
 
     def _runtime(self) -> Runtime:
-        return Runtime(lvgl="9.6", build=True, sessions_root=self.sessions_root)
+        return Runtime(
+            lvgl="9.6", build=True, sessions_root=self.sessions_root
+        )
 
-    def test_encoder_turn_delivers_diff_and_moves_focus_in_sign_order(self) -> None:
+    def test_encoder_turn_delivers_diff_and_moves_focus_in_sign_order(
+        self,
+    ) -> None:
         rt = self._runtime()
         self.addCleanup(rt.stop)
         rt.start()
@@ -161,7 +185,12 @@ class EncoderIntegrationTest(unittest.TestCase):
         replies = rt.input(
             [
                 {"at_ms": 0, "device": "encoder", "action": "turn", "diff": 2},
-                {"at_ms": 16, "device": "encoder", "action": "turn", "diff": -3},
+                {
+                    "at_ms": 16,
+                    "device": "encoder",
+                    "action": "turn",
+                    "diff": -3,
+                },
             ]
         )
         self.assertIs(replies[0]["delivered"], True)

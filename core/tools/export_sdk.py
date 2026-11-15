@@ -46,7 +46,11 @@ from lvgl_ai.digest import sha256_file
 
 SOURCE_SCHEMA = "lvgl-ai-lvgl-source-v1"
 
-DEFINES = ["LV_CONF_INCLUDE_SIMPLE", "LV_KCONFIG_IGNORE", "LV_LVGL_H_INCLUDE_SIMPLE"]
+DEFINES = [
+    "LV_CONF_INCLUDE_SIMPLE",
+    "LV_KCONFIG_IGNORE",
+    "LV_LVGL_H_INCLUDE_SIMPLE",
+]
 CFLAGS = ["-std=gnu11", "-O2", "-Wall", "-Wextra"]
 LINK_FLAGS = ["-lgdi32", "-luser32", "-static-libgcc"]
 
@@ -54,7 +58,12 @@ FREETYPE_DIR = paths.ENGINE_DIR / "freetype"
 FREETYPE_INCLUDE_DIR = FREETYPE_DIR / "include"
 FREETYPE_IMPORT_LIB = FREETYPE_DIR / "lib" / "libfreetype.dll.a"
 FREETYPE_RUNTIME_DLL = (
-    paths.REPO_ROOT / "core" / "lvgl_ai" / "assets" / "vendor" / "freetype"
+    paths.REPO_ROOT
+    / "core"
+    / "lvgl_ai"
+    / "assets"
+    / "vendor"
+    / "freetype"
     / "libfreetype.dll"
 )
 
@@ -207,11 +216,7 @@ def export_sdk(
             "build tools not found on PATH: " + ", ".join(missing),
             command=["cmake"],
         )
-    chosen = (
-        compiler
-        or os.environ.get("LVGL_AI_GCC")
-        or shutil.which("gcc")
-    )
+    chosen = compiler or os.environ.get("LVGL_AI_GCC") or shutil.which("gcc")
     if not chosen:
         raise BuildError(
             "C compiler not found: set LVGL_AI_GCC or put gcc on PATH "
@@ -234,9 +239,12 @@ def export_sdk(
     build_dir = repo / "build" / f"sdk_{token}"
     configure = [
         "cmake",
-        "-S", str(paths.ENGINE_DIR),
-        "-B", str(build_dir),
-        "-G", "Ninja",
+        "-S",
+        str(paths.ENGINE_DIR),
+        "-B",
+        str(build_dir),
+        "-G",
+        "Ninja",
         "-DCMAKE_BUILD_TYPE=Release",
         "-DCMAKE_C_FLAGS_RELEASE=-O2 -DNDEBUG",
         "-DCMAKE_C_COMPILER=" + chosen,
@@ -264,7 +272,9 @@ def export_sdk(
             raise BuildError(f"FreeType SDK file not found: {src}")
         shutil.copy2(src, lib_dir / name)
 
-    missing_libs = [name for name in REQUIRED_LIBS if not (lib_dir / name).is_file()]
+    missing_libs = [
+        name for name in REQUIRED_LIBS if not (lib_dir / name).is_file()
+    ]
     if missing_libs:
         raise BuildError(
             "SDK export did not produce " + ", ".join(missing_libs)

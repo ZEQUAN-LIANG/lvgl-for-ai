@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import contextlib
@@ -92,9 +91,7 @@ class NewAppTest(unittest.TestCase):
             names_before + ["hello"],
         )
 
-        scenario = load_scenario(
-            self.root / "user/scenarios/hello.json"
-        )
+        scenario = load_scenario(self.root / "user/scenarios/hello.json")
         self.assertEqual(scenario["app"], "hello")
         self.assertEqual(scenario["name"], "hello")
         self.assertEqual(len(scenario["steps"]), 7)
@@ -132,8 +129,15 @@ class NewAppTest(unittest.TestCase):
         self.assertEqual(self.app_c.read_bytes(), original)
 
     def test_invalid_names_rejected(self) -> None:
-        for name in ("Hello", "hello-world", "1hello", "a" * 33,
-                     "coffee", "con", "com1"):
+        for name in (
+            "Hello",
+            "hello-world",
+            "1hello",
+            "a" * 33,
+            "coffee",
+            "con",
+            "com1",
+        ):
             with self.subTest(name=name):
                 code, _, err = self._main(name)
                 self.assertEqual(code, 1)

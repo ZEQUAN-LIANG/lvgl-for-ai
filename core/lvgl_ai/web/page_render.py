@@ -101,7 +101,11 @@ def _render_options(
     options = []
     for session in sessions:
         session_id = session["id"]
-        label = session_id if session.get("valid", False) else f"{session_id}（不可读）"
+        label = (
+            session_id
+            if session.get("valid", False)
+            else f"{session_id}（不可读）"
+        )
         app = session.get("app")
         if isinstance(app, str) and app:
             label = f"{label} · {app}"
@@ -163,11 +167,7 @@ def _render_replay(model: ReplayModel) -> str:
     )
     stage_class = "stage" if first_frame else "stage is-empty"
     empty_hidden = " hidden" if first_frame else ""
-    empty_text = (
-        "当前会话没有可显示的帧"
-        if session_id
-        else "没有可回放的会话"
-    )
+    empty_text = "当前会话没有可显示的帧" if session_id else "没有可回放的会话"
     empty_sub = (
         "启动测试或录制，或从顶部选择其他会话"
         if session_id
@@ -401,9 +401,7 @@ def _render_notes(
 ) -> str:
     parts = []
     if error:
-        parts.append(
-            f'<li class="empty">标注文件不可读：{_text(error)}</li>'
-        )
+        parts.append(f'<li class="empty">标注文件不可读：{_text(error)}</li>')
     if not views:
         parts.append('<li class="empty">暂无标注。</li>')
         return "".join(parts)
@@ -429,7 +427,8 @@ def _render_notes(
                 primary = _attr(annotated or frame["url"])
                 title = (
                     f"打开带标注的完整帧 {frame_no}"
-                    if annotated else f"打开完整帧 {frame_no}"
+                    if annotated
+                    else f"打开完整帧 {frame_no}"
                 )
                 links.append(
                     f'<a class="note-frame-link" href="{primary}" '
@@ -444,7 +443,9 @@ def _render_notes(
                         f'target="_blank" rel="noopener" '
                         f'title="打开原始帧 {frame_no}">原图</a>'
                     )
-            frame_links = '<div class="note-frames">' + "".join(links) + "</div>"
+            frame_links = (
+                '<div class="note-frames">' + "".join(links) + "</div>"
+            )
         crops_html = ""
         if view.get("crops"):
             links = [
@@ -571,6 +572,6 @@ def _model_json(replay: ReplayModel | None) -> str:
             else None
         ),
     }
-    return json.dumps(model, ensure_ascii=False, separators=(",", ":")).replace(
-        "</", "<\\/"
-    )
+    return json.dumps(
+        model, ensure_ascii=False, separators=(",", ":")
+    ).replace("</", "<\\/")

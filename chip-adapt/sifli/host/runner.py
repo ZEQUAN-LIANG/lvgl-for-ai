@@ -164,16 +164,8 @@ class JobRunner:
         saved: dict[str, Any],
         result: dict[str, Any] | None,
     ) -> None:
-        port = (
-            (result or {}).get("port")
-            or request.port
-            or saved.get("port")
-        )
-        baud = (
-            (result or {}).get("baud")
-            or request.baud
-            or saved.get("baud")
-        )
+        port = (result or {}).get("port") or request.port or saved.get("port")
+        baud = (result or {}).get("baud") or request.baud or saved.get("baud")
         if not port:
             return
         try:

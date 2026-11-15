@@ -149,9 +149,7 @@ class BuildFlashTest(unittest.TestCase):
             config = json.loads(
                 archive.read("sftool_param.json").decode("utf-8")
             )
-            paths = [
-                item["path"] for item in config["write_flash"]["files"]
-            ]
+            paths = [item["path"] for item in config["write_flash"]["files"]]
             self.assertEqual(paths, ["bootloader.bin", "ftab.bin"])
 
     def test_package_firmware_requires_address(self) -> None:
@@ -254,16 +252,12 @@ class BuildFlashTest(unittest.TestCase):
 
     def test_find_sftool_in_official_tools_layout(self) -> None:
         toolchain_root = self.root / ".sifli"
-        sftool = (
-            toolchain_root
-            / "tools"
-            / "sftool"
-            / "0.2.5"
-            / "sftool.exe"
-        )
+        sftool = toolchain_root / "tools" / "sftool" / "0.2.5" / "sftool.exe"
         sftool.parent.mkdir(parents=True)
         sftool.write_bytes(b"")
-        config = dict(self.config, toolchain_root=str(toolchain_root), sftool="")
+        config = dict(
+            self.config, toolchain_root=str(toolchain_root), sftool=""
+        )
         self.assertEqual(build_flash.find_sftool(config), sftool)
 
     def test_find_sftool_honors_env_override(self) -> None:
@@ -277,13 +271,7 @@ class BuildFlashTest(unittest.TestCase):
 
     def test_toolchain_env_discovers_official_layout(self) -> None:
         root = self.root / ".sifli"
-        gcc_bin = (
-            root
-            / "tools"
-            / "arm-none-eabi-gcc"
-            / "14.2.1"
-            / "bin"
-        )
+        gcc_bin = root / "tools" / "arm-none-eabi-gcc" / "14.2.1" / "bin"
         gcc_bin.mkdir(parents=True)
         config = dict(
             self.config,
@@ -308,7 +296,9 @@ class BuildFlashTest(unittest.TestCase):
         self.assertEqual(env["RTT_CC"], "gcc")
         self.assertEqual(env["SIFLI_SDK"], str(sdk))
         self.assertEqual(env["SIFLI_SDK_PATH"], str(sdk))
-        self.assertEqual(env["RTT_EXEC_PATH"], str(root / "arm-none-eabi" / "bin"))
+        self.assertEqual(
+            env["RTT_EXEC_PATH"], str(root / "arm-none-eabi" / "bin")
+        )
         self.assertEqual(env["ENV_ROOT"], str(venv))
         self.assertTrue(
             env["PYTHONPATH"].startswith(str(sdk / "tools" / "build"))
@@ -364,7 +354,9 @@ class BuildFlashTest(unittest.TestCase):
         ):
             env = build_flash.toolchain_env(self.config)
 
-        self.assertEqual(env["UV_DEFAULT_INDEX"], "https://example.invalid/simple")
+        self.assertEqual(
+            env["UV_DEFAULT_INDEX"], "https://example.invalid/simple"
+        )
 
     def test_flash_options(self) -> None:
         self.assertEqual(

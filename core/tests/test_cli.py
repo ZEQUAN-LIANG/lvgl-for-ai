@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import contextlib
@@ -52,7 +51,9 @@ def run_cli(argv: list[str]) -> tuple[int, str, str]:
 def one_json(text: str) -> dict:
     lines = text.splitlines()
     if len(lines) != 1:
-        raise AssertionError(f"expected exactly one stdout line, got {lines!r}")
+        raise AssertionError(
+            f"expected exactly one stdout line, got {lines!r}"
+        )
     return json.loads(lines[0])
 
 
@@ -105,8 +106,11 @@ class CliUnitTest(unittest.TestCase):
         code, _, _ = run_cli(["--scenario", str(path)])
 
         factory.assert_called_once_with(
-            lvgl="9.4", build=True, record=True,
-            scenario=path, record_changed_only=True,
+            lvgl="9.4",
+            build=True,
+            record=True,
+            scenario=path,
+            record_changed_only=True,
         )
         self.assertEqual(code, 0)
         self.assertEqual(fake.start_calls, 1)
@@ -117,8 +121,11 @@ class CliUnitTest(unittest.TestCase):
         code, _, _ = run_cli(["--lvgl", "9.6", "--scenario", str(path)])
 
         factory.assert_called_once_with(
-            lvgl="9.6", build=True, record=True,
-            scenario=path, record_changed_only=True,
+            lvgl="9.6",
+            build=True,
+            record=True,
+            scenario=path,
+            record_changed_only=True,
         )
         self.assertEqual(code, 0)
         self.assertEqual(fake.start_calls, 1)
@@ -128,12 +135,17 @@ class CliUnitTest(unittest.TestCase):
         for flag, expected in cases:
             with self.subTest(flag=flag):
                 fake = FakeRuntime()
-                with mock.patch.object(cli, "Runtime", return_value=fake) as factory:
+                with mock.patch.object(
+                    cli, "Runtime", return_value=fake
+                ) as factory:
                     code, _, _ = run_cli([flag])
                 self.assertEqual(code, 0)
                 factory.assert_called_once_with(
-                    lvgl=None, build=True, record=True,
-                    build_mode=expected, record_changed_only=True,
+                    lvgl=None,
+                    build=True,
+                    record=True,
+                    build_mode=expected,
+                    record_changed_only=True,
                 )
 
     def test_prebuilt_and_source_are_mutually_exclusive(self) -> None:
@@ -146,11 +158,15 @@ class CliUnitTest(unittest.TestCase):
         for argv, expected in cases:
             with self.subTest(argv=argv):
                 fake = FakeRuntime()
-                with mock.patch.object(cli, "Runtime", return_value=fake) as factory:
+                with mock.patch.object(
+                    cli, "Runtime", return_value=fake
+                ) as factory:
                     code, _, _ = run_cli(argv)
                 self.assertEqual(code, 0)
                 factory.assert_called_once_with(
-                    lvgl=None, build=True, record=expected,
+                    lvgl=None,
+                    build=True,
+                    record=expected,
                     record_changed_only=True,
                 )
 
@@ -171,11 +187,15 @@ class CliUnitTest(unittest.TestCase):
         for argv, expected in cases:
             with self.subTest(argv=argv):
                 fake = FakeRuntime()
-                with mock.patch.object(cli, "Runtime", return_value=fake) as factory:
+                with mock.patch.object(
+                    cli, "Runtime", return_value=fake
+                ) as factory:
                     code, _, _ = run_cli(argv)
                 self.assertEqual(code, 0)
                 factory.assert_called_once_with(
-                    lvgl=None, build=expected, record=True,
+                    lvgl=None,
+                    build=expected,
+                    record=True,
                     record_changed_only=True,
                 )
 
@@ -234,12 +254,12 @@ class CliUnitTest(unittest.TestCase):
         self.assertFalse(
             Path(payload["snapshots"]["items"][0]["path"]).is_absolute()
         )
-        self.assertEqual(
-            [mark["id"] for mark in payload["marks"]], ["start"]
-        )
+        self.assertEqual([mark["id"] for mark in payload["marks"]], ["start"])
         self.assertIn("[app] app=coffee", payload["log_tail"])
 
-    def test_json_degrades_when_the_session_summary_cannot_be_read(self) -> None:
+    def test_json_degrades_when_the_session_summary_cannot_be_read(
+        self,
+    ) -> None:
         session = make_session(self.root / "sessions")
         (session / "engine.log").unlink()
         fake = FakeRuntime(session_dir=session)
@@ -265,7 +285,10 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(err, "")
         factory.assert_called_once_with(
-            lvgl=None, build=True, record=True, app="coffee",
+            lvgl=None,
+            build=True,
+            record=True,
+            app="coffee",
             record_changed_only=True,
         )
         self.assertEqual(one_json(out)["app"], "coffee")
@@ -306,11 +329,7 @@ class CliUnitTest(unittest.TestCase):
             code, _, err = run_cli(
                 [
                     "--scenario",
-                    str(
-                        self._scenario(
-                            display={"width": 640, "height": 480}
-                        )
-                    ),
+                    str(self._scenario(display={"width": 640, "height": 480})),
                 ]
             )
 
@@ -322,9 +341,7 @@ class CliUnitTest(unittest.TestCase):
     def test_sift_watch_scenario_forwards_the_device_display(self) -> None:
         fake = FakeRuntime()
         with mock.patch.object(cli, "Runtime", return_value=fake) as factory:
-            code, _, err = run_cli(
-                ["--scenario", str(SIFT_WATCH_SCENARIO)]
-            )
+            code, _, err = run_cli(["--scenario", str(SIFT_WATCH_SCENARIO)])
 
         self.assertEqual(code, 0)
         self.assertEqual(err, "")
@@ -426,7 +443,9 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(out, "")
         self.assertIn("not allowed with", err)
 
-    def test_interrupt_before_the_session_starts_is_a_harness_error(self) -> None:
+    def test_interrupt_before_the_session_starts_is_a_harness_error(
+        self,
+    ) -> None:
         fake, _ = self._patch_runtime(start_error=KeyboardInterrupt())
         code, out, err = run_cli(["--idle", "--json"])
 
@@ -465,7 +484,9 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(one_json(out)["session_id"], fake.session_id)
         self.assertIn("idle", err)
 
-    def test_unreadable_scenario_with_app_is_recorded_after_startup(self) -> None:
+    def test_unreadable_scenario_with_app_is_recorded_after_startup(
+        self,
+    ) -> None:
         path = self.root / "bad-encoding.json"
         path.write_bytes(b"\xff\xfe\x00")
         fake, _ = self._patch_runtime(app="coffee")
@@ -491,7 +512,9 @@ class CliUnitTest(unittest.TestCase):
             run_cli(["--scenario", str(path), "--json"])
         self.assertEqual(fake.start_calls, 0)
 
-    def test_missing_scenario_file_is_a_harness_error_after_startup(self) -> None:
+    def test_missing_scenario_file_is_a_harness_error_after_startup(
+        self,
+    ) -> None:
         fake, _ = self._patch_runtime()
         code, out, _ = run_cli(
             ["--scenario", str(self.root / "missing.json"), "--json"]
@@ -541,9 +564,11 @@ class CliRealEngineIntegrationTest(unittest.TestCase):
                 sys.executable,
                 "-I",
                 str(CLI_PATH),
-                "--lvgl", "9.6",
+                "--lvgl",
+                "9.6",
                 "--record",
-                "--scenario", str(SETTINGS_SCENARIO),
+                "--scenario",
+                str(SETTINGS_SCENARIO),
                 "--json",
             ],
             cwd=str(paths.REPO_ROOT),
@@ -555,17 +580,22 @@ class CliRealEngineIntegrationTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = one_json(result.stdout)
-        self.assertTrue(Path(payload["session_dir"], "manifest.json").is_file())
+        self.assertTrue(
+            Path(payload["session_dir"], "manifest.json").is_file()
+        )
         recording = Recording.open(payload["session_dir"])
         self.assertEqual(recording.manifest["status"], "ok")
         self.assertEqual(recording.timeline(), library_rows)
 
     def test_idle_session_finishes_its_manifest_on_interrupt(self) -> None:
         sessions_root = self.root / "idle"
-        with mock.patch.dict(
-            os.environ, {"LVGL_AI_SESSIONS_ROOT": str(sessions_root)}
-        ), mock.patch.object(
-            cli, "_wait_for_interrupt", side_effect=KeyboardInterrupt
+        with (
+            mock.patch.dict(
+                os.environ, {"LVGL_AI_SESSIONS_ROOT": str(sessions_root)}
+            ),
+            mock.patch.object(
+                cli, "_wait_for_interrupt", side_effect=KeyboardInterrupt
+            ),
         ):
             code, out, err = run_cli(["--idle", "--json"])
 

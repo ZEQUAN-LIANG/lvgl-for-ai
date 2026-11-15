@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import contextlib
@@ -112,10 +111,14 @@ class PackInstallTest(unittest.TestCase):
             pack = self._write_pack(root)
             code, out, err = run_main(
                 [
-                    "--lvgl", "9.4",
-                    "--mode", "pack",
-                    "--pack", str(pack),
-                    "--repo-root", str(repo),
+                    "--lvgl",
+                    "9.4",
+                    "--mode",
+                    "pack",
+                    "--pack",
+                    str(pack),
+                    "--repo-root",
+                    str(repo),
                     "--json",
                 ]
             )
@@ -124,7 +127,9 @@ class PackInstallTest(unittest.TestCase):
             self.assertEqual(payload["status"], "ok")
             self.assertTrue((repo / "sdk" / "9.4" / "manifest.json").is_file())
             self.assertTrue(
-                (repo / "build" / "lvgl_9_4" / paths.engine_filename()).is_file()
+                (
+                    repo / "build" / "lvgl_9_4" / paths.engine_filename()
+                ).is_file()
             )
 
     def test_missing_pack_source_is_a_usage_error(self) -> None:
@@ -132,9 +137,12 @@ class PackInstallTest(unittest.TestCase):
             repo = make_repo(Path(raw))
             code, _, err = run_main(
                 [
-                    "--lvgl", "9.4",
-                    "--mode", "pack",
-                    "--repo-root", str(repo),
+                    "--lvgl",
+                    "9.4",
+                    "--mode",
+                    "pack",
+                    "--repo-root",
+                    str(repo),
                     "--json",
                 ]
             )
@@ -166,10 +174,14 @@ class PackInstallTest(unittest.TestCase):
                 )
             code, _, err = run_main(
                 [
-                    "--lvgl", "9.4",
-                    "--mode", "pack",
-                    "--pack", str(pack),
-                    "--repo-root", str(repo),
+                    "--lvgl",
+                    "9.4",
+                    "--mode",
+                    "pack",
+                    "--pack",
+                    str(pack),
+                    "--repo-root",
+                    str(repo),
                     "--json",
                 ]
             )
@@ -189,15 +201,21 @@ class PackInstallTest(unittest.TestCase):
                 archive.writestr("smoke/legacy_smoke.json", "{}\n")
             code, out, err = run_main(
                 [
-                    "--lvgl", "9.4",
-                    "--mode", "pack",
-                    "--pack", str(pack),
-                    "--repo-root", str(repo),
+                    "--lvgl",
+                    "9.4",
+                    "--mode",
+                    "pack",
+                    "--pack",
+                    str(pack),
+                    "--repo-root",
+                    str(repo),
                     "--json",
                 ]
             )
             self.assertEqual(code, 0, err)
-            self.assertTrue((repo / "smoke" / "9.4" / "legacy_smoke.json").is_file())
+            self.assertTrue(
+                (repo / "smoke" / "9.4" / "legacy_smoke.json").is_file()
+            )
             payload = json.loads(out)
             self.assertEqual(
                 Path(payload["smoke"]),
@@ -228,7 +246,9 @@ class PackInstallTest(unittest.TestCase):
                 json.dumps({"tool_version": "0.2.0"}), encoding="utf-8"
             )
             digest = install_version._sha256(pack)
-            index = json.loads((repo / "versions.json").read_text(encoding="utf-8"))
+            index = json.loads(
+                (repo / "versions.json").read_text(encoding="utf-8")
+            )
             index["versions"]["9.4"]["pack"] = {
                 "gitee": pack.as_uri(),
                 "sha256": digest,
@@ -247,7 +267,9 @@ class PackInstallTest(unittest.TestCase):
     def test_offline_missing_pack_is_an_install_error(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             repo = make_repo(Path(raw))
-            index = json.loads((repo / "versions.json").read_text(encoding="utf-8"))
+            index = json.loads(
+                (repo / "versions.json").read_text(encoding="utf-8")
+            )
             index["versions"]["9.4"]["pack"] = {"gitee": "file:///unused.zip"}
             (repo / "versions.json").write_text(
                 json.dumps(index), encoding="utf-8"
@@ -266,10 +288,14 @@ class PackInstallTest(unittest.TestCase):
                 archive.writestr("../escape.txt", "x")
             code, _, err = run_main(
                 [
-                    "--lvgl", "9.4",
-                    "--mode", "pack",
-                    "--pack", str(pack),
-                    "--repo-root", str(repo),
+                    "--lvgl",
+                    "9.4",
+                    "--mode",
+                    "pack",
+                    "--pack",
+                    str(pack),
+                    "--repo-root",
+                    str(repo),
                     "--json",
                 ]
             )

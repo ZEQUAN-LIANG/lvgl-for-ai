@@ -151,7 +151,9 @@ class SerialLog:
         if extra:
             event.update(extra)
         try:
-            self._events_file.write(json.dumps(event, ensure_ascii=False) + "\n")
+            self._events_file.write(
+                json.dumps(event, ensure_ascii=False) + "\n"
+            )
             self._events_file.flush()
         except OSError:
             pass

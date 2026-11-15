@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import contextlib
@@ -53,7 +52,6 @@ def read_ndjson(path: Path) -> list[dict]:
 
 
 class TypedErrorShapesTest(unittest.TestCase):
-
     def test_status_vocabulary_is_exactly_five_values(self) -> None:
         self.assertEqual(
             SESSION_STATUSES,
@@ -102,7 +100,9 @@ class TypedErrorShapesTest(unittest.TestCase):
         link = LinkError("link failed", unresolved_symbols=["missing_symbol"])
         dump = dump_error(link)
         self.assertEqual(dump["code"], "link_error")
-        self.assertEqual(dump["detail"]["unresolved_symbols"], ["missing_symbol"])
+        self.assertEqual(
+            dump["detail"]["unresolved_symbols"], ["missing_symbol"]
+        )
 
         crash = RuntimeCrash("died", exit_code=3, log_tail=["last line"])
         dump = dump_error(crash)
@@ -139,7 +139,13 @@ class TypedErrorShapesTest(unittest.TestCase):
         error = EngineNotFound(
             "missing/lvgl_engine",
             configure_command=["cmake", "-S", "engine", "-B", "build"],
-            build_command=["cmake", "--build", "build", "--target", "lvgl_engine"],
+            build_command=[
+                "cmake",
+                "--build",
+                "build",
+                "--target",
+                "lvgl_engine",
+            ],
         )
         self.assertEqual(
             error.configure_command, ["cmake", "-S", "engine", "-B", "build"]
@@ -155,7 +161,6 @@ class TypedErrorShapesTest(unittest.TestCase):
 
 
 class GccDiagnosticsTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self.gcc = shutil.which("gcc")
         if self.gcc is None:
@@ -200,7 +205,6 @@ class GccDiagnosticsTest(unittest.TestCase):
 
 
 class BuildFailureSessionTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self.gcc = shutil.which("gcc")
         if self.gcc is None:
@@ -228,7 +232,8 @@ class BuildFailureSessionTest(unittest.TestCase):
     def _start_and_capture(self, error_type) -> tuple[Runtime, BaseException]:
         runtime = self._runtime()
         with mock.patch(
-            "lvgl_ai.control.build_plan.cache_needs_configure", return_value=False
+            "lvgl_ai.control.build_plan.cache_needs_configure",
+            return_value=False,
         ):
             with self.assertRaises(error_type) as caught:
                 runtime.start()
@@ -275,7 +280,8 @@ class BuildFailureSessionTest(unittest.TestCase):
                 self.assertTrue((runtime.session_dir / item).is_file(), item)
         self.assertNotIn("frames", manifest["artifacts"])
         self.assertEqual(
-            Recording.open(runtime.session_dir).manifest["status"], "build_error"
+            Recording.open(runtime.session_dir).manifest["status"],
+            "build_error",
         )
 
     def test_link_error_session_has_unresolved_symbols(self) -> None:
@@ -340,7 +346,6 @@ class EngineNotFoundSessionTest(unittest.TestCase):
 
 
 class FakeEngineErrorSessionTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -379,9 +384,7 @@ class FakeEngineErrorSessionTest(unittest.TestCase):
 
     def test_reply_seq_mismatch_is_typed_and_marks_harness_error(self) -> None:
         runtime = self._runtime()
-        with mock.patch.dict(
-            os.environ, {"FAKE_REPLY_SEQ_OFFSET": "1"}
-        ):
+        with mock.patch.dict(os.environ, {"FAKE_REPLY_SEQ_OFFSET": "1"}):
             runtime.start()
             with self.assertRaises(ProtocolError) as caught:
                 runtime.tick(16)
@@ -399,7 +402,9 @@ class FakeEngineErrorSessionTest(unittest.TestCase):
         self.assertIs(manifest["checks"][0]["ok"], False)
         self.assertIsNone(manifest["checks"][0]["frame_no"])
 
-    def test_reply_missing_fields_is_a_protocol_error_in_the_manifest(self) -> None:
+    def test_reply_missing_fields_is_a_protocol_error_in_the_manifest(
+        self,
+    ) -> None:
         runtime = self._runtime()
         with mock.patch.dict(os.environ, {"FAKE_MISSING_FIELDS": "1"}):
             runtime.start()
@@ -427,7 +432,12 @@ class FakeEngineErrorSessionTest(unittest.TestCase):
                         "x": 1,
                         "y": 2,
                     },
-                    {"at_ms": 16, "device": "key", "action": "tap", "key": "ENTER"},
+                    {
+                        "at_ms": 16,
+                        "device": "key",
+                        "action": "tap",
+                        "key": "ENTER",
+                    },
                 ]
             )
         self.assertEqual(caught.exception.step, 1)
@@ -441,7 +451,9 @@ class FakeEngineErrorSessionTest(unittest.TestCase):
             [check["cmd"] for check in manifest["checks"]], ["quit"]
         )
 
-    def test_play_scenario_validation_failure_is_recorded_on_stop(self) -> None:
+    def test_play_scenario_validation_failure_is_recorded_on_stop(
+        self,
+    ) -> None:
         runtime = self._runtime()
         runtime.start()
         with self.assertRaises(ScenarioError) as caught:
@@ -486,18 +498,22 @@ class FakeEngineErrorSessionTest(unittest.TestCase):
         self.assertEqual(manifest["status"], "crash")
         self.assertIs(manifest["log_truncated"], True)
         self.assertEqual(manifest["error"]["code"], "crash")
-        self.assertEqual(manifest["error"]["detail"]["log_tail"][-1], last_line)
+        self.assertEqual(
+            manifest["error"]["detail"]["log_tail"][-1], last_line
+        )
 
         recording = Recording.open(runtime.session_dir)
         self.assertEqual(recording.log_tail(3)[-1], last_line)
         self.assertEqual(recording.manifest["log_truncated"], True)
-        self.assertEqual(runtime.log_tail(3), recording.log().splitlines()[-3:])
+        self.assertEqual(
+            runtime.log_tail(3), recording.log().splitlines()[-3:]
+        )
 
-    def test_log_truncation_on_a_successful_session_keeps_running(self) -> None:
+    def test_log_truncation_on_a_successful_session_keeps_running(
+        self,
+    ) -> None:
         runtime = self._runtime(max_log_bytes=600)
-        with mock.patch.dict(
-            os.environ, {"FAKE_LOG_LINES": "200"}
-        ):
+        with mock.patch.dict(os.environ, {"FAKE_LOG_LINES": "200"}):
             runtime.start()
             reply = runtime.tick(16)
             runtime.stop()
@@ -506,7 +522,9 @@ class FakeEngineErrorSessionTest(unittest.TestCase):
         manifest = self._manifest(runtime)
         self.assertEqual(manifest["status"], "ok")
         self.assertIs(manifest["log_truncated"], True)
-        self.assertLessEqual((runtime.session_dir / "engine.log").stat().st_size, 600)
+        self.assertLessEqual(
+            (runtime.session_dir / "engine.log").stat().st_size, 600
+        )
         self.assertEqual(
             runtime.log_tail(1)[-1], "[fake_engine] log line 00199"
         )
@@ -519,9 +537,11 @@ class FakeEngineErrorSessionTest(unittest.TestCase):
         self.addCleanup(runtime.stop)
         error = caught.exception
 
-        lines = (runtime.session_dir / "engine.log").read_text(
-            encoding="utf-8"
-        ).splitlines()
+        lines = (
+            (runtime.session_dir / "engine.log")
+            .read_text(encoding="utf-8")
+            .splitlines()
+        )
         self.assertEqual(runtime.log_tail(2), lines[-2:])
         self.assertEqual(error.log_tail[-2:], lines[-2:])
         self.assertEqual(error.exit_code, 3)
@@ -555,7 +575,9 @@ class RecordFalseIntegrationTest(unittest.TestCase):
         self.assertFalse((session / "frames").exists())
         self.assertFalse((session / "timeline.ndjson").exists())
         self.assertFalse((session / "frame_diffs.ndjson").exists())
-        self.assertTrue((session / "snapshots" / "001_no_record.png").is_file())
+        self.assertTrue(
+            (session / "snapshots" / "001_no_record.png").is_file()
+        )
 
         recording = Recording.open(session)
         manifest = recording.manifest
@@ -606,7 +628,8 @@ class MaxFramesIntegrationTest(unittest.TestCase):
         self.assertEqual(runtime._store.max_log_bytes, 16 * 1024 * 1024)
 
         with mock.patch.dict(
-            os.environ, {"LVGL_AI_MAX_FRAMES": "7", "LVGL_AI_MAX_LOG_BYTES": "12345"}
+            os.environ,
+            {"LVGL_AI_MAX_FRAMES": "7", "LVGL_AI_MAX_LOG_BYTES": "12345"},
         ):
             configured = Runtime(
                 lvgl="9.6", build=False, sessions_root=self.sessions_root
@@ -770,8 +793,11 @@ class CliHarnessErrorRecordingTest(unittest.TestCase):
         error = ScenarioError("step 0: bad", step=0)
         fake = FakeRuntime(errors={"pointer": error})
         out, err = io.StringIO(), io.StringIO()
-        with mock.patch.object(cli, "Runtime", return_value=fake), \
-                contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        with (
+            mock.patch.object(cli, "Runtime", return_value=fake),
+            contextlib.redirect_stdout(out),
+            contextlib.redirect_stderr(err),
+        ):
             code = cli.main(["--scenario", str(scenario), "--json"])
         self.assertEqual(code, 2)
         self.assertEqual(fake.recorded_errors, [error])

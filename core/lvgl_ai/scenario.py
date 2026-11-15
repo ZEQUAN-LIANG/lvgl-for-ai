@@ -142,7 +142,9 @@ def load_scenario(path: str | Path) -> dict[str, Any]:
     try:
         text = scenario_path.read_text(encoding="utf-8")
     except OSError as exc:
-        raise ScenarioError(f"cannot read scenario {scenario_path}: {exc}") from exc
+        raise ScenarioError(
+            f"cannot read scenario {scenario_path}: {exc}"
+        ) from exc
     try:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
@@ -150,7 +152,9 @@ def load_scenario(path: str | Path) -> dict[str, Any]:
             f"scenario {scenario_path}: invalid JSON: {exc.msg}"
         ) from exc
     if not isinstance(data, dict):
-        raise ScenarioError(f"scenario {scenario_path}: expected a JSON object")
+        raise ScenarioError(
+            f"scenario {scenario_path}: expected a JSON object"
+        )
 
     unknown = sorted(set(data) - _FILE_FIELDS)
     if unknown:
@@ -261,7 +265,9 @@ def normalize_steps(steps: Any) -> list[dict[str, Any]]:
     return [_normalize_step(index, step) for index, step in enumerate(steps)]
 
 
-def play_scenario(rt: Any, path_or_steps: str | Path | Sequence[dict]) -> list[dict]:
+def play_scenario(
+    rt: Any, path_or_steps: str | Path | Sequence[dict]
+) -> list[dict]:
     try:
         steps = _steps_from(path_or_steps)
         replies: list[dict] = []
@@ -280,7 +286,9 @@ def _steps_from(path_or_steps: Any) -> list[dict[str, Any]]:
         return load_scenario(path_or_steps)["steps"]
     if isinstance(path_or_steps, list):
         return normalize_steps(path_or_steps)
-    raise ScenarioError("play_scenario needs a scenario path or a list of steps")
+    raise ScenarioError(
+        "play_scenario needs a scenario path or a list of steps"
+    )
 
 
 def _play_step(rt: Any, step: dict[str, Any]) -> list[dict]:
@@ -343,7 +351,9 @@ def _interpolate(
 
 def _normalize_step(index: int, step: Any) -> dict[str, Any]:
     if not isinstance(step, dict):
-        raise ScenarioError(f"step {index}: step must be an object", step=index)
+        raise ScenarioError(
+            f"step {index}: step must be an object", step=index
+        )
     kind = step.get("type")
     if kind not in _STEP_FIELDS:
         raise ScenarioError(
@@ -364,7 +374,9 @@ def _normalize_step(index: int, step: Any) -> dict[str, Any]:
             "type": kind,
             "x": _integer(index, step, "x"),
             "y": _integer(index, step, "y"),
-            "hold_ms": _integer(index, step, "hold_ms", default=DEFAULT_CLICK_HOLD_MS),
+            "hold_ms": _integer(
+                index, step, "hold_ms", default=DEFAULT_CLICK_HOLD_MS
+            ),
         }
     elif kind == "drag":
         normalized = {
@@ -406,14 +418,15 @@ def _normalize_step(index: int, step: Any) -> dict[str, Any]:
         if has_ms:
             normalized = {"type": kind, "ms": _integer(index, step, "ms")}
         else:
-            normalized = {"type": kind, "frames": _integer(index, step, "frames")}
+            normalized = {
+                "type": kind,
+                "frames": _integer(index, step, "frames"),
+            }
     elif kind == "wait_stable":
         normalized = {
             "type": kind,
             "max_ms": _integer(index, step, "max_ms"),
-            "stable_frames": _integer(
-                index, step, "stable_frames", minimum=1
-            ),
+            "stable_frames": _integer(index, step, "stable_frames", minimum=1),
         }
     elif kind == "key":
         action = step.get("action")
@@ -461,7 +474,9 @@ def _integer(
             return default
         raise ScenarioError(f"step {index}: {name} is required", step=index)
     value = step[name]
-    _problem(index, integer_problem(value, name, minimum=minimum, maximum=maximum))
+    _problem(
+        index, integer_problem(value, name, minimum=minimum, maximum=maximum)
+    )
     return value
 
 

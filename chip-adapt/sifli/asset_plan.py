@@ -27,6 +27,7 @@ for _path in (CORE_ROOT, ADAPTER_DIR):
 
 import layout
 from lvgl_ai.apps import common
+
 ASSET_SCHEMA = "lvgl-ai-assets-v1"
 ASSET_MODES = {"ezip", "raw"}
 ASSET_PLACEMENTS = {"flash", "psram", "sram"}
@@ -140,7 +141,9 @@ def plan_assets(
             hot = spec["mode"] == "raw" and spec["placement"] != "flash"
             if hot:
                 text = _rename_dsc_symbol(text, name, f"{name}_raw")
-            target = f"src/{'ezip' if spec['mode'] == 'ezip' else 'raw'}/{name}.c"
+            target = (
+                f"src/{'ezip' if spec['mode'] == 'ezip' else 'raw'}/{name}.c"
+            )
             files[target] = text.encode("utf-8")
             records.append(
                 {
@@ -167,9 +170,7 @@ def plan_assets(
     )
 
 
-def _load_asset_manifest(
-    source_dir: Path, pngs: list[Path]
-) -> dict[str, Any]:
+def _load_asset_manifest(source_dir: Path, pngs: list[Path]) -> dict[str, Any]:
     manifest_path = source_dir / "assets.json"
     files = {path.name: path for path in pngs}
     if not manifest_path.is_file():
@@ -418,7 +419,9 @@ def _compute_cache(
     if isinstance(overrides.get("lv_cache_def_size"), int):
         cache["lv_cache_def_size"] = overrides["lv_cache_def_size"]
     if isinstance(overrides.get("lv_image_header_cache_cnt"), int):
-        cache["lv_image_header_cache_cnt"] = overrides["lv_image_header_cache_cnt"]
+        cache["lv_image_header_cache_cnt"] = overrides[
+            "lv_image_header_cache_cnt"
+        ]
 
     rotate_size = sum(
         record["size"] for record in hot if "rotate" in record["transform"]
@@ -508,7 +511,9 @@ def _generate_assets(
         body.append("")
         body.append(f"const lv_image_dsc_t * app_asset_{name}(void)")
         body.append("{")
-        body.append(f"    return {name}_hot != NULL ? {name}_hot : &{name}_raw;")
+        body.append(
+            f"    return {name}_hot != NULL ? {name}_hot : &{name}_raw;"
+        )
         body.append("}")
         body.append("")
     body.append("void app_assets_init(void)")

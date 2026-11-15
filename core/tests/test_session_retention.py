@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -32,7 +31,11 @@ class PruneSessionsTest(unittest.TestCase):
         if manifest:
             (path / "manifest.json").write_text(
                 json.dumps(
-                    {"schema": "lvgl-ai-session-v1", "id": name, "status": status}
+                    {
+                        "schema": "lvgl-ai-session-v1",
+                        "id": name,
+                        "status": status,
+                    }
                 ),
                 encoding="utf-8",
             )
@@ -58,9 +61,7 @@ class PruneSessionsTest(unittest.TestCase):
         broken = self.make_session(session_id(10), status="build_error")
 
         self.assertEqual(prune_sessions(self.root), [broken])
-        self.assertEqual(
-            self.names(), [session_id(seq) for seq in range(10)]
-        )
+        self.assertEqual(self.names(), [session_id(seq) for seq in range(10)])
 
     def test_session_without_manifest_is_left_alone(self) -> None:
         incomplete = self.make_session(session_id(20), manifest=False)
@@ -133,9 +134,7 @@ class PruneSessionsTest(unittest.TestCase):
         self.assertIn(old.name, self.names())
 
     def test_protected_sessions_do_not_count_toward_the_limit(self) -> None:
-        protected = [
-            self.make_session(session_id(seq)) for seq in range(2)
-        ]
+        protected = [self.make_session(session_id(seq)) for seq in range(2)]
         for path in protected:
             self.write_note(path)
         for seq in range(2, 14):
@@ -145,9 +144,10 @@ class PruneSessionsTest(unittest.TestCase):
 
         self.assertEqual(
             sorted(self.names()),
-            sorted([path.name for path in protected] + [
-                session_id(seq) for seq in range(4, 14)
-            ]),
+            sorted(
+                [path.name for path in protected]
+                + [session_id(seq) for seq in range(4, 14)]
+            ),
         )
 
     def test_build_error_with_notes_is_protected(self) -> None:
@@ -209,9 +209,7 @@ class RuntimeRetentionConfigTest(unittest.TestCase):
                 build=False,
                 sessions_root=Path(tmp) / "sessions",
             )
-            self.assertEqual(
-                runtime._store.retention, DEFAULT_SESSION_LIMIT
-            )
+            self.assertEqual(runtime._store.retention, DEFAULT_SESSION_LIMIT)
 
     def test_none_disables_and_negative_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -45,7 +45,6 @@ TICK_PROFILE = {
 
 
 class LiveError(Exception):
-
     def __init__(
         self,
         code: str,
@@ -61,9 +60,7 @@ class LiveError(Exception):
 
 def validate_live_kind(kind: str) -> None:
     if kind not in LIVE_KINDS:
-        raise LiveError(
-            "invalid_live_mode", f"unknown live mode: {kind}"
-        )
+        raise LiveError("invalid_live_mode", f"unknown live mode: {kind}")
 
 
 def empty_live_status() -> dict[str, Any]:
@@ -107,7 +104,6 @@ class LiveStream:
 
 
 class LiveSession:
-
     def __init__(
         self,
         sessions_root: str | Path,
@@ -179,9 +175,7 @@ class LiveSession:
             # processes.
             self.sessions_root.mkdir(parents=True, exist_ok=True)
             self._test_root = Path(
-                tempfile.mkdtemp(
-                    prefix=".live-test-", dir=self.sessions_root
-                )
+                tempfile.mkdtemp(prefix=".live-test-", dir=self.sessions_root)
             )
             sessions_root = self._test_root
         display: dict[str, int] = {}
@@ -355,7 +349,11 @@ class LiveSession:
             }
         else:
             count = runtime.frame_count
-            if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+            if (
+                isinstance(count, bool)
+                or not isinstance(count, int)
+                or count < 0
+            ):
                 count = 0
             payload["frame_count"] = count
         return payload
@@ -424,7 +422,9 @@ class LiveSession:
         runtime = self._runtime
         if runtime is not None and not callable(runtime.tick):
             raise TypeError("live runtime must provide tick()")
-        last_stat = self._live_file_stat(runtime) if runtime is not None else None
+        last_stat = (
+            self._live_file_stat(runtime) if runtime is not None else None
+        )
 
         def loop() -> None:
             nonlocal last_stat
@@ -477,9 +477,7 @@ class LiveSession:
                 if stop.wait(next_at - now):
                     return
 
-        thread = threading.Thread(
-            target=loop, name="live-ticker", daemon=True
-        )
+        thread = threading.Thread(target=loop, name="live-ticker", daemon=True)
         self._ticker = thread
         thread.start()
 
@@ -536,9 +534,7 @@ class LiveSession:
             )
         key = payload.get("key")
         if not isinstance(key, str) or not key:
-            raise LiveError(
-                "invalid_input", "key must be a non-empty string"
-            )
+            raise LiveError("invalid_input", "key must be a non-empty string")
         with self._lock:
             runtime = self._running_runtime()
             try:
@@ -552,11 +548,7 @@ class LiveSession:
 
 
 def _positive_int(value: Any) -> bool:
-    return (
-        not isinstance(value, bool)
-        and isinstance(value, int)
-        and value > 0
-    )
+    return not isinstance(value, bool) and isinstance(value, int) and value > 0
 
 
 def _display_size(ready: Any) -> tuple[int, int] | None:

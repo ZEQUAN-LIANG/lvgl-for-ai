@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import contextlib
@@ -114,9 +113,11 @@ class ErrorMappingTableTest(unittest.TestCase):
     def _cli_exit_code(self, error: BaseException) -> tuple[int, dict]:
         fake = FakeRuntime(start_error=error)
         out = io.StringIO()
-        with mock.patch.object(cli, "Runtime", return_value=fake), \
-                contextlib.redirect_stdout(out), \
-                contextlib.redirect_stderr(io.StringIO()):
+        with (
+            mock.patch.object(cli, "Runtime", return_value=fake),
+            contextlib.redirect_stdout(out),
+            contextlib.redirect_stderr(io.StringIO()),
+        ):
             code = cli.main(["--json"])
         return code, json.loads(out.getvalue().splitlines()[0])
 

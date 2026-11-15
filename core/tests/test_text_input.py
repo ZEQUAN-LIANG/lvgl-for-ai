@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import sys
@@ -19,7 +18,9 @@ class TextScenarioTest(unittest.TestCase):
     def setUp(self) -> None:
         self.runtime = FakeRuntime()
 
-    def test_text_expands_to_press_release_for_each_ascii_character(self) -> None:
+    def test_text_expands_to_press_release_for_each_ascii_character(
+        self,
+    ) -> None:
         play_scenario(self.runtime, [{"type": "text", "value": "Hi 1"}])
         self.assertEqual(
             self.runtime.commands,
@@ -77,7 +78,6 @@ class TextScenarioTest(unittest.TestCase):
 
 
 class TextInputEngineIntegrationTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -109,12 +109,8 @@ class TextInputEngineIntegrationTest(unittest.TestCase):
             token = f"CHAR_{ord(char)}"
             expected.extend([("press", token), ("release", token)])
         self.assertEqual(keys, expected)
-        self.assertIn(
-            "[textarea_evidence] text=Hello 1", recording.log()
-        )
-        snapshots = [
-            row for row in timeline if row["type"] == "snapshot"
-        ]
+        self.assertIn("[textarea_evidence] text=Hello 1", recording.log())
+        snapshots = [row for row in timeline if row["type"] == "snapshot"]
         self.assertEqual([row["label"] for row in snapshots], ["typed"])
         self.assertTrue((recording.path / snapshots[0]["file"]).is_file())
 

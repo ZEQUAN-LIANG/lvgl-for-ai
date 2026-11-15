@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import base64
@@ -19,8 +18,15 @@ from lvgl_ai.web.annotations import (
 from web_support import SESSION_ID, WebHarness, make_web_session
 
 NOTE_FIELDS = {
-    "id", "frame_no", "t_ms", "regions", "tags", "text",
-    "author", "source", "feedback_anchor",
+    "id",
+    "frame_no",
+    "t_ms",
+    "regions",
+    "tags",
+    "text",
+    "author",
+    "source",
+    "feedback_anchor",
 }
 
 
@@ -46,7 +52,6 @@ class AnnotationApiTest(unittest.TestCase):
         self.addCleanup(self.harness.close)
         self.annotations_path = self.session / "annotations.json"
 
-
     def test_post_note_writes_the_documented_fields(self) -> None:
         status, _, payload = self.harness.json(
             "POST",
@@ -67,7 +72,9 @@ class AnnotationApiTest(unittest.TestCase):
         )
 
         region = note["regions"][0]
-        self.assertRegex(region["image"], r"^regions/[A-Za-z0-9][A-Za-z0-9._-]*\.png$")
+        self.assertRegex(
+            region["image"], r"^regions/[A-Za-z0-9][A-Za-z0-9._-]*\.png$"
+        )
         self.assertTrue((self.session / region["image"]).is_file())
         filename = region["image"].rsplit("/", 1)[-1]
         status, headers, body = self.harness.request(
@@ -99,7 +106,9 @@ class AnnotationApiTest(unittest.TestCase):
         saved = json.loads(self.annotations_path.read_text(encoding="utf-8"))
         self.assertEqual([note["id"] for note in saved["notes"]], ["n1", "n2"])
 
-    def test_get_annotations_returns_an_empty_document_when_missing(self) -> None:
+    def test_get_annotations_returns_an_empty_document_when_missing(
+        self,
+    ) -> None:
         status, _, payload = self.harness.json(
             "GET", f"/api/sessions/{SESSION_ID}/annotations"
         )
@@ -124,7 +133,10 @@ class AnnotationApiTest(unittest.TestCase):
                             "t_ms": 0,
                             "regions": [
                                 {
-                                    "x": 0, "y": 0, "w": 1, "h": 1,
+                                    "x": 0,
+                                    "y": 0,
+                                    "w": 1,
+                                    "h": 1,
                                     "image": "regions/old-0.png",
                                 }
                             ],
@@ -194,8 +206,9 @@ class AnnotationApiTest(unittest.TestCase):
             sorted(note["id"] for note in saved["notes"]),
             ["n0", "n1", "n2", "n3", "n4"],
         )
-        self.assertEqual(Recording.open(self.session).annotations["notes"], saved["notes"])
-
+        self.assertEqual(
+            Recording.open(self.session).annotations["notes"], saved["notes"]
+        )
 
     def test_invalid_payloads_are_4xx_and_do_not_create_the_file(self) -> None:
         bad_notes = [
@@ -212,10 +225,17 @@ class AnnotationApiTest(unittest.TestCase):
             valid_note(regions=[{"x": -1, "y": 0, "w": 1, "h": 1}]),
             valid_note(regions=[{"x": 0, "y": 0, "w": 1}]),
             valid_note(regions=[{"x": 0, "y": 0, "w": 1, "h": 1, "extra": 1}]),
-            valid_note(regions=[{
-                "x": 0, "y": 0, "w": 1, "h": 1,
-                "image": "regions/user-supplied.png",
-            }]),
+            valid_note(
+                regions=[
+                    {
+                        "x": 0,
+                        "y": 0,
+                        "w": 1,
+                        "h": 1,
+                        "image": "regions/user-supplied.png",
+                    }
+                ]
+            ),
             valid_note(tags="layout"),
             valid_note(tags=[1]),
             valid_note(text=3),
@@ -315,7 +335,6 @@ class AnnotationApiTest(unittest.TestCase):
         self.assertEqual(status, 404, payload)
         self.assertEqual(payload["error"]["code"], "unknown_session")
 
-
     def test_error_codes_match_the_http_contract(self) -> None:
         cases = [
             (valid_note(frame_no=0), 400, "invalid_annotation"),
@@ -362,7 +381,9 @@ class AnnotationApiTest(unittest.TestCase):
         self.assertEqual(payload["error"]["code"], "annotations_unreadable")
 
     def test_write_failure_maps_to_500_and_leaves_no_file(self) -> None:
-        with mock.patch.object(Path, "replace", side_effect=OSError("disk full")):
+        with mock.patch.object(
+            Path, "replace", side_effect=OSError("disk full")
+        ):
             status, _, payload = self.harness.json(
                 "POST",
                 f"/api/sessions/{SESSION_ID}/annotations",
@@ -374,7 +395,6 @@ class AnnotationApiTest(unittest.TestCase):
 
 
 class WriteNoteTransactionTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -382,7 +402,6 @@ class WriteNoteTransactionTest(unittest.TestCase):
         self.session = make_web_session(self.root)
         self.recording = Recording.open(self.session)
         self.annotations_path = self.session / "annotations.json"
-
 
     def test_success_returns_document_and_note(self) -> None:
         document, saved = write_note(self.recording, valid_note(id="n1"))
@@ -406,7 +425,6 @@ class WriteNoteTransactionTest(unittest.TestCase):
         self.assertFalse((self.session / "regions").exists())
         self.assertTrue(self.annotations_path.is_file())
 
-
     def test_conflict_keeps_the_document(self) -> None:
         write_note(self.recording, valid_note(id="dup"))
         before = self.annotations_path.read_bytes()
@@ -426,7 +444,9 @@ class WriteNoteTransactionTest(unittest.TestCase):
             valid_note(frame_no=0),
             valid_note(frame_no="2"),
             valid_note(regions="box"),
-            valid_note(regions=[{"x": 0, "y": 0, "w": 1, "h": 1, "image": "x"}]),
+            valid_note(
+                regions=[{"x": 0, "y": 0, "w": 1, "h": 1, "image": "x"}]
+            ),
             valid_note(tags=[1]),
             valid_note(unknown_field="x"),
         ]
@@ -444,10 +464,9 @@ class WriteNoteTransactionTest(unittest.TestCase):
         real_replace = Path.replace
 
         def failing_replace(path, target):
-            if (
-                path.name.startswith("annotations.json.")
-                and path.name.endswith(".tmp")
-            ):
+            if path.name.startswith(
+                "annotations.json."
+            ) and path.name.endswith(".tmp"):
                 raise OSError("disk full")
             return real_replace(path, target)
 
@@ -461,7 +480,6 @@ class WriteNoteTransactionTest(unittest.TestCase):
             [path.name for path in (self.session / "regions").glob("*.png")],
             ["keep-0.png"],
         )
-
 
     def test_concurrent_writes_keep_every_note(self) -> None:
         def post(index: int) -> str:
@@ -487,7 +505,6 @@ class WriteNoteTransactionTest(unittest.TestCase):
 
 
 class AnnotationDocumentSeamTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -497,7 +514,6 @@ class AnnotationDocumentSeamTest(unittest.TestCase):
 
     def test_write_note_reads_and_writes_only_the_recording_seam(self) -> None:
         class SeamRecording:
-
             def __init__(self, recording: Recording) -> None:
                 self._recording = recording
 
@@ -613,12 +629,14 @@ class RangeAnnotationTest(unittest.TestCase):
             frame.read_bytes()
         ).decode("ascii")
         note = range_note(
-            anchors=[{
-                "frame_no": 2,
-                "t_ms": 16,
-                "regions": [{"x": 0, "y": 0, "w": 2, "h": 2}],
-                "annotated": data_url,
-            }]
+            anchors=[
+                {
+                    "frame_no": 2,
+                    "t_ms": 16,
+                    "regions": [{"x": 0, "y": 0, "w": 2, "h": 2}],
+                    "annotated": data_url,
+                }
+            ]
         )
         status, _, payload = self.harness.json(
             "POST",
@@ -641,12 +659,14 @@ class RangeAnnotationTest(unittest.TestCase):
 
     def test_invalid_annotated_frame_is_rejected(self) -> None:
         note = range_note(
-            anchors=[{
-                "frame_no": 2,
-                "t_ms": 16,
-                "regions": [],
-                "annotated": "data:image/png;base64,bm90IGEgcG5n",
-            }]
+            anchors=[
+                {
+                    "frame_no": 2,
+                    "t_ms": 16,
+                    "regions": [],
+                    "annotated": "data:image/png;base64,bm90IGEgcG5n",
+                }
+            ]
         )
         status, _, payload = self.harness.json(
             "POST",
@@ -691,15 +711,33 @@ class RangeAnnotationTest(unittest.TestCase):
             missing_end,
             range_note(anchors=[{"frame_no": 9, "t_ms": 0, "regions": []}]),
             range_note(frame_no=3),
-            range_note(anchors=[{
-                "frame_no": 2, "t_ms": 16, "regions": [],
-                "extra": 1,
-            }]),
-            range_note(anchors=[{
-                "frame_no": 2, "t_ms": 16,
-                "regions": [{"x": 0, "y": 0, "w": 1, "h": 1,
-                             "image": "regions/x.png"}],
-            }]),
+            range_note(
+                anchors=[
+                    {
+                        "frame_no": 2,
+                        "t_ms": 16,
+                        "regions": [],
+                        "extra": 1,
+                    }
+                ]
+            ),
+            range_note(
+                anchors=[
+                    {
+                        "frame_no": 2,
+                        "t_ms": 16,
+                        "regions": [
+                            {
+                                "x": 0,
+                                "y": 0,
+                                "w": 1,
+                                "h": 1,
+                                "image": "regions/x.png",
+                            }
+                        ],
+                    }
+                ]
+            ),
         ]
         for note in cases:
             with self.subTest(note=str(note)[:100]):
@@ -709,7 +747,9 @@ class RangeAnnotationTest(unittest.TestCase):
                     payload=note,
                 )
                 self.assertEqual(status, 400, payload)
-                self.assertEqual(payload["error"]["code"], "invalid_annotation")
+                self.assertEqual(
+                    payload["error"]["code"], "invalid_annotation"
+                )
                 self.assertFalse(self.annotations_path.exists())
 
 

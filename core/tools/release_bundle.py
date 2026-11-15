@@ -12,7 +12,6 @@ engine builds and smoke checks stay in the entry points (or in ``release.py``)
 until the shared orchestration layer is in place.
 """
 
-
 from __future__ import annotations
 
 import json
@@ -223,14 +222,14 @@ def smoke_environment(workspace: Path) -> dict[str, str]:
     return env
 
 
-def cli_command(
-    package: Path, lvgl_version: str, *args: str
-) -> list[str]:
+def cli_command(package: Path, lvgl_version: str, *args: str) -> list[str]:
     return [
         sys.executable,
-        "-I", "-B",
+        "-I",
+        "-B",
         str(package / "core" / "cli.py"),
-        "--lvgl", lvgl_version,
+        "--lvgl",
+        lvgl_version,
         *args,
     ]
 
@@ -282,7 +281,12 @@ def smoke_scenario(
         )
     session_dir = Path(str(payload.get("session_dir")))
     if require_evidence:
-        for name in ("manifest.json", "timeline.ndjson", "engine.log", "build.log"):
+        for name in (
+            "manifest.json",
+            "timeline.ndjson",
+            "engine.log",
+            "build.log",
+        ):
             if not (session_dir / name).is_file():
                 raise BuildError(f"{label}: session evidence missing {name}")
     marker_list = list(markers)

@@ -1,12 +1,5 @@
-
-
 from __future__ import annotations
 
-import json
-import os
-import shutil
-import subprocess
-import sys
 import tempfile
 import threading
 import time
@@ -15,18 +8,17 @@ from pathlib import Path
 from unittest import mock
 
 from fake_runtime import FAKE_PID, FakeRuntime
-from lvgl_ai import BuildError, Recording, Runtime, RuntimeCrash, ScenarioError
+from lvgl_ai import Runtime, RuntimeCrash, ScenarioError
 from lvgl_ai.web.live_session import LiveError, LiveSession
-from lvgl_ai.web.wire import page_config
-from support import symlinked_file
-from web_support import SESSION_ID, WebHarness, make_web_session
+from web_support import SESSION_ID, make_web_session
 
 SIGINT_DRIVER = Path(__file__).with_name("web_sigint_driver.py")
-APP_C = Path(__file__).resolve().parent.parent.parent / "user" / "app" / "app.c"
+APP_C = (
+    Path(__file__).resolve().parent.parent.parent / "user" / "app" / "app.c"
+)
 
 
 class SessionFakeRuntime(FakeRuntime):
-
     def __init__(self, session_dir: str | Path, **kwargs) -> None:
         super().__init__(**kwargs)
         self._session_path = Path(session_dir)
@@ -41,7 +33,6 @@ class SessionFakeRuntime(FakeRuntime):
 
 
 class Factory:
-
     def __init__(self, builder) -> None:
         self.builder = builder
         self.instances = []
@@ -55,7 +46,6 @@ class Factory:
 
 
 class BlockingRuntime(SessionFakeRuntime):
-
     def __init__(self, session_dir: str | Path) -> None:
         super().__init__(session_dir)
         self.start_entered = threading.Event()
@@ -77,7 +67,6 @@ class BlockingRuntime(SessionFakeRuntime):
 
 
 class StreamRuntime(FakeRuntime):
-
     def __init__(self, session_dir: str | Path) -> None:
         super().__init__(record=False)
         self._session = Path(session_dir)
@@ -102,9 +91,7 @@ class LiveSessionTest(unittest.TestCase):
         self.session = make_web_session(self.root)
 
     def _session(self, factory) -> LiveSession:
-        session = LiveSession(
-            self.root / "sessions", runtime_factory=factory
-        )
+        session = LiveSession(self.root / "sessions", runtime_factory=factory)
         self.addCleanup(_quiet_stop_session, session)
         return session
 
@@ -162,7 +149,9 @@ class LiveSessionTest(unittest.TestCase):
         self.assertFalse(stopped["running"])
         self.assertEqual(stopped["session_id"], SESSION_ID)
 
-    def test_start_failure_after_engine_start_keeps_the_session_active(self) -> None:
+    def test_start_failure_after_engine_start_keeps_the_session_active(
+        self,
+    ) -> None:
         runtime = FakeRuntime()
 
         class TickerFailingSession(LiveSession):
@@ -289,9 +278,7 @@ class LiveSessionTest(unittest.TestCase):
         reader = threading.Thread(target=read_status, name="test-live-status")
         reader.start()
         reader.join(0.1)
-        self.assertTrue(
-            reader.is_alive(), "status must block while starting"
-        )
+        self.assertTrue(reader.is_alive(), "status must block while starting")
         runtime.start_release.set()
         starter.join(5.0)
         reader.join(5.0)
@@ -317,7 +304,9 @@ class LiveSessionTest(unittest.TestCase):
 
         before_move = len(runtime.commands)
         session.pointer({"action": "move", "x": 20, "y": 40})
-        self.assertIn(("pointer", "move", 20, 40), runtime.commands[before_move:])
+        self.assertIn(
+            ("pointer", "move", 20, 40), runtime.commands[before_move:]
+        )
         self.assertNotIn(("wait", 16), runtime.commands[before_move:])
 
         session.key({"action": "press", "key": "ENTER"})
@@ -354,7 +343,9 @@ class LiveSessionTest(unittest.TestCase):
         session.forget_app("coffee")
         self.assertIsNone(session.selected_app(None))
 
-    def test_test_mode_uses_a_private_root_and_removes_it_on_stop(self) -> None:
+    def test_test_mode_uses_a_private_root_and_removes_it_on_stop(
+        self,
+    ) -> None:
         captured: dict[str, object] = {}
 
         class CapturingRuntime(FakeRuntime):
@@ -362,15 +353,15 @@ class LiveSessionTest(unittest.TestCase):
                 captured.update(kwargs)
                 super().__init__(**kwargs)
 
-        with mock.patch(
-            "lvgl_ai.web.live_session.Runtime", CapturingRuntime
-        ):
+        with mock.patch("lvgl_ai.web.live_session.Runtime", CapturingRuntime):
             session = LiveSession(self.root / "sessions")
             self.addCleanup(_quiet_stop_session, session)
             session.start("test", "coffee")
             test_root = Path(str(captured["sessions_root"]))
             self.assertNotEqual(test_root, (self.root / "sessions").resolve())
-            self.assertEqual(test_root.parent, (self.root / "sessions").resolve())
+            self.assertEqual(
+                test_root.parent, (self.root / "sessions").resolve()
+            )
             self.assertTrue(test_root.is_dir())
             self.assertIs(captured["record"], False)
             self.assertEqual(captured["app"], "coffee")
@@ -399,9 +390,7 @@ class LiveSessionTest(unittest.TestCase):
                 captured.update(kwargs)
                 super().__init__(**kwargs)
 
-        with mock.patch(
-            "lvgl_ai.web.live_session.Runtime", CapturingRuntime
-        ):
+        with mock.patch("lvgl_ai.web.live_session.Runtime", CapturingRuntime):
             session = LiveSession(self.root / "sessions")
             self.addCleanup(_quiet_stop_session, session)
             session.start("test", "coffee", display=(640, 480))
@@ -417,9 +406,7 @@ class LiveSessionTest(unittest.TestCase):
                 captured.update(kwargs)
                 super().__init__(**kwargs)
 
-        with mock.patch(
-            "lvgl_ai.web.live_session.Runtime", CapturingRuntime
-        ):
+        with mock.patch("lvgl_ai.web.live_session.Runtime", CapturingRuntime):
             session = LiveSession(self.root / "sessions")
             self.addCleanup(_quiet_stop_session, session)
             session.start("test", "coffee", display=(640, 480))
@@ -446,7 +433,6 @@ class LiveSessionTest(unittest.TestCase):
         instances: list[Runtime] = []
 
         class StoreRuntime(Runtime):
-
             def __init__(self, **kwargs: object) -> None:
                 super().__init__(**kwargs)
                 instances.append(self)
@@ -460,7 +446,9 @@ class LiveSessionTest(unittest.TestCase):
                 self._store.discard_preview()
 
         with mock.patch("lvgl_ai.web.live_session.Runtime", StoreRuntime):
-            session = LiveSession(self.root / "sessions", lvgl="9.4", build=False)
+            session = LiveSession(
+                self.root / "sessions", lvgl="9.4", build=False
+            )
             self.addCleanup(_quiet_stop_session, session)
             session.start("test", "coffee", display=(640, 480))
 
@@ -509,9 +497,7 @@ class LiveSessionTest(unittest.TestCase):
             def start(self) -> FailingRuntime:
                 raise RuntimeCrash("boom", exit_code=1)
 
-        with mock.patch(
-            "lvgl_ai.web.live_session.Runtime", FailingRuntime
-        ):
+        with mock.patch("lvgl_ai.web.live_session.Runtime", FailingRuntime):
             session = LiveSession(self.root / "sessions")
             with self.assertRaises(LiveError) as raised:
                 session.start("test", "coffee")

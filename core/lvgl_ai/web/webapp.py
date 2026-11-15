@@ -39,7 +39,6 @@ from .annotations import AnnotationError, delete_note, write_note
 from .live_session import (
     LiveError,
     LiveSession,
-    validate_live_kind,
 )
 from .urls import page_url
 
@@ -123,7 +122,6 @@ def _input_app(value: Any) -> str | None:
 
 
 class HttpError(Exception):
-
     def __init__(
         self,
         status: int,
@@ -149,14 +147,11 @@ class HttpError(Exception):
 
 
 def _live_http_error(exc: LiveError) -> HttpError:
-    status = LIVE_ERROR_STATUS.get(
-        exc.code, HTTPStatus.INTERNAL_SERVER_ERROR
-    )
+    status = LIVE_ERROR_STATUS.get(exc.code, HTTPStatus.INTERNAL_SERVER_ERROR)
     return HttpError(status, exc.code, exc.message, detail=exc.detail)
 
 
 class WebApp:
-
     def __init__(
         self,
         sessions_root: str | Path,
@@ -189,19 +184,22 @@ class WebApp:
             lvgl=self.lvgl,
             build=self.build,
         )
-        self._page_clock = page_clock if page_clock is not None else time.monotonic
+        self._page_clock = (
+            page_clock if page_clock is not None else time.monotonic
+        )
         self._page_lock = threading.Lock()
         self._pages: dict[str, float] = {}
         self._seen_page = False
         self._last_page_change = 0.0
-
 
     def sessions(self) -> list[dict[str, Any]]:
         root = self.sessions_root
         if not root.is_dir():
             return []
         entries: list[dict[str, Any]] = []
-        for child in sorted(root.iterdir(), key=lambda item: item.name, reverse=True):
+        for child in sorted(
+            root.iterdir(), key=lambda item: item.name, reverse=True
+        ):
             if not child.is_dir() or not session_schema.is_session_id(
                 child.name
             ):
@@ -254,7 +252,9 @@ class WebApp:
                 "scenario": item["basename"],
                 "display": item["display"],
             }
-        return sorted(apps.values(), key=lambda entry: (entry["name"], entry["app"]))
+        return sorted(
+            apps.values(), key=lambda entry: (entry["name"], entry["app"])
+        )
 
     def _scenario_display(self, app: str | None) -> tuple[int, int] | None:
         if app is None:
@@ -267,7 +267,6 @@ class WebApp:
                         return None
                     return display["width"], display["height"]
         return None
-
 
     @staticmethod
     def _app_error(exc: app_store.AppError) -> HttpError:
@@ -308,9 +307,7 @@ class WebApp:
         with self._apps_lock:
             payload = app_store.list_apps(self.repo_root)
             payload["trash"] = app_store.list_trash(self.repo_root)
-            payload["recent"] = app_store.recent_apps(
-                self.repo_root, limit=12
-            )
+            payload["recent"] = app_store.recent_apps(self.repo_root, limit=12)
             payload["last_operation"] = self._last_app_operation
             payload["roots"] = {
                 "app": "user/app",
@@ -483,7 +480,6 @@ class WebApp:
             ) from model.annotations_error
         return {"annotations": model.annotations}
 
-
     def add_annotation(
         self, session_id: str, payload: dict[str, Any]
     ) -> tuple[int, dict[str, Any]]:
@@ -512,7 +508,6 @@ class WebApp:
             "annotations": document,
             "deleted": note_id,
         }
-
 
     def whiteboards_payload(self, session_id: str) -> dict[str, Any]:
         recording = self.open_recording(session_id)
@@ -555,7 +550,6 @@ class WebApp:
             "whiteboards": document,
             "deleted": whiteboard_id,
         }
-
 
     def page_open(self, page_id: str) -> dict[str, Any]:
         now = self._page_clock()
@@ -624,7 +618,6 @@ class _WebHandler(BaseHTTPRequestHandler):
     def do_DELETE(self) -> None:
         self._dispatch("DELETE")
 
-
     def _dispatch(self, method: str) -> None:
         try:
             parsed = urlparse(self.path)
@@ -650,7 +643,9 @@ class _WebHandler(BaseHTTPRequestHandler):
                 },
             )
 
-    def _route(self, method: str, path: str, query: dict[str, list[str]]) -> None:
+    def _route(
+        self, method: str, path: str, query: dict[str, list[str]]
+    ) -> None:
         from .routes import route
 
         return route(self, method, path, query)
@@ -697,9 +692,7 @@ class _WebHandler(BaseHTTPRequestHandler):
         if 0 <= length <= MAX_DRAIN_BYTES:
             self._discard_body(length)
 
-    def _read_json_body(
-        self, limit: int = MAX_BODY_BYTES
-    ) -> dict[str, Any]:
+    def _read_json_body(self, limit: int = MAX_BODY_BYTES) -> dict[str, Any]:
         raw_length = self.headers.get("Content-Length")
         if raw_length is None:
             raise HttpError(
@@ -835,7 +828,6 @@ class _WebHandler(BaseHTTPRequestHandler):
             cache_control="public, max-age=31536000, immutable",
         )
 
-
     def _send(
         self,
         status: int,
@@ -864,9 +856,7 @@ class _WebHandler(BaseHTTPRequestHandler):
         self._send(status, body, "application/json; charset=utf-8")
 
     def _send_html(self, status: int, text: str) -> None:
-        self._send(
-            status, text.encode("utf-8"), "text/html; charset=utf-8"
-        )
+        self._send(status, text.encode("utf-8"), "text/html; charset=utf-8")
 
 
 def create_server(
@@ -941,6 +931,7 @@ def serve(
             pass
     watch_stop = threading.Event()
     if exit_on_close:
+
         def watch_pages() -> None:
             while not watch_stop.wait(0.2):
                 if server.app.should_exit_on_close():

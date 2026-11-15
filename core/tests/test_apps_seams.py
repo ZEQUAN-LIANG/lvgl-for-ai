@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -37,12 +36,14 @@ class _TempRepo(unittest.TestCase):
     def _write_scenario(self, name: str, app: str) -> Path:
         path = self.root / "user" / "scenarios" / f"{name}.json"
         path.write_text(
-            json.dumps({
-                "schema": "lvgl-ai-scenario-v1",
-                "name": name,
-                "app": app,
-                "steps": [{"type": "wait", "ms": 16}],
-            }),
+            json.dumps(
+                {
+                    "schema": "lvgl-ai-scenario-v1",
+                    "name": name,
+                    "app": app,
+                    "steps": [{"type": "wait", "ms": 16}],
+                }
+            ),
             encoding="utf-8",
         )
         return path
@@ -53,9 +54,7 @@ class PublicSurfaceTest(unittest.TestCase):
         self.assertIs(app_domain.AppError, common.AppError)
         self.assertIs(app_domain.resolve_repo_root, common.resolve_repo_root)
         self.assertIs(app_domain.is_protected_name, policy.is_protected_name)
-        self.assertIs(
-            app_domain.parse_app_entries, registry.parse_app_entries
-        )
+        self.assertIs(app_domain.parse_app_entries, registry.parse_app_entries)
         self.assertIs(app_domain.register_app, registry.register_app)
         self.assertIs(app_domain.unregister_app, registry.unregister_app)
         self.assertIs(app_domain.scaffold_app, scaffold.scaffold_app)
@@ -65,9 +64,7 @@ class PublicSurfaceTest(unittest.TestCase):
         self.assertIs(app_domain.list_trash, trash.list_trash)
         self.assertIs(app_domain.delete_app, trash.delete_app)
         self.assertIs(app_domain.restore_app, trash.restore_app)
-        self.assertIs(
-            app_domain.permanently_delete, trash.permanently_delete
-        )
+        self.assertIs(app_domain.permanently_delete, trash.permanently_delete)
 
     def test_app_error_keeps_signature_but_not_http_status(self) -> None:
         error = common.AppError("name_reserved", "reserved", status=418)
@@ -128,7 +125,9 @@ class RegistrySeamTest(_TempRepo):
         original = self._app_c_text()
         self.assertEqual(registry.parse_app_entries(original)[0][0], "coffee")
         registered, _ = registry.register_app(original, "hello")
-        self.assertEqual(registry.parse_app_entries(registered)[0][0], "coffee")
+        self.assertEqual(
+            registry.parse_app_entries(registered)[0][0], "coffee"
+        )
         restored, _ = registry.unregister_app(registered, "hello")
         self.assertEqual(restored, original)
 
@@ -201,8 +200,7 @@ class PolicySeamTest(_TempRepo):
         (self.root / "user/app/gamma").mkdir()
         self._write_scenario("promo", "promo")
         self.app_c.write_text(
-            self._app_c_text()
-            + 'static const char * alias = "latte";\n',
+            self._app_c_text() + 'static const char * alias = "latte";\n',
             encoding="utf-8",
         )
         self.assertTrue(policy.is_reserved_create_name(self.root, "coffee"))
@@ -211,15 +209,19 @@ class PolicySeamTest(_TempRepo):
         self.assertFalse(policy.is_reserved_create_name(self.root, "promo"))
         self.assertTrue(policy.is_reserved_create_name(self.root, "latte"))
 
-    def test_scenario_declared_names_keep_the_existing_create_path(self) -> None:
+    def test_scenario_declared_names_keep_the_existing_create_path(
+        self,
+    ) -> None:
         path = self.root / "user/scenarios/custom.json"
         path.write_text(
-            json.dumps({
-                "schema": "lvgl-ai-scenario-v1",
-                "name": "promo",
-                "app": "coffee",
-                "steps": [{"type": "wait", "ms": 16}],
-            }),
+            json.dumps(
+                {
+                    "schema": "lvgl-ai-scenario-v1",
+                    "name": "promo",
+                    "app": "coffee",
+                    "steps": [{"type": "wait", "ms": 16}],
+                }
+            ),
             encoding="utf-8",
         )
         self.assertIn("promo", policy._reserved_state(self.root)[0])
@@ -267,9 +269,7 @@ class ScaffoldPolicyTest(_TempRepo):
             with self.subTest(name=name):
                 error = self._error(name)
                 self.assertEqual(error.code, "name_reserved")
-                self.assertEqual(
-                    error.message, f'name "{name}" is reserved'
-                )
+                self.assertEqual(error.message, f'name "{name}" is reserved')
 
     def test_duplicate_and_force_keep_existing_results(self) -> None:
         scaffold.scaffold_app(self.root, "hello")
@@ -284,13 +284,15 @@ class ScaffoldPolicyTest(_TempRepo):
         self.assertEqual(result["action"], "create")
         self.assertIn(
             "hello",
-            [name for name, _ in registry.parse_app_entries(self._app_c_text())],
+            [
+                name
+                for name, _ in registry.parse_app_entries(self._app_c_text())
+            ],
         )
 
     def test_literal_alias_is_reserved_without_a_static_list(self) -> None:
         self.app_c.write_text(
-            self._app_c_text()
-            + 'static const char * alias = "latte";\n',
+            self._app_c_text() + 'static const char * alias = "latte";\n',
             encoding="utf-8",
         )
         error = self._error("latte")
@@ -307,9 +309,7 @@ class GuardSeamTest(_TempRepo):
             self.app_c.write_bytes(self.app_c.read_bytes() + b"// external\n")
             return result
 
-        with mock.patch.object(
-            registry, "register_app", side_effect=tamper
-        ):
+        with mock.patch.object(registry, "register_app", side_effect=tamper):
             with self.assertRaises(common.AppError) as raised:
                 scaffold.scaffold_app(self.root, "hello")
         self.assertEqual(raised.exception.code, "app_conflict")
@@ -328,9 +328,7 @@ class GuardSeamTest(_TempRepo):
             self.app_c.write_bytes(self.app_c.read_bytes() + b"// external\n")
             return result
 
-        with mock.patch.object(
-            registry, "unregister_app", side_effect=tamper
-        ):
+        with mock.patch.object(registry, "unregister_app", side_effect=tamper):
             with self.assertRaises(common.AppError) as raised:
                 trash.delete_app(self.root, "hello")
         self.assertEqual(raised.exception.code, "app_conflict")
@@ -339,7 +337,10 @@ class GuardSeamTest(_TempRepo):
         self.assertIn(b"// external", self.app_c.read_bytes())
         self.assertIn(
             "hello",
-            [name for name, _ in registry.parse_app_entries(self._app_c_text())],
+            [
+                name
+                for name, _ in registry.parse_app_entries(self._app_c_text())
+            ],
         )
 
     def test_restore_aborts_and_rolls_back_when_app_c_changes(self) -> None:
@@ -362,7 +363,10 @@ class GuardSeamTest(_TempRepo):
         self.assertIn(b"// external", self.app_c.read_bytes())
         self.assertNotIn(
             "hello",
-            [name for name, _ in registry.parse_app_entries(self._app_c_text())],
+            [
+                name
+                for name, _ in registry.parse_app_entries(self._app_c_text())
+            ],
         )
 
 
@@ -397,9 +401,7 @@ class TrashSeamTest(_TempRepo):
 
     def test_purge_requires_confirmation_and_reports_missing(self) -> None:
         with self.assertRaises(common.AppError) as raised:
-            trash.permanently_delete(
-                self.root, "20260101-000000-deadbeef"
-            )
+            trash.permanently_delete(self.root, "20260101-000000-deadbeef")
         self.assertEqual(raised.exception.code, "confirmation_required")
         with self.assertRaises(common.AppError) as raised:
             trash.permanently_delete(
@@ -438,12 +440,14 @@ class ViewsSeamTest(_TempRepo):
         self._write_scenario("good", "coffee")
         target = Path(self._tmp.name) / "linked-target.json"
         target.write_text(
-            json.dumps({
-                "schema": "lvgl-ai-scenario-v1",
-                "name": "linked",
-                "app": "coffee",
-                "steps": [{"type": "wait", "ms": 16}],
-            }),
+            json.dumps(
+                {
+                    "schema": "lvgl-ai-scenario-v1",
+                    "name": "linked",
+                    "app": "coffee",
+                    "steps": [{"type": "wait", "ms": 16}],
+                }
+            ),
             encoding="utf-8",
         )
         symlinked_file(
@@ -451,9 +455,7 @@ class ViewsSeamTest(_TempRepo):
         )
 
         index = scenario_index(self.root)
-        self.assertEqual(
-            [item["basename"] for item in index], ["good.json"]
-        )
+        self.assertEqual([item["basename"] for item in index], ["good.json"])
         self.assertEqual(
             [
                 path.name
@@ -465,7 +467,10 @@ class ViewsSeamTest(_TempRepo):
     def test_scenarios_for_app_and_recent_kinds(self) -> None:
         scaffold.scaffold_app(self.root, "hello")
         self.assertEqual(
-            [path.name for path in views.scenarios_for_app(self.root, "hello")],
+            [
+                path.name
+                for path in views.scenarios_for_app(self.root, "hello")
+            ],
             ["hello.json"],
         )
         recent = views.recent_apps(self.root, limit=50)
@@ -477,9 +482,7 @@ class ViewsSeamTest(_TempRepo):
         deleted = trash.delete_app(self.root, "hello")
         recent = views.recent_apps(self.root, limit=50)
         kinds = {entry["path"]: entry["kind"] for entry in recent}
-        self.assertEqual(
-            kinds[f"{deleted['trash_dir']}/meta.json"], "trash"
-        )
+        self.assertEqual(kinds[f"{deleted['trash_dir']}/meta.json"], "trash")
 
 
 class CommonSeamTest(_TempRepo):

@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import hashlib
@@ -37,9 +36,7 @@ class SpectrumCoversFrozenTest(unittest.TestCase):
     def test_frozen_hashes_cover_every_source_png(self) -> None:
         hashes = self.entry.get("source_hashes")
         self.assertIsInstance(hashes, dict)
-        expected = {
-            f"covers_src/{path.name}" for path in COVERS.glob("*.png")
-        }
+        expected = {f"covers_src/{path.name}" for path in COVERS.glob("*.png")}
         self.assertEqual(set(hashes), expected)
         for relative, digest in hashes.items():
             with self.subTest(source=relative):

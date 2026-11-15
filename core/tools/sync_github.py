@@ -12,7 +12,6 @@ Run from the repository root with::
     python -I core/tools/sync_github.py --json
 """
 
-
 from __future__ import annotations
 
 import argparse
@@ -38,7 +37,9 @@ def git(args: list[str], *, dry_run: bool = False, echo: bool = True) -> str:
         errors="replace",
     )
     if result.returncode != 0:
-        raise SystemExit(f"git {' '.join(args)} failed:\n{result.stderr.strip()}")
+        raise SystemExit(
+            f"git {' '.join(args)} failed:\n{result.stderr.strip()}"
+        )
     return result.stdout
 
 
@@ -49,7 +50,11 @@ def remotes() -> set[str]:
 
 def list_branches(remote: str) -> list[str]:
     out = git(
-        ["for-each-ref", "--format=%(refname:strip=3)", f"refs/remotes/{remote}/"],
+        [
+            "for-each-ref",
+            "--format=%(refname:strip=3)",
+            f"refs/remotes/{remote}/",
+        ],
         echo=False,
     )
     return sorted(name for name in out.splitlines() if name and name != "HEAD")
@@ -81,7 +86,9 @@ def main() -> int:
         action="store_true",
         help="print the push commands without changing the target",
     )
-    parser.add_argument("--json", action="store_true", help="print a JSON summary")
+    parser.add_argument(
+        "--json", action="store_true", help="print a JSON summary"
+    )
     args = parser.parse_args()
 
     known = remotes()

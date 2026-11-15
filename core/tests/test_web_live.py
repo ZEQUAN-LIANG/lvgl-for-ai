@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -14,26 +13,26 @@ from pathlib import Path
 from unittest import mock
 
 from fake_runtime import FAKE_PID, FakeRuntime
-from lvgl_ai import BuildError, Recording, Runtime, RuntimeCrash, ScenarioError
-from lvgl_ai.web.live_session import LiveError, LiveSession
+from lvgl_ai import BuildError, Recording, Runtime, RuntimeCrash
+from lvgl_ai.web.live_session import LiveError
 from lvgl_ai.web.wire import page_config
 from support import symlinked_file
 from web_support import SESSION_ID, WebHarness, make_web_session
 
 SIGINT_DRIVER = Path(__file__).with_name("web_sigint_driver.py")
-APP_C = Path(__file__).resolve().parent.parent.parent / "user" / "app" / "app.c"
-
+APP_C = (
+    Path(__file__).resolve().parent.parent.parent / "user" / "app" / "app.c"
+)
 
 
 from test_web_live_session import (
     BlockingRuntime,
     Factory,
     SessionFakeRuntime,
-    StreamRuntime,
 )
 
-class FakeClock:
 
+class FakeClock:
     def __init__(self, now: float = 100.0) -> None:
         self.now = now
 
@@ -45,7 +44,6 @@ class FakeClock:
 
 
 class PageTrackingTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -108,10 +106,14 @@ class PageTrackingTest(unittest.TestCase):
             "a page that stopped heartbeating must not keep the server alive",
         )
 
-    def test_a_page_refreshing_at_the_declared_interval_stays_alive(self) -> None:
+    def test_a_page_refreshing_at_the_declared_interval_stays_alive(
+        self,
+    ) -> None:
         interval_s = page_config()["heartbeatMs"] / 1000.0
         self.assertGreater(
-            interval_s, 0, "the page must declare a positive heartbeat interval"
+            interval_s,
+            0,
+            "the page must declare a positive heartbeat interval",
         )
         self._beacon("open", "live-page")
         for _ in range(10):
@@ -200,10 +202,14 @@ class LiveHttpTest(unittest.TestCase):
         self.assertFalse(stopped_again["running"])
         self.assertEqual(factory.instances[0].stop_calls, 2)
 
-    def test_start_failure_is_http_500_and_a_retry_creates_a_new_runtime(self) -> None:
+    def test_start_failure_is_http_500_and_a_retry_creates_a_new_runtime(
+        self,
+    ) -> None:
         def build(index):
             if index == 0:
-                return FakeRuntime(start_error=RuntimeCrash("boom", exit_code=1))
+                return FakeRuntime(
+                    start_error=RuntimeCrash("boom", exit_code=1)
+                )
             return FakeRuntime()
 
         factory = Factory(build)
@@ -235,9 +241,7 @@ class LiveHttpTest(unittest.TestCase):
         factory = Factory(lambda index: FakeRuntime(start_error=error))
         harness = self._harness(factory)
 
-        status, _, payload = harness.json(
-            "POST", "/api/live/start?mode=test"
-        )
+        status, _, payload = harness.json("POST", "/api/live/start?mode=test")
         self.assertEqual(status, 500, payload)
         detail = payload["error"]["detail"]["error"]["detail"]
         self.assertEqual(
@@ -341,8 +345,7 @@ class LiveHttpTest(unittest.TestCase):
         self.addCleanup(harness.close)
 
         by_app = {
-            entry["app"]: entry
-            for entry in harness.server.app.scenario_apps()
+            entry["app"]: entry for entry in harness.server.app.scenario_apps()
         }
         self.assertEqual(
             by_app["coffee"]["display"], {"width": 640, "height": 480}
@@ -355,17 +358,20 @@ class LiveHttpTest(unittest.TestCase):
         scenarios = Path(
             tempfile.mkdtemp(prefix="linked-scenarios-", dir=self.root)
         )
-        target = Path(
-            tempfile.mkdtemp(prefix="linked-target-", dir=self.root)
-        ) / "coffee.json"
+        target = (
+            Path(tempfile.mkdtemp(prefix="linked-target-", dir=self.root))
+            / "coffee.json"
+        )
         target.write_text(
-            json.dumps({
-                "schema": "lvgl-ai-scenario-v1",
-                "name": "coffee",
-                "app": "coffee",
-                "display": {"width": 640, "height": 480},
-                "steps": [{"type": "wait", "ms": 16}],
-            }),
+            json.dumps(
+                {
+                    "schema": "lvgl-ai-scenario-v1",
+                    "name": "coffee",
+                    "app": "coffee",
+                    "display": {"width": 640, "height": 480},
+                    "steps": [{"type": "wait", "ms": 16}],
+                }
+            ),
             encoding="utf-8",
         )
         symlinked_file(self, scenarios / "coffee.json", target)
@@ -433,8 +439,8 @@ class LiveHttpTest(unittest.TestCase):
                 captured: dict[str, object] = {}
 
                 class CapturingRuntime(FakeRuntime):
-                    def __init__(self, **kwargs):
-                        captured.update(kwargs)
+                    def __init__(self, _sink=captured, **kwargs):
+                        _sink.update(kwargs)
                         super().__init__(**kwargs)
 
                 with mock.patch(
@@ -445,7 +451,7 @@ class LiveHttpTest(unittest.TestCase):
                         scenarios_dir=self._write_display_scenarios(),
                     )
                     self.addCleanup(harness.close)
-                    self.addCleanup(lambda: _quiet_stop(harness))
+                    self.addCleanup(lambda h=harness: _quiet_stop(h))
                     status, _, live = harness.json(
                         "POST", "/api/live/start" + query
                     )
@@ -557,9 +563,7 @@ class LiveHttpTest(unittest.TestCase):
             harness.json("POST", "/api/live/stop")
 
             captured.clear()
-            status, _, live = harness.json(
-                "POST", "/api/live/start?mode=test"
-            )
+            status, _, live = harness.json("POST", "/api/live/start?mode=test")
             self.assertEqual(status, 200, live)
             self.assertIs(captured.get("record_changed_only"), True)
             self.assertIs(captured.get("record"), False)
@@ -593,7 +597,9 @@ class LiveHttpTest(unittest.TestCase):
 
         status, _, live = harness.json("POST", "/api/live/start")
         self.assertEqual(status, 200, live)
-        self.assertTrue(runtime.tick_event.wait(2.0), "live ticker did not tick")
+        self.assertTrue(
+            runtime.tick_event.wait(2.0), "live ticker did not tick"
+        )
         self.assertIn(("tick", 33, False), runtime.commands)
 
         status, _, current = harness.json("GET", "/api/live")
@@ -627,11 +633,11 @@ class LiveHttpTest(unittest.TestCase):
 
         runtime = TickingRuntime()
         harness = self._harness(Factory(lambda index: runtime))
-        status, _, live = harness.json(
-            "POST", "/api/live/start?mode=test"
-        )
+        status, _, live = harness.json("POST", "/api/live/start?mode=test")
         self.assertEqual(status, 200, live)
-        self.assertTrue(runtime.tick_event.wait(2.0), "live ticker did not tick")
+        self.assertTrue(
+            runtime.tick_event.wait(2.0), "live ticker did not tick"
+        )
         self.assertIn(("tick", 33, False), runtime.commands)
         harness.json("POST", "/api/live/stop")
 
@@ -651,7 +657,9 @@ class LiveHttpTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(payload["sessions"][0]["app"], "coffee")
 
-    def test_pointer_and_key_input_are_forwarded_to_the_live_runtime(self) -> None:
+    def test_pointer_and_key_input_are_forwarded_to_the_live_runtime(
+        self,
+    ) -> None:
         factory = Factory(lambda index: FakeRuntime())
         harness = self._harness(factory)
 
@@ -742,11 +750,11 @@ class LiveHttpTest(unittest.TestCase):
                 "the live start never reached Runtime.start()",
             )
             self.assertTrue(harness.server.app.live.is_starting())
-            status, _, payload = harness.json(
-                "GET", "/api/apps", timeout=1.0
-            )
+            status, _, payload = harness.json("GET", "/api/apps", timeout=1.0)
             self.assertEqual(status, 200, payload)
-            self.assertIn("coffee", {entry["name"] for entry in payload["apps"]})
+            self.assertIn(
+                "coffee", {entry["name"] for entry in payload["apps"]}
+            )
             self.assertIn("trash", payload)
         finally:
             runtime.start_release.set()
@@ -793,7 +801,9 @@ class LiveHttpTest(unittest.TestCase):
         ]
         for method, path, name, args, expected_status, code in cases:
             with self.subTest(code=code):
-                error = LiveError(code, f"{code} message", detail={"why": code})
+                error = LiveError(
+                    code, f"{code} message", detail={"why": code}
+                )
                 with mock.patch.object(
                     harness.server.app.live, name, side_effect=error
                 ):
@@ -817,9 +827,7 @@ class LiveHttpTest(unittest.TestCase):
                     payload,
                 )
                 self.assertEqual(payload["error"]["code"], code)
-                self.assertEqual(
-                    payload["error"]["detail"], {"why": code}
-                )
+                self.assertEqual(payload["error"]["detail"], {"why": code})
 
     def test_shutdown_stops_the_running_live_runtime(self) -> None:
         factory = Factory(lambda index: SessionFakeRuntime(self.session))
@@ -840,7 +848,6 @@ class LiveHttpTest(unittest.TestCase):
 
 
 class LiveIndependentEngineTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -890,15 +897,15 @@ class LiveIndependentEngineTest(unittest.TestCase):
         self.assertTrue(live_now["running"])
         self.assertEqual(live_now["pid"], pid)
 
-        status, _, stopped = harness.json("POST", "/api/live/stop", timeout=60.0)
+        status, _, stopped = harness.json(
+            "POST", "/api/live/stop", timeout=60.0
+        )
         self.assertEqual(status, 200, stopped)
         self.assertFalse(stopped["running"])
 
         final = Recording.open(live["session_dir"])
         self.assertEqual(final.manifest["status"], "ok")
-        self.assertEqual(
-            final.manifest["frame_count"], len(final.frames)
-        )
+        self.assertEqual(final.manifest["frame_count"], len(final.frames))
         self.assertGreaterEqual(final.manifest["frame_count"], 1)
 
 
@@ -939,5 +946,3 @@ def _quiet_stop(harness: WebHarness) -> None:
         harness.server.app.live.stop()
     except Exception:  # noqa: BLE001 - cleanup must never mask the test result
         pass
-
-

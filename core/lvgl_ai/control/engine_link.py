@@ -117,7 +117,6 @@ class EngineLink:
         self._seq = 0
         self._unexpected_exit = False
 
-
     @property
     def is_running(self) -> bool:
         return self._proc is not None and self._proc.poll() is None
@@ -220,7 +219,11 @@ class EngineLink:
         timeout: float | None = None,
         track_check: bool = True,
     ) -> dict[str, Any]:
-        if not self.is_running or self._proc is None or self._proc.stdin is None:
+        if (
+            not self.is_running
+            or self._proc is None
+            or self._proc.stdin is None
+        ):
             if self._proc is not None and self._proc.poll() is not None:
                 self._unexpected_exit = True
             raise self.crash("engine is not running")
@@ -256,7 +259,9 @@ class EngineLink:
             item = self._queue_get(wait, "engine did not announce ready")
             if item is _EOF:
                 self._unexpected_exit = True
-                raise self.crash("engine closed stdout before announcing ready")
+                raise self.crash(
+                    "engine closed stdout before announcing ready"
+                )
             message, raw = item
             if message.get("ready") is True:
                 self._validate_ready(message, raw, on_frames)
@@ -265,7 +270,9 @@ class EngineLink:
             raise ProtocolError(
                 f"unexpected protocol line before ready: {raw}",
                 raw=raw,
-                seq=seq if isinstance(seq, int) and not isinstance(seq, bool) else None,
+                seq=seq
+                if isinstance(seq, int) and not isinstance(seq, bool)
+                else None,
             )
 
     def crash(self, message: str) -> RuntimeCrash:
@@ -281,7 +288,9 @@ class EngineLink:
     ) -> RuntimeCrash:
         error.exit_code = exit_code
         error.log_tail = self._log_tail()
-        error.log_path = None if self._log_path is None else str(self._log_path)
+        error.log_path = (
+            None if self._log_path is None else str(self._log_path)
+        )
         return error
 
     def _pump_stdout(self) -> None:
@@ -306,7 +315,9 @@ class EngineLink:
 
     def _await_reply(self, seq: int, line: str, timeout: float) -> dict:
         while True:
-            item = self._queue_get(timeout, f"engine did not reply to {line!r}")
+            item = self._queue_get(
+                timeout, f"engine did not reply to {line!r}"
+            )
             if item is _EOF:
                 self._unexpected_exit = True
                 raise self.crash(f"engine exited before replying to {line!r}")
@@ -348,7 +359,9 @@ class EngineLink:
             return ProtocolError(text, raw=raw, seq=seq)
 
         if actual_seq != 0:
-            raise invalid(f"ready must carry seq=0, got {message.get('seq')!r}")
+            raise invalid(
+                f"ready must carry seq=0, got {message.get('seq')!r}"
+            )
         missing = [
             key
             for key in (
@@ -377,7 +390,10 @@ class EngineLink:
             raise invalid(
                 f"ready.inputs must be ['real', 'virtual'], got {message['inputs']!r}"
             )
-        if display_problem(message["display"], label="ready.display") is not None:
+        if (
+            display_problem(message["display"], label="ready.display")
+            is not None
+        ):
             raise invalid("ready.display must carry positive width and height")
         if not isinstance(message["inputs"], list) or not isinstance(
             message["capabilities"], list
@@ -386,7 +402,11 @@ class EngineLink:
         if message["mode"] not in ("headless", "window"):
             raise invalid(f"unknown ready.mode {message['mode']!r}")
         frames = message.get("frames")
-        if isinstance(frames, bool) or not isinstance(frames, int) or frames < 0:
+        if (
+            isinstance(frames, bool)
+            or not isinstance(frames, int)
+            or frames < 0
+        ):
             raise invalid("ready.frames must be the recorded frame count")
         if on_frames is not None:
             on_frames(frames)
@@ -397,8 +417,12 @@ class EngineLink:
                 or not isinstance(max_frames, int)
                 or max_frames < 0
             ):
-                raise invalid("ready.max_frames must be a non-negative integer")
-        if "truncated" in message and not isinstance(message["truncated"], bool):
+                raise invalid(
+                    "ready.max_frames must be a non-negative integer"
+                )
+        if "truncated" in message and not isinstance(
+            message["truncated"], bool
+        ):
             raise invalid("ready.truncated must be a boolean")
 
 
@@ -423,8 +447,10 @@ def _protocol_message(line: str) -> dict | None:
     if payload.get("ready") is True:
         return payload
     seq = payload.get("seq")
-    if isinstance(seq, int) and not isinstance(seq, bool) and isinstance(
-        payload.get("ok"), bool
+    if (
+        isinstance(seq, int)
+        and not isinstance(seq, bool)
+        and isinstance(payload.get("ok"), bool)
     ):
         return payload
     return None

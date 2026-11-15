@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import os
@@ -20,8 +19,9 @@ EXPECTED_LVGL = {
     "8.4": "8.4.0",
     "8.3": "8.3.11",
 }
-EXPECTED_ADAPTER = {version: "8x" if version.startswith("8.") else "9x"
-                    for version in VERSIONS}
+EXPECTED_ADAPTER = {
+    version: "8x" if version.startswith("8.") else "9x" for version in VERSIONS
+}
 
 # LVGL 8.3/8.4 call the button class "lv_btn" and 9.1 reports the short "btn";
 # 9.4+ uses "lv_button". The objects and events are the same, so the matrix
@@ -47,17 +47,25 @@ def artifact_paths(session_dir: Path) -> list[str]:
 
 def without_hit(rows: list[dict]) -> list[dict]:
     return [
-        {key: value for key, value in row.items() if key not in ("hit", "hit_class")}
+        {
+            key: value
+            for key, value in row.items()
+            if key not in ("hit", "hit_class")
+        }
         for row in rows
     ]
 
 
 def canonical_classes(rows: list[dict]) -> list[str]:
-    return [CLASS_ALIASES.get(row["hit_class"], row["hit_class"]) for row in rows]
+    return [
+        CLASS_ALIASES.get(row["hit_class"], row["hit_class"]) for row in rows
+    ]
 
 
 class VersionPathRulesTest(unittest.TestCase):
-    def test_build_dirs_are_per_version_and_patched_trees_are_separate(self) -> None:
+    def test_build_dirs_are_per_version_and_patched_trees_are_separate(
+        self,
+    ) -> None:
         self.assertEqual(
             paths.build_dir_for("9.6"), paths.BUILD_ROOT / "lvgl_9_6"
         )
@@ -88,6 +96,7 @@ class VersionPathRulesTest(unittest.TestCase):
                 paths.LVGL_SRC_ROOT / "8.4-patched",
             )
 
+
 class MultiVersionMatrixTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -108,7 +117,9 @@ class MultiVersionMatrixTest(unittest.TestCase):
                 rt.stop()
             cls.runs[version] = (rt, Recording.open(rt.session_dir))
 
-    def test_ready_and_manifest_report_the_built_version_and_source(self) -> None:
+    def test_ready_and_manifest_report_the_built_version_and_source(
+        self,
+    ) -> None:
         for version, (rt, recording) in self.runs.items():
             with self.subTest(version=version):
                 expected_version = EXPECTED_LVGL[version]
@@ -122,9 +133,7 @@ class MultiVersionMatrixTest(unittest.TestCase):
                 self.assertEqual(
                     recording.manifest["adapter"], EXPECTED_ADAPTER[version]
                 )
-                self.assertEqual(
-                    rt.build_dir, paths.build_dir_for(version)
-                )
+                self.assertEqual(rt.build_dir, paths.build_dir_for(version))
                 self.assertTrue(rt.engine_path.is_file())
 
     def test_versions_build_and_run_the_same_scenario(self) -> None:
@@ -134,8 +143,16 @@ class MultiVersionMatrixTest(unittest.TestCase):
 
         self.assertEqual(
             [row["hit"] for row in baseline],
-            ["demo_button", "demo_button", "demo_button", "demo_button",
-             "demo_button", "", "", ""],
+            [
+                "demo_button",
+                "demo_button",
+                "demo_button",
+                "demo_button",
+                "demo_button",
+                "",
+                "",
+                "",
+            ],
         )
         self.assertTrue(all(row["hit_class"] for row in baseline))
 
@@ -144,21 +161,25 @@ class MultiVersionMatrixTest(unittest.TestCase):
                 rt, recording = self.runs[version]
                 rows = input_rows(recording)
                 self.assertEqual(without_hit(rows), without_hit(baseline))
-                self.assertEqual(canonical_classes(rows), canonical_classes(baseline))
+                self.assertEqual(
+                    canonical_classes(rows), canonical_classes(baseline)
+                )
                 self.assertEqual(timeline_row_types(recording), baseline_types)
-                self.assertEqual(artifact_paths(rt.session_dir), baseline_artifacts)
+                self.assertEqual(
+                    artifact_paths(rt.session_dir), baseline_artifacts
+                )
 
         # 9.5 and 9.4 report the same names and class strings as 9.6.
         for version in ("9.5", "9.4"):
             with self.subTest(version=version, names=True):
-                self.assertEqual(
-                    input_rows(self.runs[version][1]), baseline
-                )
+                self.assertEqual(input_rows(self.runs[version][1]), baseline)
 
         # 9.1 has no object-name API: hit is empty and class names are the
         # short 9.1 spellings, mapped to the canonical names above.
         rows_9_1 = input_rows(self.runs["9.1"][1])
-        self.assertEqual([row["hit"] for row in rows_9_1], [""] * len(baseline))
+        self.assertEqual(
+            [row["hit"] for row in rows_9_1], [""] * len(baseline)
+        )
         self.assertEqual(
             [row["hit_class"] for row in rows_9_1],
             ["btn", "btn", "btn", "btn", "btn", "obj", "obj", "obj"],
@@ -183,7 +204,10 @@ class MultiVersionMatrixTest(unittest.TestCase):
         # decode would either crash or produce nonzero diffs against an
         # identical run.
         for version in VERSIONS:
-            with self.subTest(version=version), tempfile.TemporaryDirectory() as tmp:
+            with (
+                self.subTest(version=version),
+                tempfile.TemporaryDirectory() as tmp,
+            ):
                 root = Path(tmp)
                 baseline = Runtime(
                     lvgl=version,
@@ -212,17 +236,26 @@ class MultiVersionMatrixTest(unittest.TestCase):
                 rows = Recording.open(rt.session_dir).reference_diffs()
                 self.assertIsNotNone(rows)
                 assert rows is not None
-                self.assertEqual([row["changed_px"] for row in rows[:2]], [0, 0])
+                self.assertEqual(
+                    [row["changed_px"] for row in rows[:2]], [0, 0]
+                )
 
     def test_lvgl_version_env_selects_the_build(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             for version in ("9.5", "8.3"):
-                with self.subTest(version=version), mock.patch.dict(
-                    os.environ,
-                    {"LVGL_AI_LVGL_VERSION": version, "LVGL_AI_LVGL_SRC": ""},
+                with (
+                    self.subTest(version=version),
+                    mock.patch.dict(
+                        os.environ,
+                        {
+                            "LVGL_AI_LVGL_VERSION": version,
+                            "LVGL_AI_LVGL_SRC": "",
+                        },
+                    ),
                 ):
                     rt = Runtime(
-                        build=True, sessions_root=Path(tmp) / version / "sessions"
+                        build=True,
+                        sessions_root=Path(tmp) / version / "sessions",
                     )
                     rt.start()
                     try:
@@ -230,7 +263,9 @@ class MultiVersionMatrixTest(unittest.TestCase):
                         self.assertEqual(
                             rt.build_dir, paths.build_dir_for(version)
                         )
-                        self.assertEqual(rt.ready["lvgl"], EXPECTED_LVGL[version])
+                        self.assertEqual(
+                            rt.ready["lvgl"], EXPECTED_LVGL[version]
+                        )
                         self.assertEqual(
                             rt.ready["adapter"], EXPECTED_ADAPTER[version]
                         )
@@ -244,8 +279,11 @@ class MultiVersionMatrixTest(unittest.TestCase):
                 override = (paths.LVGL_SRC_ROOT / tree).resolve()
                 expected_version = EXPECTED_LVGL[tree]
                 adapter = EXPECTED_ADAPTER[tree]
-                with self.subTest(label=label), mock.patch.dict(
-                    os.environ, {"LVGL_AI_LVGL_SRC": str(override)}
+                with (
+                    self.subTest(label=label),
+                    mock.patch.dict(
+                        os.environ, {"LVGL_AI_LVGL_SRC": str(override)}
+                    ),
                 ):
                     rt = Runtime(
                         lvgl=label,
@@ -270,7 +308,6 @@ class MultiVersionMatrixTest(unittest.TestCase):
 
 
 class EightXInputSemanticsTest(unittest.TestCase):
-
     def test_8x_keypad_and_encoder_are_delivered(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             for version in ("8.4", "8.3"):
@@ -282,10 +319,16 @@ class EightXInputSemanticsTest(unittest.TestCase):
                     )
                     rt.start()
                     try:
-                        self.assertIs(rt.key("press", "ENTER")["delivered"], True)
-                        self.assertIs(rt.key("release", "ENTER")["delivered"], True)
+                        self.assertIs(
+                            rt.key("press", "ENTER")["delivered"], True
+                        )
+                        self.assertIs(
+                            rt.key("release", "ENTER")["delivered"], True
+                        )
                         self.assertIs(rt.encoder("turn", 1)["delivered"], True)
-                        self.assertIs(rt.encoder("turn", -1)["delivered"], True)
+                        self.assertIs(
+                            rt.encoder("turn", -1)["delivered"], True
+                        )
                     finally:
                         rt.stop()
                     log_text = (rt.session_dir / "engine.log").read_text(

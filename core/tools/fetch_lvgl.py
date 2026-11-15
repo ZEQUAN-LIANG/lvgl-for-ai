@@ -21,7 +21,6 @@ Usage:
     python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --patch-dir my-patches
 """
 
-
 from __future__ import annotations
 
 import argparse
@@ -62,11 +61,19 @@ def parse_version_header(tree: Path) -> tuple[int, int, int]:
     )
     path = next((item for item in candidates if item.is_file()), None)
     if path is None:
-        raise SystemExit(f"{tree}: version header (lv_version.h or lvgl.h) not found")
+        raise SystemExit(
+            f"{tree}: version header (lv_version.h or lvgl.h) not found"
+        )
     text = path.read_text(encoding="utf-8", errors="replace")
     values = {}
-    for name in ("LVGL_VERSION_MAJOR", "LVGL_VERSION_MINOR", "LVGL_VERSION_PATCH"):
-        match = re.search(rf"^#define\s+{name}\s+(\d+)\s*$", text, re.MULTILINE)
+    for name in (
+        "LVGL_VERSION_MAJOR",
+        "LVGL_VERSION_MINOR",
+        "LVGL_VERSION_PATCH",
+    ):
+        match = re.search(
+            rf"^#define\s+{name}\s+(\d+)\s*$", text, re.MULTILINE
+        )
         if match is None:
             raise SystemExit(f"{path}: missing {name}")
         values[name] = int(match.group(1))
@@ -131,7 +138,11 @@ def download(tag: str, archive: Path, source: str) -> None:
         label = f"{url} (resolve {resolve_ip})" if resolve_ip else url
         print(f"download {label}", flush=True)
         returncode = _curl(url, archive, resolve_ip=resolve_ip)
-        if returncode == 0 and archive.is_file() and archive.stat().st_size > 0:
+        if (
+            returncode == 0
+            and archive.is_file()
+            and archive.stat().st_size > 0
+        ):
             if not _is_gzip(archive):
                 errors.append(f"{label}: response is not a gzip archive")
                 archive.unlink(missing_ok=True)
@@ -153,7 +164,10 @@ def extract(archive: Path, extract_root: Path) -> Path:
             if member.issym() or member.islnk():
                 raise SystemExit(f"unsafe archive member: {member.name}")
             target = (extract_root / member.name).resolve()
-            if extract_root.resolve() not in target.parents and target != extract_root.resolve():
+            if (
+                extract_root.resolve() not in target.parents
+                and target != extract_root.resolve()
+            ):
                 raise SystemExit(f"unsafe archive member: {member.name}")
         try:
             tar.extractall(extract_root, filter="data")
@@ -189,25 +203,36 @@ def install(tree: Path, dest: Path, version: str) -> None:
     if dest.exists():
         shutil.rmtree(dest)
     shutil.copytree(tree, dest)
-    print(f"installed LVGL {actual[0]}.{actual[1]}.{actual[2]} -> {dest}", flush=True)
+    print(
+        f"installed LVGL {actual[0]}.{actual[1]}.{actual[2]} -> {dest}",
+        flush=True,
+    )
 
 
-def patch_dir_for(repo_root: Path, version: str, override: Path | None) -> Path:
+def patch_dir_for(
+    repo_root: Path, version: str, override: Path | None
+) -> Path:
     base = override if override is not None else repo_root / "patches"
     return base / version
 
 
 def _read_series(series: Path) -> list[str]:
     names = []
-    for lineno, raw in enumerate(series.read_text(encoding="utf-8").splitlines(), 1):
+    for lineno, raw in enumerate(
+        series.read_text(encoding="utf-8").splitlines(), 1
+    ):
         entry = raw.strip()
         if not entry or entry.startswith("#"):
             continue
         candidate = Path(entry)
         if candidate.is_absolute() or ".." in candidate.parts:
-            raise SystemExit(f"{series}:{lineno}: unsafe patch path: {entry!r}")
+            raise SystemExit(
+                f"{series}:{lineno}: unsafe patch path: {entry!r}"
+            )
         if candidate.suffix != ".patch":
-            raise SystemExit(f"{series}:{lineno}: expected a .patch file: {entry!r}")
+            raise SystemExit(
+                f"{series}:{lineno}: expected a .patch file: {entry!r}"
+            )
         names.append(entry)
     return names
 
@@ -249,7 +274,9 @@ def _git_apply(tree: Path, patch: Path, *, check: bool) -> None:
             errors="replace",
         )
     except FileNotFoundError:
-        raise SystemExit("git is required to apply LVGL patches")
+        raise SystemExit(
+            "git is required to apply LVGL patches"
+        ) from None
     if result.returncode != 0:
         detail = (result.stderr or result.stdout).strip()
         action = "check" if check else "apply"
@@ -284,7 +311,9 @@ def write_source_stamp(dest: Path, version: str, patches: list[Path]) -> None:
     print(f"wrote {path}", flush=True)
 
 
-def source_stamp_matches(dest: Path, version: str, patches: list[Path]) -> bool:
+def source_stamp_matches(
+    dest: Path, version: str, patches: list[Path]
+) -> bool:
     stamp = dest / ".lvgl-ai-source.json"
     if not stamp.is_file():
         return False
@@ -344,15 +373,21 @@ def main() -> int:
                 f"{dest} exists but does not match the patches for LVGL {version}; "
                 "rerun with --force to replace it"
             )
-        print(f"already installed: {dest} (LVGL {actual[0]}.{actual[1]}.{actual[2]})")
+        print(
+            f"already installed: {dest} (LVGL {actual[0]}.{actual[1]}.{actual[2]})"
+        )
         return 0
 
     if patches:
-        print(f"applying {len(patches)} patch(es) from {patch_dir}", flush=True)
+        print(
+            f"applying {len(patches)} patch(es) from {patch_dir}", flush=True
+        )
     elif patch_dir.is_dir():
         print(f"no patches in {patch_dir}", flush=True)
 
-    archive = repo_root / ".scratch" / "tmp" / "archives" / f"lvgl-{tag}.tar.gz"
+    archive = (
+        repo_root / ".scratch" / "tmp" / "archives" / f"lvgl-{tag}.tar.gz"
+    )
     extract_root = repo_root / ".scratch" / "tmp" / "downloads" / version
     download(tag, archive, args.source)
     tree = extract(archive, extract_root)

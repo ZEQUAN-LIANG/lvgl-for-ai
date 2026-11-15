@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import contextlib
@@ -16,7 +15,7 @@ import urllib.request
 from pathlib import Path
 from unittest import mock
 
-from lvgl_ai.web import DEFAULT_HOST, DEFAULT_PORT, create_server
+from lvgl_ai.web import DEFAULT_HOST, DEFAULT_PORT
 from lvgl_ai.web import webapp as web_server
 from support import write_png_rgb
 from web_support import SESSION_ID, WebHarness, make_web_session
@@ -53,15 +52,15 @@ class ReplayPageTest(unittest.TestCase):
         status, _, html = self.harness.html("/")
         self.assertEqual(status, 200)
         self.assertEqual(self.manifest["frame_count"], 3)
-        self.assertIn(f'data-frame-count="{self.manifest["frame_count"]}"', html)
+        self.assertIn(
+            f'data-frame-count="{self.manifest["frame_count"]}"', html
+        )
         self.assertRegex(
             html,
             rf'id="frame-total"[^>]*>{self.manifest["frame_count"]}<',
         )
         for number in range(1, self.manifest["frame_count"] + 1):
-            self.assertIn(
-                f"/frames/{SESSION_ID}/{number:06d}.png", html
-            )
+            self.assertIn(f"/frames/{SESSION_ID}/{number:06d}.png", html)
 
     def test_page_exposes_frames_snapshots_and_timeline(self) -> None:
         _, _, html = self.harness.html("/")
@@ -127,7 +126,9 @@ class ReplayPageTest(unittest.TestCase):
         self.assertIn(f'value="{SESSION_ID}"', html)
         self.assertIn("selected", html)
 
-    def test_empty_sessions_root_still_serves_the_page_and_live_controls(self) -> None:
+    def test_empty_sessions_root_still_serves_the_page_and_live_controls(
+        self,
+    ) -> None:
         empty = self.root / "empty"
         empty.mkdir()
         harness = WebHarness(empty)
@@ -179,7 +180,9 @@ class ReplayApiTest(unittest.TestCase):
         self.assertEqual(entry["frame_count"], self.manifest["frame_count"])
         self.assertEqual(entry["status"], "ok")
 
-    def test_session_detail_reports_frames_snapshots_and_annotations(self) -> None:
+    def test_session_detail_reports_frames_snapshots_and_annotations(
+        self,
+    ) -> None:
         status, _, payload = self.harness.json(
             "GET", f"/api/sessions/{SESSION_ID}"
         )
@@ -223,7 +226,10 @@ class ReplayApiTest(unittest.TestCase):
 
     def test_frames_and_snapshots_are_served_byte_for_byte(self) -> None:
         cases = [
-            (f"/frames/{SESSION_ID}/000001.png", self.session / "frames" / "000001.png"),
+            (
+                f"/frames/{SESSION_ID}/000001.png",
+                self.session / "frames" / "000001.png",
+            ),
             (
                 f"/snapshots/{SESSION_ID}/001_after_click.png",
                 self.session / "snapshots" / "001_after_click.png",
@@ -280,9 +286,7 @@ class ReplayApiTest(unittest.TestCase):
             side_effect=AssertionError("replay must not spawn a process"),
         ):
             self.assertEqual(self.harness.html("/")[0], 200)
-            self.assertEqual(
-                self.harness.json("GET", "/api/sessions")[0], 200
-            )
+            self.assertEqual(self.harness.json("GET", "/api/sessions")[0], 200)
             self.assertEqual(
                 self.harness.request(
                     "GET", f"/frames/{SESSION_ID}/000001.png"
@@ -296,7 +300,7 @@ def _page_model(html: str) -> dict:
     prefix = "const MODEL = "
     for line in html.splitlines():
         if line.startswith(prefix):
-            return json.loads(line[len(prefix):].rstrip(";"))
+            return json.loads(line[len(prefix) :].rstrip(";"))
     raise AssertionError("the page must embed MODEL")
 
 
@@ -304,7 +308,9 @@ def _write_note_with_crop(session: Path) -> None:
     regions = session / "regions"
     regions.mkdir(exist_ok=True)
     write_png_rgb(
-        regions / "001_region.png", 2, 2,
+        regions / "001_region.png",
+        2,
+        2,
         [(7, 7, 7), (7, 7, 7), (7, 7, 7), (7, 7, 7)],
     )
     (session / "annotations.json").write_text(
@@ -338,7 +344,6 @@ def _write_note_with_crop(session: Path) -> None:
 
 
 class SharedReplayModelTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -364,9 +369,7 @@ class SharedReplayModelTest(unittest.TestCase):
         self.assertEqual(model["notesCount"], payload["annotations_count"])
 
     def test_page_snapshots_and_timeline_render_the_api_rows(self) -> None:
-        _, _, payload = self.harness.json(
-            "GET", f"/api/sessions/{SESSION_ID}"
-        )
+        _, _, payload = self.harness.json("GET", f"/api/sessions/{SESSION_ID}")
         _, _, timeline = self.harness.json(
             "GET", f"/api/sessions/{SESSION_ID}/timeline"
         )
@@ -377,9 +380,11 @@ class SharedReplayModelTest(unittest.TestCase):
             self.assertIn(f'data-snapshot-label="{snapshot["label"]}"', html)
             self.assertIn(f'data-snapshot-url="{snapshot["url"]}"', html)
         for row in timeline["timeline"]:
-            self.assertIn(f'kind-{row["type"]}', html)
+            self.assertIn(f"kind-{row['type']}", html)
 
-    def test_page_renders_notes_from_the_same_annotation_document(self) -> None:
+    def test_page_renders_notes_from_the_same_annotation_document(
+        self,
+    ) -> None:
         _, _, annotations = self.harness.json(
             "GET", f"/api/sessions/{SESSION_ID}/annotations"
         )
@@ -387,23 +392,18 @@ class SharedReplayModelTest(unittest.TestCase):
         notes = annotations["annotations"]["notes"]
 
         self.assertEqual(len(notes), 1)
-        self.assertIn(
-            f'id="annotation-total">{len(notes)}<', html
-        )
+        self.assertIn(f'id="annotation-total">{len(notes)}<', html)
         self.assertEqual(
             html.count('data-note-id="seed-note"'),
             1,
             "the page must render each note exactly once",
         )
-        self.assertIn(
-            f'/frames/{SESSION_ID}/000002.png', html
-        )
+        self.assertIn(f"/frames/{SESSION_ID}/000002.png", html)
         self.assertIn('class="note-frame"', html)
         self.assertIn('class="note-delete"', html)
 
 
 class NotesSingleRendererTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -438,9 +438,7 @@ class NotesSingleRendererTest(unittest.TestCase):
             "a saved note must be rendered exactly once, by the server renderer",
         )
         self.assertIn('data-note-frame="2"', html)
-        self.assertIn(
-            '<span class="note-meta">帧 2 · t=16 ms</span>', html
-        )
+        self.assertIn('<span class="note-meta">帧 2 · t=16 ms</span>', html)
         self.assertIn('<span class="tags">#layout #color</span>', html)
         self.assertIn("<p>button is too low</p>", html)
         self.assertIn('<code class="note-regions">(0, 0) 2×2</code>', html)
@@ -451,7 +449,6 @@ class NotesSingleRendererTest(unittest.TestCase):
 
 
 class ReplayDegradationTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -460,7 +457,9 @@ class ReplayDegradationTest(unittest.TestCase):
         self.harness = WebHarness(self.root)
         self.addCleanup(self.harness.close)
 
-    def test_corrupt_timeline_page_degrades_but_the_api_reports_it(self) -> None:
+    def test_corrupt_timeline_page_degrades_but_the_api_reports_it(
+        self,
+    ) -> None:
         (self.session / "timeline.ndjson").write_text(
             "{broken\n", encoding="utf-8"
         )
@@ -469,9 +468,7 @@ class ReplayDegradationTest(unittest.TestCase):
         self.assertIn("时间轴为空。", html)
         self.assertIn('data-frame-count="3"', html)
         for number in (1, 2, 3):
-            self.assertIn(
-                f"/frames/{SESSION_ID}/{number:06d}.png", html
-            )
+            self.assertIn(f"/frames/{SESSION_ID}/{number:06d}.png", html)
 
         status, _, payload = self.harness.json(
             "GET", f"/api/sessions/{SESSION_ID}/timeline"
@@ -479,7 +476,9 @@ class ReplayDegradationTest(unittest.TestCase):
         self.assertEqual(status, 500, payload)
         self.assertEqual(payload["error"]["code"], "internal_error")
 
-    def test_corrupt_annotations_page_and_api_keep_their_fallbacks(self) -> None:
+    def test_corrupt_annotations_page_and_api_keep_their_fallbacks(
+        self,
+    ) -> None:
         (self.session / "annotations.json").write_text(
             "{broken\n", encoding="utf-8"
         )
@@ -500,7 +499,9 @@ class ReplayDegradationTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(payload["annotations_count"], 0)
 
-    def test_note_missing_t_ms_renders_an_empty_value_like_before(self) -> None:
+    def test_note_missing_t_ms_renders_an_empty_value_like_before(
+        self,
+    ) -> None:
         (self.session / "annotations.json").write_text(
             json.dumps(
                 {
@@ -523,7 +524,9 @@ class ReplayDegradationTest(unittest.TestCase):
         self.assertIn("帧 1 · t= ms", html)
         self.assertNotIn("t=None ms", html)
 
-    def test_missing_frame_diffs_keeps_the_unreadable_session_notice(self) -> None:
+    def test_missing_frame_diffs_keeps_the_unreadable_session_notice(
+        self,
+    ) -> None:
         (self.session / "frame_diffs.ndjson").unlink()
         status, _, html = self.harness.html(f"/?session={SESSION_ID}")
         self.assertEqual(status, 200)
@@ -550,7 +553,9 @@ class LauncherTest(unittest.TestCase):
         self.assertIn("8765", readme)
         self.assertIn("http://127.0.0.1:8765/", readme)
 
-    def test_help_works_from_another_directory_with_isolated_python(self) -> None:
+    def test_help_works_from_another_directory_with_isolated_python(
+        self,
+    ) -> None:
         result = subprocess.run(
             [sys.executable, "-I", str(WEB_LAUNCHER), "--help"],
             cwd=str(self.root),
@@ -570,11 +575,11 @@ class LauncherTest(unittest.TestCase):
         fake = mock.Mock()
         fake.server_address = (DEFAULT_HOST, DEFAULT_PORT)
         fake.serve_forever.side_effect = KeyboardInterrupt
-        with mock.patch.object(
-            web_server, "create_server", return_value=fake
-        ), mock.patch.object(
-            web_server.webbrowser, "open"
-        ) as open_browser, contextlib.redirect_stdout(io.StringIO()):
+        with (
+            mock.patch.object(web_server, "create_server", return_value=fake),
+            mock.patch.object(web_server.webbrowser, "open") as open_browser,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
             with self.assertRaises(KeyboardInterrupt):
                 web_server.serve(open_browser=True, **kwargs)
         return open_browser
@@ -591,9 +596,7 @@ class LauncherTest(unittest.TestCase):
 
     def test_serve_opens_page_with_manage_query(self) -> None:
         open_browser = self._serve_with_mock(manage=True)
-        open_browser.assert_called_once_with(
-            "http://127.0.0.1:8765/?manage=1"
-        )
+        open_browser.assert_called_once_with("http://127.0.0.1:8765/?manage=1")
 
     def test_serve_combines_app_and_manage(self) -> None:
         open_browser = self._serve_with_mock(app="hello", manage=True)
@@ -640,7 +643,9 @@ class LauncherTest(unittest.TestCase):
         else:
             process.terminate()
             out, err = process.communicate(timeout=10)
-            self.fail(f"server did not answer: {last_error}\nstdout={out}\nstderr={err}")
+            self.fail(
+                f"server did not answer: {last_error}\nstdout={out}\nstderr={err}"
+            )
 
 
 def _terminate(process: subprocess.Popen) -> None:

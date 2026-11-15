@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -15,7 +14,9 @@ class ReleaseAssetsTest(unittest.TestCase):
     def test_selects_zips_and_checksums_only(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
-            (root / "lvgl-verify-loop-0.2.0-full-win64.zip").write_bytes(b"full")
+            (root / "lvgl-verify-loop-0.2.0-full-win64.zip").write_bytes(
+                b"full"
+            )
             (root / "lvgl-verify-loop-0.2.0-full-sifli-win64.zip").write_bytes(
                 b"sifli"
             )
@@ -48,7 +49,9 @@ class ReleaseAssetsTest(unittest.TestCase):
 
 
 class ManifestAssetsTest(unittest.TestCase):
-    def make_release(self, root: Path, *, tool_version: str = "0.2.0") -> list[str]:
+    def make_release(
+        self, root: Path, *, tool_version: str = "0.2.0"
+    ) -> list[str]:
         full = root / "lvgl-verify-loop-0.2.0-full-win64.zip"
         sifli = root / "lvgl-verify-loop-0.2.0-full-sifli-win64.zip"
         for path, data in ((full, b"full"), (sifli, b"sifli")):
@@ -127,7 +130,9 @@ class ManifestAssetsTest(unittest.TestCase):
 
 class TokenTest(unittest.TestCase):
     def test_token_comes_from_the_environment(self) -> None:
-        with mock.patch.dict(os.environ, {"GITEE_TOKEN": "secret"}, clear=True):
+        with mock.patch.dict(
+            os.environ, {"GITEE_TOKEN": "secret"}, clear=True
+        ):
             self.assertEqual(
                 upload_release.resolve_token("GITEE_TOKEN", "Gitee"),
                 "secret",
@@ -148,9 +153,7 @@ class NotesTest(unittest.TestCase):
     def test_explicit_missing_notes_are_an_error(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             with self.assertRaises(upload_release.UploadError):
-                upload_release.load_notes(
-                    Path(raw), Path(raw) / "missing.md"
-                )
+                upload_release.load_notes(Path(raw), Path(raw) / "missing.md")
 
     def test_notes_file_is_read(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

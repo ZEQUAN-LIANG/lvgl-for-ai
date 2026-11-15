@@ -115,7 +115,9 @@ def _bitmap_rows(bitmap: object) -> tuple[list[bytes], int]:
         raw = ctypes.string_at(buffer.buffer, stride * rows)
     else:
         raw = bytes(bitmap.buffer)
-    result = [raw[index * stride : (index + 1) * stride] for index in range(rows)]
+    result = [
+        raw[index * stride : (index + 1) * stride] for index in range(rows)
+    ]
     if pitch < 0:
         result.reverse()
     return result, stride
@@ -143,7 +145,9 @@ def _pack_pixels(rows_values: Iterable[Iterable[int]], bpp: int) -> bytes:
     return bytes(output)
 
 
-def _glyph_pixels(freetype: object, bitmap: object, bpp: int) -> Iterable[list[int]]:
+def _glyph_pixels(
+    freetype: object, bitmap: object, bpp: int
+) -> Iterable[list[int]]:
     rows, _stride = _bitmap_rows(bitmap)
     width = int(bitmap.width)
     pixel_mode = int(bitmap.pixel_mode)
@@ -201,7 +205,10 @@ def _estimate_cmap_split(codepoints: list[int]) -> list[tuple[str, list[int]]]:
                 size = 16 + (span + 1)
                 if previous + size < best[0]:
                     best = (previous + size, start, index, "format0")
-            if span < 256 and codepoints[index] - index == codepoints[start] - start:
+            if (
+                span < 256
+                and codepoints[index] - index == codepoints[start] - start
+            ):
                 size = 16
                 if previous + size < best[0]:
                     best = (previous + size, start, index, "format0_tiny")
@@ -232,7 +239,9 @@ def build_cmaps(glyphs: list[Glyph]) -> list[CmapSubtable]:
         start_id = ids[min_code]
         if fmt == "format0_tiny":
             subtables.append(
-                CmapSubtable(fmt, codes, min_code, max_code, start_id, list_length=0)
+                CmapSubtable(
+                    fmt, codes, min_code, max_code, start_id, list_length=0
+                )
             )
             continue
         if fmt == "format0":
@@ -298,7 +307,9 @@ def rasterize_font(options: FontOptions) -> FontData:
     try:
         face.set_pixel_sizes(0, options.size)
     except Exception as exc:
-        raise AssetError(f"cannot set font size {options.size}: {exc}") from exc
+        raise AssetError(
+            f"cannot set font size {options.size}: {exc}"
+        ) from exc
     try:
         face.select_charmap(freetype.FT_ENCODING_UNICODE)
     except Exception:
@@ -328,7 +339,9 @@ def rasterize_font(options: FontOptions) -> FontData:
         bitmap = face.glyph.bitmap
         box_w = int(bitmap.width)
         box_h = int(bitmap.rows)
-        bitmap_bytes = _pack_pixels(_glyph_pixels(freetype, bitmap, options.bpp), options.bpp)
+        bitmap_bytes = _pack_pixels(
+            _glyph_pixels(freetype, bitmap, options.bpp), options.bpp
+        )
         advance = float(face.glyph.linearHoriAdvance) / 65536.0
         if advance <= 0:
             advance = float(face.glyph.advance.x) / 64.0
@@ -675,8 +688,14 @@ def generate_font(
     warnings: list[str] = []
     if data.missing:
         shown = ", ".join(f"U+{code:04X}" for code in data.missing[:20])
-        suffix = "" if len(data.missing) <= 20 else f" (+{len(data.missing) - 20} more)"
-        warnings.append(f"font is missing {len(data.missing)} codepoints: {shown}{suffix}")
+        suffix = (
+            ""
+            if len(data.missing) <= 20
+            else f" (+{len(data.missing) - 20} more)"
+        )
+        warnings.append(
+            f"font is missing {len(data.missing)} codepoints: {shown}{suffix}"
+        )
     status = "dry-run"
     if not dry_run:
         status = write_if_changed(output_path, text, force=force)

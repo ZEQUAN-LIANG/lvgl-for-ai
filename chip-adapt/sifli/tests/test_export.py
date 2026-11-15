@@ -13,7 +13,9 @@ from unittest import mock
 HERE = Path(__file__).resolve().parent.parent
 REPO = HERE.parents[1]
 
-_spec = importlib.util.spec_from_file_location("sifli_export", HERE / "export.py")
+_spec = importlib.util.spec_from_file_location(
+    "sifli_export", HERE / "export.py"
+)
 sifli_export = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(sifli_export)
 
@@ -21,7 +23,9 @@ _spec.loader.exec_module(sifli_export)
 def write_png(path, width, height):
     def chunk(tag, data):
         crc = zlib.crc32(tag + data) & 0xFFFFFFFF
-        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", crc)
+        return (
+            struct.pack(">I", len(data)) + tag + data + struct.pack(">I", crc)
+        )
 
     row = b"\x00" + b"\x00\x00\x00" * width
     png = b"\x89PNG\r\n\x1a\n"
@@ -45,7 +49,9 @@ class SifliExportTest(unittest.TestCase):
         watch = self.user_app / "sift_watch"
         watch.mkdir()
         for name in ("sift_watch.c", "sift_watch.h"):
-            shutil.copy2(REPO / "user" / "app" / "sift_watch" / name, watch / name)
+            shutil.copy2(
+                REPO / "user" / "app" / "sift_watch" / name, watch / name
+            )
         dimensions = {
             "watch_bg": (390, 450),
             "watch_ring": (280, 280),
@@ -134,9 +140,9 @@ class SifliExportTest(unittest.TestCase):
     def test_sources_are_copied_without_version_rewrites(self):
         result = self._export("sift_watch", output_dir=self.output)
         self.assertTrue(result["ok"])
-        ported = (self.output / "src" / "app" / "sift_watch" / "sift_watch.c").read_text(
-            encoding="utf-8"
-        )
+        ported = (
+            self.output / "src" / "app" / "sift_watch" / "sift_watch.c"
+        ).read_text(encoding="utf-8")
         self.assertTrue(ported.startswith('#include "lvgl_ai_sdk.h"'))
         self.assertNotIn("lvgl_ai_94_compat.h", ported)
         self.assertIn("LVGL_VERSION_MINOR >= 4", ported)
@@ -206,7 +212,9 @@ class SifliExportTest(unittest.TestCase):
         self.assertIn("--lvgl 9.4", readme)
         self.assertIn("chip-adapt/exports/sift_watch/src/app", readme)
         cli_commands = [
-            command for command in result["commands"] if "core/cli.py" in command
+            command
+            for command in result["commands"]
+            if "core/cli.py" in command
         ]
         self.assertEqual(len(cli_commands), 1)
         self.assertIn("--lvgl 9.4", cli_commands[0])
@@ -215,9 +223,7 @@ class SifliExportTest(unittest.TestCase):
         exports = self.root / "chip-adapt" / "exports"
         with mock.patch.object(sifli_export.layout, "EXPORTS_DIR", exports):
             result = self._export("sift_watch")
-        self.assertEqual(
-            Path(result["output_dir"]), exports / "sift_watch"
-        )
+        self.assertEqual(Path(result["output_dir"]), exports / "sift_watch")
         self.assertTrue((exports / "sift_watch" / "project").is_dir())
 
     def test_export_copy_is_self_contained(self):
@@ -373,7 +379,9 @@ class SifliExportTest(unittest.TestCase):
         manifest = self.user_app / "sift_watch" / "assets.json"
         payload = json.loads(manifest.read_text(encoding="utf-8"))
         payload["assets"]["watch_bg"]["transform"] = "rotate"
-        manifest.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        manifest.write_text(
+            json.dumps(payload, ensure_ascii=False), encoding="utf-8"
+        )
         with self.assertRaises(sifli_export.ExportError) as raised:
             self._export("sift_watch", output_dir=self.output)
         self.assertEqual(raised.exception.code, "asset_transform_conflict")
@@ -392,7 +400,9 @@ class SifliExportTest(unittest.TestCase):
         self.assertFalse(self.output.exists())
 
     def test_dry_run_writes_nothing(self):
-        result = self._export("sift_watch", output_dir=self.output, dry_run=True)
+        result = self._export(
+            "sift_watch", output_dir=self.output, dry_run=True
+        )
         self.assertTrue(result["dry_run"])
         self.assertFalse(self.output.exists())
         self.assertTrue(result["files"])

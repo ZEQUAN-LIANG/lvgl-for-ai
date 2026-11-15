@@ -45,7 +45,6 @@ def encode_frame(
 
 @dataclass(frozen=True)
 class LiveFrame:
-
     seq: int
     t_ms: int
     width: int
@@ -59,7 +58,6 @@ class LiveFrame:
 
 
 class LiveFrameHub:
-
     def __init__(self) -> None:
         self._cond = threading.Condition()
         self._seq = 0

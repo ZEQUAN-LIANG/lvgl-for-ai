@@ -213,9 +213,7 @@ ERROR_MAPPINGS: tuple[ErrorMapping, ...] = (
     ErrorMapping(
         LinkError, "link_error", "link_error", EXIT_FAILURE, _link_detail
     ),
-    ErrorMapping(
-        RuntimeCrash, "crash", "crash", EXIT_FAILURE, _crash_detail
-    ),
+    ErrorMapping(RuntimeCrash, "crash", "crash", EXIT_FAILURE, _crash_detail),
     ErrorMapping(
         ProtocolError,
         "protocol_error",
@@ -272,7 +270,9 @@ def dump_error(error: BaseException | None) -> dict[str, Any] | None:
         return None
     detail: dict[str, Any] = {}
     for mapping in ERROR_MAPPINGS:
-        if mapping.detail is not None and isinstance(error, mapping.error_type):
+        if mapping.detail is not None and isinstance(
+            error, mapping.error_type
+        ):
             detail.update(mapping.detail(error))
     return {
         "code": error_code_for(error),

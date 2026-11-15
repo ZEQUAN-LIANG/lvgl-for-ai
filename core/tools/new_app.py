@@ -77,7 +77,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _print_human(result: dict[str, Any]) -> None:
     if not result["created"] and not result["updated"]:
         print("[new-app] up to date")
-    prefix = "[new-app] would create" if result["dry_run"] else "[new-app] created"
+    prefix = (
+        "[new-app] would create" if result["dry_run"] else "[new-app] created"
+    )
     for path in result["created"]:
         print(f"{prefix} {path}")
     for path in result["updated"]:

@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import hashlib
@@ -23,8 +22,9 @@ def sha256(data: bytes) -> str:
 
 
 class WritingRunner:
-
-    def __init__(self, *, fail_on: str | None = None, stderr: str = "") -> None:
+    def __init__(
+        self, *, fail_on: str | None = None, stderr: str = ""
+    ) -> None:
         self.calls: list[list[str]] = []
         self.fail_on = fail_on
         self.stderr = stderr
@@ -35,7 +35,9 @@ class WritingRunner:
         phase = None
         if "-c" in command:
             phase = "compile"
-        elif "-o" in command and any("--start-group" in part for part in command):
+        elif "-o" in command and any(
+            "--start-group" in part for part in command
+        ):
             phase = "link"
         if self.fail_on is not None and self.fail_on == phase:
             return BuildResult(
@@ -66,7 +68,8 @@ class WritingRunner:
 
     def link_calls(self) -> list[list[str]]:
         return [
-            call for call in self.calls
+            call
+            for call in self.calls
             if any("--start-group" in part for part in call)
         ]
 
@@ -109,7 +112,9 @@ class PrebuiltCase(unittest.TestCase):
             data = f"library-{name}-{index}".encode()
             (sdk / "lib" / name).write_bytes(data)
             hashes[name] = sha256(data)
-        (sdk / "lv_conf.h").write_text("#define LV_CONF_H 1\n", encoding="utf-8")
+        (sdk / "lv_conf.h").write_text(
+            "#define LV_CONF_H 1\n", encoding="utf-8"
+        )
         manifest = {
             "schema": "lvgl-ai-host-sdk-v1",
             "lvgl_version": version,
@@ -270,9 +275,7 @@ class ManifestTest(PrebuiltCase):
         path.write_text(json.dumps(manifest), encoding="utf-8")
 
         sdk = prebuilt.HostSdk.load(self.sdk_dir, expected_version="9.6")
-        self.assertIn(
-            common / "lib" / "libfreetype.dll.a", sdk.lib_paths
-        )
+        self.assertIn(common / "lib" / "libfreetype.dll.a", sdk.lib_paths)
         self.assertIn(
             common / "lib" / "libfreetype.dll", sdk.runtime_dll_paths
         )
@@ -292,25 +295,30 @@ class ManifestTest(PrebuiltCase):
 
 class CompilerResolutionTest(unittest.TestCase):
     def test_environment_wins_over_path(self) -> None:
-        with mock.patch.object(
-            prebuilt.shutil, "which", return_value="/path/gcc"
-        ), mock.patch.dict(
-            os.environ, {"LVGL_AI_GCC": "/env/gcc"}
+        with (
+            mock.patch.object(
+                prebuilt.shutil, "which", return_value="/path/gcc"
+            ),
+            mock.patch.dict(os.environ, {"LVGL_AI_GCC": "/env/gcc"}),
         ):
             compiler, _ = prebuilt.resolve_compiler(version="15.2.0")
         self.assertEqual(compiler, "/env/gcc")
 
     def test_path_is_the_last_resort(self) -> None:
-        with mock.patch.object(
-            prebuilt.shutil, "which", return_value="/path/gcc"
-        ), mock.patch.dict(os.environ, {"LVGL_AI_GCC": ""}):
+        with (
+            mock.patch.object(
+                prebuilt.shutil, "which", return_value="/path/gcc"
+            ),
+            mock.patch.dict(os.environ, {"LVGL_AI_GCC": ""}),
+        ):
             compiler, _ = prebuilt.resolve_compiler(version="15.2.0")
         self.assertEqual(compiler, "/path/gcc")
 
     def test_no_compiler_is_a_build_error(self) -> None:
-        with mock.patch.object(
-            prebuilt.shutil, "which", return_value=None
-        ), mock.patch.dict(os.environ, {"LVGL_AI_GCC": ""}):
+        with (
+            mock.patch.object(prebuilt.shutil, "which", return_value=None),
+            mock.patch.dict(os.environ, {"LVGL_AI_GCC": ""}),
+        ):
             with self.assertRaises(BuildError) as caught:
                 prebuilt.resolve_compiler(version="15.2.0")
         self.assertIn("C compiler not found", str(caught.exception))
@@ -372,8 +380,12 @@ class CommandTest(PrebuiltCase):
             linked,
             [str(self.sdk_dir / "lib" / name) for name in LIB_NAMES],
         )
-        self.assertEqual(link[end + 1 :], ["-lgdi32", "-luser32", "-static-libgcc"])
-        self.assertTrue(Path(link[link.index("-o") + 1]).name.startswith("lvgl_engine"))
+        self.assertEqual(
+            link[end + 1 :], ["-lgdi32", "-luser32", "-static-libgcc"]
+        )
+        self.assertTrue(
+            Path(link[link.index("-o") + 1]).name.startswith("lvgl_engine")
+        )
         self.assertTrue((self.build_dir / "prebuilt.json").is_file())
 
     def test_unchanged_objects_are_reused(self) -> None:

@@ -19,7 +19,9 @@ class LayoutTest(unittest.TestCase):
         self.assertEqual(layout.EXPORTS_DIR, HERE.parent / "exports")
 
     def test_adapter_manifest_keeps_paths_out(self):
-        payload = json.loads((HERE / "adapter.json").read_text(encoding="utf-8"))
+        payload = json.loads(
+            (HERE / "adapter.json").read_text(encoding="utf-8")
+        )
         for key in ("sdk_path", "ezip", "vendor_root", "exports_root"):
             self.assertNotIn(key, payload)
 

@@ -122,7 +122,9 @@ def build_dir_for(
         return BUILD_ROOT / f"lvgl_{token}"
     digest = hashlib.sha256(str(app_dir).encode("utf-8")).hexdigest()[:8]
     label_source = app_dir.parent.parent.name or app_dir.name
-    label = re.sub(r"[^0-9A-Za-z]+", "_", label_source).strip("_")[:24] or "app"
+    label = (
+        re.sub(r"[^0-9A-Za-z]+", "_", label_source).strip("_")[:24] or "app"
+    )
     return BUILD_ROOT / f"lvgl_{token}_export_{label}_{digest}"
 
 

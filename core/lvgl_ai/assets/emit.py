@@ -193,7 +193,9 @@ def merge_manifest_entry(
     if not isinstance(name, str) or not name:
         raise AssetError("asset manifest entry has no name")
     existing = payload["assets"].get(name)
-    if isinstance(existing, dict) and existing.get("kind") != entry.get("kind"):
+    if isinstance(existing, dict) and existing.get("kind") != entry.get(
+        "kind"
+    ):
         raise AssetError(
             f"asset name {name!r} is already used by a {existing.get('kind')!r} asset"
         )
@@ -204,7 +206,10 @@ def merge_manifest_entry(
     payload["generator"] = generator_label()
     payload["target_lvgl"] = target_lvgl
     payload["assets"][name] = entry
-    text = json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
+    text = (
+        json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True)
+        + "\n"
+    )
     atomic_write_text(path, text)
 
 

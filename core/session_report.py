@@ -184,7 +184,10 @@ def _build_timeline_parser() -> argparse.ArgumentParser:
         "unless --type frame is given.",
     )
     parser.add_argument(
-        "--limit", type=int, default=DEFAULT_QUERY_LIMIT, metavar="N",
+        "--limit",
+        type=int,
+        default=DEFAULT_QUERY_LIMIT,
+        metavar="N",
         help=f"maximum rows (default: {DEFAULT_QUERY_LIMIT})",
     )
     parser.add_argument("--around-t", type=int, metavar="T_MS")
@@ -226,9 +229,7 @@ def _run_timeline(argv: list[str]) -> int:
             continue
         selected.append(row)
     if args.around_t is not None:
-        selected.sort(
-            key=lambda row: abs(_row_span(row)[0] - args.around_t)
-        )
+        selected.sort(key=lambda row: abs(_row_span(row)[0] - args.around_t))
         rows_out, total, truncated = _bounded(selected, args.limit)
         rows_out.sort(key=lambda row: _row_span(row)[0])
     else:
@@ -251,7 +252,10 @@ def _build_diffs_parser() -> argparse.ArgumentParser:
         "diffs", "Bounded changed regions with an absolute frame image."
     )
     parser.add_argument(
-        "--top", type=int, default=DEFAULT_DIFF_TOP, metavar="N",
+        "--top",
+        type=int,
+        default=DEFAULT_DIFF_TOP,
+        metavar="N",
         help=f"maximum rows (default: {DEFAULT_DIFF_TOP})",
     )
     parser.add_argument("--around-t", type=int, metavar="T_MS")
@@ -316,9 +320,7 @@ def _run_diffs(argv: list[str]) -> int:
         selected.append(item)
     if args.around_t is not None:
         selected.sort(
-            key=lambda row: abs(
-                (row.get("t_ms") or 0) - args.around_t
-            )
+            key=lambda row: abs((row.get("t_ms") or 0) - args.around_t)
         )
     else:
         selected.sort(
@@ -354,7 +356,10 @@ def _build_frames_parser() -> argparse.ArgumentParser:
         "frames", "Bounded frame paths with t_ms and frame number."
     )
     parser.add_argument(
-        "--last", type=int, default=DEFAULT_FRAME_LAST, metavar="N",
+        "--last",
+        type=int,
+        default=DEFAULT_FRAME_LAST,
+        metavar="N",
         help=f"maximum frames (default: {DEFAULT_FRAME_LAST})",
     )
     around = parser.add_mutually_exclusive_group()
@@ -396,7 +401,9 @@ def _run_frames(argv: list[str]) -> int:
         for path in recording.frames:
             items.append(
                 {
-                    "frame_no": int(path.stem) if path.stem.isdigit() else None,
+                    "frame_no": int(path.stem)
+                    if path.stem.isdigit()
+                    else None,
                     "t_ms": None,
                     "image": str(path.resolve()),
                 }
@@ -409,27 +416,29 @@ def _run_frames(argv: list[str]) -> int:
         elif args.direction == "after":
             items = [item for item in items if (item["t_ms"] or 0) > target]
         items.sort(key=lambda item: abs((item["t_ms"] or 0) - target))
-        items = sorted(items[: max(0, args.last)], key=lambda item: item["t_ms"] or 0)
+        items = sorted(
+            items[: max(0, args.last)], key=lambda item: item["t_ms"] or 0
+        )
     elif args.around_frame is not None:
         target = args.around_frame
         if args.direction == "before":
             items = [
-                item for item in items
+                item
+                for item in items
                 if item["frame_no"] is not None and item["frame_no"] < target
             ]
         elif args.direction == "after":
             items = [
-                item for item in items
+                item
+                for item in items
                 if item["frame_no"] is not None and item["frame_no"] > target
             ]
-        items.sort(
-            key=lambda item: abs((item["frame_no"] or 0) - target)
-        )
+        items.sort(key=lambda item: abs((item["frame_no"] or 0) - target))
         items = sorted(
             items[: max(0, args.last)], key=lambda item: item["frame_no"] or 0
         )
     else:
-        items = items[-max(0, args.last):]
+        items = items[-max(0, args.last) :]
     return _emit(
         {
             "schema": "lvgl-ai-frames-query-v1",
@@ -455,16 +464,21 @@ def _document(root: Path) -> dict[str, Any]:
             "notes": [],
             "error": "annotations_unreadable",
         }
-    return data if isinstance(data, dict) else {
-        "schema": session_schema.ANNOTATIONS_SCHEMA,
-        "notes": [],
-        "error": "annotations_unreadable",
-    }
+    return (
+        data
+        if isinstance(data, dict)
+        else {
+            "schema": session_schema.ANNOTATIONS_SCHEMA,
+            "notes": [],
+            "error": "annotations_unreadable",
+        }
+    )
 
 
 def _build_notes_parser() -> argparse.ArgumentParser:
     parser = _query_parser(
-        "notes", "Human feedback notes, optionally resolved in another session."
+        "notes",
+        "Human feedback notes, optionally resolved in another session.",
     )
     parser.add_argument("--author", default="human")
     parser.add_argument(
@@ -490,7 +504,8 @@ def _run_notes(argv: list[str]) -> int:
     root = recording.path.resolve()
     document = _document(root)
     notes = [
-        note for note in document.get("notes") or []
+        note
+        for note in document.get("notes") or []
         if isinstance(note, dict) and note.get("author") == args.author
     ]
     if args.latest:
@@ -504,9 +519,7 @@ def _run_notes(argv: list[str]) -> int:
         except (OSError, ValueError) as exc:
             print(f"[session-report] {exc}", file=sys.stderr)
             return EXIT_ERROR
-    items = [
-        _note_item(recording, note, target) for note in notes
-    ]
+    items = [_note_item(recording, note, target) for note in notes]
     return _emit(
         {
             "schema": "lvgl-ai-notes-query-v1",
@@ -530,9 +543,7 @@ def _note_item(
     for region in note.get("regions") or []:
         if not isinstance(region, dict):
             continue
-        item = {
-            key: region.get(key) for key in ("x", "y", "w", "h")
-        }
+        item = {key: region.get(key) for key in ("x", "y", "w", "h")}
         item["image"] = _image_path(root, region.get("image"))
         regions.append(item)
     item = {
@@ -569,9 +580,7 @@ def _build_resolve_parser() -> argparse.ArgumentParser:
     )
     _add_selector_arguments(parser)
     parser.add_argument("--offset-ms", type=int, default=None)
-    parser.add_argument(
-        "--at", choices=("event", "result"), default="result"
-    )
+    parser.add_argument("--at", choices=("event", "result"), default="result")
     return parser
 
 
@@ -599,9 +608,7 @@ def _selector_anchor(
         note = _find_note(recording, args.note)
         anchor = note.get("feedback_anchor")
         if not isinstance(anchor, dict):
-            raise ValueError(
-                f"note {args.note} has no feedback_anchor"
-            )
+            raise ValueError(f"note {args.note} has no feedback_anchor")
         return anchor, note
     if args.click is not None:
         down, up = args.click
@@ -664,7 +671,8 @@ def _run_context(argv: list[str]) -> int:
         window_start = target_ms - max(0, args.window_ms)
         window_end = target_ms + max(0, args.window_ms)
     inputs = [
-        row for row in rows
+        row
+        for row in rows
         if row.get("type") == "input"
         and window_start <= (row.get("t_ms") or 0) <= window_end
     ][:DEFAULT_QUERY_LIMIT]
@@ -696,12 +704,15 @@ def _run_context(argv: list[str]) -> int:
         item["image"] = _image_path(root, _frame_file(row.get("frame_no")))
         window_diffs.append(item)
     window_diffs = window_diffs[:10]
-    notes = [
-        note
-    ] if note is not None else [
-        item for item in _all_notes(root)
-        if window_start <= (item.get("t_ms") or 0) <= window_end
-    ][:5]
+    notes = (
+        [note]
+        if note is not None
+        else [
+            item
+            for item in _all_notes(root)
+            if window_start <= (item.get("t_ms") or 0) <= window_end
+        ][:5]
+    )
     return _emit(
         {
             "schema": "lvgl-ai-context-v1",
@@ -725,8 +736,7 @@ def _run_context(argv: list[str]) -> int:
 def _all_notes(root: Path) -> list[dict[str, Any]]:
     document = _document(root)
     return [
-        note for note in document.get("notes") or []
-        if isinstance(note, dict)
+        note for note in document.get("notes") or [] if isinstance(note, dict)
     ]
 
 
@@ -782,8 +792,7 @@ def _run_feedback(argv: list[str]) -> int:
         print(
             f"  {item['note_id']}: "
             + (
-                f"frame {item.get('new_frame')} "
-                f"{item.get('relation')}"
+                f"frame {item.get('new_frame')} {item.get('relation')}"
                 if item["located"]
                 else "unmapped"
             )
@@ -821,10 +830,9 @@ def _feedback_payload(
     source_changed = _changed(
         old_manifest.get("source_digest"), new_manifest.get("source_digest")
     )
-    source_unknown = (
-        not isinstance(old_manifest.get("source_digest"), dict)
-        or not isinstance(new_manifest.get("source_digest"), dict)
-    )
+    source_unknown = not isinstance(
+        old_manifest.get("source_digest"), dict
+    ) or not isinstance(new_manifest.get("source_digest"), dict)
     display_changed = _field_changed(
         old_manifest.get("display"), new_manifest.get("display")
     )
@@ -931,7 +939,9 @@ def _threshold(recording: Recording) -> int:
     return 10
 
 
-def _note_region(note: dict[str, Any], anchor: dict[str, Any]) -> dict[str, Any] | None:
+def _note_region(
+    note: dict[str, Any], anchor: dict[str, Any]
+) -> dict[str, Any] | None:
     regions = note.get("regions")
     if not isinstance(regions, list) or not regions:
         for item in note.get("anchors") or []:
@@ -1112,7 +1122,9 @@ def _run_contact_sheet(argv: list[str]) -> int:
         ]
         items = [(label, path.read_bytes()) for label, path in specs]
         sheet = build_contact_sheet(
-            items, columns=args.columns, tile_width=args.tile[0],
+            items,
+            columns=args.columns,
+            tile_width=args.tile[0],
             tile_height=args.tile[1],
         )
         sources = [path for _label, path in specs]
@@ -1182,8 +1194,7 @@ def _write_output(
     for session in sessions:
         if session is not None and _is_within(resolved, session):
             raise ValueError(
-                "refusing to write output inside session evidence: "
-                f"{path}"
+                f"refusing to write output inside session evidence: {path}"
             )
     if not output.parent.is_dir():
         raise FileNotFoundError(
@@ -1242,10 +1253,7 @@ def _run_pixel(argv: list[str]) -> int:
     except (OSError, ValueError) as exc:
         print(f"[session-report] {exc}", file=sys.stderr)
         return EXIT_ERROR
-    print(
-        f"pixel: {source.resolve()} {x},{y} "
-        f"rgb={red},{green},{blue}"
-    )
+    print(f"pixel: {source.resolve()} {x},{y} rgb={red},{green},{blue}")
     return EXIT_OK
 
 
@@ -1262,7 +1270,9 @@ def _build_compare_parser() -> argparse.ArgumentParser:
         "left", metavar="LEFT", help="session directory, manifest.json, or PNG"
     )
     parser.add_argument(
-        "right", metavar="RIGHT", help="session directory, manifest.json, or PNG"
+        "right",
+        metavar="RIGHT",
+        help="session directory, manifest.json, or PNG",
     )
     parser.add_argument(
         "--out",
@@ -1471,9 +1481,7 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_ERROR
     if args.json:
         print(
-            json.dumps(
-                summary, ensure_ascii=False, separators=(",", ":")
-            ),
+            json.dumps(summary, ensure_ascii=False, separators=(",", ":")),
             flush=True,
         )
     else:
@@ -1500,7 +1508,6 @@ def format_index(index: dict[str, Any]) -> str:
     counts = index["counts"]
     timeline = index["timeline"]
     diffs = index["diffs"]
-    frames = index["frames"]
     lines = [
         f"session: {index['session_id']}",
         f"dir: {index['session_dir']}",
@@ -1560,9 +1567,7 @@ def format_index(index: dict[str, Any]) -> str:
         "raw files:",
     ]
     for key, value in index["raw_files"].items():
-        rows = (
-            f" {value['rows']} rows" if "rows" in value else ""
-        )
+        rows = f" {value['rows']} rows" if "rows" in value else ""
         lines.append(f"  {key}: {value['bytes']} B{rows} {value['path']}")
     if index["clicks"]:
         lines.append("clicks:")
@@ -1587,16 +1592,13 @@ def format_index(index: dict[str, Any]) -> str:
     for snapshot in items[-5:]:
         lines.append(f"  {snapshot['label']} {snapshot['path']}")
     if snapshot_items["count"] > len(items[-5:]):
-        lines.append(
-            f"  ... {snapshot_items['count'] - len(items[-5:])} more"
-        )
+        lines.append(f"  ... {snapshot_items['count'] - len(items[-5:])} more")
     lines.append("marks:")
     if not index["marks"]:
         lines.append("  none")
     else:
         lines.append(
-            "  "
-            + ", ".join(str(mark["id"]) for mark in index["marks"])
+            "  " + ", ".join(str(mark["id"]) for mark in index["marks"])
         )
     notes = index["annotations"]["notes"]
     lines.append(f"notes: {index['annotations']['count']}")
@@ -1623,9 +1625,7 @@ def format_index(index: dict[str, Any]) -> str:
 def format_query(payload: dict[str, Any]) -> str:
     schema = payload.get("schema", "")
     if schema == "lvgl-ai-timeline-query-v1":
-        lines = [
-            f"timeline: {payload['returned']}/{payload['total']} rows"
-        ]
+        lines = [f"timeline: {payload['returned']}/{payload['total']} rows"]
         for row in payload["rows"]:
             lines.append("  " + _format_row(row))
         return "\n".join(lines)

@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -51,16 +50,24 @@ class PatchDiscoveryTest(unittest.TestCase):
         (self.patch_dir / name).write_text(text, encoding="utf-8")
 
     def test_series_controls_order_and_skips_comments(self) -> None:
-        self.write("series", "# comment\n\n0002-second.patch\n0001-first.patch\n")
-        names = [path.name for path in fetch_lvgl.discover_patches(self.patch_dir)]
+        self.write(
+            "series", "# comment\n\n0002-second.patch\n0001-first.patch\n"
+        )
+        names = [
+            path.name for path in fetch_lvgl.discover_patches(self.patch_dir)
+        ]
         self.assertEqual(names, ["0002-second.patch", "0001-first.patch"])
 
     def test_missing_series_uses_sorted_glob(self) -> None:
-        names = [path.name for path in fetch_lvgl.discover_patches(self.patch_dir)]
+        names = [
+            path.name for path in fetch_lvgl.discover_patches(self.patch_dir)
+        ]
         self.assertEqual(names, ["0001-first.patch", "0002-second.patch"])
 
     def test_missing_patch_directory_means_no_patches(self) -> None:
-        self.assertEqual(fetch_lvgl.discover_patches(self.root / "missing"), [])
+        self.assertEqual(
+            fetch_lvgl.discover_patches(self.root / "missing"), []
+        )
 
     def test_series_rejects_parent_traversal(self) -> None:
         self.write("series", "../escape.patch\n")
@@ -129,9 +136,11 @@ class ApplyPatchesTest(unittest.TestCase):
                 "--repo-root",
                 str(root),
             ]
-            with mock.patch.object(fetch_lvgl, "download"), mock.patch.object(
-                fetch_lvgl, "extract", return_value=tree
-            ), mock.patch.object(sys, "argv", argv):
+            with (
+                mock.patch.object(fetch_lvgl, "download"),
+                mock.patch.object(fetch_lvgl, "extract", return_value=tree),
+                mock.patch.object(sys, "argv", argv),
+            ):
                 self.assertEqual(fetch_lvgl.main(), 0)
 
             dest = root / "lvgl-src" / "9.6"
@@ -169,9 +178,11 @@ class ApplyPatchesTest(unittest.TestCase):
                 "--repo-root",
                 str(root),
             ]
-            with mock.patch.object(fetch_lvgl, "download") as download, mock.patch.object(
-                fetch_lvgl, "extract"
-            ) as extract, mock.patch.object(sys, "argv", argv):
+            with (
+                mock.patch.object(fetch_lvgl, "download") as download,
+                mock.patch.object(fetch_lvgl, "extract") as extract,
+                mock.patch.object(sys, "argv", argv),
+            ):
                 with self.assertRaises(SystemExit):
                     fetch_lvgl.main()
                 download.assert_not_called()

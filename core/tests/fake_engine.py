@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -44,7 +43,10 @@ def main() -> int:
             index += 1
 
     mode = os.environ.get("FAKE_READY", "ok")
-    print(f"[fake_engine] started session={session_dir} record={record}", flush=True)
+    print(
+        f"[fake_engine] started session={session_dir} record={record}",
+        flush=True,
+    )
     for line_index in range(int(os.environ.get("FAKE_LOG_LINES", "0") or 0)):
         print(f"[fake_engine] log line {line_index:05d}", flush=True)
     if os.environ.get("FAKE_UNKNOWN_ARG") == "1":
@@ -148,7 +150,15 @@ def main() -> int:
             continue
         verb = parts[1]
         if verb == "quit":
-            emit({"protocol": PROTOCOL, "seq": seq, "ok": True, "frames": frames, "t_ms": t_ms})
+            emit(
+                {
+                    "protocol": PROTOCOL,
+                    "seq": seq,
+                    "ok": True,
+                    "frames": frames,
+                    "t_ms": t_ms,
+                }
+            )
             return 0
         if verb == "pointer" and len(parts) >= 5:
             payload = {
@@ -165,7 +175,15 @@ def main() -> int:
         elif verb == "tick" and len(parts) >= 3:
             t_ms += int(parts[2])
             frames += 1
-            emit({"protocol": PROTOCOL, "seq": seq, "ok": True, "frames": frames, "t_ms": t_ms})
+            emit(
+                {
+                    "protocol": PROTOCOL,
+                    "seq": seq,
+                    "ok": True,
+                    "frames": frames,
+                    "t_ms": t_ms,
+                }
+            )
         elif verb == "wait" and len(parts) >= 4 and parts[2] == "frames":
             retain_frames(int(parts[3]))
             t_ms += 16 * int(parts[3])

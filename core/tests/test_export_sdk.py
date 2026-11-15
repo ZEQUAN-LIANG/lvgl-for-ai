@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import tempfile
@@ -23,10 +22,13 @@ class HeaderLayoutTest(unittest.TestCase):
             out = root / "sdk"
             include_dirs = export_sdk._copy_headers(source, out, "9.6")
             self.assertEqual(
-                include_dirs, [".", "include", "include/lvgl", "include/freetype2"]
+                include_dirs,
+                [".", "include", "include/lvgl", "include/freetype2"],
             )
             self.assertTrue((out / "include" / "lvgl" / "lvgl.h").is_file())
-            self.assertTrue((out / "include" / "freetype2" / "ft2build.h").is_file())
+            self.assertTrue(
+                (out / "include" / "freetype2" / "ft2build.h").is_file()
+            )
 
     def test_legacy_copies_root_header_and_src_tree(self) -> None:
         for version in ("9.5", "9.4", "9.1", "8.4", "8.3"):
@@ -40,20 +42,28 @@ class HeaderLayoutTest(unittest.TestCase):
                     _write(source / "src" / "lvgl.h", '#include "../lvgl.h"\n')
                     _write(source / "src" / "misc" / "lv_log.h")
                     out = root / "sdk"
-                    include_dirs = export_sdk._copy_headers(source, out, version)
+                    include_dirs = export_sdk._copy_headers(
+                        source, out, version
+                    )
                     self.assertEqual(
                         include_dirs, [".", "include", "include/freetype2"]
                     )
                     self.assertTrue((out / "include" / "lvgl.h").is_file())
                     self.assertTrue(
-                        (out / "include" / "freetype2" / "ft2build.h").is_file()
+                        (
+                            out / "include" / "freetype2" / "ft2build.h"
+                        ).is_file()
                     )
-                    self.assertTrue((out / "include" / "lv_version.h").is_file())
+                    self.assertTrue(
+                        (out / "include" / "lv_version.h").is_file()
+                    )
                     self.assertTrue(
                         (out / "include" / "src" / "lv_init.h").is_file()
                     )
                     self.assertTrue(
-                        (out / "include" / "src" / "misc" / "lv_log.h").is_file()
+                        (
+                            out / "include" / "src" / "misc" / "lv_log.h"
+                        ).is_file()
                     )
 
 

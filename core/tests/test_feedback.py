@@ -74,9 +74,7 @@ class FeedbackAddTest(unittest.TestCase):
         with mock.patch.dict(
             os.environ, {"LVGL_AI_SESSIONS_ROOT": str(self.root)}
         ):
-            code, _, err = run_feedback(
-                self._argv("--transcribed-by", "ai")
-            )
+            code, _, err = run_feedback(self._argv("--transcribed-by", "ai"))
 
         self.assertEqual(code, 0, err)
         note = Recording.open(self.session).annotations["notes"][-1]
@@ -109,12 +107,8 @@ class FeedbackAddTest(unittest.TestCase):
         with mock.patch.dict(
             os.environ, {"LVGL_AI_SESSIONS_ROOT": str(self.root)}
         ):
-            bad_author = run_feedback(
-                self._argv("--author", "ai")
-            )
-            bad_source = run_feedback(
-                self._argv("--source", "import")
-            )
+            bad_author = run_feedback(self._argv("--author", "ai"))
+            bad_source = run_feedback(self._argv("--source", "import"))
 
         self.assertEqual(bad_author[0], 2)
         self.assertEqual(bad_source[0], 2)

@@ -21,7 +21,9 @@ from .webapp import (
 )
 
 
-def route(web: Any, method: str, path: str, query: dict[str, list[str]]) -> None:
+def route(
+    web: Any, method: str, path: str, query: dict[str, list[str]]
+) -> None:
     if path == "/":
         web._require(method, ("GET",))
         session_id = (query.get("session") or [None])[0]
@@ -31,9 +33,7 @@ def route(web: Any, method: str, path: str, query: dict[str, list[str]]) -> None
 
     if path == "/api/sessions":
         web._require(method, ("GET",))
-        return web._send_json(
-            HTTPStatus.OK, {"sessions": web.app.sessions()}
-        )
+        return web._send_json(HTTPStatus.OK, {"sessions": web.app.sessions()})
 
     if path == "/static/fabric.min.js":
         web._require(method, ("GET",))
@@ -76,9 +76,7 @@ def route(web: Any, method: str, path: str, query: dict[str, list[str]]) -> None
     if path == "/api/apps/tree":
         web._require(method, ("GET",))
         name = (query.get("name") or [None])[0]
-        return web._send_json(
-            HTTPStatus.OK, web.app.app_tree_payload(name)
-        )
+        return web._send_json(HTTPStatus.OK, web.app.app_tree_payload(name))
 
     if path == "/api/apps/create":
         web._require(method, ("POST",))
@@ -126,12 +124,8 @@ def route(web: Any, method: str, path: str, query: dict[str, list[str]]) -> None
                 "id must match [A-Za-z0-9_-]{1,64}",
             )
         if path.endswith("open"):
-            return web._send_json(
-                HTTPStatus.OK, web.app.page_open(page_id)
-            )
-        return web._send_json(
-            HTTPStatus.OK, web.app.page_close(page_id)
-        )
+            return web._send_json(HTTPStatus.OK, web.app.page_open(page_id))
+        return web._send_json(HTTPStatus.OK, web.app.page_close(page_id))
 
     if path.startswith("/api/sessions/"):
         parts = path.strip("/").split("/")
@@ -150,9 +144,7 @@ def route(web: Any, method: str, path: str, query: dict[str, list[str]]) -> None
                     )
                 if method == "POST":
                     body = web._read_json_body(ANNOTATION_BODY_BYTES)
-                    status, payload = web.app.add_annotation(
-                        session_id, body
-                    )
+                    status, payload = web.app.add_annotation(session_id, body)
                     return web._send_json(status, payload)
                 raise HttpError(
                     HTTPStatus.METHOD_NOT_ALLOWED,
@@ -167,9 +159,7 @@ def route(web: Any, method: str, path: str, query: dict[str, list[str]]) -> None
                     )
                 if method == "POST":
                     body = web._read_json_body(WHITEBOARD_BODY_BYTES)
-                    status, payload = web.app.save_whiteboard(
-                        session_id, body
-                    )
+                    status, payload = web.app.save_whiteboard(session_id, body)
                     return web._send_json(status, payload)
                 raise HttpError(
                     HTTPStatus.METHOD_NOT_ALLOWED,
@@ -226,9 +216,7 @@ def route(web: Any, method: str, path: str, query: dict[str, list[str]]) -> None
             )
         return web._serve_png(kind, parts[1], parts[2])
 
-    raise HttpError(
-        HTTPStatus.NOT_FOUND, "not_found", f"unknown path: {path}"
-    )
+    raise HttpError(HTTPStatus.NOT_FOUND, "not_found", f"unknown path: {path}")
 
 
 def _start_live(web: Any, query: dict[str, list[str]]) -> None:

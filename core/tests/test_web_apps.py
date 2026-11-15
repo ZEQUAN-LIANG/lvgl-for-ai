@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -37,12 +36,14 @@ class WebAppsTest(unittest.TestCase):
     def _write_scenario(self, name: str, app: str) -> None:
         path = self.root / "user" / "scenarios" / f"{name}.json"
         path.write_text(
-            json.dumps({
-                "schema": "lvgl-ai-scenario-v1",
-                "name": name,
-                "app": app,
-                "steps": [{"type": "wait", "ms": 16}],
-            }),
+            json.dumps(
+                {
+                    "schema": "lvgl-ai-scenario-v1",
+                    "name": name,
+                    "app": app,
+                    "steps": [{"type": "wait", "ms": 16}],
+                }
+            ),
             encoding="utf-8",
         )
 
@@ -67,9 +68,7 @@ class WebAppsTest(unittest.TestCase):
         status, _, created = self._create("hello")
         self.assertEqual(status, 201, created)
         self.assertTrue((self.root / "user/app/hello/hello.c").is_file())
-        status, _, tree = self.harness.json(
-            "GET", "/api/apps/tree?name=hello"
-        )
+        status, _, tree = self.harness.json("GET", "/api/apps/tree?name=hello")
         self.assertEqual(status, 200, tree)
         self.assertTrue(tree["registered"])
         self.assertEqual(tree["tree"]["type"], "dir")
@@ -118,12 +117,12 @@ class WebAppsTest(unittest.TestCase):
     def test_delete_trash_restore_and_purge(self) -> None:
         self.assertEqual(self._create("hello")[0], 201)
         self._write_scenario("hello_alt", "hello")
-        status, _, deleted = self._post(
-            "/api/apps/delete", {"name": "hello"}
-        )
+        status, _, deleted = self._post("/api/apps/delete", {"name": "hello"})
         self.assertEqual(status, 200, deleted)
         self.assertEqual(deleted["action"], "delete")
-        self.assertTrue((self.root / deleted["trash_dir"] / "meta.json").is_file())
+        self.assertTrue(
+            (self.root / deleted["trash_dir"] / "meta.json").is_file()
+        )
         self.assertFalse((self.root / "user/app/hello").exists())
         status, _, payload = self.harness.json("GET", "/api/apps")
         self.assertEqual(payload["trash"][0]["name"], "hello")
@@ -133,7 +132,9 @@ class WebAppsTest(unittest.TestCase):
         )
         self.assertEqual(status, 200, restored)
         self.assertTrue((self.root / "user/app/hello/hello.c").is_file())
-        self.assertTrue((self.root / "user/scenarios/hello_alt.json").is_file())
+        self.assertTrue(
+            (self.root / "user/scenarios/hello_alt.json").is_file()
+        )
 
         status, _, undeleted = self._post(
             "/api/apps/delete", {"name": "hello"}
@@ -153,9 +154,7 @@ class WebAppsTest(unittest.TestCase):
         self.assertFalse((self.root / purged["path"]).exists())
 
     def test_protected_unknown_and_traversal(self) -> None:
-        status, _, payload = self._post(
-            "/api/apps/delete", {"name": "coffee"}
-        )
+        status, _, payload = self._post("/api/apps/delete", {"name": "coffee"})
         self.assertEqual(status, 403, payload)
         self.assertEqual(payload["error"]["code"], "protected_app")
 
@@ -176,7 +175,9 @@ class WebAppsTest(unittest.TestCase):
         )
         self.assertEqual(status, 400, payload)
 
-    def test_invalid_trash_id_and_corrupt_meta_keep_their_statuses(self) -> None:
+    def test_invalid_trash_id_and_corrupt_meta_keep_their_statuses(
+        self,
+    ) -> None:
         status, _, payload = self._post(
             "/api/apps/trash/restore", {"trash_id": "../../escape"}
         )
@@ -184,9 +185,7 @@ class WebAppsTest(unittest.TestCase):
         self.assertEqual(payload["error"]["code"], "invalid_trash")
 
         self.assertEqual(self._create("hello")[0], 201)
-        _, _, deleted = self._post(
-            "/api/apps/delete", {"name": "hello"}
-        )
+        _, _, deleted = self._post("/api/apps/delete", {"name": "hello"})
         meta_path = self.root / deleted["trash_dir"] / "meta.json"
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
         meta["schema"] = "other"

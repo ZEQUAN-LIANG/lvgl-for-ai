@@ -32,7 +32,6 @@ fake engine.  Real C-engine semantics stay covered by the full test suite; the
 snapshot freezes the Python-visible command/reply and evidence contract.
 """
 
-
 from __future__ import annotations
 
 import argparse
@@ -68,8 +67,8 @@ from lvgl_ai import Recording, Runtime, play_scenario
 from lvgl_ai import paths
 
 SNAPSHOT_SCHEMA = "lvgl-ai-contract-snapshot-v1"
-DEFAULT_SNAPSHOT_PATH = Path(__file__).resolve().with_name(
-    "contract_snapshot.json"
+DEFAULT_SNAPSHOT_PATH = (
+    Path(__file__).resolve().with_name("contract_snapshot.json")
 )
 FIXTURE_SESSION_ID = "20260102-030405-abcd"
 FIXTURE_BROKEN_SESSION_ID = "20260102-030406-beef"
@@ -390,12 +389,8 @@ if __name__ == "__main__":
 '''
 
 
-
-
 def _canonical_json(value: Any, *, indent: int | None = 2) -> str:
-    return json.dumps(
-        value, ensure_ascii=False, sort_keys=True, indent=indent
-    )
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, indent=indent)
 
 
 def _shape(value: Any) -> Any:
@@ -410,7 +405,9 @@ def _shape(value: Any) -> Any:
     if isinstance(value, str):
         return "string"
     if isinstance(value, dict):
-        return {"object": {str(key): _shape(item) for key, item in value.items()}}
+        return {
+            "object": {str(key): _shape(item) for key, item in value.items()}
+        }
     if isinstance(value, (list, tuple)):
         unique: dict[str, Any] = {}
         for item in value:
@@ -427,9 +424,7 @@ def snapshot_bytes(snapshot: dict[str, Any]) -> bytes:
 def load_snapshot(path: str | Path) -> dict[str, Any]:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(data, dict) or data.get("schema") != SNAPSHOT_SCHEMA:
-        raise ValueError(
-            f"{path}: schema must be {SNAPSHOT_SCHEMA!r}"
-        )
+        raise ValueError(f"{path}: schema must be {SNAPSHOT_SCHEMA!r}")
     return data
 
 
@@ -437,8 +432,6 @@ def write_snapshot(path: str | Path, snapshot: dict[str, Any]) -> None:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(snapshot_bytes(snapshot))
-
-
 
 
 def _same_json(left: Any, right: Any) -> bool:
@@ -471,11 +464,19 @@ def compare_snapshots(
             child = f"{path}.{key}" if path else str(key)
             if key not in actual:
                 differences.append(
-                    {"path": child, "kind": "missing", "expected": expected[key]}
+                    {
+                        "path": child,
+                        "kind": "missing",
+                        "expected": expected[key],
+                    }
                 )
             elif key not in expected:
                 differences.append(
-                    {"path": child, "kind": "unexpected", "actual": actual[key]}
+                    {
+                        "path": child,
+                        "kind": "unexpected",
+                        "actual": actual[key],
+                    }
                 )
             else:
                 differences.extend(
@@ -541,8 +542,6 @@ def render_diff_report(
                 f"{_short(item['actual'])}"
             )
     return "\n".join(lines)
-
-
 
 
 @contextlib.contextmanager
@@ -662,18 +661,22 @@ def _commands(result: _RunResult) -> list[str]:
     path = result.root / "commands.ndjson"
     if not path.is_file():
         return []
-    return [line.split(" ", 1)[1] for line in path.read_text(
-        encoding="utf-8"
-    ).splitlines() if " " in line]
+    return [
+        line.split(" ", 1)[1]
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if " " in line
+    ]
 
 
 def _replies(result: _RunResult) -> list[dict[str, Any]]:
     path = result.root / "replies.ndjson"
     if not path.is_file():
         return []
-    return [json.loads(line) for line in path.read_text(
-        encoding="utf-8"
-    ).splitlines() if line.strip()]
+    return [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
 
 
 def _argv(result: _RunResult) -> list[str]:
@@ -681,8 +684,6 @@ def _argv(result: _RunResult) -> list[str]:
     if not path.is_file():
         return []
     return json.loads(path.read_text(encoding="utf-8"))
-
-
 
 
 def _protocol_section(workspace: Path, engine: Path) -> dict[str, Any]:
@@ -750,9 +751,9 @@ def _protocol_section(workspace: Path, engine: Path) -> dict[str, Any]:
     )
     seq_values = [
         int(line.split(" ", 1)[0])
-        for line in (reference_run.root / "commands.ndjson").read_text(
-            encoding="utf-8"
-        ).splitlines()
+        for line in (reference_run.root / "commands.ndjson")
+        .read_text(encoding="utf-8")
+        .splitlines()
         if line.strip()
     ]
     reply_by_verb: dict[str, dict[str, Any]] = {}
@@ -863,7 +864,8 @@ def _protocol_section(workspace: Path, engine: Path) -> dict[str, Any]:
         "ready_protocol": ready.get("protocol"),
         "ready_shape": _shape(ready),
         "reply_shapes": {
-            verb: _shape(reply) for verb, reply in sorted(reply_by_verb.items())
+            verb: _shape(reply)
+            for verb, reply in sorted(reply_by_verb.items())
         },
         "required_ready_keys": sorted(required_ready),
         "optional_ready_keys": sorted(optional_ready),
@@ -872,7 +874,9 @@ def _protocol_section(workspace: Path, engine: Path) -> dict[str, Any]:
             "lvgl-ai-engine-v0": version_probe.outcome() == "ok",
         },
         "required_reply_fields": required_reply_fields,
-        "error_reply_shape": _shape(error_replies[0]) if error_replies else None,
+        "error_reply_shape": _shape(error_replies[0])
+        if error_replies
+        else None,
         "error_reply_outcome": error_probe.outcome(),
     }
 
@@ -890,8 +894,6 @@ def _normalize_engine_args(args: list[str]) -> list[str]:
             continue
         index += 1
     return normalized
-
-
 
 
 def _write_annotations(session_dir: Path) -> None:
@@ -974,9 +976,7 @@ def _session_section(
     if record_false_dir is None:
         raise RuntimeError("the scripted engine did not create a session")
     record_false_live_present = record_false_state.get("live_present", False)
-    record_false_live_removed = not (
-        record_false_dir / "live.rgba"
-    ).exists()
+    record_false_live_removed = not (record_false_dir / "live.rgba").exists()
 
     file_set = _relative_files(session_dir)
     manifest = json.loads(
@@ -1046,13 +1046,19 @@ def _session_section(
             accepted_statuses.append(status)
 
     timeline_types: dict[str, bool] = {}
-    for row_type in ("frame", "input", "wait", "mark", "snapshot", "end", "other"):
+    for row_type in (
+        "frame",
+        "input",
+        "wait",
+        "mark",
+        "snapshot",
+        "end",
+        "other",
+    ):
         type_probe = workspace / f"type-probe-{row_type}"
         shutil.copytree(session_dir, type_probe)
         (type_probe / "timeline.ndjson").write_text(
-            json.dumps(
-                {"schema": "lvgl-ai-timeline-v1", "type": row_type}
-            )
+            json.dumps({"schema": "lvgl-ai-timeline-v1", "type": row_type})
             + "\n",
             encoding="utf-8",
         )
@@ -1150,8 +1156,6 @@ def _png_bytes(width: int, height: int, rgb: tuple[int, int, int]) -> bytes:
         + chunk(b"IDAT", zlib.compress(bytes(raw), 9))
         + chunk(b"IEND", b"")
     )
-
-
 
 
 def _write_repo(root: Path) -> None:
@@ -1347,9 +1351,7 @@ def _write_http_session(root: Path) -> Path:
         + "\n",
         encoding="utf-8",
     )
-    (session / "engine.log").write_text(
-        "[app] app_create\n", encoding="utf-8"
-    )
+    (session / "engine.log").write_text("[app] app_create\n", encoding="utf-8")
     (session / "build.log").write_text("# phase: build\n", encoding="utf-8")
     manifest = {
         "schema": "lvgl-ai-session-v1",
@@ -1394,7 +1396,6 @@ def _png_rgb(path: Path, rgb: tuple[int, int, int]) -> None:
 
 
 class _LiveStub:
-
     def __init__(self, session_dir: Path) -> None:
         self.is_running = False
         self.pid: int | None = None
@@ -1408,8 +1409,15 @@ class _LiveStub:
             "display": {"width": 2, "height": 2, "format": "XRGB8888"},
             "mode": "headless",
             "inputs": ["real", "virtual"],
-            "capabilities": ["pointer", "key", "encoder", "tick", "wait",
-                             "snapshot", "mark"],
+            "capabilities": [
+                "pointer",
+                "key",
+                "encoder",
+                "tick",
+                "wait",
+                "snapshot",
+                "mark",
+            ],
             "frames": 1,
         }
         self.frame_count = 1
@@ -1573,7 +1581,11 @@ def _http_section(workspace: Path) -> dict[str, Any]:
             if code is not None:
                 entry["error_code"] = code
         probes.append(entry)
-        return json.loads(body.decode("utf-8")) if media_type == "application/json" else {}
+        return (
+            json.loads(body.decode("utf-8"))
+            if media_type == "application/json"
+            else {}
+        )
 
     mutation_headers = {
         "Content-Type": "application/json",
@@ -1894,8 +1906,6 @@ def _stream_probe(host: str, port: int) -> dict[str, Any]:
     return entry
 
 
-
-
 def _load_module(name: str, path: Path) -> Any:
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
@@ -1932,7 +1942,9 @@ def _parser_contract(parser: argparse.ArgumentParser) -> dict[str, Any]:
                     else None
                 ),
                 "choices": (
-                    list(action.choices) if action.choices is not None else None
+                    list(action.choices)
+                    if action.choices is not None
+                    else None
                 ),
                 "action": type(action).__name__,
                 "help": action.help,
@@ -2004,7 +2016,6 @@ def _json_contract(result: subprocess.CompletedProcess[str]) -> dict[str, Any]:
 
 
 class _FakeRuntime:
-
     def __init__(self, **kwargs: Any) -> None:
         self.session_id: str | None = "stub-session"
         self.session_dir: Path | None = None
@@ -2074,8 +2085,9 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
     original_runtime = cli_module.Runtime
     try:
         cli_module.Runtime = _FakeRuntime
-        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(
-            io.StringIO()
+        with (
+            contextlib.redirect_stdout(output),
+            contextlib.redirect_stderr(io.StringIO()),
         ):
             exit_code = cli_module.main(["--json"])
     finally:
@@ -2144,7 +2156,9 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
                 "stdout_lines": len(lines),
                 "keys": sorted(payload) if isinstance(payload, dict) else None,
                 "json_shape": _shape(payload) if payload is not None else None,
-                "error": payload.get("error") if isinstance(payload, dict) else None,
+                "error": payload.get("error")
+                if isinstance(payload, dict)
+                else None,
             },
             "json_build_error": {
                 "exit": build_error.returncode,
@@ -2188,7 +2202,8 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
             "parser": _parser_contract(new_app_module.build_parser()),
             "help": _help_contract(TOOL_ROOT / "tools" / "new_app.py"),
             "invalid_exit": _run_python(
-                TOOL_ROOT / "tools" / "new_app.py", ["--definitely-not-an-option"]
+                TOOL_ROOT / "tools" / "new_app.py",
+                ["--definitely-not-an-option"],
             ).returncode,
             "json_success": _json_contract(new_app),
             "error_exit": new_app_error.returncode,
@@ -2204,8 +2219,6 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
     }
 
 
-
-
 class _DomParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -2217,7 +2230,9 @@ class _DomParser(HTMLParser):
         self.labels: set[str] = set()
         self.texts: list[str] = []
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+    def handle_starttag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
         self.tags[tag] += 1
         values = dict(attrs)
         if values.get("id"):
@@ -2278,9 +2293,7 @@ def _dom_contract(
 
 
 @contextlib.contextmanager
-def _page_server(
-    sessions_root: Path, repo_root: Path
-) -> Iterable[str]:
+def _page_server(sessions_root: Path, repo_root: Path) -> Iterable[str]:
     from lvgl_ai.web import create_server
 
     server = create_server(
@@ -2345,8 +2358,6 @@ def _page_section(workspace: Path) -> dict[str, Any]:
             "empty": empty_status,
         },
     }
-
-
 
 
 def _signature(fn: Any) -> list[dict[str, Any]] | None:
@@ -2444,8 +2455,6 @@ def _python_section() -> dict[str, Any]:
         },
         "apps": apps_members,
     }
-
-
 
 
 def record_snapshot() -> dict[str, Any]:

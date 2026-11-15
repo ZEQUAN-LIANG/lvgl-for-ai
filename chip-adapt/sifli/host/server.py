@@ -272,7 +272,9 @@ class HostHandler(BaseHTTPRequestHandler):
         writer = SseWriter(self.wfile)
         try:
             self.send_response(200)
-            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header(
+                "Content-Type", "text/event-stream; charset=utf-8"
+            )
             self.send_header("Cache-Control", "no-cache")
             self.send_header("Connection", "close")
             self.send_header("X-Accel-Buffering", "no")
@@ -519,7 +521,9 @@ class HostHandler(BaseHTTPRequestHandler):
         self._send_file(target, cache="no-store", download_name=target.name)
 
     def _get_firmware(self, path: str, query: dict[str, list[str]]) -> None:
-        name = path[len("/firmware/") :] if path.startswith("/firmware/") else ""
+        name = (
+            path[len("/firmware/") :] if path.startswith("/firmware/") else ""
+        )
         target = safe_join(self.server.firmware_dir, name)
         if target is None:
             self._send_json(403, {"ok": False, "error": "invalid path"})
@@ -707,9 +711,7 @@ class HostHandler(BaseHTTPRequestHandler):
         path: str,
         query: dict[str, list[str]],
     ) -> None:
-        result = self.server.broker.reset(
-            int(body.get("pulse_ms") or 100)
-        )
+        result = self.server.broker.reset(int(body.get("pulse_ms") or 100))
         self._event("serial.reset", "RTS reset pulse", result)
         self._send_json(200, {"ok": True, **result})
 
@@ -929,7 +931,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         server = HostServer((host, port), HostHandler, config)
     except OSError as exc:
-        print(f"[sifli-host] cannot bind {host}:{port}: {exc}", file=sys.stderr)
+        print(
+            f"[sifli-host] cannot bind {host}:{port}: {exc}", file=sys.stderr
+        )
         return 1
 
     actual_host, actual_port = server.server_address[:2]

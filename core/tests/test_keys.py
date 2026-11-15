@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import re
@@ -30,7 +29,9 @@ REQUIRED_KEYS = {
 
 def header_keys() -> dict[str, int]:
     if not LV_GROUP_HEADER.is_file():
-        raise unittest.SkipTest(f"LVGL 9.6 headers not present: {LV_GROUP_HEADER}")
+        raise unittest.SkipTest(
+            f"LVGL 9.6 headers not present: {LV_GROUP_HEADER}"
+        )
     matches = KEY_ENUM_RE.findall(LV_GROUP_HEADER.read_text(encoding="utf-8"))
     return {name: int(value) for name, value in matches}
 
@@ -46,13 +47,17 @@ class KeyMappingTest(unittest.TestCase):
     def test_required_lv_key_names_are_covered(self) -> None:
         self.assertLessEqual(REQUIRED_KEYS, set(header_keys()))
 
-    def test_every_key_resolves_with_and_without_the_lv_key_prefix(self) -> None:
+    def test_every_key_resolves_with_and_without_the_lv_key_prefix(
+        self,
+    ) -> None:
         for name, code in header_keys().items():
             with self.subTest(name=name):
                 self.assertEqual(resolve_key(name), (name, code))
                 self.assertEqual(resolve_key(f"LV_KEY_{name}"), (name, code))
                 self.assertEqual(resolve_key(name.lower()), (name, code))
-                self.assertEqual(resolve_key(f"lv_key_{name.lower()}"), (name, code))
+                self.assertEqual(
+                    resolve_key(f"lv_key_{name.lower()}"), (name, code)
+                )
 
     def test_unknown_key_raises_scenario_error_with_the_name(self) -> None:
         for name in ("INSERT", "NOPE", "LV_KEY_NOPE"):

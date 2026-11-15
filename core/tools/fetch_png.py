@@ -12,7 +12,6 @@ Run with ``python -I`` and an explicit repository root:
     python -I core/tools/fetch_png.py --repo-root . --force
 """
 
-
 from __future__ import annotations
 
 import argparse
@@ -66,12 +65,12 @@ def clone(spec: dict[str, str], work: Path) -> None:
         except FileNotFoundError:
             raise SystemExit(
                 "git is required to fetch the pinned zlib/libpng trees"
-            )
+            ) from None
         except subprocess.CalledProcessError as exc:
             if attempt == 2:
                 raise SystemExit(
                     f"command failed ({exc.returncode}): {' '.join(command)}"
-                )
+                ) from None
             print(
                 f"clone failed (attempt {attempt + 1}/3); retrying",
                 flush=True,
@@ -124,9 +123,7 @@ def install(repo_root: Path, spec: dict[str, str], *, force: bool) -> None:
     if staging.exists():
         shutil.rmtree(staging)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(
-        work, staging, ignore=shutil.ignore_patterns(".git")
-    )
+    shutil.copytree(work, staging, ignore=shutil.ignore_patterns(".git"))
     if destination.exists():
         shutil.rmtree(destination)
     staging.replace(destination)

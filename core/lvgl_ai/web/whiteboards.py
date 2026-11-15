@@ -29,7 +29,15 @@ WHITEBOARDS_FILE = session_schema.WHITEBOARDS_FILE
 WHITEBOARDS_DIR = session_schema.WHITEBOARDS_DIR
 WHITEBOARDS_SCHEMA = session_schema.WHITEBOARDS_SCHEMA
 SCOPE_KINDS = ("global", "frame", "range")
-ITEM_FIELDS = ("id", "scope", "text", "labels", "image", "objects", "confirmed")
+ITEM_FIELDS = (
+    "id",
+    "scope",
+    "text",
+    "labels",
+    "image",
+    "objects",
+    "confirmed",
+)
 SCOPE_FIELDS = {
     "global": ("kind",),
     "frame": ("kind", "frame_no"),
@@ -48,7 +56,6 @@ MAX_IMAGE_DIMENSION = 4096
 
 
 class WhiteboardError(ValueError):
-
     code = "invalid_whiteboard"
 
     def __init__(self, message: str, *, code: str | None = None) -> None:
@@ -89,9 +96,7 @@ def _validate_scope(value: Any) -> dict[str, Any]:
     missing = [field for field in allowed if field not in value]
     unexpected = sorted(set(value) - set(allowed))
     if missing:
-        raise WhiteboardError(
-            f"scope is missing {', '.join(missing)}"
-        )
+        raise WhiteboardError(f"scope is missing {', '.join(missing)}")
     if unexpected:
         raise WhiteboardError(
             f"scope has unknown fields: {', '.join(unexpected)}"
@@ -105,7 +110,9 @@ def _validate_scope(value: Any) -> dict[str, Any]:
         start = _require_int(value["frame_start"], "scope.frame_start", 1)
         end = _require_int(value["frame_end"], "scope.frame_end", 1)
         if start > end:
-            raise WhiteboardError("scope.frame_start must not exceed frame_end")
+            raise WhiteboardError(
+                "scope.frame_start must not exceed frame_end"
+            )
         result["frame_start"] = start
         result["frame_end"] = end
     return result
@@ -132,15 +139,13 @@ def _validate_labels(value: Any) -> list[str]:
 def _decode_png(value: Any) -> bytes:
     if not isinstance(value, str) or not value.startswith(DATA_URL_PREFIX):
         raise WhiteboardError("image must be a data:image/png;base64 URL")
-    encoded = value[len(DATA_URL_PREFIX):]
+    encoded = value[len(DATA_URL_PREFIX) :]
     try:
         data = base64.b64decode(encoded, validate=True)
     except (binascii.Error, ValueError) as exc:
         raise WhiteboardError("image is not valid base64") from exc
     if len(data) > MAX_IMAGE_BYTES:
-        raise WhiteboardError(
-            f"image must be at most {MAX_IMAGE_BYTES} bytes"
-        )
+        raise WhiteboardError(f"image must be at most {MAX_IMAGE_BYTES} bytes")
     if not data.startswith(PNG_SIGNATURE) or len(data) < 24:
         raise WhiteboardError("image is not a PNG")
     width = int.from_bytes(data[16:20], "big")
@@ -170,16 +175,16 @@ def validate_whiteboard(payload: Any) -> tuple[dict[str, Any], bytes]:
     if item_id is None:
         item_id = f"wb-{secrets.token_hex(4)}"
     elif not isinstance(item_id, str) or not ID_RE.fullmatch(item_id):
-        raise WhiteboardError(
-            "id must match [A-Za-z0-9][A-Za-z0-9._-]{0,63}"
-        )
+        raise WhiteboardError("id must match [A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 
     scope = _validate_scope(payload.get("scope"))
     text_value = payload.get("text", "")
     if not isinstance(text_value, str):
         raise WhiteboardError("text must be a string")
     if len(text_value) > MAX_TEXT_LENGTH:
-        raise WhiteboardError(f"text must be at most {MAX_TEXT_LENGTH} characters")
+        raise WhiteboardError(
+            f"text must be at most {MAX_TEXT_LENGTH} characters"
+        )
     labels = _validate_labels(payload.get("labels", []))
 
     objects = payload.get("objects")
@@ -221,9 +226,7 @@ def _read_document(recording: Recording) -> dict[str, Any]:
     try:
         return recording.whiteboards
     except DocumentError as exc:
-        raise WhiteboardError(
-            str(exc), code="whiteboards_unreadable"
-        ) from exc
+        raise WhiteboardError(str(exc), code="whiteboards_unreadable") from exc
 
 
 def read_whiteboards(recording: Recording) -> dict[str, Any]:
@@ -234,7 +237,9 @@ _WRITE_LOCK = threading.Lock()
 
 
 def _image_name(item_id: str, data: bytes) -> str:
-    stem = re.sub(r"[^A-Za-z0-9._-]+", "_", item_id).strip("._-") or "whiteboard"
+    stem = (
+        re.sub(r"[^A-Za-z0-9._-]+", "_", item_id).strip("._-") or "whiteboard"
+    )
     digest = hashlib.sha1(data).hexdigest()[:8]
     return f"{stem}-{digest}.png"
 
@@ -256,15 +261,12 @@ def save_whiteboard(
                 document = _read_document(recording)
                 item, image = validate_whiteboard(payload)
                 filename = _image_name(item["id"], image)
-                relative = (
-                    f"{session_schema.WHITEBOARDS_DIR}/{filename}"
-                )
+                relative = f"{session_schema.WHITEBOARDS_DIR}/{filename}"
                 transaction.write_image(relative, image)
                 saved = dict(item)
                 saved["image"] = relative
                 items = [
-                    dict(existing)
-                    for existing in document["whiteboards"]
+                    dict(existing) for existing in document["whiteboards"]
                 ]
                 replaced = False
                 for position, existing in enumerate(items):

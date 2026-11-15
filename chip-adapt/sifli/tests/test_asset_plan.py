@@ -16,7 +16,9 @@ import asset_plan
 def write_png(path, width, height):
     def chunk(tag, data):
         crc = zlib.crc32(tag + data) & 0xFFFFFFFF
-        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", crc)
+        return (
+            struct.pack(">I", len(data)) + tag + data + struct.pack(">I", crc)
+        )
 
     row = b"\x00" + b"\x00\x00\x00" * width
     png = b"\x89PNG\r\n\x1a\n"
@@ -214,9 +216,7 @@ class AssetPlanTest(unittest.TestCase):
 
     def test_unsupported_transform_is_rejected(self):
         write_png(self.assets / "probe.png", 1, 1)
-        self._write_manifest(
-            {"probe": self._spec("probe", transform="flip")}
-        )
+        self._write_manifest({"probe": self._spec("probe", transform="flip")})
         with self.assertRaises(asset_plan.ExportError) as raised:
             self._plan()
         self.assertEqual(raised.exception.code, "asset_invalid")

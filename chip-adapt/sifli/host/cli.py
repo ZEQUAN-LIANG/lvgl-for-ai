@@ -73,7 +73,9 @@ class Client:
             raw = exc.read()
             try:
                 payload = json.loads(raw.decode("utf-8"))
-                message = payload.get("error") or raw.decode("utf-8", "replace")
+                message = payload.get("error") or raw.decode(
+                    "utf-8", "replace"
+                )
                 code = payload.get("code") or f"http_{exc.code}"
             except (UnicodeDecodeError, ValueError):
                 message = raw.decode("utf-8", "replace") or str(exc)
@@ -308,9 +310,9 @@ def cmd_open(args: argparse.Namespace, config: dict[str, Any]) -> int:
             "baud": args.baud or config["default_baud"],
         },
     )
-    _print_json(payload) if args.json else print(_human_status(
-        {"broker": payload["status"]}
-    ))
+    _print_json(payload) if args.json else print(
+        _human_status({"broker": payload["status"]})
+    )
     return 0
 
 
@@ -530,7 +532,9 @@ def cmd_suggest(args: argparse.Namespace, config: dict[str, Any]) -> int:
     return 0
 
 
-def cmd_auto_reconnect(args: argparse.Namespace, config: dict[str, Any]) -> int:
+def cmd_auto_reconnect(
+    args: argparse.Namespace, config: dict[str, Any]
+) -> int:
     client = ensure_server(args, config)
     enabled = args.state == "on"
     payload = client.post(

@@ -21,7 +21,10 @@ if str(TOOL_ROOT) not in sys.path:
 from lvgl_ai import paths
 
 COMMANDS = {
-    "run": ("cli", "build and play a scenario, then print the session summary"),
+    "run": (
+        "cli",
+        "build and play a scenario, then print the session summary",
+    ),
     "report": ("session_report", "read a finished session's evidence"),
     "serve": ("web", "serve the viewer and live bridge on 127.0.0.1:8765"),
     "assets": ("assets", "generate LVGL C arrays from fonts and images"),
@@ -41,17 +44,20 @@ def _usage() -> str:
     lines.append("  lvgl run --scenario user/scenarios/settings.json --json")
     lines.append("  lvgl report --latest --log-tail 5")
     lines.append("  lvgl serve --port 8765")
-    lines.append("  lvgl assets font --app myapp --font C:\\Windows\\Fonts\\Deng.ttf --size 16")
-    lines.append("  lvgl assets image --app myapp --input logo.png --cf ARGB8888")
+    lines.append(
+        "  lvgl assets font --app myapp --font C:\\Windows\\Fonts\\Deng.ttf --size 16"
+    )
+    lines.append(
+        "  lvgl assets image --app myapp --input logo.png --cf ARGB8888"
+    )
     lines.append("  lvgl assets doctor --json")
     return "\n".join(lines)
 
 
 def _packaged_bundle() -> bool:
-    return (
-        (paths.REPO_ROOT / "SKILL.md").is_file()
-        and paths.metadata_file("VERSION.json").is_file()
-    )
+    return (paths.REPO_ROOT / "SKILL.md").is_file() and paths.metadata_file(
+        "VERSION.json"
+    ).is_file()
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -124,11 +124,13 @@ def session_index(
         },
         "inputs": {
             "hit_named": sum(
-                1 for row in inputs if isinstance(row.get("hit"), str)
-                and row.get("hit")
+                1
+                for row in inputs
+                if isinstance(row.get("hit"), str) and row.get("hit")
             ),
             "hit_empty": sum(
-                1 for row in inputs
+                1
+                for row in inputs
                 if not isinstance(row.get("hit"), str) or not row.get("hit")
             ),
         },
@@ -200,9 +202,7 @@ def _frame_rows(
     return result
 
 
-def _evidence(
-    rows: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
+def _evidence(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for index, row in enumerate(rows):
         if row.get("type") not in ("frame", "snapshot"):
@@ -279,15 +279,13 @@ def _clicks(
                         "hit_class": down.get("hit_class"),
                         "moves": 0,
                         "frame_before": (
-                            None if before is None
-                            else before.get("frame_no")
+                            None if before is None else before.get("frame_no")
                         ),
                         "t_ms_after": (
                             None if after is None else after.get("t_ms")
                         ),
                         "frame_after": (
-                            None if after is None
-                            else after.get("frame_no")
+                            None if after is None else after.get("frame_no")
                         ),
                     }
                 )
@@ -375,7 +373,8 @@ def _checks(manifest: dict[str, Any]) -> dict[str, int]:
     if not isinstance(checks, list):
         return {"total": 0, "failed": 0}
     failed = sum(
-        1 for check in checks
+        1
+        for check in checks
         if isinstance(check, dict) and check.get("ok") is False
     )
     return {"total": len(checks), "failed": failed}
@@ -424,9 +423,9 @@ def _diffs(
             break
     top = sorted(
         rows,
-        key=lambda row: row.get("changed_px")
-        if _is_int(row.get("changed_px"))
-        else 0,
+        key=lambda row: (
+            row.get("changed_px") if _is_int(row.get("changed_px")) else 0
+        ),
         reverse=True,
     )[:3]
     result: dict[str, Any] = {
@@ -549,9 +548,7 @@ def _annotations(root: Path, compact: bool) -> dict[str, Any]:
         return {"count": 0, "notes": []}
     data = _read_json_object(path)
     if data is None or not isinstance(data.get("notes"), list):
-        return {
-            "count": 0, "notes": [], "error": "annotations_unreadable"
-        }
+        return {"count": 0, "notes": [], "error": "annotations_unreadable"}
     limit = COMPACT_NOTE_CHARS if compact else NOTE_TEXT_CHARS
     notes: list[dict[str, Any]] = []
     for note in data["notes"]:
@@ -595,7 +592,9 @@ def _annotations(root: Path, compact: bool) -> dict[str, Any]:
             "frame_start": note.get("frame_start", note.get("frame_no")),
             "frame_end": note.get("frame_end", note.get("frame_no")),
             "anchor_frames": anchored,
-            "tags": note.get("tags") if isinstance(note.get("tags"), list) else [],
+            "tags": note.get("tags")
+            if isinstance(note.get("tags"), list)
+            else [],
             "frame_images": _frame_images(root, anchored),
             "annotated": annotated,
             "annotated_regions": annotated_regions,
@@ -623,7 +622,9 @@ def _whiteboards(root: Path) -> dict[str, Any]:
     data = _read_json_object(path)
     if data is None or not isinstance(data.get("whiteboards"), list):
         return {
-            "count": 0, "pending": 0, "items": [],
+            "count": 0,
+            "pending": 0,
+            "items": [],
             "error": "whiteboards_unreadable",
         }
     items: list[dict[str, Any]] = []
@@ -642,7 +643,9 @@ def _whiteboards(root: Path) -> dict[str, Any]:
                 "text": item.get("text"),
                 "labels": [
                     label for label in labels or [] if isinstance(label, str)
-                ] if isinstance(labels, list) else [],
+                ]
+                if isinstance(labels, list)
+                else [],
                 "image": _abs_image(root, item.get("image")),
                 "confirmed": item.get("confirmed") is True,
             }
@@ -714,8 +717,7 @@ def _next_reads(
             {
                 "why": "largest changed regions",
                 "command": (
-                    f"python -I core/session_report.py diffs {session} "
-                    "--top 5"
+                    f"python -I core/session_report.py diffs {session} --top 5"
                 ),
                 "est_bytes": 3000,
             }

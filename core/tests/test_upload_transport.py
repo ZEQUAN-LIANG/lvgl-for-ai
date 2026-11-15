@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import contextlib
@@ -86,7 +85,10 @@ class UploadTransportTest(unittest.TestCase):
     def test_github_creates_a_missing_release_and_uploads(self) -> None:
         def responder(method, path, body):
             route, _query = split(path)
-            if method == "GET" and route == "/repos/acme/repo/releases/tags/v0.2.0":
+            if (
+                method == "GET"
+                and route == "/repos/acme/repo/releases/tags/v0.2.0"
+            ):
                 return 404, {"message": "not found"}
             if method == "POST" and route == "/repos/acme/repo/releases":
                 return 201, {
@@ -120,7 +122,10 @@ class UploadTransportTest(unittest.TestCase):
 
         self.assertEqual(url, "https://example.test/releases/v0.2.0")
         self.assertEqual(
-            [(method, split(path)[0]) for method, path, _body, _headers in service.requests],
+            [
+                (method, split(path)[0])
+                for method, path, _body, _headers in service.requests
+            ],
             [
                 ("GET", "/repos/acme/repo/releases/tags/v0.2.0"),
                 ("POST", "/repos/acme/repo/releases"),
@@ -143,11 +148,21 @@ class UploadTransportTest(unittest.TestCase):
     def test_github_updates_an_existing_release(self) -> None:
         def responder(method, path, body):
             route, _query = split(path)
-            if method == "GET" and route == "/repos/acme/repo/releases/tags/v0.2.0":
-                return 200, {"id": 7, "html_url": "https://example.test/old", "assets": []}
+            if (
+                method == "GET"
+                and route == "/repos/acme/repo/releases/tags/v0.2.0"
+            ):
+                return 200, {
+                    "id": 7,
+                    "html_url": "https://example.test/old",
+                    "assets": [],
+                }
             if method == "PATCH" and route == "/repos/acme/repo/releases/7":
                 return 200, {"id": 7}
-            if method == "POST" and route == "/repos/acme/repo/releases/7/assets":
+            if (
+                method == "POST"
+                and route == "/repos/acme/repo/releases/7/assets"
+            ):
                 return 201, {"size": len(body)}
             raise AssertionError(f"unexpected {method} {path}")
 
@@ -173,12 +188,17 @@ class UploadTransportTest(unittest.TestCase):
             ["GET", "PATCH", "POST"],
         )
         patch_body = json.loads(service.requests[1][2].decode("utf-8"))
-        self.assertEqual(patch_body, {"name": "LVGL Verify Loop 0.2.0", "body": "new notes"})
+        self.assertEqual(
+            patch_body, {"name": "LVGL Verify Loop 0.2.0", "body": "new notes"}
+        )
 
     def test_github_replace_deletes_the_same_named_asset(self) -> None:
         def responder(method, path, body):
             route, _query = split(path)
-            if method == "GET" and route == "/repos/acme/repo/releases/tags/v0.2.0":
+            if (
+                method == "GET"
+                and route == "/repos/acme/repo/releases/tags/v0.2.0"
+            ):
                 return 200, {
                     "id": 7,
                     "html_url": "https://example.test/release",
@@ -186,9 +206,15 @@ class UploadTransportTest(unittest.TestCase):
                 }
             if method == "PATCH" and route == "/repos/acme/repo/releases/7":
                 return 200, {"id": 7}
-            if method == "DELETE" and route == "/repos/acme/repo/releases/assets/99":
+            if (
+                method == "DELETE"
+                and route == "/repos/acme/repo/releases/assets/99"
+            ):
                 return 204, None
-            if method == "POST" and route == "/repos/acme/repo/releases/7/assets":
+            if (
+                method == "POST"
+                and route == "/repos/acme/repo/releases/7/assets"
+            ):
                 return 201, {"size": len(body)}
             raise AssertionError(f"unexpected {method} {path}")
 
@@ -257,9 +283,14 @@ class UploadTransportTest(unittest.TestCase):
             api_base=service.base,
         )
 
-        self.assertEqual(url, "https://gitee.com/acme/repo/releases/tag/v0.2.0")
         self.assertEqual(
-            [(method, split(path)[0]) for method, path, _body, _headers in service.requests],
+            url, "https://gitee.com/acme/repo/releases/tag/v0.2.0"
+        )
+        self.assertEqual(
+            [
+                (method, split(path)[0])
+                for method, path, _body, _headers in service.requests
+            ],
             [
                 ("GET", "/repos/acme/repo/releases/tags/v0.2.0"),
                 ("POST", "/repos/acme/repo/releases"),
@@ -279,13 +310,18 @@ class UploadTransportTest(unittest.TestCase):
         self.assertEqual(create_form["body"], ["gitee notes"])
         self.assertEqual(create_form["target_commitish"], ["dev"])
         multipart = service.requests[3][2]
-        self.assertIn(b'name="file"; filename="' + ZIP_NAME.encode() + b'"', multipart)
+        self.assertIn(
+            b'name="file"; filename="' + ZIP_NAME.encode() + b'"', multipart
+        )
         self.assertIn(ZIP_BYTES, multipart)
 
     def test_gitee_updates_and_replaces_an_existing_attachment(self) -> None:
         def responder(method, path, body):
             route, _query = split(path)
-            if method == "GET" and route == "/repos/acme/repo/releases/tags/v0.2.0":
+            if (
+                method == "GET"
+                and route == "/repos/acme/repo/releases/tags/v0.2.0"
+            ):
                 return 200, {"id": 9}
             if method == "PATCH" and route == "/repos/acme/repo/releases/9":
                 return 200, {"id": 9}
@@ -427,23 +463,31 @@ class TransportInjectionTest(unittest.TestCase):
 
     def test_dry_run_does_not_use_the_network(self) -> None:
         def responder(method, path, body):
-            raise AssertionError(f"dry run touched the network: {method} {path}")
+            raise AssertionError(
+                f"dry run touched the network: {method} {path}"
+            )
 
         service = FakeService(responder)
         self.addCleanup(service.close)
         with tempfile.TemporaryDirectory() as raw:
             (Path(raw) / ZIP_NAME).write_bytes(ZIP_BYTES)
             stdout = io.StringIO()
-            with mock.patch.object(upload_release, "GITHUB_API", service.base), \
-                 mock.patch.object(upload_release, "GITHUB_UPLOADS", service.base), \
-                 mock.patch.object(upload_release, "GITEE_API", service.base), \
-                 mock.patch.dict(os.environ, {}, clear=True), \
-                 contextlib.redirect_stdout(stdout):
+            with (
+                mock.patch.object(upload_release, "GITHUB_API", service.base),
+                mock.patch.object(
+                    upload_release, "GITHUB_UPLOADS", service.base
+                ),
+                mock.patch.object(upload_release, "GITEE_API", service.base),
+                mock.patch.dict(os.environ, {}, clear=True),
+                contextlib.redirect_stdout(stdout),
+            ):
                 code = upload_release.main(
                     [
                         "--dry-run",
-                        "--assets-dir", raw,
-                        "--version", "0.2.0",
+                        "--assets-dir",
+                        raw,
+                        "--version",
+                        "0.2.0",
                         "--json",
                     ]
                 )
@@ -454,22 +498,31 @@ class TransportInjectionTest(unittest.TestCase):
 
     def test_missing_token_fails_before_the_network(self) -> None:
         def responder(method, path, body):
-            raise AssertionError(f"token check touched the network: {method} {path}")
+            raise AssertionError(
+                f"token check touched the network: {method} {path}"
+            )
 
         service = FakeService(responder)
         self.addCleanup(service.close)
         with tempfile.TemporaryDirectory() as raw:
             (Path(raw) / ZIP_NAME).write_bytes(ZIP_BYTES)
             stderr = io.StringIO()
-            with mock.patch.object(upload_release, "GITHUB_API", service.base), \
-                 mock.patch.object(upload_release, "GITHUB_UPLOADS", service.base), \
-                 mock.patch.dict(os.environ, {}, clear=True), \
-                 contextlib.redirect_stderr(stderr):
+            with (
+                mock.patch.object(upload_release, "GITHUB_API", service.base),
+                mock.patch.object(
+                    upload_release, "GITHUB_UPLOADS", service.base
+                ),
+                mock.patch.dict(os.environ, {}, clear=True),
+                contextlib.redirect_stderr(stderr),
+            ):
                 code = upload_release.main(
                     [
-                        "--assets-dir", raw,
-                        "--version", "0.2.0",
-                        "--target", "github",
+                        "--assets-dir",
+                        raw,
+                        "--version",
+                        "0.2.0",
+                        "--target",
+                        "github",
                     ]
                 )
         self.assertEqual(code, 1)

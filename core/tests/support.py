@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -57,8 +56,14 @@ def ensure_host_sdk(version: str = "9.6") -> Path:
     script = paths.TOOL_ROOT / "tools" / "export_sdk.py"
     result = subprocess.run(
         [
-            sys.executable, "-I", "-B", str(script),
-            "--version", version, "--force", "--json",
+            sys.executable,
+            "-I",
+            "-B",
+            str(script),
+            "--version",
+            version,
+            "--force",
+            "--json",
         ],
         capture_output=True,
         text=True,
@@ -82,7 +87,9 @@ def read_ndjson(path: str | Path) -> list[dict]:
     return rows
 
 
-def read_png_rgb(path: str | Path) -> tuple[int, int, list[tuple[int, int, int]]]:
+def read_png_rgb(
+    path: str | Path,
+) -> tuple[int, int, list[tuple[int, int, int]]]:
     data = Path(path).read_bytes()
     if not data.startswith(PNG_SIGNATURE):
         raise ValueError(f"{path} is not a PNG")
@@ -98,7 +105,9 @@ def read_png_rgb(path: str | Path) -> tuple[int, int, list[tuple[int, int, int]]
         chunk = data[pos : pos + length]
         pos += length + 4
         if chunk_type == b"IHDR":
-            width, height, bit_depth, color_type = struct.unpack(">IIBB", chunk[:10])
+            width, height, bit_depth, color_type = struct.unpack(
+                ">IIBB", chunk[:10]
+            )
         elif chunk_type == b"IDAT":
             idat.extend(chunk)
         elif chunk_type == b"IEND":
@@ -107,7 +116,9 @@ def read_png_rgb(path: str | Path) -> tuple[int, int, list[tuple[int, int, int]]
     if width is None or height is None or color_type is None:
         raise ValueError(f"{path}: missing IHDR")
     if bit_depth != 8:
-        raise ValueError(f"{path}: only 8-bit PNGs are supported, got {bit_depth}")
+        raise ValueError(
+            f"{path}: only 8-bit PNGs are supported, got {bit_depth}"
+        )
     channels = _CHANNELS[color_type]
     if color_type == 3:
         raise ValueError(f"{path}: indexed PNGs are not supported")
@@ -129,7 +140,9 @@ def read_png_rgb(path: str | Path) -> tuple[int, int, list[tuple[int, int, int]]
     return width, height, pixels
 
 
-def _unfilter(row: bytearray, previous: bytearray, channels: int, filter_type: int) -> None:
+def _unfilter(
+    row: bytearray, previous: bytearray, channels: int, filter_type: int
+) -> None:
     stride = len(row)
     if filter_type == 0:
         return
@@ -185,7 +198,9 @@ def write_png_rgb(
         for x in range(width):
             raw.extend(pixels[y * width + x])
     data = bytearray(PNG_SIGNATURE)
-    _write_chunk(data, b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+    _write_chunk(
+        data, b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    )
     _write_chunk(data, b"IDAT", zlib.compress(bytes(raw), 9))
     _write_chunk(data, b"IEND", b"")
     Path(path).write_bytes(bytes(data))
@@ -222,4 +237,6 @@ def _write_chunk(out: bytearray, chunk_type: bytes, payload: bytes) -> None:
     out.extend(struct.pack(">I", len(payload)))
     out.extend(chunk_type)
     out.extend(payload)
-    out.extend(struct.pack(">I", zlib.crc32(chunk_type + payload) & 0xFFFFFFFF))
+    out.extend(
+        struct.pack(">I", zlib.crc32(chunk_type + payload) & 0xFFFFFFFF)
+    )

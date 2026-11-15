@@ -19,22 +19,26 @@ from ..scenario import ScenarioError, load_scenario
 from . import common, registry
 from .common import AppError
 
-PROTECTED_APPS = frozenset({
-    "coffee",
-    "xiaohongshu",
-    "xhs",
-    "spectrum",
-    "demo",
-    "app",
-    "settings",
-})
+PROTECTED_APPS = frozenset(
+    {
+        "coffee",
+        "xiaohongshu",
+        "xhs",
+        "spectrum",
+        "demo",
+        "app",
+        "settings",
+    }
+)
 PROTECTED_LOWER = frozenset(name.lower() for name in PROTECTED_APPS)
-PROTECTED_SCENARIOS = frozenset({
-    "coffee.json",
-    "xiaohongshu.json",
-    "spectrum.json",
-    "settings.json",
-})
+PROTECTED_SCENARIOS = frozenset(
+    {
+        "coffee.json",
+        "xiaohongshu.json",
+        "spectrum.json",
+        "settings.json",
+    }
+)
 
 
 def is_protected_name(name: str) -> bool:
@@ -130,7 +134,7 @@ def _c_string_literals(text: str) -> Iterator[str]:
             while index < length:
                 current = text[index]
                 if current == "\\" and index + 1 < length:
-                    value.append(text[index:index + 2])
+                    value.append(text[index : index + 2])
                     index += 2
                     continue
                 if current == '"':

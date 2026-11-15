@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import hashlib
@@ -76,7 +75,9 @@ class ZipContractTest(unittest.TestCase):
 
             written = release_bundle.write_checksum(zip_path, digest)
 
-            self.assertEqual(written, zip_path.with_name(zip_path.name + ".sha256"))
+            self.assertEqual(
+                written, zip_path.with_name(zip_path.name + ".sha256")
+            )
             self.assertEqual(
                 written.read_text(encoding="utf-8"),
                 f"{digest}  {zip_path.name}\n",
@@ -103,9 +104,7 @@ class ManifestContractTest(unittest.TestCase):
 
             self.assertEqual(
                 manifest_path,
-                zip_path.with_name(
-                    "lvgl-verify-loop-0.2.0-9.6.release.json"
-                ),
+                zip_path.with_name("lvgl-verify-loop-0.2.0-9.6.release.json"),
             )
             payload = json.loads(manifest_path.read_text(encoding="utf-8"))
             self.assertEqual(payload["schema"], "lvgl-ai-release-v1")
@@ -204,12 +203,18 @@ class ReleaseAllArtifactsTest(unittest.TestCase):
                     "sifli\n", encoding="utf-8"
                 )
 
-            with mock.patch.object(
-                release_all, "_ensure_launchers", return_value={"status": "reused"}
-            ), mock.patch.object(
-                release_all, "_stage_full_package", side_effect=fake_stage
-            ), mock.patch.object(
-                release_all, "_overlay_sifli", side_effect=fake_overlay
+            with (
+                mock.patch.object(
+                    release_all,
+                    "_ensure_launchers",
+                    return_value={"status": "reused"},
+                ),
+                mock.patch.object(
+                    release_all, "_stage_full_package", side_effect=fake_stage
+                ),
+                mock.patch.object(
+                    release_all, "_overlay_sifli", side_effect=fake_overlay
+                ),
             ):
                 summary = release_all.build_release(
                     repo_root=repo,
@@ -225,7 +230,11 @@ class ReleaseAllArtifactsTest(unittest.TestCase):
             expected = {
                 "full": (
                     "lvgl-verify-loop-0.2.0-full-win64.zip",
-                    {"SKILL.md", "meta/versions.json", "sdk/9.6/manifest.json"},
+                    {
+                        "SKILL.md",
+                        "meta/versions.json",
+                        "sdk/9.6/manifest.json",
+                    },
                 ),
                 "full_sifli": (
                     "lvgl-verify-loop-0.2.0-full-sifli-win64.zip",
@@ -243,7 +252,9 @@ class ReleaseAllArtifactsTest(unittest.TestCase):
                 digest = sha256(zip_path)
                 self.assertEqual(summary[key]["zip"], str(zip_path))
                 self.assertEqual(summary[key]["sha256"], digest)
-                self.assertEqual(summary[key]["bytes"], zip_path.stat().st_size)
+                self.assertEqual(
+                    summary[key]["bytes"], zip_path.stat().st_size
+                )
                 checksum = zip_path.with_name(zip_path.name + ".sha256")
                 self.assertEqual(
                     checksum.read_text(encoding="utf-8"),
@@ -253,9 +264,7 @@ class ReleaseAllArtifactsTest(unittest.TestCase):
                     zip_path.stem + ".release.json"
                 )
                 self.assertEqual(summary[key]["manifest"], str(manifest_path))
-                payload = json.loads(
-                    manifest_path.read_text(encoding="utf-8")
-                )
+                payload = json.loads(manifest_path.read_text(encoding="utf-8"))
                 self.assertEqual(payload["schema"], "lvgl-ai-release-v1")
                 self.assertEqual(set(payload["files"]), files)
                 self.assertEqual(payload["sha256"], digest)

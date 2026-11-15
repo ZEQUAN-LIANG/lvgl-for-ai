@@ -89,7 +89,9 @@ class ParserTest(unittest.TestCase):
 
     def test_serve_flags(self) -> None:
         parser = cli.build_parser()
-        args = parser.parse_args(["serve", "--host", "0.0.0.0", "--port", "9000"])
+        args = parser.parse_args(
+            ["serve", "--host", "0.0.0.0", "--port", "9000"]
+        )
         self.assertEqual(args.host, "0.0.0.0")
         self.assertEqual(args.port, 9000)
         self.assertFalse(args.open)
@@ -157,7 +159,9 @@ class JobFollowTest(unittest.TestCase):
                 {
                     "job": {
                         "status": "ok",
-                        "events": [{"seq": 1, "stream": "stdout", "text": "x"}],
+                        "events": [
+                            {"seq": 1, "stream": "stdout", "text": "x"}
+                        ],
                         "next": 1,
                     }
                 }

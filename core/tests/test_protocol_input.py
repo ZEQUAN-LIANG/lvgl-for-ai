@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import os
@@ -9,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from lvgl_ai import Recording, Runtime, ScenarioError
+
 # Side effect: install the Windows-safe TemporaryDirectory before setUp runs.
 import support  # noqa: F401,E402
 
@@ -76,17 +76,59 @@ class ProtocolAndInputTest(unittest.TestCase):
         )
         rt.stop()
 
-    def test_invalid_input_events_raise_scenario_error_with_step_index(self) -> None:
+    def test_invalid_input_events_raise_scenario_error_with_step_index(
+        self,
+    ) -> None:
         rt = self._runtime()
         cases = [
             [{"at_ms": 0, "device": "pointer", "action": "down", "x": 1}],
-            [{"at_ms": True, "device": "pointer", "action": "down", "x": 1, "y": 2}],
-            [{"at_ms": 0, "device": "mouse", "action": "down", "x": 1, "y": 2}],
-            [{"at_ms": 0, "device": "pointer", "action": "tap", "x": 1, "y": 2}],
+            [
+                {
+                    "at_ms": True,
+                    "device": "pointer",
+                    "action": "down",
+                    "x": 1,
+                    "y": 2,
+                }
+            ],
+            [
+                {
+                    "at_ms": 0,
+                    "device": "mouse",
+                    "action": "down",
+                    "x": 1,
+                    "y": 2,
+                }
+            ],
+            [
+                {
+                    "at_ms": 0,
+                    "device": "pointer",
+                    "action": "tap",
+                    "x": 1,
+                    "y": 2,
+                }
+            ],
             [{"at_ms": 0, "device": "key", "action": "press"}],
             [{"at_ms": 0, "device": "encoder", "action": "turn"}],
-            [{"at_ms": 0, "device": "key", "action": "press", "key": "ENTER", "x": 1}],
-            [{"at_ms": -1, "device": "pointer", "action": "down", "x": 1, "y": 2}],
+            [
+                {
+                    "at_ms": 0,
+                    "device": "key",
+                    "action": "press",
+                    "key": "ENTER",
+                    "x": 1,
+                }
+            ],
+            [
+                {
+                    "at_ms": -1,
+                    "device": "pointer",
+                    "action": "down",
+                    "x": 1,
+                    "y": 2,
+                }
+            ],
         ]
         for events in cases:
             with self.subTest(events=events):
@@ -99,7 +141,13 @@ class ProtocolAndInputTest(unittest.TestCase):
         with self.assertRaises(ScenarioError) as caught:
             rt.input(
                 [
-                    {"at_ms": 0, "device": "pointer", "action": "down", "x": 1, "y": 2},
+                    {
+                        "at_ms": 0,
+                        "device": "pointer",
+                        "action": "down",
+                        "x": 1,
+                        "y": 2,
+                    },
                     {"at_ms": 16, "device": "key", "action": "press"},
                 ]
             )
@@ -111,7 +159,12 @@ class ProtocolAndInputTest(unittest.TestCase):
         self.addCleanup(rt.stop)
         replies = rt.input(
             [
-                {"at_ms": 0, "device": "key", "action": "press", "key": "ENTER"},
+                {
+                    "at_ms": 0,
+                    "device": "key",
+                    "action": "press",
+                    "key": "ENTER",
+                },
                 {"at_ms": 0, "device": "key", "action": "press", "key": "UP"},
             ]
         )
@@ -148,15 +201,28 @@ class ProtocolAndInputTest(unittest.TestCase):
         self.assertEqual(up["diff"], 2)
         rt.stop()
 
-    def test_unknown_key_in_input_events_fails_before_any_command(self) -> None:
+    def test_unknown_key_in_input_events_fails_before_any_command(
+        self,
+    ) -> None:
         rt = self._runtime()
         rt.start()
         self.addCleanup(rt.stop)
         with self.assertRaises(ScenarioError) as caught:
             rt.input(
                 [
-                    {"at_ms": 0, "device": "pointer", "action": "down", "x": 1, "y": 2},
-                    {"at_ms": 16, "device": "key", "action": "press", "key": "INSERT"},
+                    {
+                        "at_ms": 0,
+                        "device": "pointer",
+                        "action": "down",
+                        "x": 1,
+                        "y": 2,
+                    },
+                    {
+                        "at_ms": 16,
+                        "device": "key",
+                        "action": "press",
+                        "key": "INSERT",
+                    },
                 ]
             )
         self.assertEqual(caught.exception.step, 1)

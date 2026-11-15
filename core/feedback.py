@@ -23,7 +23,6 @@ from lvgl_ai.control.notes import (
     AUTHORS,
     SOURCES,
     TRANSCRIBERS,
-    AnnotationError,
     add_note,
 )
 from lvgl_ai.control.recording import Recording
@@ -66,9 +65,7 @@ def _seq_pair(value: str) -> tuple[int, int]:
 def _build_add_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="feedback.py add",
-        description=(
-            "Append one human note with a stable feedback anchor."
-        ),
+        description=("Append one human note with a stable feedback anchor."),
     )
     parser.add_argument("--session", required=True, metavar="SESSION")
     parser.add_argument("--author", choices=AUTHORS, default="human")
@@ -192,8 +189,7 @@ def _run_add(argv: list[str]) -> int:
         return EXIT_OK
     print(f"note: {output['note_id']}")
     print(
-        "anchor: "
-        + json.dumps(output["feedback_anchor"], ensure_ascii=False)
+        "anchor: " + json.dumps(output["feedback_anchor"], ensure_ascii=False)
     )
     print(
         "resolved: "

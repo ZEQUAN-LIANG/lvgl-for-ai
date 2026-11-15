@@ -11,7 +11,6 @@ identical in every host SDK (the FreeType DLL, its import library and the
 shared zlib/libpng/FreeType headers) are stored once under ``sdk/common``.
 """
 
-
 from __future__ import annotations
 
 import argparse
@@ -56,9 +55,7 @@ LAUNCHER_SUFFIXES = frozenset({".c", ".rc", ".ico", ".py"})
 
 def _ensure_launchers(repo: Path, *, force: bool = False) -> dict[str, Any]:
     exe = repo / release_tool.RELEASE_VIEWER_PATH
-    cache_meta = (
-        repo / release_tool.RELEASE_ENGINE_CACHE_DIR / "launcher.json"
-    )
+    cache_meta = repo / release_tool.RELEASE_ENGINE_CACHE_DIR / "launcher.json"
     digest = release_tool.tree_digest(
         repo / "core" / "tools" / "launchers", LAUNCHER_SUFFIXES
     )
@@ -67,10 +64,9 @@ def _ensure_launchers(repo: Path, *, force: bool = False) -> dict[str, Any]:
             meta = json.loads(cache_meta.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             meta = {}
-        if (
-            meta.get("inputs_digest") == digest
-            and meta.get("exe_sha256") == release_tool.sha256_file(exe)
-        ):
+        if meta.get("inputs_digest") == digest and meta.get(
+            "exe_sha256"
+        ) == release_tool.sha256_file(exe):
             return {"status": "reused", "digest": digest}
     result = release_bundle.run_command(
         [
@@ -312,7 +308,11 @@ def _overlay_sifli(package: Path, repo: Path, tool_version: str) -> None:
                 package / "chip-adapt" / "sifli" / name,
                 dirs_exist_ok=True,
                 ignore=shutil.ignore_patterns(
-                    "__pycache__", "*.pyc", "logs", ".cache", "config.json",
+                    "__pycache__",
+                    "*.pyc",
+                    "logs",
+                    ".cache",
+                    "config.json",
                     "tests",
                 ),
             )
@@ -341,7 +341,9 @@ def _overlay_sifli(package: Path, repo: Path, tool_version: str) -> None:
             ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
         )
 
-    example_target = package / "chip-adapt" / "examples" / "export" / "sift_watch"
+    example_target = (
+        package / "chip-adapt" / "examples" / "export" / "sift_watch"
+    )
     with tempfile.TemporaryDirectory(prefix="lvgl-sifli-example-") as raw:
         generated = Path(raw) / "sift_watch"
         result = release_bundle.run_command(
@@ -351,7 +353,8 @@ def _overlay_sifli(package: Path, repo: Path, tool_version: str) -> None:
                 "-B",
                 str(sifli / "export.py"),
                 "sift_watch",
-                "--output", str(generated),
+                "--output",
+                str(generated),
                 "--force",
             ],
             cwd=repo,
@@ -362,7 +365,9 @@ def _overlay_sifli(package: Path, repo: Path, tool_version: str) -> None:
 
     docs = package / "docs"
     docs.mkdir(parents=True, exist_ok=True)
-    (docs / "SIFLI.md").write_text(_sifli_readme(tool_version), encoding="utf-8")
+    (docs / "SIFLI.md").write_text(
+        _sifli_readme(tool_version), encoding="utf-8"
+    )
     (package / "bin" / "sifli.cmd").write_text(_sifli_cmd(), encoding="utf-8")
 
 
@@ -399,16 +404,16 @@ def _sifli_cmd() -> str:
             'set "LVGL_AI_ROOT=%~dp0.."',
             'set "LVGL_AI_PY="',
             "where python >nul 2>nul",
-            "if not errorlevel 1 set \"LVGL_AI_PY=python\"",
+            'if not errorlevel 1 set "LVGL_AI_PY=python"',
             "if not defined LVGL_AI_PY (",
             "  where py >nul 2>nul",
-            "  if not errorlevel 1 set \"LVGL_AI_PY=py -3\"",
+            '  if not errorlevel 1 set "LVGL_AI_PY=py -3"',
             ")",
             "if not defined LVGL_AI_PY (",
             "  echo [sifli] Python 3.9+ was not found on PATH. 1>&2",
             "  exit /b 2",
             ")",
-            "%LVGL_AI_PY% -I -B \"%LVGL_AI_ROOT%\\chip-adapt\\sifli\\host\\server.py\" --open %*",
+            '%LVGL_AI_PY% -I -B "%LVGL_AI_ROOT%\\chip-adapt\\sifli\\host\\server.py" --open %*',
             "exit /b %ERRORLEVEL%",
             "",
         )

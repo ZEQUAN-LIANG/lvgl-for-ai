@@ -102,7 +102,6 @@ def scaffold_app(
     dry_run: bool = False,
 ) -> dict[str, Any]:
     root = common.resolve_repo_root(repo_root)
-    user_app = common._user_app(root)
     app_c = common._app_c(root)
     app_dir = common._app_dir(root, name)
     scenario_path = common._scenario_path(root, f"{name}.json")
@@ -118,16 +117,19 @@ def scaffold_app(
 
     header = _render(HEADER_TEMPLATE, name)
     source = _render(SOURCE_TEMPLATE, name)
-    scenario = json.dumps(
-        {
-            "schema": "lvgl-ai-scenario-v1",
-            "name": name,
-            "app": name,
-            "steps": SCENARIO_STEPS,
-        },
-        indent=2,
-        ensure_ascii=False,
-    ) + "\n"
+    scenario = (
+        json.dumps(
+            {
+                "schema": "lvgl-ai-scenario-v1",
+                "name": name,
+                "app": name,
+                "steps": SCENARIO_STEPS,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n"
+    )
     _validate_scenario(scenario, name)
 
     created: list[str] = []
@@ -200,7 +202,9 @@ def _validate_name(root: Path, name: str, *, force: bool) -> None:
             f"{scenario_path} already exists; use --force to overwrite it",
         )
     if app_dir.exists() and not app_dir.is_dir():
-        raise AppError("app_exists", f"{app_dir} exists and is not a directory")
+        raise AppError(
+            "app_exists", f"{app_dir} exists and is not a directory"
+        )
 
     symbol = f"{name}_create"
     app_c = common._app_c(root)
@@ -262,9 +266,13 @@ def _validate_scenario(text: str, name: str) -> None:
         except ScenarioError as exc:
             raise AppError("app_invalid", str(exc)) from exc
     if document.get("app") != name:
-        raise AppError("app_invalid", "generated scenario has the wrong app field")
+        raise AppError(
+            "app_invalid", "generated scenario has the wrong app field"
+        )
     if len(document.get("steps", [])) != len(SCENARIO_STEPS):
-        raise AppError("app_invalid", "generated scenario has the wrong step count")
+        raise AppError(
+            "app_invalid", "generated scenario has the wrong step count"
+        )
 
 
 def _write_all(
@@ -290,7 +298,9 @@ def _write_all(
         ordered = writes
         if write_last is not None:
             ordered = [item for item in writes if item[0] != write_last]
-            ordered.append(next(item for item in writes if item[0] == write_last))
+            ordered.append(
+                next(item for item in writes if item[0] == write_last)
+            )
         for path, data, existed in ordered:
             if guard is not None and path == guard[0]:
                 common._ensure_unchanged(path, guard[1])

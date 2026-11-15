@@ -44,7 +44,9 @@ def _string_list(value: Any, field: str) -> list[str]:
     if not isinstance(value, list) or not all(
         isinstance(item, str) for item in value
     ):
-        raise BuildError(f"host SDK manifest field {field!r} must be a string list")
+        raise BuildError(
+            f"host SDK manifest field {field!r} must be a string list"
+        )
     return list(value)
 
 
@@ -140,9 +142,13 @@ class HostSdk:
         try:
             manifest = json.loads(data.decode("utf-8"))
         except (UnicodeDecodeError, ValueError) as exc:
-            raise BuildError(f"cannot read host SDK manifest {manifest_path}: {exc}") from exc
+            raise BuildError(
+                f"cannot read host SDK manifest {manifest_path}: {exc}"
+            ) from exc
         if not isinstance(manifest, dict):
-            raise BuildError(f"host SDK manifest must be an object: {manifest_path}")
+            raise BuildError(
+                f"host SDK manifest must be an object: {manifest_path}"
+            )
         if manifest.get("schema") != SDK_SCHEMA:
             raise BuildError(
                 f"unsupported host SDK schema in {manifest_path}: "
@@ -150,7 +156,9 @@ class HostSdk:
             )
         version = manifest.get("lvgl_version")
         if not isinstance(version, str):
-            raise BuildError(f"host SDK manifest is missing lvgl_version: {manifest_path}")
+            raise BuildError(
+                f"host SDK manifest is missing lvgl_version: {manifest_path}"
+            )
         if expected_version is not None and version != expected_version:
             raise BuildError(
                 f"host SDK version mismatch: {manifest_path} is {version}, "
@@ -160,11 +168,15 @@ class HostSdk:
         if not isinstance(compiler, dict) or not isinstance(
             compiler.get("version"), str
         ):
-            raise BuildError(f"host SDK manifest is missing compiler.version: {manifest_path}")
+            raise BuildError(
+                f"host SDK manifest is missing compiler.version: {manifest_path}"
+            )
         _string_list(manifest.get("defines"), "defines")
         _string_list(manifest.get("cflags"), "cflags")
         _string_list(manifest.get("link_flags"), "link_flags")
-        include_dirs = _string_list(manifest.get("include_dirs"), "include_dirs")
+        include_dirs = _string_list(
+            manifest.get("include_dirs"), "include_dirs"
+        )
         libs = _string_list(manifest.get("libs"), "libs")
         runtime_dlls = (
             _string_list(manifest.get("runtime_dlls"), "runtime_dlls")
@@ -178,9 +190,9 @@ class HostSdk:
                 raise BuildError(
                     f"host SDK shared_root must be a string: {manifest_path}"
                 )
-            shared_root = (root.parent / _basename(
-                shared_root_name, "shared_root"
-            )).resolve()
+            shared_root = (
+                root.parent / _basename(shared_root_name, "shared_root")
+            ).resolve()
             if not shared_root.is_dir():
                 raise BuildError(
                     f"host SDK shared root not found: {shared_root}"
@@ -203,7 +215,9 @@ class HostSdk:
             )
         hashes = manifest.get("sha256")
         if not isinstance(hashes, dict):
-            raise BuildError(f"host SDK manifest is missing sha256: {manifest_path}")
+            raise BuildError(
+                f"host SDK manifest is missing sha256: {manifest_path}"
+            )
 
         all_libs = [*libs, *shared_libs]
         for name in REQUIRED_LIBS:
@@ -213,11 +227,15 @@ class HostSdk:
                     f"{manifest_path}"
                 )
         if len(all_libs) != len(set(all_libs)):
-            raise BuildError(f"host SDK manifest lists a library twice: {manifest_path}")
+            raise BuildError(
+                f"host SDK manifest lists a library twice: {manifest_path}"
+            )
         for rel in include_dirs:
             candidate = _relative_entry(rel, "include_dirs")
             if not (root / candidate).is_dir():
-                raise BuildError(f"host SDK include directory not found: {root / candidate}")
+                raise BuildError(
+                    f"host SDK include directory not found: {root / candidate}"
+                )
         if shared_root is not None:
             for rel in shared_include_dirs:
                 candidate = _relative_entry(rel, "shared_include_dirs")
@@ -361,7 +379,6 @@ class CompileStep:
 
 
 class PrebuiltBuild:
-
     def __init__(
         self,
         sdk: HostSdk,
@@ -385,12 +402,15 @@ class PrebuiltBuild:
         self._steps: list[CompileStep] | None = None
         self._link_command: list[str] | None = None
 
-
     def preflight(self) -> None:
         if not self.user_app_dir.is_dir():
-            raise BuildError(f"user app directory not found: {self.user_app_dir}")
+            raise BuildError(
+                f"user app directory not found: {self.user_app_dir}"
+            )
         if not (self.engine_dir / "main.c").is_file():
-            raise BuildError(f"engine main.c not found: {self.engine_dir / 'main.c'}")
+            raise BuildError(
+                f"engine main.c not found: {self.engine_dir / 'main.c'}"
+            )
         if not self.user_sources:
             raise BuildError(f"no C sources found in {self.user_app_dir}")
 
@@ -399,7 +419,6 @@ class PrebuiltBuild:
         return sorted(
             path for path in self.user_app_dir.rglob("*.c") if path.is_file()
         )
-
 
     @property
     def steps(self) -> list[CompileStep]:
@@ -418,7 +437,8 @@ class PrebuiltBuild:
             objects = [str(step.object_path) for step in self.steps]
             command = [
                 self.compiler,
-                "-o", str(self.engine_path),
+                "-o",
+                str(self.engine_path),
                 *objects,
                 "-Wl,--start-group",
                 *[str(path) for path in self.sdk.lib_paths],
@@ -457,13 +477,17 @@ class PrebuiltBuild:
         includes = list(dict.fromkeys(includes))
         command = [
             self.compiler,
-            "-c", str(source),
-            "-o", str(object_path),
+            "-c",
+            str(source),
+            "-o",
+            str(object_path),
             *flags,
             *defines,
             *includes,
         ]
-        return CompileStep(source=source, object_path=object_path, command=command)
+        return CompileStep(
+            source=source, object_path=object_path, command=command
+        )
 
     def _object_key(self, source: Path, role: str) -> str:
         try:
@@ -502,7 +526,6 @@ class PrebuiltBuild:
                 digest.update(b"\0")
         return digest.hexdigest()
 
-
     def prune_objects(self) -> None:
         keep = {step.object_path.name for step in self.steps}
         if not self.object_dir.is_dir():
@@ -533,7 +556,6 @@ class PrebuiltBuild:
             json.dumps(payload, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
-
 
     def log_header(self) -> str:
         return "\n".join(

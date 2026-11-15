@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import inspect
@@ -53,7 +52,8 @@ class RecordingReadTest(unittest.TestCase):
     def test_open_never_starts_an_engine_process(self) -> None:
         session = make_session(self.root)
         with mock.patch(
-            "subprocess.Popen", side_effect=AssertionError("Recording must not spawn")
+            "subprocess.Popen",
+            side_effect=AssertionError("Recording must not spawn"),
         ):
             recording = Recording.open(session)
             recording.log_tail(5)
@@ -67,7 +67,8 @@ class RecordingReadTest(unittest.TestCase):
         )
         recording = Recording.open(session)
         self.assertEqual(
-            recording.snapshots, [session / "snapshots" / "001_after_click.png"]
+            recording.snapshots,
+            [session / "snapshots" / "001_after_click.png"],
         )
 
     def test_open_accepts_manifest_path(self) -> None:
@@ -168,7 +169,8 @@ class RecordingReadTest(unittest.TestCase):
         session = make_session(self.root)
         path = session / "timeline.ndjson"
         path.write_text(
-            json.dumps({"schema": "lvgl-ai-timeline-v1", "type": "tree"}) + "\n",
+            json.dumps({"schema": "lvgl-ai-timeline-v1", "type": "tree"})
+            + "\n",
             encoding="utf-8",
         )
         recording = Recording.open(session)
@@ -180,7 +182,8 @@ class RecordingReadTest(unittest.TestCase):
         session = make_session(self.root)
         path = session / "frame_diffs.ndjson"
         path.write_text(
-            json.dumps({"schema": "lvgl-ai-frame-diffs-v0"}) + "\n", encoding="utf-8"
+            json.dumps({"schema": "lvgl-ai-frame-diffs-v0"}) + "\n",
+            encoding="utf-8",
         )
         recording = Recording.open(session)
         with self.assertRaises(ValueError) as caught:
@@ -203,7 +206,9 @@ class RecordingViewsTest(unittest.TestCase):
         self.addCleanup(self._tmp.cleanup)
         self.root = Path(self._tmp.name)
 
-    def test_frame_views_expose_file_frame_no_and_t_ms_without_urls(self) -> None:
+    def test_frame_views_expose_file_frame_no_and_t_ms_without_urls(
+        self,
+    ) -> None:
         session = make_session(self.root)
         recording = Recording.open(session)
 
@@ -251,11 +256,16 @@ class RecordingViewsTest(unittest.TestCase):
 
         recording = Recording.open(session)
         self.assertEqual(
-            [(view["frame_no"], view["t_ms"]) for view in recording.frame_views()],
+            [
+                (view["frame_no"], view["t_ms"])
+                for view in recording.frame_views()
+            ],
             [(1, 7), (2, 43210)],
         )
 
-    def test_frame_views_fall_back_to_file_numbers_without_a_timeline(self) -> None:
+    def test_frame_views_fall_back_to_file_numbers_without_a_timeline(
+        self,
+    ) -> None:
         session = make_session(self.root)
         write_png_rgb(session / "frames/000002.png", 1, 1, [(1, 1, 1)])
         (session / "timeline.ndjson").unlink()
@@ -401,11 +411,11 @@ class RecordingViewsTest(unittest.TestCase):
         (session / "timeline.ndjson").write_text(text, encoding="utf-8")
         self.assertGreater(len(text.encode("utf-8")), 256 * 1024)
 
-        self.assertEqual(
-            Recording.open(session).latest_frame()["t_ms"], 43210
-        )
+        self.assertEqual(Recording.open(session).latest_frame()["t_ms"], 43210)
 
-    def test_views_are_empty_and_latest_frame_is_none_without_frames(self) -> None:
+    def test_views_are_empty_and_latest_frame_is_none_without_frames(
+        self,
+    ) -> None:
         session = make_session(
             self.root,
             artifacts={
@@ -461,7 +471,9 @@ class RecordingAnnotationsTest(unittest.TestCase):
         saved = json.loads(
             (session / "annotations.json").read_text(encoding="utf-8")
         )
-        self.assertEqual(saved, {"schema": "lvgl-ai-annotations-v1", "notes": []})
+        self.assertEqual(
+            saved, {"schema": "lvgl-ai-annotations-v1", "notes": []}
+        )
 
     def test_invalid_annotations_raise_value_error(self) -> None:
         session = make_session(self.root, with_annotations=False)

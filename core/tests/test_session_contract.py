@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -36,7 +35,9 @@ class SessionContractTest(unittest.TestCase):
         self.harness = WebHarness(self.root)
         self.addCleanup(self.harness.close)
 
-    def test_recording_summary_and_web_share_display_status_and_files(self) -> None:
+    def test_recording_summary_and_web_share_display_status_and_files(
+        self,
+    ) -> None:
         recording = Recording.open(self.session)
         manifest = recording.manifest
         index = session_index(self.session)
@@ -86,7 +87,9 @@ class SessionContractTest(unittest.TestCase):
             [snapshot["file"] for snapshot in detail["snapshots"]], [SNAPSHOT]
         )
 
-    def test_web_reads_the_same_annotation_and_whiteboard_documents(self) -> None:
+    def test_web_reads_the_same_annotation_and_whiteboard_documents(
+        self,
+    ) -> None:
         status, _, payload = self.harness.json(
             "GET", f"/api/sessions/{SESSION_NAME}/annotations"
         )
@@ -111,7 +114,7 @@ class SessionContractTest(unittest.TestCase):
         )
 
     def test_retention_sees_the_same_session_name_and_status(self) -> None:
-        old = make_summary_session(
+        make_summary_session(
             self.root,
             name=OLD_SESSION,
             display=DISPLAY,
@@ -129,7 +132,6 @@ class SessionContractTest(unittest.TestCase):
 
 
 class FileLayoutConstantsTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -143,10 +145,11 @@ class FileLayoutConstantsTest(unittest.TestCase):
     def test_recording_and_summary_follow_the_shared_names(self) -> None:
         frames = self.session / "frames"
         annotations = self.session / "annotations.json"
-        with mock.patch.object(
-            session_schema, "FRAMES_DIR", "frames-b3"
-        ), mock.patch.object(
-            session_schema, "ANNOTATIONS_FILE", "notes-b3.json"
+        with (
+            mock.patch.object(session_schema, "FRAMES_DIR", "frames-b3"),
+            mock.patch.object(
+                session_schema, "ANNOTATIONS_FILE", "notes-b3.json"
+            ),
         ):
             frames.rename(self.session / "frames-b3")
             annotations.rename(self.session / "notes-b3.json")
@@ -170,9 +173,7 @@ class FileLayoutConstantsTest(unittest.TestCase):
                 Path(index["frames"]["last"]).parent.name, "frames-b3"
             )
             self.assertEqual(index["annotations"]["count"], 1)
-            self.assertEqual(
-                index["annotations"]["notes"][0]["id"], "n1"
-            )
+            self.assertEqual(index["annotations"]["notes"][0]["id"], "n1")
 
     def test_retention_follows_the_shared_manifest_name(self) -> None:
         old = make_summary_session(
@@ -210,14 +211,17 @@ class FileLayoutConstantsTest(unittest.TestCase):
                 }
             ],
         }
-        with mock.patch.object(
-            session_schema, "FRAMES_DIR", "frames-b3"
-        ), mock.patch.object(
-            session_schema, "ANNOTATIONS_FILE", "notes-b3.json"
-        ), mock.patch.object(
-            session_schema, "WHITEBOARDS_FILE", "boards-b3.json"
-        ), mock.patch.object(
-            session_schema, "MANIFEST_FILE", "session-b3.json"
+        with (
+            mock.patch.object(session_schema, "FRAMES_DIR", "frames-b3"),
+            mock.patch.object(
+                session_schema, "ANNOTATIONS_FILE", "notes-b3.json"
+            ),
+            mock.patch.object(
+                session_schema, "WHITEBOARDS_FILE", "boards-b3.json"
+            ),
+            mock.patch.object(
+                session_schema, "MANIFEST_FILE", "session-b3.json"
+            ),
         ):
             (self.session / "frames").rename(self.session / "frames-b3")
             (self.session / "annotations.json").rename(
@@ -266,7 +270,6 @@ class FileLayoutConstantsTest(unittest.TestCase):
 
 
 class SessionIdContractTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -289,7 +292,9 @@ class SessionIdContractTest(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertFalse(session_schema.is_session_id(value))
 
-    def test_web_lists_and_serves_only_canonical_session_directories(self) -> None:
+    def test_web_lists_and_serves_only_canonical_session_directories(
+        self,
+    ) -> None:
         loose = make_summary_session(
             self.root,
             name="loose-session",
@@ -314,15 +319,12 @@ class SessionIdContractTest(unittest.TestCase):
             [entry["id"] for entry in payload["sessions"]], [SESSION_NAME]
         )
 
-        status, _, payload = harness.json(
-            "GET", "/api/sessions/loose-session"
-        )
+        status, _, payload = harness.json("GET", "/api/sessions/loose-session")
         self.assertEqual(status, 404)
         self.assertEqual(payload["error"]["code"], "unknown_session")
 
 
 class RecordedContractTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -357,7 +359,9 @@ class RecordedContractTest(unittest.TestCase):
         )
         self.assertFalse(session_index(self.session)["recorded"])
 
-    def test_recorded_needs_manifest_intent_and_both_evidence_files(self) -> None:
+    def test_recorded_needs_manifest_intent_and_both_evidence_files(
+        self,
+    ) -> None:
         manifest = self._manifest()
         self.assertTrue(
             session_schema.session_is_recorded(manifest, self.session)
@@ -375,7 +379,6 @@ class RecordedContractTest(unittest.TestCase):
 
 
 class ManifestSourceFieldsTest(unittest.TestCase):
-
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -392,9 +395,7 @@ class ManifestSourceFieldsTest(unittest.TestCase):
         for field in ("scenario", "source_digest"):
             with self.subTest(field=field):
                 self.setUp()
-                manifest = json.loads(
-                    self.path.read_text(encoding="utf-8")
-                )
+                manifest = json.loads(self.path.read_text(encoding="utf-8"))
                 del manifest[field]
                 self.path.write_text(json.dumps(manifest), encoding="utf-8")
                 with self.assertRaises(ValueError) as caught:
@@ -407,8 +408,10 @@ class ManifestSourceFieldsTest(unittest.TestCase):
             source_digest={"dir": "user/app", "sha256": "b" * 64, "files": 2},
         )
 
-        self.assertEqual(Recording.open(self.session).manifest["schema"],
-                         "lvgl-ai-session-v1")
+        self.assertEqual(
+            Recording.open(self.session).manifest["schema"],
+            "lvgl-ai-session-v1",
+        )
 
     def test_incomplete_objects_are_rejected(self) -> None:
         cases = [
@@ -426,8 +429,9 @@ class ManifestSourceFieldsTest(unittest.TestCase):
 
 
 class DisplayValidatorTest(unittest.TestCase):
-
-    def test_accepts_positive_dimensions_and_ignores_extra_fields(self) -> None:
+    def test_accepts_positive_dimensions_and_ignores_extra_fields(
+        self,
+    ) -> None:
         self.assertEqual(
             session_schema.validate_display(
                 {"width": 390, "height": 450, "format": "XRGB8888"}

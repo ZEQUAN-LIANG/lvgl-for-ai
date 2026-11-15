@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import hashlib
@@ -27,7 +26,9 @@ class ChangedFramesTest(unittest.TestCase):
         options.update(kwargs)
         return Runtime(**options)
 
-    def test_static_ticks_are_skipped_and_changes_stay_contiguous(self) -> None:
+    def test_static_ticks_are_skipped_and_changes_stay_contiguous(
+        self,
+    ) -> None:
         rt = self._runtime(record_changed_only=True)
         self.addCleanup(rt.stop)
         rt.start()
@@ -209,11 +210,15 @@ class ChangedFramesTest(unittest.TestCase):
 
         diffs = recording.frame_diffs()
         self.assertEqual([row["frame_no"] for row in diffs], frame_nos[1:])
-        self.assertEqual([row["prev_frame_no"] for row in diffs], frame_nos[:-1])
+        self.assertEqual(
+            [row["prev_frame_no"] for row in diffs], frame_nos[:-1]
+        )
 
         reference_rows = recording.reference_diffs()
         self.assertIsNotNone(reference_rows)
-        self.assertEqual([row["frame_no"] for row in reference_rows], frame_nos)
+        self.assertEqual(
+            [row["frame_no"] for row in reference_rows], frame_nos
+        )
         self.assertTrue(
             all(row["prev_frame_no"] is None for row in reference_rows)
         )
@@ -284,7 +289,9 @@ class ChangedFramesTest(unittest.TestCase):
         self.assertEqual(recording.manifest["frame_count"], 1)
         self.assertIs(recording.manifest["truncated"], True)
 
-    def test_tick_updates_virtual_time_and_skips_checks_on_request(self) -> None:
+    def test_tick_updates_virtual_time_and_skips_checks_on_request(
+        self,
+    ) -> None:
         rt = self._runtime(record_changed_only=True)
         self.addCleanup(rt.stop)
         rt.start()

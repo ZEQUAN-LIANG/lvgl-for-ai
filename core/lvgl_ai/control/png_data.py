@@ -17,7 +17,7 @@ class PngDataError(ValueError):
 def decode_png_data_url(value: Any) -> bytes:
     if not isinstance(value, str) or not value.startswith(DATA_URL_PREFIX):
         raise PngDataError("image must be a data:image/png;base64 URL")
-    encoded = value[len(DATA_URL_PREFIX):]
+    encoded = value[len(DATA_URL_PREFIX) :]
     try:
         data = base64.b64decode(encoded, validate=True)
     except (binascii.Error, ValueError) as exc:

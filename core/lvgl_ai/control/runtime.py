@@ -49,6 +49,7 @@ def _stale_engine_argument(log_tail: list[str]) -> str | None:
         return argument or line.strip()
     return None
 
+
 def _positive_int(value: object, name: str, *, default: int) -> int:
     if value is None:
         return default
@@ -69,7 +70,6 @@ def _env_positive_int(name: str, default: int) -> int:
 
 
 class RuntimeLike(Protocol):
-
     session_id: str | None
     session_dir: Path | None
     engine_log_path: Path | None
@@ -166,7 +166,9 @@ class Runtime:
         _build_command: list[str] | None = None,
     ) -> None:
         if _engine_path is not None and _engine_command is not None:
-            raise ValueError("pass either _engine_path or _engine_command, not both")
+            raise ValueError(
+                "pass either _engine_path or _engine_command, not both"
+            )
         if app is not None and not is_token(app):
             raise ValueError(f"app must match {TOKEN_PATTERN}; got {app!r}")
         display = require_display_pair(width, height)
@@ -197,7 +199,9 @@ class Runtime:
         self.timeout = float(timeout)
         self.diff_threshold = diff_threshold
         if max_frames is None:
-            max_frames = _env_positive_int("LVGL_AI_MAX_FRAMES", DEFAULT_MAX_FRAMES)
+            max_frames = _env_positive_int(
+                "LVGL_AI_MAX_FRAMES", DEFAULT_MAX_FRAMES
+            )
         self.max_frames = _positive_int(
             max_frames, "max_frames", default=DEFAULT_MAX_FRAMES
         )
@@ -218,10 +222,14 @@ class Runtime:
                 f"got {session_retention!r}"
             )
         self.reference = (
-            None if reference is None else Path(reference).expanduser().resolve()
+            None
+            if reference is None
+            else Path(reference).expanduser().resolve()
         )
         if self.reference is not None and not self.reference.is_file():
-            raise FileNotFoundError(f"reference image not found: {self.reference}")
+            raise FileNotFoundError(
+                f"reference image not found: {self.reference}"
+            )
         self._plan = BuildPlan(
             self.lvgl,
             configure=_configure_command,
@@ -232,7 +240,9 @@ class Runtime:
         self.build_dir = self._plan.build_dir
         self.engine_path = self._plan.engine_path
         self.build_mode = self._plan.mode
-        self._engine_command = list(_engine_command) if _engine_command else None
+        self._engine_command = (
+            list(_engine_command) if _engine_command else None
+        )
         resolved_sessions_root = (
             Path(sessions_root).expanduser().resolve()
             if sessions_root is not None
@@ -263,7 +273,6 @@ class Runtime:
         self.t_ms = 0
         self._failure: BaseException | None = None
 
-
     @property
     def app(self) -> str | None:
         return self._store.app
@@ -275,7 +284,6 @@ class Runtime:
     @property
     def ready(self) -> dict[str, Any] | None:
         return self._store.ready
-
 
     @property
     def is_running(self) -> bool:
@@ -346,7 +354,9 @@ class Runtime:
                 log_path=self._store.engine_log_path,
                 on_check=self._record_reply,
                 quit_timeout=(
-                    RECORD_QUIT_TIMEOUT_S if self._store.record else QUIT_TIMEOUT_S
+                    RECORD_QUIT_TIMEOUT_S
+                    if self._store.record
+                    else QUIT_TIMEOUT_S
                 ),
                 session_id=self.session_id,
                 app=self.app,
@@ -391,7 +401,7 @@ class Runtime:
             finally:
                 self._store.close_log()
             if error is not exc:
-                raise error
+                raise error from exc
             raise
         return self
 
@@ -446,7 +456,6 @@ class Runtime:
         self.stop()
         return False
 
-
     def pointer(self, action: str, x: int, y: int) -> dict[str, Any]:
         require_action("pointer", action)
         point_x = require_non_negative_int(x, "x")
@@ -475,11 +484,11 @@ class Runtime:
 
     def tick(self, ms: int, *, track_check: bool = True) -> dict[str, Any]:
         interval = require_non_negative_int(ms, "ms")
-        return self._command(
-            "tick", str(interval), track_check=track_check
-        )
+        return self._command("tick", str(interval), track_check=track_check)
 
-    def wait(self, ms: int | None = None, *, frames: int | None = None) -> dict[str, Any]:
+    def wait(
+        self, ms: int | None = None, *, frames: int | None = None
+    ) -> dict[str, Any]:
         if (ms is None) == (frames is None):
             raise ValueError("wait needs exactly one of ms or frames")
         if frames is not None:
@@ -488,9 +497,7 @@ class Runtime:
         interval = require_non_negative_int(ms, "ms")
         return self._command("wait", str(interval))
 
-    def wait_stable(
-        self, max_ms: int, stable_frames: int
-    ) -> dict[str, Any]:
+    def wait_stable(self, max_ms: int, stable_frames: int) -> dict[str, Any]:
         limit = require_non_negative_int(max_ms, "max_ms")
         target = require_integer(stable_frames, "stable_frames", minimum=1)
         waited_ms = 0
@@ -543,14 +550,16 @@ class Runtime:
             return self.key(event["action"], event["key"])
         return self.encoder("turn", event["diff"])
 
-
     def _engine_command_line(self) -> list[str]:
         assert self.session_dir is not None
         engine_args = [
-            "--session", str(self.session_dir),
+            "--session",
+            str(self.session_dir),
             "--record" if self._store.record else "--no-record",
-            "--diff-threshold", str(self.diff_threshold),
-            "--max-frames", str(self.max_frames),
+            "--diff-threshold",
+            str(self.diff_threshold),
+            "--max-frames",
+            str(self.max_frames),
         ]
         if self._store.record:
             engine_args.append("--async-encode")
@@ -663,7 +672,9 @@ class Runtime:
         seq = reply.get("seq")
         error = ProtocolError(
             message,
-            seq=seq if isinstance(seq, int) and not isinstance(seq, bool) else None,
+            seq=seq
+            if isinstance(seq, int) and not isinstance(seq, bool)
+            else None,
         )
         self._failure = error
         raise error
@@ -677,10 +688,8 @@ class Runtime:
             self._failure = exc
             raise
 
-
     def log_tail(self, n: int = 40) -> list[str]:
         return self._store.log_tail(n)
-
 
     def _open_session(self) -> None:
         self._store.create()
@@ -697,10 +706,14 @@ def _build_log_from_error(error: BaseException) -> str:
     return f"# build failed\n{error}\n"
 
 
-def _require_reply_fields(reply: dict[str, Any], fields: tuple[str, ...], verb: str) -> None:
+def _require_reply_fields(
+    reply: dict[str, Any], fields: tuple[str, ...], verb: str
+) -> None:
     missing = [field for field in fields if field not in reply]
     if missing:
         raise ProtocolError(
             f"{verb} reply is missing {', '.join(missing)}",
-            seq=reply.get("seq") if isinstance(reply.get("seq"), int) else None,
+            seq=reply.get("seq")
+            if isinstance(reply.get("seq"), int)
+            else None,
         )

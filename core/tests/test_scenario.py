@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -17,7 +16,11 @@ BUTTON_CENTER = (112, 324)
 
 
 def scenario_file(root: Path, steps: list[dict], **extra) -> Path:
-    document = {"schema": "lvgl-ai-scenario-v1", "name": "test", "steps": steps}
+    document = {
+        "schema": "lvgl-ai-scenario-v1",
+        "name": "test",
+        "steps": steps,
+    }
     document.update(extra)
     path = root / "scenario.json"
     path.write_text(json.dumps(document), encoding="utf-8")
@@ -72,7 +75,11 @@ class ScenarioExpansionTest(unittest.TestCase):
             self.runtime,
             [{"type": "drag", "from": [0, 0], "to": [80, 0]}],
         )
-        moves = [command for command in self.runtime.commands if command[:2] == ("pointer", "move")]
+        moves = [
+            command
+            for command in self.runtime.commands
+            if command[:2] == ("pointer", "move")
+        ]
         self.assertEqual(len(moves), 8)
         self.assertEqual(moves[-1], ("pointer", "move", 80, 0))
 
@@ -104,7 +111,9 @@ class ScenarioExpansionTest(unittest.TestCase):
             ],
         )
 
-    def test_drag_interval_ms_zero_keeps_the_old_command_sequence(self) -> None:
+    def test_drag_interval_ms_zero_keeps_the_old_command_sequence(
+        self,
+    ) -> None:
         play_scenario(
             self.runtime,
             [
@@ -130,7 +139,9 @@ class ScenarioExpansionTest(unittest.TestCase):
             ],
         )
 
-    def test_pointer_step_sends_one_pointer_command_without_press_synthesis(self) -> None:
+    def test_pointer_step_sends_one_pointer_command_without_press_synthesis(
+        self,
+    ) -> None:
         play_scenario(
             self.runtime,
             [
@@ -246,7 +257,9 @@ class ScenarioValidationTest(unittest.TestCase):
         self.assertEqual(self.runtime.commands, [])
 
     def test_unknown_step_type_is_rejected(self) -> None:
-        self.assert_scenario_error([{"type": "toggle", "id": "demo_button"}], "type")
+        self.assert_scenario_error(
+            [{"type": "toggle", "id": "demo_button"}], "type"
+        )
 
     def test_key_step_rejects_unknown_key_with_step_index(self) -> None:
         error = self.assert_scenario_error(
@@ -263,14 +276,14 @@ class ScenarioValidationTest(unittest.TestCase):
         self.assert_scenario_error(
             [{"type": "key", "action": "tap", "key": "ENTER"}], "action"
         )
-        self.assert_scenario_error(
-            [{"type": "key", "action": "press"}], "key"
-        )
+        self.assert_scenario_error([{"type": "key", "action": "press"}], "key")
         self.assert_scenario_error(
             [{"type": "encoder", "action": "turn", "diff": 32768}], "diff"
         )
 
-    def test_pointer_step_validates_action_and_coordinates_before_any_command(self) -> None:
+    def test_pointer_step_validates_action_and_coordinates_before_any_command(
+        self,
+    ) -> None:
         cases = [
             (
                 {"type": "pointer", "action": "tap", "x": 1, "y": 2},
@@ -293,7 +306,13 @@ class ScenarioValidationTest(unittest.TestCase):
                 "y must be an integer",
             ),
             (
-                {"type": "pointer", "action": "move", "x": 1, "y": 2, "label": "x"},
+                {
+                    "type": "pointer",
+                    "action": "move",
+                    "x": 1,
+                    "y": 2,
+                    "label": "x",
+                },
                 "unexpected field(s) label for pointer",
             ),
         ]
@@ -343,7 +362,9 @@ class ScenarioValidationTest(unittest.TestCase):
         )
 
     def test_negative_and_boolean_coordinates_are_rejected(self) -> None:
-        self.assert_scenario_error([{"type": "click_at", "x": -1, "y": 0}], "x")
+        self.assert_scenario_error(
+            [{"type": "click_at", "x": -1, "y": 0}], "x"
+        )
         self.assert_scenario_error(
             [{"type": "click_at", "x": True, "y": 0}], "x must be an integer"
         )
@@ -449,7 +470,9 @@ class ScenarioFileTest(unittest.TestCase):
             load_scenario(path)["display"], {"width": 640, "height": 480}
         )
 
-    def test_display_is_optional_and_null_keeps_the_engine_default(self) -> None:
+    def test_display_is_optional_and_null_keeps_the_engine_default(
+        self,
+    ) -> None:
         path = scenario_file(self.root, [{"type": "wait", "ms": 16}])
         self.assertNotIn("display", load_scenario(path))
         path = scenario_file(
@@ -527,11 +550,13 @@ class ScenarioIndexTest(unittest.TestCase):
     def _write(self, directory: Path, filename: str, **fields) -> Path:
         path = directory / filename
         path.write_text(
-            json.dumps({
-                "schema": "lvgl-ai-scenario-v1",
-                "steps": [{"type": "wait", "ms": 16}],
-                **fields,
-            }),
+            json.dumps(
+                {
+                    "schema": "lvgl-ai-scenario-v1",
+                    "steps": [{"type": "wait", "ms": 16}],
+                    **fields,
+                }
+            ),
             encoding="utf-8",
         )
         return path
@@ -556,7 +581,15 @@ class ScenarioIndexTest(unittest.TestCase):
         for entry in entries:
             self.assertEqual(
                 set(entry),
-                {"path", "basename", "app", "name", "display", "valid", "error"},
+                {
+                    "path",
+                    "basename",
+                    "app",
+                    "name",
+                    "display",
+                    "valid",
+                    "error",
+                },
             )
 
         by_name = {entry["basename"]: entry for entry in entries}
@@ -616,9 +649,7 @@ class ScenarioIndexTest(unittest.TestCase):
             [entry["basename"] for entry in entries], ["coffee.json"]
         )
         self.assertEqual(entries[0]["app"], "coffee")
-        self.assertEqual(
-            entries[0]["display"], {"width": 320, "height": 240}
-        )
+        self.assertEqual(entries[0]["display"], {"width": 320, "height": 240})
         self.assertEqual(Path(entries[0]["path"]).name, "coffee.json")
         self.assertEqual(
             scenario_module.scenario_index(
@@ -742,7 +773,8 @@ class SettingsScenarioIntegrationTest(unittest.TestCase):
         wait_rows = [row for row in rows if row["type"] == "wait"]
         self.assertEqual(len(wait_rows), 2)
         self.assertEqual(
-            [row["id"] for row in rows if row["type"] == "mark"], ["after_click"]
+            [row["id"] for row in rows if row["type"] == "mark"],
+            ["after_click"],
         )
         snapshots = [row for row in rows if row["type"] == "snapshot"]
         self.assertEqual(
@@ -786,7 +818,9 @@ class SettingsScenarioIntegrationTest(unittest.TestCase):
         self.assertGreater(moves[-1]["t_ms"], moves[0]["t_ms"])
 
     def test_path_and_list_forms_produce_the_same_timeline(self) -> None:
-        steps = json.loads(SETTINGS_SCENARIO.read_text(encoding="utf-8"))["steps"]
+        steps = json.loads(SETTINGS_SCENARIO.read_text(encoding="utf-8"))[
+            "steps"
+        ]
 
         def play(source, name: str) -> list[dict]:
             rt = Runtime(
