@@ -12,6 +12,7 @@
 #include "sift_watch/sift_watch.h"
 #include "zombie_cannon/zombie_cannon.h"
 #include "intro/intro.h"
+#include "demo_feedback/demo_feedback.h"
 #endif
 
 #include <stdio.h>
@@ -19,7 +20,7 @@
 #include <string.h>
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
-typedef void (* app_create_fn)(void);
+typedef void (*app_create_fn)(void);
 
 typedef struct {
     const char * name;
@@ -34,6 +35,7 @@ static const app_entry_t apps[] = {
     {"sift_watch", sift_watch_create},
     {"zombie_cannon", zombie_cannon_create},
     {"intro", intro_create},
+    {"demo_feedback", demo_feedback_create},
     {"asset_probe", asset_probe_create},
 };
 
@@ -73,8 +75,8 @@ void app_create(void)
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
     const char * requested = getenv("LVGL_AI_DEMO");
     const char * name = (requested == NULL || requested[0] == '\0')
-                        ? apps[0].name
-                        : app_canonical(requested);
+                            ? apps[0].name
+                            : app_canonical(requested);
     const app_entry_t * app = app_find(name);
 
     app_print_apps();
