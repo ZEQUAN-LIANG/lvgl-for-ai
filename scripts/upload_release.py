@@ -32,9 +32,11 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-_CONSOLE_ROOT = Path(__file__).resolve().parent.parent / "console"
-if str(_CONSOLE_ROOT) not in sys.path:
-    sys.path.insert(0, str(_CONSOLE_ROOT))
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+_CONSOLE_ROOT = _SCRIPTS_DIR.parent / "console"
+for _path in (_SCRIPTS_DIR, _CONSOLE_ROOT):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
 
 import paths
 import release_bundle
@@ -462,7 +464,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", default=paths.TOOL_VERSION)
     parser.add_argument("--tag", default=None, help="default: v<version>")
     parser.add_argument(
-        "--assets-dir", type=Path, default=None, help="default: <repo>/release"
+        "--assets-dir", type=Path, default=None, help="default: <repo>/dist/release"
     )
     parser.add_argument(
         "--target", choices=("all", "github", "gitee"), default="all"
@@ -492,7 +494,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    assets_dir = (args.assets_dir or (paths.REPO_ROOT / "release")).resolve()
+    assets_dir = (args.assets_dir or (paths.REPO_ROOT / "dist" / "release")).resolve()
     tag = args.tag or f"v{args.version}"
     try:
         assets = release_assets(assets_dir, args.version)
