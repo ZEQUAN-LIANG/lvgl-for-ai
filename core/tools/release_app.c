@@ -7,7 +7,7 @@
 #include <string.h>
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
-typedef void (* app_create_fn)(void);
+typedef void (*app_create_fn)(void);
 
 typedef struct {
     const char * name;
@@ -48,9 +48,8 @@ void app_create(void)
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
     const char * requested = getenv("LVGL_AI_DEMO");
-    const char * name = (requested == NULL || requested[0] == '\0')
-                        ? apps[0].name
-                        : requested;
+    const char * name =
+        (requested == NULL || requested[0] == '\0') ? apps[0].name : requested;
     const app_entry_t * app = app_find(name);
 
     app_print_apps();

@@ -14,7 +14,8 @@ typedef struct {
 
 const zc_sprite_def_t * zc_art_sprite(int type);
 
-void zc_art_sprite_draw(int type, int frame, int x, int y, int mode, uint8_t alpha);
+void zc_art_sprite_draw(int type, int frame, int x, int y, int mode,
+                        uint8_t alpha);
 
 void zc_art_backdrop_build(void);
 void zc_art_backdrop_draw(void);

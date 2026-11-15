@@ -3,7 +3,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-rt_err_t littlevgl2rtt_init(const char *name)
+rt_err_t littlevgl2rtt_init(const char * name)
 {
     (void)name;
     return RT_EOK;
@@ -24,7 +24,7 @@ int get_display_fps_and_cpu_load(void)
     return 0;
 }
 
-void rt_kprintf(const char *fmt, ...)
+void rt_kprintf(const char * fmt, ...)
 {
     va_list ap;
 

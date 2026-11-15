@@ -103,8 +103,10 @@ void zombie_cannon_create(void)
 {
     lv_obj_t * screen = lv_screen_active();
     lv_display_t * display = lv_display_get_default();
-    int32_t screen_w = display != NULL ? lv_display_get_horizontal_resolution(display) : 390;
-    int32_t screen_h = display != NULL ? lv_display_get_vertical_resolution(display) : 460;
+    int32_t screen_w =
+        display != NULL ? lv_display_get_horizontal_resolution(display) : 390;
+    int32_t screen_h =
+        display != NULL ? lv_display_get_vertical_resolution(display) : 460;
     s_w = screen_w < 390 ? (int)screen_w : 390;
     s_h = screen_h < 460 ? (int)screen_h : 460;
 

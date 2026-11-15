@@ -6,14 +6,22 @@
 static const char * json_escape(char c, char * scratch)
 {
     switch(c) {
-        case '"':  return "\\\"";
-        case '\\': return "\\\\";
-        case '\b': return "\\b";
-        case '\f': return "\\f";
-        case '\n': return "\\n";
-        case '\r': return "\\r";
-        case '\t': return "\\t";
-        default:   break;
+        case '"':
+            return "\\\"";
+        case '\\':
+            return "\\\\";
+        case '\b':
+            return "\\b";
+        case '\f':
+            return "\\f";
+        case '\n':
+            return "\\n";
+        case '\r':
+            return "\\r";
+        case '\t':
+            return "\\t";
+        default:
+            break;
     }
     if((unsigned char)c < 0x20u) {
         static const char hex[] = "0123456789abcdef";
@@ -34,7 +42,8 @@ void json_write_string(FILE * out, const char * value)
     if(out == NULL) return;
     fputc('"', out);
     if(value != NULL) {
-        for(const unsigned char * cursor = (const unsigned char *)value; *cursor != '\0'; cursor++) {
+        for(const unsigned char * cursor = (const unsigned char *)value;
+            *cursor != '\0'; cursor++) {
             char scratch[8];
             const char * escaped = json_escape((char)*cursor, scratch);
             if(escaped != NULL) {
@@ -55,10 +64,12 @@ int json_quote(const char * value, char * out, size_t out_size)
     if(used + 1u >= out_size) return -1;
     out[used++] = '"';
     if(value != NULL) {
-        for(const unsigned char * cursor = (const unsigned char *)value; *cursor != '\0'; cursor++) {
+        for(const unsigned char * cursor = (const unsigned char *)value;
+            *cursor != '\0'; cursor++) {
             char scratch[8];
             const char * escaped = json_escape((char)*cursor, scratch);
-            const char * source = escaped != NULL ? escaped : (const char *)cursor;
+            const char * source =
+                escaped != NULL ? escaped : (const char *)cursor;
             size_t length = escaped != NULL ? strlen(escaped) : 1u;
             if(used + length + 2u > out_size) return -1;
             for(size_t i = 0; i < length; i++) out[used++] = source[i];

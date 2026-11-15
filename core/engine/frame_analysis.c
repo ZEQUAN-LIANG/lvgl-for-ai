@@ -2,11 +2,8 @@
 
 #include <string.h>
 
-void frame_analysis_compare(const uint8_t * previous,
-                            const uint8_t * current,
-                            uint32_t width,
-                            uint32_t height,
-                            int threshold,
+void frame_analysis_compare(const uint8_t * previous, const uint8_t * current,
+                            uint32_t width, uint32_t height, int threshold,
                             frame_analysis_t * analysis)
 {
     if(analysis == NULL) return;
@@ -25,8 +22,8 @@ void frame_analysis_compare(const uint8_t * previous,
         unsigned delta = 0;
         for(size_t channel = 0; channel < 3u; channel++) {
             int difference = (int)left[channel] - (int)right[channel];
-            unsigned magnitude = (unsigned)(difference < 0 ? -difference
-                                                           : difference);
+            unsigned magnitude =
+                (unsigned)(difference < 0 ? -difference : difference);
             if(magnitude > delta) delta = magnitude;
         }
         if(delta != 0) analysis->rgb_equal = false;

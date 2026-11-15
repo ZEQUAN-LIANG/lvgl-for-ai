@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define WAIT_STEP_MS 16u
+#define WAIT_STEP_MS               16u
 #define FRAME_BYTES(width, height) ((size_t)(width) * (height) * 4u)
 
 static void session_present(session_t * session)
@@ -22,8 +22,8 @@ static void session_remember(session_t * session, const uint8_t * frame)
     if(!session->changed_only || session->previous == NULL || frame == NULL) {
         return;
     }
-    memcpy(session->previous, frame, FRAME_BYTES(session->width,
-                                                session->height));
+    memcpy(session->previous, frame,
+           FRAME_BYTES(session->width, session->height));
     session->has_previous = true;
 }
 
@@ -44,8 +44,8 @@ static void session_record_frame(session_t * session)
 
     char relative[64];
     capture_frame_result_t result;
-    if(capture_frame(&session->capture, relative, sizeof(relative),
-                     &result) != 0) {
+    if(capture_frame(&session->capture, relative, sizeof(relative), &result) !=
+       0) {
         session_fail(session, SESSION_ERROR_CAPTURE);
         return;
     }
@@ -83,8 +83,8 @@ void session_init(session_t * session, const session_config_t * config)
     const adapter_info_t * info = adapter_info(config->adapter);
     if(config->record_changed_only && (config->record || config->live) &&
        info != NULL && info->width > 0 && info->height > 0) {
-        session->previous = (uint8_t *)malloc(
-            FRAME_BYTES(info->width, info->height));
+        session->previous =
+            (uint8_t *)malloc(FRAME_BYTES(info->width, info->height));
         if(session->previous != NULL) {
             session->width = info->width;
             session->height = info->height;
@@ -97,13 +97,12 @@ void session_init(session_t * session, const session_config_t * config)
         }
     }
 
-    bool capture_ok = capture_init(&session->capture, config->adapter,
-                                   config->session_dir, config->record,
-                                   config->max_frames, config->live,
-                                   config->async_encode,
-                                   config->encode_budget_bytes);
-    bool timeline_ok = timeline_init(&session->timeline, config->session_dir,
-                                     config->record);
+    bool capture_ok =
+        capture_init(&session->capture, config->adapter, config->session_dir,
+                     config->record, config->max_frames, config->live,
+                     config->async_encode, config->encode_budget_bytes);
+    bool timeline_ok =
+        timeline_init(&session->timeline, config->session_dir, config->record);
     bool diff_ok = frame_diff_open_previous(
         &session->frame_diff, config->session_dir, config->width,
         config->height, config->diff_threshold, config->record);
@@ -140,10 +139,8 @@ void session_tick(session_t * session, uint32_t ms)
     session_refresh_frame(session);
 }
 
-bool session_wait_ms(session_t * session,
-                     unsigned long ms,
-                     session_service_fn service,
-                     void * service_user)
+bool session_wait_ms(session_t * session, unsigned long ms,
+                     session_service_fn service, void * service_user)
 {
     if(session == NULL) return false;
     uint32_t start_t = session->t_ms;
@@ -163,10 +160,8 @@ bool session_wait_ms(session_t * session,
     return changed;
 }
 
-bool session_wait_frames(session_t * session,
-                         unsigned long frames,
-                         session_service_fn service,
-                         void * service_user)
+bool session_wait_frames(session_t * session, unsigned long frames,
+                         session_service_fn service, void * service_user)
 {
     if(session == NULL) return false;
     uint32_t start_t = session->t_ms;
@@ -189,14 +184,9 @@ void session_mark(session_t * session, const char * id)
                   session->t_ms, id);
 }
 
-void session_input_pointer(session_t * session,
-                           long seq,
-                           const char * source,
-                           const char * action,
-                           long x,
-                           long y,
-                           const char * hit,
-                           const char * hit_class)
+void session_input_pointer(session_t * session, long seq, const char * source,
+                           const char * action, long x, long y,
+                           const char * hit, const char * hit_class)
 {
     if(session == NULL) return;
     timeline_input_pointer(&session->timeline, seq, source,
@@ -204,22 +194,16 @@ void session_input_pointer(session_t * session,
                            session->t_ms, action, x, y, hit, hit_class);
 }
 
-void session_input_key(session_t * session,
-                       long seq,
-                       const char * source,
-                       const char * action,
-                       const char * key,
-                       bool delivered)
+void session_input_key(session_t * session, long seq, const char * source,
+                       const char * action, const char * key, bool delivered)
 {
     if(session == NULL) return;
     timeline_input_key(&session->timeline, seq, source,
-                       capture_frame_count(&session->capture),
-                       session->t_ms, action, key, delivered);
+                       capture_frame_count(&session->capture), session->t_ms,
+                       action, key, delivered);
 }
 
-void session_input_encoder(session_t * session,
-                           long seq,
-                           const char * source,
+void session_input_encoder(session_t * session, long seq, const char * source,
                            long diff)
 {
     if(session == NULL) return;
@@ -228,9 +212,7 @@ void session_input_encoder(session_t * session,
                            session->t_ms, diff);
 }
 
-int session_snapshot(session_t * session,
-                     const char * label,
-                     char * relative,
+int session_snapshot(session_t * session, const char * label, char * relative,
                      size_t relative_size)
 {
     if(relative != NULL && relative_size > 0) relative[0] = '\0';

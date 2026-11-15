@@ -35,12 +35,12 @@ static void store_hit(adapter_t * adapter, int32_t x, int32_t y, bool real)
     adapter_common_t * common = common_of(adapter);
     char * hit_name = real ? common->real_hit_name : common->hit_name;
     char * hit_class = real ? common->real_hit_class : common->hit_class;
-    size_t hit_name_size = real ? sizeof(common->real_hit_name)
-                                : sizeof(common->hit_name);
-    size_t hit_class_size = real ? sizeof(common->real_hit_class)
-                                 : sizeof(common->hit_class);
-    pointer_reply_t * reply = real ? &common->real_pointer_reply
-                                   : &common->pointer_reply;
+    size_t hit_name_size =
+        real ? sizeof(common->real_hit_name) : sizeof(common->hit_name);
+    size_t hit_class_size =
+        real ? sizeof(common->real_hit_class) : sizeof(common->hit_class);
+    pointer_reply_t * reply =
+        real ? &common->real_pointer_reply : &common->pointer_reply;
 
     adapter_prim_hit(adapter, x, y, hit_name, hit_name_size, hit_class,
                      hit_class_size);
@@ -48,8 +48,7 @@ static void store_hit(adapter_t * adapter, int32_t x, int32_t y, bool real)
     reply->hit_class = hit_class;
 }
 
-adapter_t * adapter_create(uint32_t width, uint32_t height,
-                                   bool real_input)
+adapter_t * adapter_create(uint32_t width, uint32_t height, bool real_input)
 {
     if(width == 0 || height == 0) return NULL;
 
@@ -109,10 +108,8 @@ const uint8_t * adapter_framebuffer(const adapter_t * adapter)
     return adapter == NULL ? NULL : common_of_const(adapter)->framebuffer;
 }
 
-int adapter_pointer(adapter_t * adapter,
-                        pointer_action_t action,
-                        int32_t x,
-                        int32_t y)
+int adapter_pointer(adapter_t * adapter, pointer_action_t action, int32_t x,
+                    int32_t y)
 {
     if(adapter == NULL) return -1;
     adapter_common_t * common = common_of(adapter);
@@ -134,10 +131,8 @@ const pointer_reply_t * adapter_last_pointer(const adapter_t * adapter)
     return adapter == NULL ? NULL : &common_of_const(adapter)->pointer_reply;
 }
 
-int adapter_real_pointer(adapter_t * adapter,
-                             pointer_action_t action,
-                             int32_t x,
-                             int32_t y)
+int adapter_real_pointer(adapter_t * adapter, pointer_action_t action,
+                         int32_t x, int32_t y)
 {
     if(adapter == NULL) return -1;
     adapter_common_t * common = common_of(adapter);
@@ -165,16 +160,13 @@ int adapter_real_pointer(adapter_t * adapter,
     return 0;
 }
 
-const pointer_reply_t * adapter_last_real_pointer(
-    const adapter_t * adapter)
+const pointer_reply_t * adapter_last_real_pointer(const adapter_t * adapter)
 {
     return adapter == NULL ? NULL
                            : &common_of_const(adapter)->real_pointer_reply;
 }
 
-int adapter_real_key(adapter_t * adapter,
-                         key_action_t action,
-                         uint32_t key)
+int adapter_real_key(adapter_t * adapter, key_action_t action, uint32_t key)
 {
     if(adapter == NULL) return -1;
     adapter_common_t * common = common_of(adapter);
@@ -187,9 +179,7 @@ int adapter_real_key(adapter_t * adapter,
     return common->real_keypad_reads != reads_before ? 0 : -1;
 }
 
-int adapter_key(adapter_t * adapter,
-                    key_action_t action,
-                    uint32_t key)
+int adapter_key(adapter_t * adapter, key_action_t action, uint32_t key)
 {
     if(adapter == NULL) return -1;
     adapter_common_t * common = common_of(adapter);
@@ -292,10 +282,8 @@ int adapter_save_png(const adapter_t * adapter, const char * path)
                                  common->height, path);
 }
 
-int adapter_load_png(const char * path,
-                         uint8_t ** pixels,
-                         uint32_t * width,
-                         uint32_t * height)
+int adapter_load_png(const char * path, uint8_t ** pixels, uint32_t * width,
+                     uint32_t * height)
 {
     if(path == NULL || pixels == NULL || width == NULL || height == NULL) {
         return -1;

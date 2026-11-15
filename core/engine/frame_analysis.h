@@ -51,11 +51,8 @@ typedef struct {
  * the inclusive limit: a delta equal to the threshold is not counted as
  * changed. ``analysis`` receives the combined result.
  */
-void frame_analysis_compare(const uint8_t * previous,
-                            const uint8_t * current,
-                            uint32_t width,
-                            uint32_t height,
-                            int threshold,
+void frame_analysis_compare(const uint8_t * previous, const uint8_t * current,
+                            uint32_t width, uint32_t height, int threshold,
                             frame_analysis_t * analysis);
 
 #ifdef __cplusplus

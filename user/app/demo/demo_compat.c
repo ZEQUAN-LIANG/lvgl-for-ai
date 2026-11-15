@@ -51,7 +51,7 @@ static lv_obj_t * demo_button_create(lv_obj_t * parent)
 }
 
 static void demo_group_create(lv_obj_t * panel, lv_obj_t * button,
-                                  lv_obj_t * title)
+                              lv_obj_t * title)
 {
     demo_group = lv_group_create();
     if(demo_group == NULL) {

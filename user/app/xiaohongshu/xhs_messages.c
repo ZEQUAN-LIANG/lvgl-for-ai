@@ -15,30 +15,38 @@ typedef struct {
 } xhs_message_t;
 
 static xhs_message_t messages[4] = {
-    { XHS_TXT_MSG_ROW_0_NAME, XHS_TXT_MSG_ROW_0_TEXT,
-      XHS_TXT_MSG_ROW_0_TIME, "M", 0xD9A8C7 },
-    { XHS_TXT_MSG_ROW_1_NAME, XHS_TXT_MSG_ROW_1_TEXT,
-      XHS_TXT_MSG_ROW_1_TIME, "厨", 0xE8A87C },
-    { XHS_TXT_MSG_ROW_2_NAME, XHS_TXT_MSG_ROW_2_TEXT,
-      XHS_TXT_MSG_ROW_2_TIME, "运", 0xAEB9E8 },
-    { XHS_TXT_MSG_ROW_3_NAME, XHS_TXT_MSG_ROW_3_TEXT,
-      XHS_TXT_MSG_ROW_3_TIME, "通", 0xFF8FA3 },
+    {XHS_TXT_MSG_ROW_0_NAME, XHS_TXT_MSG_ROW_0_TEXT, XHS_TXT_MSG_ROW_0_TIME,
+     "M", 0xD9A8C7},
+    {XHS_TXT_MSG_ROW_1_NAME, XHS_TXT_MSG_ROW_1_TEXT, XHS_TXT_MSG_ROW_1_TIME,
+     "厨", 0xE8A87C},
+    {XHS_TXT_MSG_ROW_2_NAME, XHS_TXT_MSG_ROW_2_TEXT, XHS_TXT_MSG_ROW_2_TIME,
+     "运", 0xAEB9E8},
+    {XHS_TXT_MSG_ROW_3_NAME, XHS_TXT_MSG_ROW_3_TEXT, XHS_TXT_MSG_ROW_3_TIME,
+     "通", 0xFF8FA3},
 };
 
 static const char * const channel_names[4] = {
-    XHS_TXT_MSG_LIKE, XHS_TXT_MSG_FOLLOW,
-    XHS_TXT_MSG_COMMENT, XHS_TXT_MSG_DM,
+    XHS_TXT_MSG_LIKE,
+    XHS_TXT_MSG_FOLLOW,
+    XHS_TXT_MSG_COMMENT,
+    XHS_TXT_MSG_DM,
 };
 
 static const char * const channel_items[3] = {
-    XHS_TXT_CHANNEL_ITEM_0, XHS_TXT_CHANNEL_ITEM_1, XHS_TXT_CHANNEL_ITEM_2,
+    XHS_TXT_CHANNEL_ITEM_0,
+    XHS_TXT_CHANNEL_ITEM_1,
+    XHS_TXT_CHANNEL_ITEM_2,
 };
 static const char * const channel_times[3] = {
-    XHS_TXT_CHANNEL_TIME_0, XHS_TXT_CHANNEL_TIME_1, XHS_TXT_CHANNEL_TIME_2,
+    XHS_TXT_CHANNEL_TIME_0,
+    XHS_TXT_CHANNEL_TIME_1,
+    XHS_TXT_CHANNEL_TIME_2,
 };
-static const char * const channel_initials[3] = { "赞", "藏", "评" };
+static const char * const channel_initials[3] = {"赞", "藏", "评"};
 static const uint32_t channel_avatar_colors[3] = {
-    0xE7A6A0, 0xF2C96C, 0x9DC5AD,
+    0xE7A6A0,
+    0xF2C96C,
+    0x9DC5AD,
 };
 
 static lv_obj_t * messages_page;
@@ -47,7 +55,6 @@ static lv_obj_t * channel_overlay;
 static lv_obj_t * chat_messages;
 static int open_chat = -1;
 static int chat_next_y;
-
 
 static lv_obj_t * xhs_chat_bubble(lv_obj_t * parent, const char * text,
                                   bool mine, int y, int * advance)
@@ -70,12 +77,12 @@ static lv_obj_t * xhs_chat_bubble(lv_obj_t * parent, const char * text,
         bubble = xhs_box(parent, 48, y, width, height);
     }
     lv_obj_set_style_radius(bubble, 10, 0);
-    lv_obj_set_style_bg_color(bubble,
-                              lv_color_hex(mine ? XHS_RED : 0xF2F2F5), 0);
+    lv_obj_set_style_bg_color(bubble, lv_color_hex(mine ? XHS_RED : 0xF2F2F5),
+                              0);
     lv_obj_set_style_bg_opa(bubble, LV_OPA_COVER, 0);
 
-    lv_obj_t * label = xhs_label(bubble, text, XHS_FT_12,
-                                 mine ? XHS_WHITE : XHS_TEXT);
+    lv_obj_t * label =
+        xhs_label(bubble, text, XHS_FT_12, mine ? XHS_WHITE : XHS_TEXT);
     lv_obj_set_pos(label, 10, 8);
     lv_obj_set_width(label, width - 20);
     lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_WRAP);
@@ -88,8 +95,8 @@ static void xhs_chat_send_cb(lv_event_t * event)
 {
     if(lv_event_get_code(event) != LV_EVENT_CLICKED) return;
     int advance = 0;
-    lv_obj_t * bubble = xhs_chat_bubble(chat_messages, XHS_TXT_CHAT_REPLY,
-                                        true, chat_next_y, &advance);
+    lv_obj_t * bubble = xhs_chat_bubble(chat_messages, XHS_TXT_CHAT_REPLY, true,
+                                        chat_next_y, &advance);
     chat_next_y += advance;
     lv_obj_update_layout(chat_messages);
     lv_obj_scroll_to_view(bubble, LV_ANIM_OFF);
@@ -120,10 +127,9 @@ static void xhs_chat_build(lv_obj_t * page, int index)
     lv_obj_set_ext_click_area(back, 8);
     lv_obj_add_event_cb(back, xhs_back_event_cb, LV_EVENT_CLICKED, NULL);
 
-    xhs_avatar(page, 42, 9, 26, message->color, message->avatar,
-               XHS_FT_11);
-    lv_obj_t * name = xhs_label_at(page, message->name, XHS_FT_12B,
-                                   XHS_TEXT, 76, 13, 150, 18);
+    xhs_avatar(page, 42, 9, 26, message->color, message->avatar, XHS_FT_11);
+    lv_obj_t * name = xhs_label_at(page, message->name, XHS_FT_12B, XHS_TEXT,
+                                   76, 13, 150, 18);
     lv_label_set_long_mode(name, LV_LABEL_LONG_MODE_DOTS);
 
     lv_obj_t * more = xhs_image(page, XHS_ICON_MORE, 272, 18);
@@ -140,14 +146,14 @@ static void xhs_chat_build(lv_obj_t * page, int index)
 
     chat_next_y = 12;
     int advance = 0;
-    xhs_chat_bubble(chat_messages, XHS_TXT_CHAT_BUBBLE_0, false,
-                    chat_next_y, &advance);
+    xhs_chat_bubble(chat_messages, XHS_TXT_CHAT_BUBBLE_0, false, chat_next_y,
+                    &advance);
     chat_next_y += advance;
-    xhs_chat_bubble(chat_messages, XHS_TXT_CHAT_BUBBLE_1, true,
-                    chat_next_y, &advance);
+    xhs_chat_bubble(chat_messages, XHS_TXT_CHAT_BUBBLE_1, true, chat_next_y,
+                    &advance);
     chat_next_y += advance;
-    xhs_chat_bubble(chat_messages, XHS_TXT_CHAT_BUBBLE_2, false,
-                    chat_next_y, &advance);
+    xhs_chat_bubble(chat_messages, XHS_TXT_CHAT_BUBBLE_2, false, chat_next_y,
+                    &advance);
     chat_next_y += advance;
     xhs_box(chat_messages, 0, chat_next_y, 1, 1);
 
@@ -159,13 +165,12 @@ static void xhs_chat_build(lv_obj_t * page, int index)
     lv_obj_set_style_bg_opa(bar_line, LV_OPA_COVER, 0);
 
     lv_obj_t * input = xhs_pill(bar, 12, 8, 218, 32, XHS_SOFT,
-                                XHS_TXT_CHAT_INPUT, XHS_FT_11, XHS_MUTED,
-                                16);
+                                XHS_TXT_CHAT_INPUT, XHS_FT_11, XHS_MUTED, 16);
     xhs_clickable(input, "chat_input");
     lv_obj_add_event_cb(input, xhs_chat_input_cb, LV_EVENT_CLICKED, NULL);
 
-    lv_obj_t * send = xhs_pill(bar, 240, 8, 52, 32, XHS_RED,
-                               XHS_TXT_CHAT_SEND, XHS_FT_12B, XHS_WHITE, 16);
+    lv_obj_t * send = xhs_pill(bar, 240, 8, 52, 32, XHS_RED, XHS_TXT_CHAT_SEND,
+                               XHS_FT_12B, XHS_WHITE, 16);
     xhs_clickable(send, "chat_send");
     lv_obj_add_event_cb(send, xhs_chat_send_cb, LV_EVENT_CLICKED, NULL);
 }
@@ -182,7 +187,6 @@ static void xhs_message_event_cb(lv_event_t * event)
     xhs_open_overlay(chat_overlay);
     printf("[xhs] chat open index=%d\n", index);
 }
-
 
 static void xhs_channel_row_cb(lv_event_t * event)
 {
@@ -241,14 +245,15 @@ static void xhs_channel_event_cb(lv_event_t * event)
     printf("[xhs] channel open=%s\n", channel_names[index]);
 }
 
-
 static void xhs_channel_entry(lv_obj_t * page, int index)
 {
     int x = 8 + index * 72;
-    uint32_t bg = index == 0 ? 0xFFE9ED : index == 1 ? 0x4C8DFF :
-                  index == 2 ? 0xEAF7EF : 0xEAF2FF;
-    lv_obj_t * circle = xhs_pill(page, x + 19, 46, 38, 38, bg, "",
-                                 XHS_FT_11, XHS_TEXT, 19);
+    uint32_t bg = index == 0   ? 0xFFE9ED
+                  : index == 1 ? 0x4C8DFF
+                  : index == 2 ? 0xEAF7EF
+                               : 0xEAF2FF;
+    lv_obj_t * circle =
+        xhs_pill(page, x + 19, 46, 38, 38, bg, "", XHS_FT_11, XHS_TEXT, 19);
     xhs_clickable(circle, NULL);
     lv_obj_add_event_cb(circle, xhs_channel_event_cb, LV_EVENT_CLICKED,
                         (void *)(intptr_t)index);
@@ -271,9 +276,9 @@ static void xhs_channel_entry(lv_obj_t * page, int index)
     lv_obj_set_style_text_align(name, LV_TEXT_ALIGN_CENTER, 0);
 
     if(index == 0 || index == 2) {
-        lv_obj_t * badge = xhs_pill(page, x + 46, 42, 14, 14, XHS_RED,
-                                    index == 0 ? "2" : "5", XHS_FT_11,
-                                    XHS_WHITE, 7);
+        lv_obj_t * badge =
+            xhs_pill(page, x + 46, 42, 14, 14, XHS_RED, index == 0 ? "2" : "5",
+                     XHS_FT_11, XHS_WHITE, 7);
         (void)badge;
     }
 }
@@ -302,8 +307,10 @@ static void xhs_messages_page_build(lv_obj_t * page)
     for(int i = 0; i < 4; i++) {
         int y = i * 72;
         lv_obj_t * row = xhs_box(list, 0, y, XHS_SCREEN_W, 72);
-        xhs_clickable(row, i == 0 ? "chat_0" : i == 1 ? "chat_1" :
-                           i == 2 ? "chat_2" : "chat_3");
+        xhs_clickable(row, i == 0   ? "chat_0"
+                           : i == 1 ? "chat_1"
+                           : i == 2 ? "chat_2"
+                                    : "chat_3");
         lv_obj_add_event_cb(row, xhs_message_event_cb, LV_EVENT_CLICKED,
                             (void *)(intptr_t)i);
 
@@ -312,17 +319,16 @@ static void xhs_messages_page_build(lv_obj_t * page)
         lv_obj_t * name = xhs_label_at(row, messages[i].name, XHS_FT_12B,
                                        XHS_TEXT, 70, 13, 170, 18);
         lv_label_set_long_mode(name, LV_LABEL_LONG_MODE_DOTS);
-        lv_obj_t * preview = xhs_label_at(row, messages[i].preview,
-                                          XHS_FT_11, XHS_MUTED,
-                                          70, 37, 172, 16);
+        lv_obj_t * preview = xhs_label_at(row, messages[i].preview, XHS_FT_11,
+                                          XHS_MUTED, 70, 37, 172, 16);
         lv_label_set_long_mode(preview, LV_LABEL_LONG_MODE_DOTS);
         lv_obj_t * time = xhs_label_at(row, messages[i].time, XHS_FT_11,
                                        XHS_META, 250, 15, 44, 16);
         lv_obj_set_style_text_align(time, LV_TEXT_ALIGN_RIGHT, 0);
 
         if(i == 2) {
-            lv_obj_t * unread = xhs_pill(row, 252, 38, 18, 16, XHS_RED,
-                                         "3", XHS_FT_11, XHS_WHITE, 8);
+            lv_obj_t * unread = xhs_pill(row, 252, 38, 18, 16, XHS_RED, "3",
+                                         XHS_FT_11, XHS_WHITE, 8);
             (void)unread;
         }
 

@@ -44,8 +44,7 @@ typedef struct {
     const char * key_name;
 } window_event_t;
 
-typedef void (*window_input_cb)(void * user,
-                                    const window_event_t * event);
+typedef void (*window_input_cb)(void * user, const window_event_t * event);
 
 typedef struct window window_t;
 
@@ -57,11 +56,8 @@ bool window_available(void);
  * real input event. Returns NULL when the platform has no window support or
  * creation fails.
  */
-window_t * window_create(uint32_t width,
-                                 uint32_t height,
-                                 const char * title,
-                                 window_input_cb callback,
-                                 void * user);
+window_t * window_create(uint32_t width, uint32_t height, const char * title,
+                         window_input_cb callback, void * user);
 
 void window_destroy(window_t * window);
 

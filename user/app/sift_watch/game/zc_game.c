@@ -13,22 +13,22 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#define ZC_TAU 6.2831853f
-#define ZC_HUD_H 48
+#define ZC_TAU       6.2831853f
+#define ZC_HUD_H     48
 #define ZC_FIELD_TOP 51
-#define ZC_HORIZON 116
+#define ZC_HORIZON   116
 
-#define ZC_MAX_ENEMIES 64
-#define ZC_MAX_SHELLS 24
+#define ZC_MAX_ENEMIES   64
+#define ZC_MAX_SHELLS    24
 #define ZC_MAX_PARTICLES 240
-#define ZC_MAX_BLASTS 16
-#define ZC_MAX_FIRES 8
-#define ZC_MAX_DECALS 20
-#define ZC_MAX_TRACERS 8
-#define ZC_MAX_FLOATERS 12
-#define ZC_MAX_WAVE 64
-#define ZC_MAX_SENTRIES 2
-#define ZC_MAX_MOTES 22
+#define ZC_MAX_BLASTS    16
+#define ZC_MAX_FIRES     8
+#define ZC_MAX_DECALS    20
+#define ZC_MAX_TRACERS   8
+#define ZC_MAX_FLOATERS  12
+#define ZC_MAX_WAVE      64
+#define ZC_MAX_SENTRIES  2
+#define ZC_MAX_MOTES     22
 
 enum { E_WALKER = 0, E_RUNNER, E_BRUTE, E_BOSS };
 
@@ -171,27 +171,15 @@ typedef struct {
 } upgrade_def_t;
 
 static const upgrade_def_t upgrade_defs[UPG_COUNT] = {
-    {"速射机匣", 8, ZC_ACID},
-    {"高爆弹头", 99, ZC_ORANGE},
-    {"双联炮管", 1, ZC_GOLD},
-    {"低温弹药", 6, ZC_CYAN},
-    {"燃烧弹", 99, ZC_ORANGE},
-    {"自动哨戒", 99, ZC_ACID},
-    {"空尖弹", 99, ZC_RED},
-    {"加固工事", 3, ZC_BONE},
-    {"战地维修", 99, ZC_ACID}
-};
+    {"速射机匣", 8, ZC_ACID},  {"高爆弹头", 99, ZC_ORANGE},
+    {"双联炮管", 1, ZC_GOLD},  {"低温弹药", 6, ZC_CYAN},
+    {"燃烧弹", 99, ZC_ORANGE}, {"自动哨戒", 99, ZC_ACID},
+    {"空尖弹", 99, ZC_RED},    {"加固工事", 3, ZC_BONE},
+    {"战地维修", 99, ZC_ACID}};
 
 static const char * const wave_flavor[8] = {
-    "尸潮没有尽头",
-    "它们在加速变异",
-    "防线撑住",
-    "黑暗里还有更多",
-    "弹药比希望充足",
-    "别让它靠近",
-    "听见了吗",
-    "它们从不休息"
-};
+    "尸潮没有尽头",   "它们在加速变异", "防线撑住", "黑暗里还有更多",
+    "弹药比希望充足", "别让它靠近",     "听见了吗", "它们从不休息"};
 
 typedef struct {
     int mode;
@@ -307,7 +295,6 @@ static zc_hooks_t g_hooks;
 static bool g_created;
 static uint32_t g_rand_state = 0x51F7A11DU;
 
-
 static uint32_t rng_raw(void)
 {
     if(g_hooks.rand != NULL) return g_hooks.rand(g_hooks.user);
@@ -415,7 +402,6 @@ static void save_store(void)
     g_hooks.store(&save, g_hooks.user);
 }
 
-
 static float hp_scale_for(int wave)
 {
     return powf(1.17f, (float)(wave > 1 ? wave - 1 : 0));
@@ -489,7 +475,6 @@ static float interval_for(bool manual)
     return fmaxf(0.13f, base * powf(0.87f, (float)S.upg[UPG_RAPID]));
 }
 
-
 static void add_particle(float x, float y, float vx, float vy, float life,
                          uint16_t color, int size, float gravity)
 {
@@ -508,7 +493,8 @@ static void add_particle(float x, float y, float vx, float vy, float life,
     p->gravity = gravity;
 }
 
-static void add_floater(const char * text, float x, float y, uint16_t color, int scale)
+static void add_floater(const char * text, float x, float y, uint16_t color,
+                        int scale)
 {
     int slot = S.floater_head;
     S.floater_head = (S.floater_head + 1) % ZC_MAX_FLOATERS;
@@ -574,20 +560,20 @@ static void add_blast(float x, float y, float radius, bool crit)
             col = frand(0.0f, 1.0f) > 0.6f ? ZC_BONE_D : ZC_SMOKE;
         }
         add_particle(x + cosf(a) * frand(0.0f, radius * 0.35f),
-                     y + sinf(a) * frand(0.0f, radius * 0.35f),
-                     cosf(a) * sp, sinf(a) * sp - 20.0f,
-                     frand(0.2f, 0.6f), col, irand(1, 3), 60.0f);
+                     y + sinf(a) * frand(0.0f, radius * 0.35f), cosf(a) * sp,
+                     sinf(a) * sp - 20.0f, frand(0.2f, 0.6f), col, irand(1, 3),
+                     60.0f);
     }
     if(S.upg[UPG_CRYO] > 0) {
         for(int i = 0; i < 10; i++) {
             float a = frand(0.0f, ZC_TAU);
             add_particle(x, y, cosf(a) * frand(18.0f, 70.0f),
                          sinf(a) * frand(18.0f, 70.0f) - 15.0f,
-                         frand(0.25f, 0.55f), i % 2 ? ZC_CYAN : ZC_BONE, 1, 20.0f);
+                         frand(0.25f, 0.55f), i % 2 ? ZC_CYAN : ZC_BONE, 1,
+                         20.0f);
         }
     }
 }
-
 
 static zc_sprite_def_t const * sprite_for(int type)
 {
@@ -608,7 +594,8 @@ static enemy_t * pick_auto_target(void)
     for(int i = 0; i < ZC_MAX_ENEMIES; i++) {
         enemy_t * e = &S.enemies[i];
         if(!e->active || e->dead) continue;
-        float key = e->y + (e->attacking ? 60.0f : 0.0f) + (e->type == E_BOSS ? 20.0f : 0.0f);
+        float key = e->y + (e->attacking ? 60.0f : 0.0f) +
+                    (e->type == E_BOSS ? 20.0f : 0.0f);
         if(key > best_key) {
             best_key = key;
             best = e;
@@ -620,7 +607,8 @@ static enemy_t * pick_auto_target(void)
 static void resolve_aim(float raw_x, float raw_y)
 {
     float x = clampf(raw_x, 12.0f, (float)S.width - 12.0f);
-    float y = clampf(raw_y, (float)ZC_HUD_H + 8.0f, (float)field_base_line() - 6.0f);
+    float y =
+        clampf(raw_y, (float)ZC_HUD_H + 8.0f, (float)field_base_line() - 6.0f);
     enemy_t * nearest = NULL;
     float nearest_d = 1.0e9f;
     float snap = 54.0f;
@@ -654,7 +642,6 @@ static void resolve_aim(float raw_x, float raw_y)
     S.aim_valid = true;
 }
 
-
 static void heal_base(int amount)
 {
     int before = S.base_hp;
@@ -662,9 +649,11 @@ static void heal_base(int amount)
     if(S.base_hp > before) {
         S.base_flash = 0.2f;
         for(int i = 0; i < 10; i++) {
-            add_particle(frand(130.0f, 260.0f), frand(388.0f + (float)S.dy, 410.0f + (float)S.dy),
-                         frand(-16.0f, 16.0f), frand(-38.0f, -12.0f), frand(0.35f, 0.8f),
-                         i % 2 ? ZC_ACID : ZC_BONE, 1, -20.0f);
+            add_particle(frand(130.0f, 260.0f),
+                         frand(388.0f + (float)S.dy, 410.0f + (float)S.dy),
+                         frand(-16.0f, 16.0f), frand(-38.0f, -12.0f),
+                         frand(0.35f, 0.8f), i % 2 ? ZC_ACID : ZC_BONE, 1,
+                         -20.0f);
         }
         sfx(ZC_SFX_HEAL);
     }
@@ -680,11 +669,12 @@ static void add_xp(int amount)
         S.xp_need = 6 + (S.level - 1) * 3;
         S.pending_upgrades++;
     }
-    if(S.pending_upgrades > 0 && S.upgrade_delay <= 0.0f) S.upgrade_delay = 0.16f;
+    if(S.pending_upgrades > 0 && S.upgrade_delay <= 0.0f)
+        S.upgrade_delay = 0.16f;
 }
 
-static void set_banner(const char * title, const char * sub, const char * eng, uint16_t color,
-                       const char * kind, float time)
+static void set_banner(const char * title, const char * sub, const char * eng,
+                       uint16_t color, const char * kind, float time)
 {
     S.banner_active = true;
     snprintf(S.banner_title, sizeof(S.banner_title), "%s", title);
@@ -710,9 +700,11 @@ static void start_ending(void)
     S.flash_red = 0.65f;
     haptic(ZC_HAPTIC_DEATH);
     for(int i = 0; i < 36; i++) {
-        add_particle(frand(110.0f, 280.0f), frand(380.0f + (float)S.dy, 435.0f + (float)S.dy),
-                     frand(-120.0f, 120.0f), frand(-170.0f, -20.0f), frand(0.4f, 1.1f),
-                     i % 3 ? ZC_RUST : ZC_SMOKE, irand(1, 4), 120.0f);
+        add_particle(frand(110.0f, 280.0f),
+                     frand(380.0f + (float)S.dy, 435.0f + (float)S.dy),
+                     frand(-120.0f, 120.0f), frand(-170.0f, -20.0f),
+                     frand(0.4f, 1.1f), i % 3 ? ZC_RUST : ZC_SMOKE, irand(1, 4),
+                     120.0f);
     }
     if(S.score > S.best_score) {
         S.new_best = true;
@@ -735,9 +727,11 @@ static void damage_base(int amount)
     sfx(ZC_SFX_HURT);
     haptic(ZC_HAPTIC_HIT);
     for(int i = 0; i < 16; i++) {
-        add_particle(frand(70.0f, 320.0f), frand(392.0f + (float)S.dy, 414.0f + (float)S.dy),
-                     frand(-70.0f, 70.0f), frand(-90.0f, -20.0f), frand(0.3f, 0.7f),
-                     i % 2 ? ZC_RUST : ZC_BONE_D, irand(1, 3), 160.0f);
+        add_particle(frand(70.0f, 320.0f),
+                     frand(392.0f + (float)S.dy, 414.0f + (float)S.dy),
+                     frand(-70.0f, 70.0f), frand(-90.0f, -20.0f),
+                     frand(0.3f, 0.7f), i % 2 ? ZC_RUST : ZC_BONE_D,
+                     irand(1, 3), 160.0f);
     }
     if(S.base_hp <= 0) start_ending();
 }
@@ -761,19 +755,24 @@ static void kill_enemy(enemy_t * e, bool crit)
         add_decal(e->x, e->y - 2.0f, 44.0f, ZC_RGB565(12, 14, 8), true);
         for(int i = 0; i < 45; i++) {
             add_particle(e->x + frand(-24.0f, 24.0f), e->y - frand(0.0f, 50.0f),
-                         frand(-140.0f, 140.0f), frand(-150.0f, 30.0f), frand(0.4f, 1.2f),
-                         i % 3 == 0 ? ZC_GOLD : i % 3 == 1 ? ZC_RED : ZC_SMOKE,
+                         frand(-140.0f, 140.0f), frand(-150.0f, 30.0f),
+                         frand(0.4f, 1.2f),
+                         i % 3 == 0   ? ZC_GOLD
+                         : i % 3 == 1 ? ZC_RED
+                                      : ZC_SMOKE,
                          irand(1, 4), 160.0f);
         }
-        set_banner("屠宰者已消灭", "感染体信号正在消失", "TARGET DOWN", ZC_GOLD, "bossdown", 2.3f);
+        set_banner("屠宰者已消灭", "感染体信号正在消失", "TARGET DOWN", ZC_GOLD,
+                   "bossdown", 2.3f);
         add_floater("+600", e->x, e->y - 60.0f, ZC_GOLD, 2);
     }
     else {
         int blood = e->type == E_BRUTE ? 22 : 11;
         for(int i = 0; i < blood; i++) {
             add_particle(e->x + frand(-7.0f, 7.0f), e->y - frand(6.0f, 26.0f),
-                         frand(-70.0f, 70.0f), frand(-110.0f, -10.0f), frand(0.25f, 0.8f),
-                         i % 3 ? ZC_BLOOD : ZC_RUST, irand(1, 3), 180.0f);
+                         frand(-70.0f, 70.0f), frand(-110.0f, -10.0f),
+                         frand(0.25f, 0.8f), i % 3 ? ZC_BLOOD : ZC_RUST,
+                         irand(1, 3), 180.0f);
         }
         add_decal(e->x, e->y - 1.0f, e->type == E_BRUTE ? 20.0f : 11.0f,
                   ZC_RGB565(76, 24, 20), false);
@@ -797,19 +796,23 @@ static void damage_enemy(enemy_t * e, float amount, bool crit, bool slow,
     if(crit || amount >= 2.0f) {
         char buf[20];
         if(crit) snprintf(buf, sizeof(buf), "CRIT %d", (int)lroundf(amount));
-        else snprintf(buf, sizeof(buf), "%d", (int)lroundf(amount));
-        add_floater(buf, e->x, e->y - 26.0f, crit ? ZC_RED : ZC_BONE, crit ? 2 : 1);
+        else
+            snprintf(buf, sizeof(buf), "%d", (int)lroundf(amount));
+        add_floater(buf, e->x, e->y - 26.0f, crit ? ZC_RED : ZC_BONE,
+                    crit ? 2 : 1);
     }
     int hit_count = (int)fminf(7.0f, 2.0f + ceilf(amount));
     for(int i = 0; i < hit_count; i++) {
         add_particle(e->x + frand(-5.0f, 5.0f), e->y - frand(8.0f, 22.0f),
-                     frand(-35.0f, 35.0f), frand(-60.0f, 5.0f), frand(0.15f, 0.45f),
-                     i % 3 ? ZC_BLOOD : ZC_BONE_D, irand(1, 2), 140.0f);
+                     frand(-35.0f, 35.0f), frand(-60.0f, 5.0f),
+                     frand(0.15f, 0.45f), i % 3 ? ZC_BLOOD : ZC_BONE_D,
+                     irand(1, 2), 140.0f);
     }
     if(e->hp <= 0) kill_enemy(e, crit);
 }
 
-static void muzzle_point(float offset, float extra_recoil, float * mx, float * my)
+static void muzzle_point(float offset, float extra_recoil, float * mx,
+                         float * my)
 {
     float len = 39.0f - S.recoil * 6.0f - extra_recoil;
     float a = S.aim_angle + offset;
@@ -869,7 +872,8 @@ static void fire_at(float target_x, float target_y, bool manual)
         float my;
         muzzle_point(0.0f, 0.0f, &mx, &my);
         add_particle(mx, my, frand(-45.0f, 45.0f), frand(-55.0f, 5.0f),
-                     frand(0.12f, 0.28f), i % 2 ? ZC_GOLD : ZC_ORANGE, irand(1, 2), 20.0f);
+                     frand(0.12f, 0.28f), i % 2 ? ZC_GOLD : ZC_ORANGE,
+                     irand(1, 2), 20.0f);
     }
     sfx(ZC_SFX_SHOOT);
 }
@@ -904,7 +908,8 @@ static void detonate(shell_t * s)
     float radius = fminf(66.0f, 25.0f + (float)S.upg[UPG_DAMAGE] * 4.0f);
     float chance = crit_chance_at(S.upg[UPG_CRIT]);
     bool crit = frand(0.0f, 1.0f) < chance;
-    float damage = (1.0f + (float)S.upg[UPG_DAMAGE]) * (crit ? crit_mult_at(S.upg[UPG_CRIT]) : 1.0f);
+    float damage = (1.0f + (float)S.upg[UPG_DAMAGE]) *
+                   (crit ? crit_mult_at(S.upg[UPG_CRIT]) : 1.0f);
     float slow = cryo_slow_at(S.upg[UPG_CRYO]);
     float slow_t = cryo_duration_at(S.upg[UPG_CRYO]);
     for(int i = 0; i < ZC_MAX_ENEMIES; i++) {
@@ -924,8 +929,8 @@ static void detonate(shell_t * s)
     if(S.upg[UPG_FIRE] > 0) add_fire_patch(s->tx, s->ty);
 }
 
-
-static void wave_composition(int n, int * walker, int * runner, int * brute, int * boss)
+static void wave_composition(int n, int * walker, int * runner, int * brute,
+                             int * boss)
 {
     *walker = 7 + n;
     if(*walker > 24) *walker = 24;
@@ -956,9 +961,12 @@ static void begin_wave(int n)
     wave_composition(n, &walker, &runner, &brute, &boss);
     int bag[ZC_MAX_WAVE];
     int count = 0;
-    for(int i = 0; i < walker && count < ZC_MAX_WAVE; i++) bag[count++] = E_WALKER;
-    for(int i = 0; i < runner && count < ZC_MAX_WAVE; i++) bag[count++] = E_RUNNER;
-    for(int i = 0; i < brute && count < ZC_MAX_WAVE; i++) bag[count++] = E_BRUTE;
+    for(int i = 0; i < walker && count < ZC_MAX_WAVE; i++)
+        bag[count++] = E_WALKER;
+    for(int i = 0; i < runner && count < ZC_MAX_WAVE; i++)
+        bag[count++] = E_RUNNER;
+    for(int i = 0; i < brute && count < ZC_MAX_WAVE; i++)
+        bag[count++] = E_BRUTE;
     for(int i = 0; i < boss && count < ZC_MAX_WAVE; i++) bag[count++] = E_BOSS;
     for(int i = count - 1; i > 0; i--) {
         int j = irand(0, i);
@@ -991,7 +999,8 @@ static void begin_wave(int n)
     char eng[32];
     snprintf(title, sizeof(title), "第 %d 波", n);
     if(boss_wave) snprintf(eng, sizeof(eng), "BOSS WAVE");
-    else snprintf(eng, sizeof(eng), "WAVE %02d", n);
+    else
+        snprintf(eng, sizeof(eng), "WAVE %02d", n);
     set_banner(title, boss_wave ? "屠宰者正在接近" : wave_flavor[(n - 1) & 7],
                eng, boss_wave ? ZC_RED : ZC_ACID, boss_wave ? "final" : "wave",
                boss_wave ? 2.4f : 2.0f);
@@ -1010,14 +1019,17 @@ static void finish_wave(void)
     if(healed) {
         S.base_flash = 0.28f;
         for(int i = 0; i < 12; i++) {
-            add_particle(frand(140.0f, 250.0f), frand(390.0f + (float)S.dy, 420.0f + (float)S.dy),
-                         frand(-25.0f, 25.0f), frand(-50.0f, -12.0f), frand(0.35f, 0.8f),
-                         i % 2 ? ZC_ACID : ZC_BONE, 1, -25.0f);
+            add_particle(frand(140.0f, 250.0f),
+                         frand(390.0f + (float)S.dy, 420.0f + (float)S.dy),
+                         frand(-25.0f, 25.0f), frand(-50.0f, -12.0f),
+                         frand(0.35f, 0.8f), i % 2 ? ZC_ACID : ZC_BONE, 1,
+                         -25.0f);
         }
     }
     char sub[56];
     if(healed) snprintf(sub, sizeof(sub), "防线修复 +1 · 补给 +%d", bonus);
-    else snprintf(sub, sizeof(sub), "补给 +%d", bonus);
+    else
+        snprintf(sub, sizeof(sub), "补给 +%d", bonus);
     char eng[32];
     snprintf(eng, sizeof(eng), "WAVE %02d CLEAR", S.wave_index);
     set_banner("区域肃清", sub, eng, ZC_ACID, "clear", 2.0f);
@@ -1054,7 +1066,9 @@ static void spawn_enemy(int type)
         xp = 3 + (S.wave_index > 1 ? (S.wave_index - 1) / 2 : 0);
     }
     else {
-        hp = (int)lroundf(55.0f * powf(1.19f, (float)(S.wave_index > 5 ? S.wave_index - 5 : 0)));
+        hp = (int)lroundf(
+            55.0f *
+            powf(1.19f, (float)(S.wave_index > 5 ? S.wave_index - 5 : 0)));
         if(hp < 60) hp = 60;
         speed = 6.0f + fminf(3.5f, (float)S.wave_index * 0.07f);
         radius = 27.0f;
@@ -1082,12 +1096,23 @@ static void spawn_enemy(int type)
     e->speed = speed;
     e->radius = radius;
     e->xp = xp;
-    e->score = (int)lroundf((float)(type == E_WALKER ? 10 : type == E_RUNNER ? 13 : type == E_BRUTE ? 38 : 600) *
-                            (1.0f + (float)(S.wave_index > 1 ? S.wave_index - 1 : 0) * 0.12f));
+    e->score = (int)lroundf(
+        (float)(type == E_WALKER   ? 10
+                : type == E_RUNNER ? 13
+                : type == E_BRUTE  ? 38
+                                   : 600) *
+        (1.0f + (float)(S.wave_index > 1 ? S.wave_index - 1 : 0) * 0.12f));
     e->anim = frand(0.0f, 5.0f);
     e->phase = frand(0.0f, ZC_TAU);
-    e->wobble = is_boss ? 0.0f : (type == E_RUNNER ? 7.5f : type == E_WALKER ? 3.2f : 1.2f) * frand(0.7f, 1.2f);
-    e->wobble_speed = (type == E_RUNNER ? 2.4f : type == E_WALKER ? 1.6f : 0.8f) * frand(0.8f, 1.2f);
+    e->wobble = is_boss ? 0.0f
+                        : (type == E_RUNNER   ? 7.5f
+                           : type == E_WALKER ? 3.2f
+                                              : 1.2f) *
+                              frand(0.7f, 1.2f);
+    e->wobble_speed = (type == E_RUNNER   ? 2.4f
+                       : type == E_WALKER ? 1.6f
+                                          : 0.8f) *
+                      frand(0.8f, 1.2f);
     e->hit_flash = 0.0f;
     e->slow_t = 0.0f;
     e->slow_amount = 0.0f;
@@ -1101,67 +1126,77 @@ static void spawn_enemy(int type)
         S.shake = fmaxf(S.shake, 4.0f);
         haptic(ZC_HAPTIC_BOSS);
         for(int i = 0; i < 24; i++) {
-            add_particle(e->x + frand(-24.0f, 24.0f), (float)ZC_HORIZON + frand(4.0f, 30.0f),
-                         frand(-30.0f, 30.0f), frand(-30.0f, 8.0f), frand(0.4f, 1.1f),
-                         i % 3 ? ZC_SMOKE : ZC_RED, irand(1, 3), 30.0f);
+            add_particle(e->x + frand(-24.0f, 24.0f),
+                         (float)ZC_HORIZON + frand(4.0f, 30.0f),
+                         frand(-30.0f, 30.0f), frand(-30.0f, 8.0f),
+                         frand(0.4f, 1.1f), i % 3 ? ZC_SMOKE : ZC_RED,
+                         irand(1, 3), 30.0f);
         }
     }
     else {
         for(int i = 0; i < 4; i++) {
             add_particle(e->x + frand(-8.0f, 8.0f), e->y - 8.0f,
-                         frand(-8.0f, 8.0f), frand(-8.0f, 5.0f), frand(0.2f, 0.5f),
-                         ZC_SMOKE, 1, 0.0f);
+                         frand(-8.0f, 8.0f), frand(-8.0f, 5.0f),
+                         frand(0.2f, 0.5f), ZC_SMOKE, 1, 0.0f);
         }
     }
 }
-
 
 static void upgrade_desc(int key, char * out, size_t n)
 {
     char f1[16];
     switch(key) {
-    case UPG_RAPID:
-        snprintf(out, n, "射击间隔再缩短 13%%");
-        break;
-    case UPG_DAMAGE:
-        snprintf(out, n, "炮弹伤害 +1，爆风 +4");
-        break;
-    case UPG_TWIN:
-        snprintf(out, n, "每轮齐射追加一发炮弹");
-        break;
-    case UPG_CRYO: {
-        int lv = S.upg[UPG_CRYO] + 1;
-        int pct = (int)lroundf(cryo_slow_at(lv) * 100.0f);
-        snprintf(out, n, "减速 %d%%，持续 %s 秒", pct,
-                 fmt1(cryo_duration_at(lv), f1, sizeof(f1)));
-        break;
-    }
-    case UPG_FIRE: {
-        int lv = S.upg[UPG_FIRE] + 1;
-        snprintf(out, n, "火海每跳伤害提升至 %d，持续 %s 秒",
-                 fire_damage_at(lv), fmt1(fire_duration_at(lv), f1, sizeof(f1)));
-        break;
-    }
-    case UPG_SENTRY:
-        if(S.upg[UPG_SENTRY] < 1) snprintf(out, n, "部署一门自动索敌的哨戒炮");
-        else if(S.upg[UPG_SENTRY] < 2) snprintf(out, n, "再部署一门哨戒炮");
-        else snprintf(out, n, "哨戒炮伤害与射速提升");
-        break;
-    case UPG_CRIT: {
-        int lv = S.upg[UPG_CRIT] + 1;
-        if(lv <= 4) snprintf(out, n, "暴击率提升至 %d%%", (int)lroundf(crit_chance_at(lv) * 100.0f));
-        else snprintf(out, n, "暴击伤害提升至 %s 倍", fmt1(crit_mult_at(lv), f1, sizeof(f1)));
-        break;
-    }
-    case UPG_REINFORCE:
-        snprintf(out, n, "防线耐久上限 +1，并修复 1 点");
-        break;
-    case UPG_REPAIR:
-        snprintf(out, n, "立刻修复 %d 点防线耐久", repair_amount_at(S.upg[UPG_REPAIR]));
-        break;
-    default:
-        out[0] = '\0';
-        break;
+        case UPG_RAPID:
+            snprintf(out, n, "射击间隔再缩短 13%%");
+            break;
+        case UPG_DAMAGE:
+            snprintf(out, n, "炮弹伤害 +1，爆风 +4");
+            break;
+        case UPG_TWIN:
+            snprintf(out, n, "每轮齐射追加一发炮弹");
+            break;
+        case UPG_CRYO: {
+            int lv = S.upg[UPG_CRYO] + 1;
+            int pct = (int)lroundf(cryo_slow_at(lv) * 100.0f);
+            snprintf(out, n, "减速 %d%%，持续 %s 秒", pct,
+                     fmt1(cryo_duration_at(lv), f1, sizeof(f1)));
+            break;
+        }
+        case UPG_FIRE: {
+            int lv = S.upg[UPG_FIRE] + 1;
+            snprintf(out, n, "火海每跳伤害提升至 %d，持续 %s 秒",
+                     fire_damage_at(lv),
+                     fmt1(fire_duration_at(lv), f1, sizeof(f1)));
+            break;
+        }
+        case UPG_SENTRY:
+            if(S.upg[UPG_SENTRY] < 1)
+                snprintf(out, n, "部署一门自动索敌的哨戒炮");
+            else if(S.upg[UPG_SENTRY] < 2)
+                snprintf(out, n, "再部署一门哨戒炮");
+            else
+                snprintf(out, n, "哨戒炮伤害与射速提升");
+            break;
+        case UPG_CRIT: {
+            int lv = S.upg[UPG_CRIT] + 1;
+            if(lv <= 4)
+                snprintf(out, n, "暴击率提升至 %d%%",
+                         (int)lroundf(crit_chance_at(lv) * 100.0f));
+            else
+                snprintf(out, n, "暴击伤害提升至 %s 倍",
+                         fmt1(crit_mult_at(lv), f1, sizeof(f1)));
+            break;
+        }
+        case UPG_REINFORCE:
+            snprintf(out, n, "防线耐久上限 +1，并修复 1 点");
+            break;
+        case UPG_REPAIR:
+            snprintf(out, n, "立刻修复 %d 点防线耐久",
+                     repair_amount_at(S.upg[UPG_REPAIR]));
+            break;
+        default:
+            out[0] = '\0';
+            break;
     }
 }
 
@@ -1220,7 +1255,8 @@ static int roll_upgrade_choices(void)
             }
             if(!found) {
                 if(picks >= 3) S.upgrade_choices[2] = emergency;
-                else if(picks < 3) S.upgrade_choices[picks++] = emergency;
+                else if(picks < 3)
+                    S.upgrade_choices[picks++] = emergency;
                 S.upgrade_choice_count = picks;
             }
         }
@@ -1258,28 +1294,38 @@ static void choose_upgrade(int key)
     if(key == UPG_REPAIR) {
         int amount = repair_amount_at(S.upg[UPG_REPAIR]);
         snprintf(applied, sizeof(applied), "修复 %d 点防线耐久", amount);
-        S.upg[UPG_REPAIR] = S.upg[UPG_REPAIR] + 1 > upgrade_defs[key].max ? upgrade_defs[key].max : S.upg[UPG_REPAIR] + 1;
+        S.upg[UPG_REPAIR] = S.upg[UPG_REPAIR] + 1 > upgrade_defs[key].max
+                                ? upgrade_defs[key].max
+                                : S.upg[UPG_REPAIR] + 1;
         heal_base(amount);
     }
     else {
         upgrade_desc(key, applied, sizeof(applied));
-        S.upg[key] = S.upg[key] + 1 > upgrade_defs[key].max ? upgrade_defs[key].max : S.upg[key] + 1;
+        S.upg[key] = S.upg[key] + 1 > upgrade_defs[key].max
+                         ? upgrade_defs[key].max
+                         : S.upg[key] + 1;
         if(key == UPG_REINFORCE) {
             S.base_max_hp = S.base_max_hp + 1 > 9 ? 9 : S.base_max_hp + 1;
             S.base_hp = clampi(S.base_hp + 1, 0, S.base_max_hp);
             S.base_flash = 0.3f;
             for(int i = 0; i < 14; i++) {
-                add_particle(frand(120.0f, 270.0f), frand(396.0f + (float)S.dy, 430.0f + (float)S.dy),
-                             frand(-30.0f, 30.0f), frand(-55.0f, -10.0f), frand(0.3f, 0.8f),
-                             i % 2 ? ZC_BONE : ZC_ACID, irand(1, 2), 70.0f);
+                add_particle(frand(120.0f, 270.0f),
+                             frand(396.0f + (float)S.dy, 430.0f + (float)S.dy),
+                             frand(-30.0f, 30.0f), frand(-55.0f, -10.0f),
+                             frand(0.3f, 0.8f), i % 2 ? ZC_BONE : ZC_ACID,
+                             irand(1, 2), 70.0f);
             }
         }
         if(key == UPG_SENTRY) sync_sentries();
     }
     (void)f1;
     S.toast_active = true;
-    if(S.ai_mode) snprintf(S.toast_text, sizeof(S.toast_text), "AI · 已装配 · %s", upgrade_defs[key].name);
-    else snprintf(S.toast_text, sizeof(S.toast_text), "已装配 · %s", upgrade_defs[key].name);
+    if(S.ai_mode)
+        snprintf(S.toast_text, sizeof(S.toast_text), "AI · 已装配 · %s",
+                 upgrade_defs[key].name);
+    else
+        snprintf(S.toast_text, sizeof(S.toast_text), "已装配 · %s",
+                 upgrade_defs[key].name);
     snprintf(S.toast_sub, sizeof(S.toast_sub), "%s", applied);
     S.toast_t = 1.9f;
     S.toast_max_t = 1.9f;
@@ -1290,7 +1336,6 @@ static void choose_upgrade(int key)
     S.flash_white = fmaxf(S.flash_white, 0.16f);
     sfx(ZC_SFX_CLICK);
 }
-
 
 static void update_aim_and_fire(float dt)
 {
@@ -1318,17 +1363,20 @@ static void update_aim_and_fire(float dt)
     }
 
     if(S.aim_valid) {
-        S.target_angle = clampf(atan2f(S.aim_y - (float)field_pivot_y(), S.aim_x - 195.0f),
-                                -(float)M_PI + 0.17f, -0.17f);
+        S.target_angle =
+            clampf(atan2f(S.aim_y - (float)field_pivot_y(), S.aim_x - 195.0f),
+                   -(float)M_PI + 0.17f, -0.17f);
     }
     else {
         S.target_angle = -(float)M_PI * 0.5f;
     }
-    S.aim_angle = angle_lerp(S.aim_angle, S.target_angle, 1.0f - expf(-dt * 16.0f));
+    S.aim_angle =
+        angle_lerp(S.aim_angle, S.target_angle, 1.0f - expf(-dt * 16.0f));
 
     if(S.aim_valid && S.fire_timer <= 0.0f) {
         if(S.input_active) fire_at(S.aim_x, S.aim_y, true);
-        else if(pick_auto_target() != NULL) fire_at(S.aim_x, S.aim_y, false);
+        else if(pick_auto_target() != NULL)
+            fire_at(S.aim_x, S.aim_y, false);
     }
 }
 
@@ -1343,7 +1391,8 @@ static void update_wave(float dt)
     S.wave_clock += dt;
     if(S.wave_grace > 0.0f) S.wave_grace -= dt;
     else {
-        while(S.wave_cursor < S.wave_count && S.wave_queue[S.wave_cursor].at <= S.wave_clock) {
+        while(S.wave_cursor < S.wave_count &&
+              S.wave_queue[S.wave_cursor].at <= S.wave_clock) {
             spawn_enemy(S.wave_queue[S.wave_cursor].type);
             S.wave_cursor++;
         }
@@ -1384,8 +1433,10 @@ static void update_enemies(float dt)
         float slow_factor = e->slow_t > 0.0f ? 1.0f - e->slow_amount : 1.0f;
         e->y += e->speed * slow_factor * dt;
         if(e->wobble != 0.0f) {
-            e->x = clampf(e->base_x + sinf(e->anim * e->wobble_speed + e->phase) * e->wobble,
-                          22.0f, (float)S.width - 22.0f);
+            e->x =
+                clampf(e->base_x + sinf(e->anim * e->wobble_speed + e->phase) *
+                                       e->wobble,
+                       22.0f, (float)S.width - 22.0f);
         }
         if(e->y >= e->stop_y) {
             e->y = e->stop_y;
@@ -1399,9 +1450,11 @@ static void update_enemies(float dt)
                 e->dead = true;
                 e->active = false;
                 for(int j = 0; j < 12; j++) {
-                    add_particle(e->x + frand(-8.0f, 8.0f), e->y - frand(2.0f, 18.0f),
-                                 frand(-55.0f, 55.0f), frand(-80.0f, -5.0f), frand(0.25f, 0.65f),
-                                 j % 3 ? ZC_BLOOD : ZC_BONE_D, irand(1, 2), 160.0f);
+                    add_particle(
+                        e->x + frand(-8.0f, 8.0f), e->y - frand(2.0f, 18.0f),
+                        frand(-55.0f, 55.0f), frand(-80.0f, -5.0f),
+                        frand(0.25f, 0.65f), j % 3 ? ZC_BLOOD : ZC_BONE_D,
+                        irand(1, 2), 160.0f);
                 }
                 add_decal(e->x, e->y, 12.0f, ZC_RGB565(80, 25, 20), false);
                 S.base_flash = 0.45f;
@@ -1444,7 +1497,8 @@ static void update_sentries(float dt)
         if(target != NULL) {
             s->target_angle = clampf(atan2f(ty - (s->y - 12.0f), tx - s->x),
                                      -(float)M_PI + 0.12f, -0.12f);
-            s->angle = angle_lerp(s->angle, s->target_angle, 1.0f - expf(-dt * 12.0f));
+            s->angle =
+                angle_lerp(s->angle, s->target_angle, 1.0f - expf(-dt * 12.0f));
             if(s->cd <= 0.0f) {
                 s->cd = sentry_interval_at(S.upg[UPG_SENTRY]);
                 s->flash = 0.08f;
@@ -1460,15 +1514,18 @@ static void update_sentries(float dt)
                 S.tracers[slot].t = 0.1f;
                 S.tracers[slot].max_t = 0.1f;
                 for(int j = 0; j < 3; j++) {
-                    add_particle(mx, my, frand(-25.0f, 25.0f), frand(-30.0f, 5.0f),
-                                 frand(0.1f, 0.22f), ZC_GOLD, 1, 20.0f);
+                    add_particle(mx, my, frand(-25.0f, 25.0f),
+                                 frand(-30.0f, 5.0f), frand(0.1f, 0.22f),
+                                 ZC_GOLD, 1, 20.0f);
                 }
-                damage_enemy(target, (float)sentry_damage_at(S.upg[UPG_SENTRY]), false, false, 0.0f, 0.0f);
+                damage_enemy(target, (float)sentry_damage_at(S.upg[UPG_SENTRY]),
+                             false, false, 0.0f, 0.0f);
                 sfx(ZC_SFX_SENTRY);
             }
         }
         else {
-            s->angle = angle_lerp(s->angle, -1.5707963f, 1.0f - expf(-dt * 3.0f));
+            s->angle =
+                angle_lerp(s->angle, -1.5707963f, 1.0f - expf(-dt * 3.0f));
         }
     }
 }
@@ -1505,12 +1562,14 @@ static void update_fires(float dt)
                 float dy = cy - f->y;
                 float reach = f->radius + e->radius * 0.35f;
                 if(dx * dx + dy * dy <= reach * reach) {
-                    damage_enemy(e, (float)(f->damage > 0 ? f->damage : 1), false, false, 0.0f, 0.0f);
+                    damage_enemy(e, (float)(f->damage > 0 ? f->damage : 1),
+                                 false, false, 0.0f, 0.0f);
                 }
             }
             for(int j = 0; j < 2; j++) {
-                add_particle(f->x + frand(-f->radius * 0.5f, f->radius * 0.5f), f->y - 2.0f,
-                             frand(-4.0f, 4.0f), frand(-32.0f, -12.0f), frand(0.2f, 0.5f),
+                add_particle(f->x + frand(-f->radius * 0.5f, f->radius * 0.5f),
+                             f->y - 2.0f, frand(-4.0f, 4.0f),
+                             frand(-32.0f, -12.0f), frand(0.2f, 0.5f),
                              j ? ZC_ORANGE : ZC_GOLD, 1, -25.0f);
             }
         }
@@ -1612,7 +1671,6 @@ static void update_game(float dt)
     }
 }
 
-
 static float ease_out_cubic(float t)
 {
     t = clampf(t, 0.0f, 1.0f);
@@ -1639,7 +1697,8 @@ static float local_rand(uint32_t * state)
 static void ui_recta(int x, int y, int w, int h, uint16_t color, uint8_t alpha)
 {
     if(alpha >= 250) zc_rect_world(x, y, w, h, color);
-    else zc_blend_rect_world(x, y, w, h, color, alpha);
+    else
+        zc_blend_rect_world(x, y, w, h, color, alpha);
 }
 
 static void draw_heart_icon(int x, int y, bool filled, int scale, bool flash)
@@ -1690,9 +1749,14 @@ static void draw_decals(void)
             zc_blend_circle((int)d->x + zc.ox, (int)d->y + zc.oy, (int)d->size,
                             ZC_RGB565(10, 12, 7), 82);
             for(int k = 0; k < 5; k++) {
-                uint16_t col = k % 2 ? ZC_RGB565(43, 26, 14) : ZC_RGB565(22, 19, 9);
-                int x = (int)(d->x + (local_rand(&rng) * 2.0f - 1.0f) * d->size) + zc.ox;
-                int y = (int)(d->y + (local_rand(&rng) * 2.0f - 1.0f) * d->size * 0.45f) + zc.oy;
+                uint16_t col =
+                    k % 2 ? ZC_RGB565(43, 26, 14) : ZC_RGB565(22, 19, 9);
+                int x =
+                    (int)(d->x + (local_rand(&rng) * 2.0f - 1.0f) * d->size) +
+                    zc.ox;
+                int y = (int)(d->y + (local_rand(&rng) * 2.0f - 1.0f) *
+                                         d->size * 0.45f) +
+                        zc.oy;
                 zc_rect(x, y, 2 + (int)(local_rand(&rng) * 3.0f), 1, col);
             }
         }
@@ -1718,23 +1782,27 @@ static void draw_fires(void)
         if(!f->active) continue;
         float fade = clampf(f->t / 0.45f, 0.0f, 1.0f);
         uint8_t a = (uint8_t)(fade * 255.0f);
-        zc_blend_circle((int)f->x + zc.ox, (int)f->y + 2 + zc.oy, (int)f->radius + 2,
-                        ZC_RGB565(18, 12, 7), (uint8_t)(fade * 128.0f));
+        zc_blend_circle((int)f->x + zc.ox, (int)f->y + 2 + zc.oy,
+                        (int)f->radius + 2, ZC_RGB565(18, 12, 7),
+                        (uint8_t)(fade * 128.0f));
         for(int k = 0; k < 4; k++) {
             float fx = f->x + ((float)k - 1.5f) * (f->radius * 0.38f);
             float phase = S.t * 12.0f + (float)k * 2.1f + f->seed;
             float h = 7.0f + sinf(phase) * 3.0f + (float)(k % 2) * 3.0f;
             zc_blend_rect_world((int)(fx - 3.0f), (int)(f->y - h * 0.3f), 7,
-                                (int)fmaxf(3.0f, h * 0.8f), ZC_RGB565(90, 46, 22), a);
+                                (int)fmaxf(3.0f, h * 0.8f),
+                                ZC_RGB565(90, 46, 22), a);
             zc_blend_rect_world((int)(fx - 2.0f), (int)(f->y - h * 0.55f), 4,
-                                (int)fmaxf(2.0f, h * 0.75f), k % 2 ? ZC_ORANGE : ZC_RGB565(207, 106, 43), a);
+                                (int)fmaxf(2.0f, h * 0.75f),
+                                k % 2 ? ZC_ORANGE : ZC_RGB565(207, 106, 43), a);
             zc_blend_rect_world((int)(fx - 1.0f), (int)(f->y - h * 0.8f), 2,
                                 (int)fmaxf(2.0f, h * 0.55f), ZC_GOLD, a);
         }
         for(int k = 0; k < 3; k++) {
             int ex = (int)(f->x + frand(-f->radius, f->radius));
-            zc_blend_rect_world(ex, (int)(f->y - frand(4.0f, 20.0f) - fmodf(S.t * 12.0f, 6.0f)),
-                                1, 1, ZC_ORANGE, a);
+            zc_blend_rect_world(
+                ex, (int)(f->y - frand(4.0f, 20.0f) - fmodf(S.t * 12.0f, 6.0f)),
+                1, 1, ZC_ORANGE, a);
         }
     }
 }
@@ -1743,15 +1811,20 @@ static void draw_enemy(const enemy_t * e)
 {
     if(e->dead || !e->active) return;
     const zc_sprite_def_t * def = sprite_for(e->type);
-    float fps = e->type == E_RUNNER ? 5.2f : e->type == E_BRUTE ? 2.3f : e->type == E_BOSS ? 2.0f : 3.4f;
+    float fps = e->type == E_RUNNER  ? 5.2f
+                : e->type == E_BRUTE ? 2.3f
+                : e->type == E_BOSS  ? 2.0f
+                                     : 3.4f;
     int frame = ((int)(e->anim * fps + e->phase)) & 1;
     float lunge = e->attacking ? sinf(e->anim * 22.0f) * 1.5f : 0.0f;
-    float bob = sinf(e->anim * 4.0f + e->phase) * (e->type == E_BOSS ? 1.2f : 0.8f);
+    float bob =
+        sinf(e->anim * 4.0f + e->phase) * (e->type == E_BOSS ? 1.2f : 0.8f);
     int fw = def->w * def->scale;
     int fh = def->h * def->scale;
     int x = (int)lroundf(e->x + lunge - (float)fw * 0.5f);
     int y = (int)lroundf(e->y - (float)fh + bob);
-    uint8_t alpha = (uint8_t)(clampf((e->y - 106.0f) / 17.0f, 0.28f, 1.0f) * 255.0f);
+    uint8_t alpha =
+        (uint8_t)(clampf((e->y - 106.0f) / 17.0f, 0.28f, 1.0f) * 255.0f);
 
     int sw = (int)((float)fw * (e->type == E_BOSS ? 0.5f : 0.34f));
     zc_blend_rect_world((int)e->x - sw / 2, (int)e->y - 2, sw, 3, ZC_BLACK, 97);
@@ -1762,28 +1835,36 @@ static void draw_enemy(const enemy_t * e)
     }
     if(e->slow_t > 0.0f) {
         zc_blend_circle((int)e->x + zc.ox, (int)e->y - 5 + zc.oy,
-                        (int)fmaxf(13.0f, (float)fw * 0.36f), ZC_RGB565(120, 225, 211), 64);
+                        (int)fmaxf(13.0f, (float)fw * 0.36f),
+                        ZC_RGB565(120, 225, 211), 64);
         int spark = ((int)(S.t * 10.0f)) & 3;
         for(int i = 0; i < 3; i++) {
-            int sx = (int)(e->x + sinf(S.t * 2.0f + (float)i * 2.1f) * (float)fw * 0.35f);
+            int sx = (int)(e->x + sinf(S.t * 2.0f + (float)i * 2.1f) *
+                                      (float)fw * 0.35f);
             int sy = (int)(e->y - 5.0f - cosf(S.t * 3.0f + (float)i) * 10.0f);
-            zc_blend_rect_world(sx, sy, 1, 1, i == spark % 3 ? ZC_CYAN : ZC_RGB565(134, 217, 196), 140);
+            zc_blend_rect_world(
+                sx, sy, 1, 1,
+                i == spark % 3 ? ZC_CYAN : ZC_RGB565(134, 217, 196), 140);
         }
     }
-    zc_art_sprite_draw(e->type, frame, x, y, e->hit_flash > 0.0f ? 1 : 0, alpha);
+    zc_art_sprite_draw(e->type, frame, x, y, e->hit_flash > 0.0f ? 1 : 0,
+                       alpha);
     if(e->type == E_BOSS) {
         float core = 0.5f + 0.5f * sinf(S.t * 5.0f);
-        zc_blend_rect_world((int)e->x - 1, (int)(e->y - (float)fh * 0.55f), 3, 3,
-                            ZC_RGB565(255, 92, 56), (uint8_t)((0.25f + core * 0.45f) * 255.0f));
+        zc_blend_rect_world((int)e->x - 1, (int)(e->y - (float)fh * 0.55f), 3,
+                            3, ZC_RGB565(255, 92, 56),
+                            (uint8_t)((0.25f + core * 0.45f) * 255.0f));
     }
     if(e->type == E_BRUTE && e->hp < e->max_hp) {
         int bw = fw - 8;
         int bx = (int)e->x - bw / 2;
         int by = (int)e->y - fh - 6;
         zc_blend_rect_world(bx, by, bw, 3, ZC_RGB565(6, 8, 5), 204);
-        zc_rect_world(bx + 1, by + 1,
-                      (int)((float)(bw - 2) * clampf((float)e->hp / (float)e->max_hp, 0.0f, 1.0f)),
-                      1, ZC_RED);
+        zc_rect_world(
+            bx + 1, by + 1,
+            (int)((float)(bw - 2) *
+                  clampf((float)e->hp / (float)e->max_hp, 0.0f, 1.0f)),
+            1, ZC_RED);
     }
     if(e->attacking && sinf(e->anim * 18.0f) > 0.3f) {
         zc_blend_rect_world((int)e->x - 12, (int)e->y - 24, 2, 1, ZC_RED, 178);
@@ -1806,8 +1887,10 @@ static void draw_shells(void)
         for(int k = 1; k <= 3; k++) {
             float pp = clampf(p - (float)k * 0.035f, 0.0f, 1.0f);
             int tx = (int)lroundf(s->sx + (s->tx - s->sx) * pp);
-            int ty = (int)lroundf(s->sy + (s->ty - s->sy) * pp - sinf(pp * (float)M_PI) * s->arc);
-            zc_blend_rect_world(tx, ty, 1, 1, k == 1 ? s->color : ZC_ORANGE, 140);
+            int ty = (int)lroundf(s->sy + (s->ty - s->sy) * pp -
+                                  sinf(pp * (float)M_PI) * s->arc);
+            zc_blend_rect_world(tx, ty, 1, 1, k == 1 ? s->color : ZC_ORANGE,
+                                140);
         }
         zc_rect_world(x - 3, y - 3, 6, 6, ZC_INK);
         zc_rect_world(x - 2, y - 2, 4, 4, s->color);
@@ -1823,21 +1906,27 @@ static void draw_blasts(void)
         float p = clampf(b->t / b->dur, 0.0f, 1.0f);
         float r = b->radius * ease_out_cubic(p);
         float alpha = 1.0f - p;
-        zc_blend_circle((int)b->x + zc.ox, (int)b->y + zc.oy, (int)fmaxf(2.0f, r),
-                        b->crit ? ZC_RGB565(163, 47, 37) : ZC_RGB565(60, 36, 19),
-                        (uint8_t)(alpha * 0.7f * 255.0f));
-        zc_blend_circle((int)b->x + zc.ox, (int)b->y + zc.oy, (int)fmaxf(1.0f, r * 0.72f),
-                        b->crit ? ZC_RED : ZC_ORANGE, (uint8_t)(alpha * 0.8f * 255.0f));
-        zc_blend_circle((int)b->x + zc.ox, (int)b->y + zc.oy, (int)fmaxf(1.0f, r * 0.38f),
-                        ZC_GOLD, (uint8_t)(alpha * 255.0f));
+        zc_blend_circle(
+            (int)b->x + zc.ox, (int)b->y + zc.oy, (int)fmaxf(2.0f, r),
+            b->crit ? ZC_RGB565(163, 47, 37) : ZC_RGB565(60, 36, 19),
+            (uint8_t)(alpha * 0.7f * 255.0f));
+        zc_blend_circle(
+            (int)b->x + zc.ox, (int)b->y + zc.oy, (int)fmaxf(1.0f, r * 0.72f),
+            b->crit ? ZC_RED : ZC_ORANGE, (uint8_t)(alpha * 0.8f * 255.0f));
+        zc_blend_circle((int)b->x + zc.ox, (int)b->y + zc.oy,
+                        (int)fmaxf(1.0f, r * 0.38f), ZC_GOLD,
+                        (uint8_t)(alpha * 255.0f));
         if(r > 3.0f) {
-            zc_blend_circle((int)b->x + zc.ox, (int)b->y + zc.oy, (int)fmaxf(1.0f, r * 0.16f),
-                            ZC_RGB565(255, 246, 207), (uint8_t)(alpha * 0.8f * 255.0f));
+            zc_blend_circle((int)b->x + zc.ox, (int)b->y + zc.oy,
+                            (int)fmaxf(1.0f, r * 0.16f),
+                            ZC_RGB565(255, 246, 207),
+                            (uint8_t)(alpha * 0.8f * 255.0f));
         }
         for(int k = 0; k < 18; k++) {
             float a = (float)k / 18.0f * ZC_TAU + p * 0.5f;
-            zc_blend_rect_world((int)(b->x + cosf(a) * r), (int)(b->y + sinf(a) * r * 0.72f),
-                                2, 1, k % 3 == 0 ? ZC_BONE : ZC_ORANGE,
+            zc_blend_rect_world((int)(b->x + cosf(a) * r),
+                                (int)(b->y + sinf(a) * r * 0.72f), 2, 1,
+                                k % 3 == 0 ? ZC_BONE : ZC_ORANGE,
                                 (uint8_t)(alpha * 0.55f * 255.0f));
         }
     }
@@ -1849,7 +1938,8 @@ static void draw_particles(void)
         particle_t * p = &S.particles[i];
         if(!p->active) continue;
         float a = clampf(p->life / p->max_life, 0.0f, 1.0f);
-        ui_recta((int)p->x, (int)p->y, p->size, p->size, p->color, (uint8_t)(a * 255.0f));
+        ui_recta((int)p->x, (int)p->y, p->size, p->size, p->color,
+                 (uint8_t)(a * 255.0f));
     }
 }
 
@@ -1858,7 +1948,8 @@ static void draw_tracers(void)
     for(int i = 0; i < ZC_MAX_TRACERS; i++) {
         tracer_t * t = &S.tracers[i];
         if(!t->active) continue;
-        zc_line_world((int)t->x1, (int)t->y1, (int)t->x2, (int)t->y2, 1, ZC_GOLD);
+        zc_line_world((int)t->x1, (int)t->y1, (int)t->x2, (int)t->y2, 1,
+                      ZC_GOLD);
         zc_rect_world((int)t->x2 - 1, (int)t->y2 - 1, 2, 2, ZC_WHITE);
     }
 }
@@ -1868,8 +1959,8 @@ static void draw_floaters(void)
     for(int i = 0; i < ZC_MAX_FLOATERS; i++) {
         floater_t * f = &S.floaters[i];
         if(!f->active) continue;
-        zc_text(f->text, (int)f->x + zc.ox, (int)f->y + zc.oy, f->scale, f->color,
-                ZC_ALIGN_CENTER, f->scale);
+        zc_text(f->text, (int)f->x + zc.ox, (int)f->y + zc.oy, f->scale,
+                f->color, ZC_ALIGN_CENTER, f->scale);
     }
 }
 
@@ -1889,13 +1980,18 @@ static void draw_sentries(void)
         zc_rect_world(x - 4, y - 10, 4, 2, ZC_RGB565(114, 125, 75));
         float mx = (float)x + cosf(s->angle) * 15.0f;
         float my = (float)(y - 8) + sinf(s->angle) * 15.0f;
-        zc_line_world(x, y - 8, (int)lroundf(mx), (int)lroundf(my), 4, ZC_RGB565(10, 13, 8));
-        zc_line_world(x, y - 8, (int)lroundf(mx), (int)lroundf(my), 2, ZC_RGB565(138, 141, 93));
+        zc_line_world(x, y - 8, (int)lroundf(mx), (int)lroundf(my), 4,
+                      ZC_RGB565(10, 13, 8));
+        zc_line_world(x, y - 8, (int)lroundf(mx), (int)lroundf(my), 2,
+                      ZC_RGB565(138, 141, 93));
         if(s->flash > 0.0f) {
-            zc_rect_world((int)lroundf(mx) - 2, (int)lroundf(my) - 2, 4, 4, ZC_GOLD);
-            zc_rect_world((int)lroundf(mx) - 1, (int)lroundf(my) - 1, 2, 2, ZC_WHITE);
+            zc_rect_world((int)lroundf(mx) - 2, (int)lroundf(my) - 2, 4, 4,
+                          ZC_GOLD);
+            zc_rect_world((int)lroundf(mx) - 1, (int)lroundf(my) - 1, 2, 2,
+                          ZC_WHITE);
         }
-        zc_rect_world(x + 4, y - 6, 2, 2, sinf(S.t * 4.0f + s->x) > 0.0f ? ZC_ACID : ZC_ACID_DEEP);
+        zc_rect_world(x + 4, y - 6, 2, 2,
+                      sinf(S.t * 4.0f + s->x) > 0.0f ? ZC_ACID : ZC_ACID_DEEP);
     }
 }
 
@@ -1920,12 +2016,18 @@ static void draw_muzzle_flash(void)
         muzzle_point(offs[i], 0.0f, &mx, &my);
         int x = (int)lroundf(mx);
         int y = (int)lroundf(my);
-        zc_blend_circle(x + zc.ox, y + zc.oy, 13, ZC_ORANGE, (uint8_t)(a * 0.16f * 255.0f));
-        zc_blend_rect_world(x - 5, y - 1, 10, 2, ZC_GOLD, (uint8_t)(a * 255.0f));
-        zc_blend_rect_world(x - 1, y - 5, 2, 10, ZC_GOLD, (uint8_t)(a * 255.0f));
-        zc_blend_rect_world(x - 2, y - 2, 4, 4, ZC_WHITE, (uint8_t)(a * 255.0f));
-        zc_blend_rect_world(x - 4, y - 4, 2, 2, ZC_ORANGE, (uint8_t)(a * 255.0f));
-        zc_blend_rect_world(x + 2, y + 2, 2, 2, ZC_ORANGE, (uint8_t)(a * 255.0f));
+        zc_blend_circle(x + zc.ox, y + zc.oy, 13, ZC_ORANGE,
+                        (uint8_t)(a * 0.16f * 255.0f));
+        zc_blend_rect_world(x - 5, y - 1, 10, 2, ZC_GOLD,
+                            (uint8_t)(a * 255.0f));
+        zc_blend_rect_world(x - 1, y - 5, 2, 10, ZC_GOLD,
+                            (uint8_t)(a * 255.0f));
+        zc_blend_rect_world(x - 2, y - 2, 4, 4, ZC_WHITE,
+                            (uint8_t)(a * 255.0f));
+        zc_blend_rect_world(x - 4, y - 4, 2, 2, ZC_ORANGE,
+                            (uint8_t)(a * 255.0f));
+        zc_blend_rect_world(x + 2, y + 2, 2, 2, ZC_ORANGE,
+                            (uint8_t)(a * 255.0f));
     }
 }
 
@@ -1959,7 +2061,6 @@ static void draw_reticle(void)
     }
 }
 
-
 static void draw_hud(void)
 {
     int w = S.width;
@@ -1971,11 +2072,13 @@ static void draw_hud(void)
     zc_rect(0, 0, xp_w, 4, ZC_RGB565(86, 103, 43));
     zc_rect(0, 1, xp_w, 2, ZC_ACID_D);
     if(xp_w > 0) zc_rect(xp_w > 2 ? xp_w - 2 : 0, 0, 2, 4, ZC_ACID);
-    for(int x = 13; x < w; x += 26) zc_blend_rect(x, 0, 1, 4, ZC_RGB565(4, 7, 4), 140);
+    for(int x = 13; x < w; x += 26)
+        zc_blend_rect(x, 0, 1, 4, ZC_RGB565(4, 7, 4), 140);
 
     zc_rect(0, 4, w, 42, ZC_RGB565(15, 21, 13));
     zc_rect(0, 4, w, 1, ZC_RGB565(27, 36, 20));
-    for(int y = 8; y < 45; y += 4) zc_blend_rect(0, y, w, 1, ZC_RGB565(95, 109, 63), 9);
+    for(int y = 8; y < 45; y += 4)
+        zc_blend_rect(0, y, w, 1, ZC_RGB565(95, 109, 63), 9);
     zc_rect(0, 45, w, 1, ZC_RGB565(62, 73, 42));
     zc_rect(0, 46, w, 2, ZC_RGB565(7, 10, 6));
     int rivets[4][2] = {{5, 8}, {w - 7, 8}, {5, 39}, {w - 7, 39}};
@@ -1998,10 +2101,12 @@ static void draw_hud(void)
         zc_rect(18 + shift, 32, bar_w, 1, ZC_ACID_D);
         zc_rect(18 + shift, 32, bar_w < 70 ? bar_w : 70, 1, ZC_ACID);
     }
-    for(int i = 1; i < 4; i++) zc_rect(16 + shift + i * 21, 31, 1, 3, ZC_RGB565(21, 27, 16));
+    for(int i = 1; i < 4; i++)
+        zc_rect(16 + shift + i * 21, 31, 1, 3, ZC_RGB565(21, 27, 16));
 
     char wave_title[40];
-    snprintf(wave_title, sizeof(wave_title), "第 %d 波", S.wave_index > 0 ? S.wave_index : 1);
+    snprintf(wave_title, sizeof(wave_title), "第 %d 波",
+             S.wave_index > 0 ? S.wave_index : 1);
     zc_cn_text(wave_title, 192, 6, 12, ZC_BONE, ZC_ALIGN_CENTER, true);
     int cycle = ((S.wave_index > 0 ? S.wave_index : 1) - 1) % 5 + 1;
     int total_pips = 5;
@@ -2014,11 +2119,15 @@ static void draw_hud(void)
         bool boss_pip = i == total_pips - 1;
         uint16_t col = ZC_RGB565(37, 45, 28);
         if(boss_pip && active) col = current ? ZC_RED : ZC_RED_D;
-        else if(current) col = ZC_ACID;
-        else if(active) col = ZC_OLIVE_L;
+        else if(current)
+            col = ZC_ACID;
+        else if(active)
+            col = ZC_OLIVE_L;
         int px = start_x + i * (pip_w + gap);
         zc_rect(px, 29, pip_w, 4, col);
-        if(current) zc_rect(px, 29, pip_w, 1, boss_pip ? ZC_RGB565(255, 178, 138) : ZC_WHITE);
+        if(current)
+            zc_rect(px, 29, pip_w, 1,
+                    boss_pip ? ZC_RGB565(255, 178, 138) : ZC_WHITE);
         if(boss_pip && !active) {
             zc_blend_rect(px, 28, pip_w, 1, ZC_RGB565(142, 46, 36), 115);
             zc_blend_rect(px, 33, pip_w, 1, ZC_RGB565(142, 46, 36), 115);
@@ -2032,7 +2141,8 @@ static void draw_hud(void)
     int hx = right - total_heart_w;
     bool heart_flash = S.base_flash > 0.0f && (((int)(S.t * 32.0f)) & 1) == 0;
     for(int i = 0; i < hearts; i++) {
-        int jitter = heart_flash ? (int)lroundf(sinf(S.t * 70.0f + (float)i)) : 0;
+        int jitter =
+            heart_flash ? (int)lroundf(sinf(S.t * 70.0f + (float)i)) : 0;
         draw_heart_icon(hx + i * heart_w + jitter, 19, i < S.base_hp, 2,
                         heart_flash && i >= S.base_hp - 1);
     }
@@ -2069,10 +2179,13 @@ static void draw_boss_bar(void)
     int pw = S.width - px * 2;
     int ph = 21;
     zc_blend_rect(px, py, pw, ph, ZC_RGB565(8, 11, 7), 222);
-    zc_outline(px, py, pw, ph, 1, pulse > 0.6f ? ZC_RGB565(129, 51, 42) : ZC_RGB565(86, 39, 31));
+    zc_outline(px, py, pw, ph, 1,
+               pulse > 0.6f ? ZC_RGB565(129, 51, 42) : ZC_RGB565(86, 39, 31));
     zc_blend_rect(px + 1, py + 1, pw - 2, 1, ZC_RGB565(221, 94, 67), 36);
-    zc_text("BOSS", 22 + (S.safe ? 10 : 0), py + 7, 1, ZC_RED, ZC_ALIGN_LEFT, 1);
-    zc_cn_text("屠宰者", 52 + (S.safe ? 10 : 0), py + 3, 10, ZC_BONE_D, ZC_ALIGN_LEFT, false);
+    zc_text("BOSS", 22 + (S.safe ? 10 : 0), py + 7, 1, ZC_RED, ZC_ALIGN_LEFT,
+            1);
+    zc_cn_text("屠宰者", 52 + (S.safe ? 10 : 0), py + 3, 10, ZC_BONE_D,
+               ZC_ALIGN_LEFT, false);
     int bx = 99 + (S.safe ? 10 : 0);
     int bw = pw - (bx - px) - 8;
     zc_rect(bx, py + 7, bw, 7, ZC_RGB565(5, 8, 6));
@@ -2082,19 +2195,24 @@ static void draw_boss_bar(void)
         zc_rect(bx + 1, py + 8, fw, 5, ZC_RED_D);
         zc_rect(bx + 1, py + 8, fw, 2, ZC_RED);
     }
-    for(int i = 1; i < 8; i++) zc_blend_rect(bx + i * 33, py + 8, 1, 5, ZC_RGB565(10, 8, 6), 82);
+    for(int i = 1; i < 8; i++)
+        zc_blend_rect(bx + i * 33, py + 8, 1, 5, ZC_RGB565(10, 8, 6), 82);
 }
-
 
 static void draw_banner(void)
 {
     if(!S.banner_active) return;
     float elapsed = 1.0f - clampf(S.banner_t / S.banner_max_t, 0.0f, 1.0f);
-    float alpha = fminf(clampf(elapsed * 6.0f, 0.0f, 1.0f), clampf(S.banner_t / 0.28f, 0.0f, 1.0f));
+    float alpha = fminf(clampf(elapsed * 6.0f, 0.0f, 1.0f),
+                        clampf(S.banner_t / 0.28f, 0.0f, 1.0f));
     if(alpha <= 0.01f) return;
     int top_base = strcmp(S.banner_kind, "boss") == 0 ? 82 : 140;
-    int top = top_base + (int)lroundf((1.0f - ease_out_cubic(clampf(elapsed * 4.5f, 0.0f, 1.0f))) * -12.0f);
-    zc_blend_rect(0, top, S.width, 68, ZC_RGB565(5, 8, 5), (uint8_t)(alpha * 209.0f));
+    int top = top_base +
+              (int)lroundf(
+                  (1.0f - ease_out_cubic(clampf(elapsed * 4.5f, 0.0f, 1.0f))) *
+                  -12.0f);
+    zc_blend_rect(0, top, S.width, 68, ZC_RGB565(5, 8, 5),
+                  (uint8_t)(alpha * 209.0f));
     zc_rect(0, top + 2, S.width, 1, S.banner_color);
     zc_blend_rect(0, top + 65, S.width, 1, ZC_RGB565(201, 198, 135), 71);
     for(int i = 0; i < 9; i++) {
@@ -2103,10 +2221,14 @@ static void draw_banner(void)
         zc_rect(S.width - 10 - i * 7, top + 9, 4, 2, c);
     }
     zc_text(S.banner_eng, 195, top + 12, 1, S.banner_color, ZC_ALIGN_CENTER, 2);
-    zc_cn_text(S.banner_title, 195, top + 22, 21, ZC_BONE, ZC_ALIGN_CENTER, true);
-    zc_cn_text(S.banner_sub, 195, top + 50, 10, ZC_BONE_D, ZC_ALIGN_CENTER, false);
-    zc_rect(28 + (int)lroundf(sinf(elapsed * 31.0f) * 9.0f), top + 30, 7, 1, S.banner_color);
-    zc_rect(345 + (int)lroundf(cosf(elapsed * 23.0f) * 8.0f), top + 42, 10, 1, S.banner_color);
+    zc_cn_text(S.banner_title, 195, top + 22, 21, ZC_BONE, ZC_ALIGN_CENTER,
+               true);
+    zc_cn_text(S.banner_sub, 195, top + 50, 10, ZC_BONE_D, ZC_ALIGN_CENTER,
+               false);
+    zc_rect(28 + (int)lroundf(sinf(elapsed * 31.0f) * 9.0f), top + 30, 7, 1,
+            S.banner_color);
+    zc_rect(345 + (int)lroundf(cosf(elapsed * 23.0f) * 8.0f), top + 42, 10, 1,
+            S.banner_color);
 }
 
 static void draw_toast(void)
@@ -2128,41 +2250,52 @@ static void draw_toast(void)
 
 static void draw_hint(void)
 {
-    if(S.mode != ZC_MODE_PLAYING || S.hint_timer <= 0.0f || S.toast_active) return;
+    if(S.mode != ZC_MODE_PLAYING || S.hint_timer <= 0.0f || S.toast_active)
+        return;
     float a = clampf(S.hint_timer / 0.65f, 0.0f, 1.0f);
     int w = 256;
     int x = 195 - w / 2;
     int y = 330;
-    zc_blend_rect(x, y, w, 27, ZC_RGB565(7, 11, 7), (uint8_t)(a * 0.96f * 255.0f));
+    zc_blend_rect(x, y, w, 27, ZC_RGB565(7, 11, 7),
+                  (uint8_t)(a * 0.96f * 255.0f));
     zc_outline(x, y, w, 27, 1, ZC_RGB565(135, 149, 78));
     zc_rect(x + 12, y + 10, 9, 1, ZC_ACID_D);
     zc_rect(x + 16, y + 6, 1, 9, ZC_ACID_D);
     zc_blend_rect(x + 14, y + 8, 5, 5, ZC_ACID, 56);
-    zc_cn_text("按住战场瞄准 · 松手自动开火", 195, y + 7, 11, ZC_BONE_D, ZC_ALIGN_CENTER, false);
+    zc_cn_text("按住战场瞄准 · 松手自动开火", 195, y + 7, 11, ZC_BONE_D,
+               ZC_ALIGN_CENTER, false);
     uint16_t blink = sinf(S.t * 4.0f) > 0.0f ? ZC_ACID : ZC_ACID_DEEP;
     zc_rect(x + 230, y + 13, 3, 3, blink);
 }
 
 static const char * const upgrade_icons[UPG_COUNT][12] = {
-    {"............", "......XX....", ".....XXX....", "....XXXX....", "...XXXXXX...", "..XXX.XXX...",
-     ".....XXX....", "....XXXX....", "...XXX......", "..XXX.......", ".XXX........", "............"},
-    {".....XX.....", "..X..XX..X..", "...X.XX.X...", "....XXXX....", ".XXXXXXXXXX.", "XXXXXXXXXXXX",
-     ".XXXXXXXXXX.", "....XXXX....", "...X.XX.X...", "..X..XX..X..", ".....XX.....", "............"},
-    {"...X....X...", "..XXX..XXX..", ".XXXX..XXXX.", "..XXX..XXX..", "...X....X...", "...X....X...",
-     "..XXX..XXX..", "...X....X...", "...X....X...", "............", "............", "............"},
-    {".....X......", ".....X......", "..X..X..X...", "...X.X.X....", "....XXX.....", ".XXXXXXXXX..",
-     "....XXX.....", "...X.X.X....", "..X..X..X...", ".....X......", ".....X......", "............"},
-    {".....X......", "....XXX.....", "...XXXX.....", "..XXXXXX....", "..XX.XXX....", ".XXX.XXXX...",
-     ".XX...XXX...", ".XX...XXX...", "..XX.XXXX...", "...XXXXX....", "....XXX.....", "............"},
-    {"....XXXX....", "...X....X...", "..X......X..", "..XXXXXXXX..", ".....XX.....", ".....XX.....",
-     "..XXXXXXXX..", "..X.XXXX.X..", "...X....X...", "............", "............", "............"},
-    {"....XXXX....", "..XX....XX..", ".X........X.", ".X...XX...X.", "X...XXXX...X", "X..XXXXXX..X",
-     "X...XXXX...X", ".X...XX...X.", ".X........X.", "..XX....XX..", "....XXXX....", "............"},
-    {"..XXXXXXXX..", "..X......X..", "..X..XX..X..", "..X.XXXX.X..", "..X..XX..X..", "..X......X..",
-     "...X....X...", "...X....X...", "....X..X....", ".....XX.....", "............", "............"},
-    {"....XXXX....", "....XXXX....", "....XXXX....", ".XXXXXXXXXX.", ".XXXXXXXXXX.", ".XXXXXXXXXX.",
-     "....XXXX....", "....XXXX....", "....XXXX....", "............", "............", "............"}
-};
+    {"............", "......XX....", ".....XXX....", "....XXXX....",
+     "...XXXXXX...", "..XXX.XXX...", ".....XXX....", "....XXXX....",
+     "...XXX......", "..XXX.......", ".XXX........", "............"},
+    {".....XX.....", "..X..XX..X..", "...X.XX.X...", "....XXXX....",
+     ".XXXXXXXXXX.", "XXXXXXXXXXXX", ".XXXXXXXXXX.", "....XXXX....",
+     "...X.XX.X...", "..X..XX..X..", ".....XX.....", "............"},
+    {"...X....X...", "..XXX..XXX..", ".XXXX..XXXX.", "..XXX..XXX..",
+     "...X....X...", "...X....X...", "..XXX..XXX..", "...X....X...",
+     "...X....X...", "............", "............", "............"},
+    {".....X......", ".....X......", "..X..X..X...", "...X.X.X....",
+     "....XXX.....", ".XXXXXXXXX..", "....XXX.....", "...X.X.X....",
+     "..X..X..X...", ".....X......", ".....X......", "............"},
+    {".....X......", "....XXX.....", "...XXXX.....", "..XXXXXX....",
+     "..XX.XXX....", ".XXX.XXXX...", ".XX...XXX...", ".XX...XXX...",
+     "..XX.XXXX...", "...XXXXX....", "....XXX.....", "............"},
+    {"....XXXX....", "...X....X...", "..X......X..", "..XXXXXXXX..",
+     ".....XX.....", ".....XX.....", "..XXXXXXXX..", "..X.XXXX.X..",
+     "...X....X...", "............", "............", "............"},
+    {"....XXXX....", "..XX....XX..", ".X........X.", ".X...XX...X.",
+     "X...XXXX...X", "X..XXXXXX..X", "X...XXXX...X", ".X...XX...X.",
+     ".X........X.", "..XX....XX..", "....XXXX....", "............"},
+    {"..XXXXXXXX..", "..X......X..", "..X..XX..X..", "..X.XXXX.X..",
+     "..X..XX..X..", "..X......X..", "...X....X...", "...X....X...",
+     "....X..X....", ".....XX.....", "............", "............"},
+    {"....XXXX....", "....XXXX....", "....XXXX....", ".XXXXXXXXXX.",
+     ".XXXXXXXXXX.", ".XXXXXXXXXX.", "....XXXX....", "....XXXX....",
+     "....XXXX....", "............", "............", "............"}};
 
 static void draw_upgrade_icon(int key, int cx, int cy, uint16_t color)
 {
@@ -2199,14 +2332,16 @@ static const int card_h = 92;
 static void draw_upgrade_overlay(void)
 {
     zc_blend_rect(0, 0, S.width, S.height, ZC_RGB565(4, 7, 4), 199);
-    for(int y = 0; y < S.height; y += 5) zc_blend_rect(0, y, S.width, 1, ZC_BLACK, 20);
+    for(int y = 0; y < S.height; y += 5)
+        zc_blend_rect(0, y, S.width, 1, ZC_BLACK, 20);
     for(int i = 0; i < 9; i++) {
         int x = 30 + i * 45 + (int)lroundf(sinf(S.t * 0.2f + (float)i) * 4.0f);
         zc_blend_rect(x, 0, 1 + (i % 3), S.height, ZC_ACID, 9);
     }
     zc_text("FIELD MODIFICATION", 195, 31, 1, ZC_BONE_DD, ZC_ALIGN_CENTER, 2);
     zc_cn_text("选择一项改装", 195, 45, 20, ZC_BONE, ZC_ALIGN_CENTER, true);
-    zc_cn_text("战斗暂停 · 点击卡片装配", 195, 74, 10, ZC_BONE_DD, ZC_ALIGN_CENTER, false);
+    zc_cn_text("战斗暂停 · 点击卡片装配", 195, 74, 10, ZC_BONE_DD,
+               ZC_ALIGN_CENTER, false);
     char lv[16];
     snprintf(lv, sizeof(lv), "LV %02d", S.level);
     zc_text(lv, 370, 31, 1, ZC_ACID, ZC_ALIGN_RIGHT, 1);
@@ -2221,20 +2356,24 @@ static void draw_upgrade_overlay(void)
     for(int i = 0; i < S.upgrade_choice_count; i++) {
         int key = S.upgrade_choices[i];
         const upgrade_def_t * def = &upgrade_defs[key];
-        float anim = clampf((S.upgrade_overlay_t - (float)i * 0.07f) / 0.42f, 0.0f, 1.0f);
+        float anim = clampf((S.upgrade_overlay_t - (float)i * 0.07f) / 0.42f,
+                            0.0f, 1.0f);
         if(anim <= 0.02f) continue;
         int x = card_x;
         int y = card_y[i] + (int)lroundf((1.0f - ease_out_cubic(anim)) * 20.0f);
         int w = card_w;
         int h = card_h;
         zc_blend_rect(x + 3, y + 4, w, h, ZC_BLACK, 115);
-        zc_chamfer_panel(x, y, w, h, ZC_RGB565(20, 27, 15), ZC_RGB565(109, 121, 68), 6, ZC_RGB565(13, 18, 11));
+        zc_chamfer_panel(x, y, w, h, ZC_RGB565(20, 27, 15),
+                         ZC_RGB565(109, 121, 68), 6, ZC_RGB565(13, 18, 11));
         zc_rect(x + 2, y + 10, 3, h - 20, def->accent);
         zc_rect(x + 12, y + 18, 54, 54, ZC_RGB565(8, 12, 7));
         zc_outline(x + 12, y + 18, 54, 54, 1, def->accent);
         for(int k = 0; k < 4; k++) {
-            zc_blend_rect(x + 16 + k * 10, y + 22, 5, 1, ZC_RGB565(170, 181, 110), 26);
-            zc_blend_rect(x + 16 + k * 10, y + 68, 5, 1, ZC_RGB565(170, 181, 110), 26);
+            zc_blend_rect(x + 16 + k * 10, y + 22, 5, 1,
+                          ZC_RGB565(170, 181, 110), 26);
+            zc_blend_rect(x + 16 + k * 10, y + 68, 5, 1,
+                          ZC_RGB565(170, 181, 110), 26);
         }
         draw_upgrade_icon(key, x + 39, y + 45, def->accent);
         zc_cn_text(def->name, x + 80, y + 13, 15, ZC_BONE, ZC_ALIGN_LEFT, true);
@@ -2243,32 +2382,41 @@ static void draw_upgrade_overlay(void)
         zc_cn_text(desc, x + 80, y + 38, 11, ZC_BONE_D, ZC_ALIGN_LEFT, false);
         zc_blend_rect(x + 80, y + 57, 154, 1, ZC_RGB565(160, 169, 103), 31);
         if(key == UPG_REPAIR) {
-            zc_cn_text("紧急抢修 · 立即生效", x + 80, y + 65, 9, ZC_ACID_D, ZC_ALIGN_LEFT, false);
+            zc_cn_text("紧急抢修 · 立即生效", x + 80, y + 65, 9, ZC_ACID_D,
+                       ZC_ALIGN_LEFT, false);
         }
         else if(def->max > 4) {
             char stock[24];
-            if(S.upg[key] > 0) snprintf(stock, sizeof(stock), "已装 %d", S.upg[key]);
-            else snprintf(stock, sizeof(stock), "NEW");
-            zc_cn_text(stock, x + w - 17, y + 15, 9, def->accent, ZC_ALIGN_RIGHT, false);
+            if(S.upg[key] > 0)
+                snprintf(stock, sizeof(stock), "已装 %d", S.upg[key]);
+            else
+                snprintf(stock, sizeof(stock), "NEW");
+            zc_cn_text(stock, x + w - 17, y + 15, 9, def->accent,
+                       ZC_ALIGN_RIGHT, false);
         }
         else {
             int max = def->max < 4 ? def->max : 4;
             for(int p = 0; p < max; p++) {
                 int px = x + w - 18 - (max - p) * 8;
-                zc_rect(px, y + 17, 5, 5, p < S.upg[key] ? def->accent : ZC_RGB565(37, 46, 27));
-                if(p >= S.upg[key]) zc_outline(px, y + 17, 5, 5, 1, ZC_RGB565(74, 85, 48));
+                zc_rect(px, y + 17, 5, 5,
+                        p < S.upg[key] ? def->accent : ZC_RGB565(37, 46, 27));
+                if(p >= S.upg[key])
+                    zc_outline(px, y + 17, 5, 5, 1, ZC_RGB565(74, 85, 48));
             }
         }
-        zc_text("TAP", x + w - 14, y + h - 17, 1, ZC_BONE_DD, ZC_ALIGN_RIGHT, 1);
+        zc_text("TAP", x + w - 14, y + h - 17, 1, ZC_BONE_DD, ZC_ALIGN_RIGHT,
+                1);
     }
-    zc_cn_text("点击卡片装配 · 战斗继续", 195, 414, 10, ZC_BONE_DD, ZC_ALIGN_CENTER, false);
+    zc_cn_text("点击卡片装配 · 战斗继续", 195, 414, 10, ZC_BONE_DD,
+               ZC_ALIGN_CENTER, false);
 }
 
 static void draw_action_button(int x, int y, int w, int h, const char * label,
                                const char * sub, bool primary, uint16_t accent)
 {
     zc_blend_rect(x + 2, y + 4, w, h, ZC_BLACK, 128);
-    zc_chamfer_panel(x, y, w, h, primary ? ZC_RGB565(26, 35, 18) : ZC_RGB565(18, 24, 14),
+    zc_chamfer_panel(x, y, w, h,
+                     primary ? ZC_RGB565(26, 35, 18) : ZC_RGB565(18, 24, 14),
                      primary ? accent : ZC_RGB565(89, 102, 59), 5,
                      primary ? ZC_RGB565(16, 22, 13) : ZC_RGB565(11, 15, 10));
     if(primary) {
@@ -2277,10 +2425,12 @@ static void draw_action_button(int x, int y, int w, int h, const char * label,
             zc_rect(x + w - 11 - i * 5, y + 6, 3, 2, ZC_ACID_DEEP);
         }
         zc_cn_text(label, x + w / 2, y + 8, 17, ZC_BONE, ZC_ALIGN_CENTER, true);
-        if(sub != NULL && sub[0] != '\0') zc_text(sub, x + w / 2, y + 34, 1, accent, ZC_ALIGN_CENTER, 2);
+        if(sub != NULL && sub[0] != '\0')
+            zc_text(sub, x + w / 2, y + 34, 1, accent, ZC_ALIGN_CENTER, 2);
     }
     else {
-        zc_cn_text(label, x + w / 2, y + 8, 12, ZC_BONE_D, ZC_ALIGN_CENTER, false);
+        zc_cn_text(label, x + w / 2, y + 8, 12, ZC_BONE_D, ZC_ALIGN_CENTER,
+                   false);
     }
 }
 
@@ -2295,14 +2445,17 @@ static void draw_end_overlay(void)
     float fade = clampf(S.end_overlay_t * 4.0f, 0.0f, 1.0f);
     if(fade <= 0.02f) return;
     uint16_t accent = ZC_RED;
-    zc_blend_rect(0, 0, S.width, S.height, ZC_RGB565(3, 6, 3), (uint8_t)(0.8f * 255.0f));
-    for(int y = 0; y < S.height; y += 4) zc_blend_rect(0, y, S.width, 1, ZC_RGB565(155, 47, 34), 9);
+    zc_blend_rect(0, 0, S.width, S.height, ZC_RGB565(3, 6, 3),
+                  (uint8_t)(0.8f * 255.0f));
+    for(int y = 0; y < S.height; y += 4)
+        zc_blend_rect(0, y, S.width, 1, ZC_RGB565(155, 47, 34), 9);
     int px = 26;
     int py = 60;
     int pw = 338;
     int ph = 372;
     zc_blend_rect(px + 3, py + 5, pw, ph, ZC_BLACK, 153);
-    zc_chamfer_panel(px, py, pw, ph, ZC_RGB565(16, 22, 14), accent, 8, ZC_RGB565(11, 16, 10));
+    zc_chamfer_panel(px, py, pw, ph, ZC_RGB565(16, 22, 14), accent, 8,
+                     ZC_RGB565(11, 16, 10));
     for(int i = 0; i < 16; i++) {
         zc_rect(px + 22 + i * 18, py + 3, 8, 2, i % 2 ? accent : ZC_OLIVE_D);
     }
@@ -2328,16 +2481,19 @@ static void draw_end_overlay(void)
     zc_cn_text("最 终 得 分", 195, 249, 9, ZC_BONE_DD, ZC_ALIGN_CENTER, false);
     pad5(S.score, value);
     zc_text(value, 195, 260, 4, ZC_BONE, ZC_ALIGN_CENTER, 4);
-    if(S.new_best) zc_text("NEW RECORD", 195, 289, 1, ZC_GOLD, ZC_ALIGN_CENTER, 2);
+    if(S.new_best)
+        zc_text("NEW RECORD", 195, 289, 1, ZC_GOLD, ZC_ALIGN_CENTER, 2);
     char best[64];
     char bw[16];
     char bs[16];
     pad2(S.best_wave, bw);
     pad5(S.best_score, bs);
     snprintf(best, sizeof(best), "BEST WAVE %s  /  SCORE %s", bw, bs);
-    zc_text(best, 195, S.new_best ? 301 : 294, 1, ZC_BONE_DD, ZC_ALIGN_CENTER, 1);
+    zc_text(best, 195, S.new_best ? 301 : 294, 1, ZC_BONE_DD, ZC_ALIGN_CENTER,
+            1);
 
-    draw_action_button(74, 324, 242, 48, "再 守 一 夜", "REDEPLOY", true, accent);
+    draw_action_button(74, 324, 242, 48, "再 守 一 夜", "REDEPLOY", true,
+                       accent);
     draw_action_button(132, 382, 126, 30, "返回哨站", NULL, false, accent);
     zc_text("OUTPOST LOST", 195, 420, 1, ZC_BONE_DD, ZC_ALIGN_CENTER, 2);
     if(!S.ai_mode && S.ai_timer > 4.0f) {
@@ -2351,18 +2507,23 @@ static void draw_pause_overlay(void)
 {
     zc_blend_rect(0, 0, S.width, S.height, ZC_RGB565(4, 7, 4), 179);
     if(S.embedded) {
-        zc_chamfer_panel(68, 166, 254, 146, ZC_RGB565(18, 24, 15), ZC_RGB565(102, 115, 63), 6, ZC_RGB565(13, 18, 11));
+        zc_chamfer_panel(68, 166, 254, 146, ZC_RGB565(18, 24, 15),
+                         ZC_RGB565(102, 115, 63), 6, ZC_RGB565(13, 18, 11));
         zc_cn_text("已 暂 停", 195, 180, 19, ZC_BONE, ZC_ALIGN_CENTER, true);
         zc_cn_text("战斗暂停", 195, 212, 11, ZC_BONE_D, ZC_ALIGN_CENTER, false);
-        zc_chamfer_panel(92, 236, 206, 28, ZC_RGB565(32, 43, 22), ZC_ACID_D, 4, ZC_RGB565(19, 26, 14));
+        zc_chamfer_panel(92, 236, 206, 28, ZC_RGB565(32, 43, 22), ZC_ACID_D, 4,
+                         ZC_RGB565(19, 26, 14));
         zc_cn_text("继续战斗", 195, 242, 12, ZC_BONE, ZC_ALIGN_CENTER, false);
-        zc_chamfer_panel(92, 272, 206, 28, ZC_RGB565(22, 20, 14), ZC_RGB565(115, 81, 60), 4, ZC_RGB565(14, 13, 10));
+        zc_chamfer_panel(92, 272, 206, 28, ZC_RGB565(22, 20, 14),
+                         ZC_RGB565(115, 81, 60), 4, ZC_RGB565(14, 13, 10));
         zc_cn_text("返回哨站", 195, 278, 12, ZC_BONE_D, ZC_ALIGN_CENTER, false);
     }
     else {
-        zc_chamfer_panel(68, 174, 254, 116, ZC_RGB565(18, 24, 15), ZC_RGB565(102, 115, 63), 6, ZC_RGB565(13, 18, 11));
+        zc_chamfer_panel(68, 174, 254, 116, ZC_RGB565(18, 24, 15),
+                         ZC_RGB565(102, 115, 63), 6, ZC_RGB565(13, 18, 11));
         zc_cn_text("已 暂 停", 195, 190, 19, ZC_BONE, ZC_ALIGN_CENTER, true);
-        zc_cn_text("点击任意处返回战场", 195, 222, 11, ZC_BONE_D, ZC_ALIGN_CENTER, false);
+        zc_cn_text("点击任意处返回战场", 195, 222, 11, ZC_BONE_D,
+                   ZC_ALIGN_CENTER, false);
         float a = 0.45f + 0.3f * sinf(S.t * 3.0f);
         zc_blend_rect(167, 248, 5, 14, ZC_ACID, (uint8_t)(a * 255.0f));
         zc_blend_rect(218, 248, 5, 14, ZC_ACID, (uint8_t)(a * 255.0f));
@@ -2387,28 +2548,33 @@ static void draw_field_controls(void)
 static void draw_screen_effects(void)
 {
     if(S.flash_white > 0.0f) {
-        zc_blend_rect(0, 0, S.width, S.height, ZC_RGB565(242, 235, 204),
-                      (uint8_t)(clampf(S.flash_white * 0.55f, 0.0f, 0.6f) * 255.0f));
+        zc_blend_rect(
+            0, 0, S.width, S.height, ZC_RGB565(242, 235, 204),
+            (uint8_t)(clampf(S.flash_white * 0.55f, 0.0f, 0.6f) * 255.0f));
     }
     if(S.flash_red > 0.0f) {
-        zc_blend_rect(0, 0, S.width, S.height, ZC_RGB565(185, 43, 29),
-                      (uint8_t)(clampf(S.flash_red * 0.42f, 0.0f, 0.5f) * 255.0f));
+        zc_blend_rect(
+            0, 0, S.width, S.height, ZC_RGB565(185, 43, 29),
+            (uint8_t)(clampf(S.flash_red * 0.42f, 0.0f, 0.5f) * 255.0f));
     }
     if(S.mode == ZC_MODE_PLAYING && S.base_hp <= 2) {
         float a = 0.04f + 0.035f * (0.5f + 0.5f * sinf(S.t * 6.0f));
         uint8_t alpha = (uint8_t)(a * 255.0f);
-        zc_blend_rect(0, ZC_HUD_H, 13, S.height - ZC_HUD_H, ZC_RGB565(150, 34, 24), alpha);
-        zc_blend_rect(S.width - 13, ZC_HUD_H, 13, S.height - ZC_HUD_H, ZC_RGB565(150, 34, 24), alpha);
-        zc_blend_rect(0, S.height - 12, S.width, 12, ZC_RGB565(150, 34, 24), alpha);
+        zc_blend_rect(0, ZC_HUD_H, 13, S.height - ZC_HUD_H,
+                      ZC_RGB565(150, 34, 24), alpha);
+        zc_blend_rect(S.width - 13, ZC_HUD_H, 13, S.height - ZC_HUD_H,
+                      ZC_RGB565(150, 34, 24), alpha);
+        zc_blend_rect(0, S.height - 12, S.width, 12, ZC_RGB565(150, 34, 24),
+                      alpha);
     }
     if(S.boss != NULL && !S.boss->dead && S.mode == ZC_MODE_PLAYING) {
         float a = 0.025f + 0.022f * sinf(S.t * 5.0f);
         uint8_t alpha = (uint8_t)(a * 255.0f);
         zc_blend_rect(0, ZC_HUD_H, S.width, 9, ZC_RGB565(180, 42, 30), alpha);
-        zc_blend_rect(0, S.height - 12, S.width, 12, ZC_RGB565(180, 42, 30), alpha);
+        zc_blend_rect(0, S.height - 12, S.width, 12, ZC_RGB565(180, 42, 30),
+                      alpha);
     }
 }
-
 
 typedef struct {
     int type;
@@ -2421,15 +2587,15 @@ typedef struct {
 static const title_ambient_t title_ambient[3] = {
     {E_WALKER, 86.0f, 136.0f, 0.4f, 2.2f},
     {E_RUNNER, 296.0f, 126.0f, 2.1f, 1.7f},
-    {E_WALKER, 330.0f, 111.0f, 4.3f, 1.2f}
-};
+    {E_WALKER, 330.0f, 111.0f, 4.3f, 1.2f}};
 
 static void draw_title(void)
 {
     zc_blend_rect(0, 82, S.width, 158, ZC_RGB565(4, 8, 5), 84);
     for(int y = 82; y < 240; y += 4) {
         float a = 0.04f + (float)(y - 82) / 158.0f * 0.1f;
-        zc_blend_rect(0, y, S.width, 2, ZC_RGB565(4, 8, 5), (uint8_t)(a * 255.0f));
+        zc_blend_rect(0, y, S.width, 2, ZC_RGB565(4, 8, 5),
+                      (uint8_t)(a * 255.0f));
     }
     zc_rect(14, 16, 5, 5, ZC_RED);
     zc_text("OUTPOST 07", 24, 15, 1, ZC_BONE_D, ZC_ALIGN_LEFT, 1);
@@ -2438,7 +2604,8 @@ static void draw_title(void)
     char best[40];
     char bw[16];
     if(S.best_wave > 0) pad2(S.best_wave, bw);
-    else snprintf(bw, sizeof(bw), "--");
+    else
+        snprintf(bw, sizeof(bw), "--");
     snprintf(best, sizeof(best), "BEST WAVE %s", bw);
     zc_text(best, S.width - 16, 15, 1, ZC_BONE_D, ZC_ALIGN_RIGHT, 1);
     char sb[24];
@@ -2450,7 +2617,8 @@ static void draw_title(void)
     for(int i = 0; i < 3; i++) {
         const title_ambient_t * z = &title_ambient[i];
         const zc_sprite_def_t * def = sprite_for(z->type);
-        int frame = ((int)(S.t * (z->type == E_RUNNER ? 5.0f : 3.0f) + z->phase)) & 1;
+        int frame =
+            ((int)(S.t * (z->type == E_RUNNER ? 5.0f : 3.0f) + z->phase)) & 1;
         float sway = sinf(S.t * z->speed + z->phase) * 2.0f;
         int bob = (int)lroundf(sinf(S.t * 3.0f + z->phase));
         int fw = def->w * def->scale;
@@ -2472,8 +2640,10 @@ static void draw_title(void)
     zc_rect(74, 95, 2, 5, ZC_OLIVE_L);
     zc_rect(310, 166, 6, 6, ZC_RED_D);
     zc_rect(316, 169, 2, 2, ZC_RED);
-    zc_cn_text("第 七 哨 站 · 尸 潮 无 尽", 195, 204, 14, ZC_BONE_D, ZC_ALIGN_CENTER, true);
-    zc_text("ENDLESS SIEGE  /  NO DAWN", 195, 227, 1, ZC_BONE_DD, ZC_ALIGN_CENTER, 1);
+    zc_cn_text("第 七 哨 站 · 尸 潮 无 尽", 195, 204, 14, ZC_BONE_D,
+               ZC_ALIGN_CENTER, true);
+    zc_text("ENDLESS SIEGE  /  NO DAWN", 195, 227, 1, ZC_BONE_DD,
+            ZC_ALIGN_CENTER, 1);
     zc_blend_rect(115, 241, 160, 1, ZC_RGB565(171, 177, 113), 64);
     zc_rect(190, 239, 10, 5, ZC_OLIVE);
 
@@ -2483,8 +2653,10 @@ static void draw_title(void)
     int ph = 58;
     float pulse = 0.55f + 0.45f * sinf(S.t * 3.2f);
     zc_rect(px - 3, py + ph - 1, pw + 6, 3, ZC_RGB565(5, 8, 5));
-    zc_blend_rect(px - 1, py - 1, pw + 2, ph + 2, ZC_ACID, (uint8_t)((0.18f + pulse * 0.2f) * 255.0f));
-    zc_chamfer_panel(px, py, pw, ph, ZC_RGB565(32, 40, 24), ZC_RGB565(185, 195, 103), 7, ZC_RGB565(19, 25, 14));
+    zc_blend_rect(px - 1, py - 1, pw + 2, ph + 2, ZC_ACID,
+                  (uint8_t)((0.18f + pulse * 0.2f) * 255.0f));
+    zc_chamfer_panel(px, py, pw, ph, ZC_RGB565(32, 40, 24),
+                     ZC_RGB565(185, 195, 103), 7, ZC_RGB565(19, 25, 14));
     for(int i = 0; i < 4; i++) {
         zc_rect(px + 5 + i * 5, py + 7, 3, 2, ZC_ACID_DEEP);
         zc_rect(px + pw - 8 - i * 5, py + 7, 3, 2, ZC_ACID_DEEP);
@@ -2496,8 +2668,10 @@ static void draw_title(void)
     zc_rect(px + pw - 27, py + 28, 9, 2, ZC_ACID_D);
     zc_rect(px + pw - 24, py + 25, 2, 8, ZC_ACID_D);
 
-    zc_cn_text("按住战场瞄准 · 松手自动开火", 195, 330, 12, ZC_BONE_D, ZC_ALIGN_CENTER, true);
-    zc_text("TOUCH TO AIM   /   RELEASE TO AUTO-FIRE", 195, 350, 1, ZC_BONE_DD, ZC_ALIGN_CENTER, 1);
+    zc_cn_text("按住战场瞄准 · 松手自动开火", 195, 330, 12, ZC_BONE_D,
+               ZC_ALIGN_CENTER, true);
+    zc_text("TOUCH TO AIM   /   RELEASE TO AUTO-FIRE", 195, 350, 1, ZC_BONE_DD,
+            ZC_ALIGN_CENTER, 1);
     if(!S.ai_mode && S.ai_timer > 4.0f && S.ai_timer < 12.0f) {
         char ai[16];
         snprintf(ai, sizeof(ai), "AI IN %d", (int)ceilf(12.0f - S.ai_timer));
@@ -2513,7 +2687,6 @@ static void draw_title(void)
     }
 }
 
-
 static void draw_game_world(void)
 {
     zc.ox = S.shake_x;
@@ -2526,7 +2699,8 @@ static void draw_game_world(void)
     enemy_t * order[ZC_MAX_ENEMIES];
     int n = 0;
     for(int i = 0; i < ZC_MAX_ENEMIES; i++) {
-        if(S.enemies[i].active && !S.enemies[i].dead) order[n++] = &S.enemies[i];
+        if(S.enemies[i].active && !S.enemies[i].dead)
+            order[n++] = &S.enemies[i];
     }
     for(int i = 1; i < n; i++) {
         enemy_t * key = order[i];
@@ -2539,7 +2713,8 @@ static void draw_game_world(void)
     }
     for(int i = 0; i < n; i++) draw_enemy(order[i]);
 
-    zc_art_base_draw(S.t, S.aim_angle, S.recoil, S.base_hp, S.upg[UPG_TWIN] > 0);
+    zc_art_base_draw(S.t, S.aim_angle, S.recoil, S.base_hp,
+                     S.upg[UPG_TWIN] > 0);
     draw_sentries();
     draw_shells();
     draw_blasts();
@@ -2555,7 +2730,8 @@ static void draw_game_world(void)
 
 static void draw_scanlines(void)
 {
-    for(int y = 0; y < S.height; y += 4) zc_blend_rect(0, y, S.width, 1, ZC_BLACK, 14);
+    for(int y = 0; y < S.height; y += 4)
+        zc_blend_rect(0, y, S.width, 1, ZC_BLACK, 14);
 }
 
 void zc_render(void)
@@ -2566,7 +2742,8 @@ void zc_render(void)
         zc.oy = 0;
         zc_art_backdrop_draw();
         if(!S.safe) zc_art_fog_draw(S.t);
-        zc_art_base_draw(S.t, S.aim_angle, S.recoil, S.base_hp, S.upg[UPG_TWIN] > 0);
+        zc_art_base_draw(S.t, S.aim_angle, S.recoil, S.base_hp,
+                         S.upg[UPG_TWIN] > 0);
         zc_art_motes_draw(S.t);
         draw_title();
         if(S.scanlines && !S.safe) draw_scanlines();
@@ -2586,7 +2763,8 @@ void zc_render(void)
     else if(S.mode == ZC_MODE_ENDING) {
         draw_banner();
         float a = clampf(S.ending_t * 2.4f, 0.0f, 0.35f);
-        zc_blend_rect(0, 0, S.width, S.height, ZC_RGB565(72, 16, 12), (uint8_t)(a * 255.0f));
+        zc_blend_rect(0, 0, S.width, S.height, ZC_RGB565(72, 16, 12),
+                      (uint8_t)(a * 255.0f));
     }
     else if(S.mode == ZC_MODE_UPGRADE) {
         draw_upgrade_overlay();
@@ -2599,7 +2777,6 @@ void zc_render(void)
     }
     if(S.scanlines && !S.safe) draw_scanlines();
 }
-
 
 static void reset_run(void)
 {
@@ -2754,7 +2931,6 @@ void zc_tick(uint32_t now_ms, uint32_t elapsed_ms)
     }
 }
 
-
 static bool point_in(int x, int y, int rx, int ry, int rw, int rh)
 {
     return x >= rx && x <= rx + rw && y >= ry && y <= ry + rh;
@@ -2785,7 +2961,8 @@ static void pause_toggle(void)
 static void request_exit_or_title(void)
 {
     if(S.embedded) S.exit_requested = true;
-    else go_title();
+    else
+        go_title();
 }
 
 static void handle_down(int x, int y)
@@ -2809,7 +2986,13 @@ static void handle_down(int x, int y)
     if(S.mode == ZC_MODE_UPGRADE) {
         if(S.upgrade_overlay_t < 0.24f) return;
         for(int i = 0; i < S.upgrade_choice_count; i++) {
-            int ry = card_y[i] + (int)lroundf((1.0f - ease_out_cubic(clampf((S.upgrade_overlay_t - (float)i * 0.07f) / 0.42f, 0.0f, 1.0f))) * 20.0f);
+            int ry = card_y[i] +
+                     (int)lroundf(
+                         (1.0f -
+                          ease_out_cubic(clampf(
+                              (S.upgrade_overlay_t - (float)i * 0.07f) / 0.42f,
+                              0.0f, 1.0f))) *
+                         20.0f);
             if(point_in(x, y, card_x, ry, card_w, card_h)) {
                 choose_upgrade(S.upgrade_choices[i]);
                 return;
@@ -2925,7 +3108,8 @@ bool zc_key(uint32_t key)
         }
         if(S.mode == ZC_MODE_PAUSED) {
             if(S.embedded) S.exit_requested = true;
-            else go_title();
+            else
+                go_title();
             return true;
         }
         return false;
@@ -2992,7 +3176,8 @@ bool zc_create(uint16_t * fb, uint16_t * backdrop, const zc_config_t * cfg)
     g_cfg.height = h;
     g_cfg.hooks = cfg->hooks;
     if(cfg->hooks != NULL) g_hooks = *cfg->hooks;
-    else memset(&g_hooks, 0, sizeof(g_hooks));
+    else
+        memset(&g_hooks, 0, sizeof(g_hooks));
     S.width = w;
     S.height = h;
     S.dy = h - 460;

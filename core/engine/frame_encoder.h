@@ -13,13 +13,10 @@ extern "C" {
 
 typedef struct frame_encoder frame_encoder_t;
 
-frame_encoder_t * frame_encoder_start(const char * session_dir,
-                                      uint32_t width,
-                                      uint32_t height,
-                                      uint64_t byte_budget);
+frame_encoder_t * frame_encoder_start(const char * session_dir, uint32_t width,
+                                      uint32_t height, uint64_t byte_budget);
 
-int frame_encoder_submit(frame_encoder_t * encoder,
-                         long frame_no,
+int frame_encoder_submit(frame_encoder_t * encoder, long frame_no,
                          const uint8_t * xrgb);
 
 void frame_encoder_drain(frame_encoder_t * encoder);

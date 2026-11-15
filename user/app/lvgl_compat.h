@@ -39,7 +39,8 @@ static inline lv_obj_t * lv_button_create(lv_obj_t * parent)
 #endif
 
 /* Image recolor style was renamed together with the image widget. */
-static inline void app_image_set_recolor(lv_obj_t * obj, lv_color_t color, lv_opa_t opa)
+static inline void app_image_set_recolor(lv_obj_t * obj, lv_color_t color,
+                                         lv_opa_t opa)
 {
 #if LVGL_VERSION_MAJOR >= 9
     lv_obj_set_style_image_recolor(obj, color, 0);

@@ -83,9 +83,7 @@ size_t adapter_prim_state_size(void);
  * the adapter info strings and the ``has_*`` flags. Returns 0 on success;
  * on failure the caller runs adapter_prim_deinit().
  */
-int adapter_prim_init(adapter_t * adapter,
-                      uint32_t width,
-                      uint32_t height,
+int adapter_prim_init(adapter_t * adapter, uint32_t width, uint32_t height,
                       bool real_input);
 
 /**
@@ -101,12 +99,8 @@ void adapter_prim_read(adapter_t * adapter, adapter_indev_kind_t kind);
  * caller's buffers (empty strings when nothing was hit). 9.2+ has object
  * names; 8.x maps built-in class pointers to names.
  */
-void adapter_prim_hit(adapter_t * adapter,
-                      int32_t x,
-                      int32_t y,
-                      char * hit_name,
-                      size_t hit_name_size,
-                      char * hit_class,
+void adapter_prim_hit(adapter_t * adapter, int32_t x, int32_t y,
+                      char * hit_name, size_t hit_name_size, char * hit_class,
                       size_t hit_class_size);
 
 void adapter_prim_refresh(adapter_t * adapter);
@@ -120,11 +114,8 @@ void adapter_prim_timer_handler(void);
  * allocated with malloc. Logs decode failures against ``path``. Returns 0 on
  * success; the caller releases ``*pixels`` with free().
  */
-int adapter_prim_png_decode(const unsigned char * data,
-                            size_t size,
-                            const char * path,
-                            unsigned char ** pixels,
-                            uint32_t * width,
-                            uint32_t * height);
+int adapter_prim_png_decode(const unsigned char * data, size_t size,
+                            const char * path, unsigned char ** pixels,
+                            uint32_t * width, uint32_t * height);
 
 #endif

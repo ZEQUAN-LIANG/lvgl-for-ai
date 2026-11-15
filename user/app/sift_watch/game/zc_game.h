@@ -8,7 +8,6 @@
 extern "C" {
 #endif
 
-
 #define ZC_MAX_W 390
 #define ZC_MAX_H 460
 

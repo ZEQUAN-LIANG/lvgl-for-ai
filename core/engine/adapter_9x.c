@@ -6,7 +6,7 @@
 /* 9.4 moved lv_obj_class_t (and its name field) into the private header.
  * 9.1 keeps the struct public in core/lv_obj_class.h. */
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
-    #include "src/core/lv_obj_class_private.h"
+#include "src/core/lv_obj_class_private.h"
 #endif
 
 #include <stddef.h>
@@ -15,15 +15,14 @@
 #include <string.h>
 
 #ifndef LVGL_SRC_PATH
-    #define LVGL_SRC_PATH ""
+#define LVGL_SRC_PATH ""
 #endif
 
 #define STRINGIFY_INNER(value) #value
-#define STRINGIFY(value) STRINGIFY_INNER(value)
-#define LVGL_VERSION_STRING \
-    STRINGIFY(LVGL_VERSION_MAJOR) "." \
-    STRINGIFY(LVGL_VERSION_MINOR) "." \
-    STRINGIFY(LVGL_VERSION_PATCH)
+#define STRINGIFY(value)       STRINGIFY_INNER(value)
+#define LVGL_VERSION_STRING                                                    \
+    STRINGIFY(LVGL_VERSION_MAJOR)                                              \
+    "." STRINGIFY(LVGL_VERSION_MINOR) "." STRINGIFY(LVGL_VERSION_PATCH)
 
 struct adapter {
     adapter_common_t common;
@@ -69,7 +68,8 @@ static void encoder_read_cb(lv_indev_t * indev, lv_indev_data_t * data)
     if(adapter == NULL) return;
     data->enc_diff = (int16_t)adapter->common.encoder_diff;
     data->state = LV_INDEV_STATE_RELEASED;
-    /* An encoder diff is a delta: consume it so timer reads do not repeat it. */
+    /* An encoder diff is a delta: consume it so timer reads do not repeat it.
+     */
     adapter->common.encoder_diff = 0;
     adapter->common.encoder_reads++;
     data->continue_reading = false;
@@ -92,9 +92,8 @@ static void real_keypad_read_cb(lv_indev_t * indev, lv_indev_data_t * data)
     adapter_t * adapter = (adapter_t *)lv_indev_get_user_data(indev);
     if(adapter == NULL) return;
     data->key = adapter->common.real_keypad_key;
-    data->state = adapter->common.real_keypad_pressed
-                      ? LV_INDEV_STATE_PRESSED
-                      : LV_INDEV_STATE_RELEASED;
+    data->state = adapter->common.real_keypad_pressed ? LV_INDEV_STATE_PRESSED
+                                                      : LV_INDEV_STATE_RELEASED;
     adapter->common.real_keypad_reads++;
     data->continue_reading = false;
 }
@@ -103,8 +102,8 @@ static lv_obj_t * hit_test(adapter_t * adapter, int32_t x, int32_t y)
 {
     lv_point_t point = {x, y};
     lv_display_t * display = adapter->display;
-    lv_obj_t * found = lv_indev_search_obj(lv_display_get_layer_sys(display),
-                                           &point);
+    lv_obj_t * found =
+        lv_indev_search_obj(lv_display_get_layer_sys(display), &point);
     if(found != NULL) return found;
     found = lv_indev_search_obj(lv_display_get_layer_top(display), &point);
     if(found != NULL) return found;
@@ -114,7 +113,7 @@ static lv_obj_t * hit_test(adapter_t * adapter, int32_t x, int32_t y)
 }
 
 static void flush_cb(lv_display_t * display, const lv_area_t * area,
-                         uint8_t * px_map)
+                     uint8_t * px_map)
 {
     adapter_t * adapter = (adapter_t *)lv_display_get_user_data(display);
     if(adapter != NULL) {
@@ -124,8 +123,10 @@ static void flush_cb(lv_display_t * display, const lv_area_t * area,
         uint32_t width = (uint32_t)lv_area_get_width(area);
         uint32_t height = (uint32_t)lv_area_get_height(area);
         for(uint32_t y = 0; y < height; y++) {
-            size_t dst = ((size_t)(area->y1 + (int32_t)y)
-                          * adapter->common.width + (size_t)area->x1) * 4u;
+            size_t dst =
+                ((size_t)(area->y1 + (int32_t)y) * adapter->common.width +
+                 (size_t)area->x1) *
+                4u;
             memcpy(adapter->common.framebuffer + dst,
                    px_map + (size_t)y * width * 4u, (size_t)width * 4u);
         }
@@ -267,12 +268,8 @@ void adapter_prim_read(adapter_t * adapter, adapter_indev_kind_t kind)
     if(indev != NULL) lv_indev_read(indev);
 }
 
-void adapter_prim_hit(adapter_t * adapter,
-                      int32_t x,
-                      int32_t y,
-                      char * hit_name,
-                      size_t hit_name_size,
-                      char * hit_class,
+void adapter_prim_hit(adapter_t * adapter, int32_t x, int32_t y,
+                      char * hit_name, size_t hit_name_size, char * hit_class,
                       size_t hit_class_size)
 {
     if(hit_name_size > 0) hit_name[0] = '\0';
@@ -281,7 +278,8 @@ void adapter_prim_hit(adapter_t * adapter,
     if(obj == NULL) return;
 
     /* Object names were added in 9.2. LVGL 9.1 has no name API and no
-     * LV_USE_OBJ_NAME switch, so hit stays empty there; hit_class still works. */
+     * LV_USE_OBJ_NAME switch, so hit stays empty there; hit_class still works.
+     */
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 2
     const char * name = lv_obj_get_name(obj);
     if(name != NULL) {
@@ -311,12 +309,9 @@ void adapter_prim_timer_handler(void)
     lv_timer_handler();
 }
 
-int adapter_prim_png_decode(const unsigned char * data,
-                            size_t size,
-                            const char * path,
-                            unsigned char ** pixels,
-                            uint32_t * width,
-                            uint32_t * height)
+int adapter_prim_png_decode(const unsigned char * data, size_t size,
+                            const char * path, unsigned char ** pixels,
+                            uint32_t * width, uint32_t * height)
 {
     *pixels = NULL;
     *width = 0;
@@ -325,8 +320,8 @@ int adapter_prim_png_decode(const unsigned char * data,
     unsigned char * decoded_ptr = NULL;
     unsigned png_width = 0;
     unsigned png_height = 0;
-    unsigned error = lodepng_decode32(&decoded_ptr, &png_width, &png_height,
-                                      data, size);
+    unsigned error =
+        lodepng_decode32(&decoded_ptr, &png_width, &png_height, data, size);
     if(error != 0 || decoded_ptr == NULL) {
         fprintf(stderr, "[engine] cannot decode reference %s: %s\n", path,
                 lodepng_error_text(error));
@@ -351,7 +346,8 @@ int adapter_prim_png_decode(const unsigned char * data,
      * even though LVGL creates it with an ARGB8888 header. Repack into the
      * framebuffer layout B, G, R, X. */
     for(unsigned y = 0; y < png_height; y++) {
-        const uint8_t * row = decoded->data + (size_t)y * decoded->header.stride;
+        const uint8_t * row =
+            decoded->data + (size_t)y * decoded->header.stride;
         for(unsigned x = 0; x < png_width; x++) {
             size_t out = ((size_t)y * png_width + x) * 4u;
             packed[out + 0u] = row[x * 4u + 2u];

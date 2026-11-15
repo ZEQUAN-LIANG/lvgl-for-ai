@@ -9,8 +9,8 @@
 #include <string.h>
 
 // cppcheck-suppress misra-c2012-8.7
-int png_writer_write_xrgb(const uint8_t * xrgb, uint32_t width,
-                          uint32_t height, const char * path)
+int png_writer_write_xrgb(const uint8_t * xrgb, uint32_t width, uint32_t height,
+                          const char * path)
 {
     int result = -1;
     if((xrgb != NULL) && (path != NULL) && (width != 0u) && (height != 0u) &&
@@ -49,7 +49,8 @@ int png_writer_write_xrgb(const uint8_t * xrgb, uint32_t width,
             }
             else {
                 // cppcheck-suppress misra-c2012-17.7
-                fprintf(stderr, "[engine] cannot allocate the PNG pixel buffer\n");
+                fprintf(stderr,
+                        "[engine] cannot allocate the PNG pixel buffer\n");
             }
         }
         else {
@@ -61,7 +62,8 @@ int png_writer_write_xrgb(const uint8_t * xrgb, uint32_t width,
     else {
         if((xrgb != NULL) && (path != NULL)) {
             // cppcheck-suppress misra-c2012-17.7
-            fprintf(stderr, "[engine] invalid PNG size: %ux%u\n", width, height);
+            fprintf(stderr, "[engine] invalid PNG size: %ux%u\n", width,
+                    height);
         }
         result = -1;
     }

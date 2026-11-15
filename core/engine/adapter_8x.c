@@ -10,15 +10,14 @@
 #include <string.h>
 
 #ifndef LVGL_SRC_PATH
-    #define LVGL_SRC_PATH ""
+#define LVGL_SRC_PATH ""
 #endif
 
 #define STRINGIFY_INNER(value) #value
-#define STRINGIFY(value) STRINGIFY_INNER(value)
-#define LVGL_VERSION_STRING \
-    STRINGIFY(LVGL_VERSION_MAJOR) "." \
-    STRINGIFY(LVGL_VERSION_MINOR) "." \
-    STRINGIFY(LVGL_VERSION_PATCH)
+#define STRINGIFY(value)       STRINGIFY_INNER(value)
+#define LVGL_VERSION_STRING                                                    \
+    STRINGIFY(LVGL_VERSION_MAJOR)                                              \
+    "." STRINGIFY(LVGL_VERSION_MINOR) "." STRINGIFY(LVGL_VERSION_PATCH)
 
 struct adapter {
     adapter_common_t common;
@@ -77,14 +76,14 @@ static void encoder_read_cb(lv_indev_drv_t * drv, lv_indev_data_t * data)
     if(adapter == NULL) return;
     data->enc_diff = (int16_t)adapter->common.encoder_diff;
     data->state = LV_INDEV_STATE_RELEASED;
-    /* An encoder diff is a delta: consume it so timer reads do not repeat it. */
+    /* An encoder diff is a delta: consume it so timer reads do not repeat it.
+     */
     adapter->common.encoder_diff = 0;
     adapter->common.encoder_reads++;
     data->continue_reading = false;
 }
 
-static void real_pointer_read_cb(lv_indev_drv_t * drv,
-                                     lv_indev_data_t * data)
+static void real_pointer_read_cb(lv_indev_drv_t * drv, lv_indev_data_t * data)
 {
     adapter_t * adapter = (adapter_t *)drv->user_data;
     if(adapter == NULL) return;
@@ -96,15 +95,13 @@ static void real_pointer_read_cb(lv_indev_drv_t * drv,
     data->continue_reading = false;
 }
 
-static void real_keypad_read_cb(lv_indev_drv_t * drv,
-                                    lv_indev_data_t * data)
+static void real_keypad_read_cb(lv_indev_drv_t * drv, lv_indev_data_t * data)
 {
     adapter_t * adapter = (adapter_t *)drv->user_data;
     if(adapter == NULL) return;
     data->key = adapter->common.real_keypad_key;
-    data->state = adapter->common.real_keypad_pressed
-                      ? LV_INDEV_STATE_PRESSED
-                      : LV_INDEV_STATE_RELEASED;
+    data->state = adapter->common.real_keypad_pressed ? LV_INDEV_STATE_PRESSED
+                                                      : LV_INDEV_STATE_RELEASED;
     adapter->common.real_keypad_reads++;
     data->continue_reading = false;
 }
@@ -137,8 +134,8 @@ static lv_obj_t * hit_test(adapter_t * adapter, int32_t x, int32_t y)
 {
     lv_point_t point = {x, y};
     lv_disp_t * display = adapter->display;
-    lv_obj_t * found = lv_indev_search_obj(lv_disp_get_layer_sys(display),
-                                           &point);
+    lv_obj_t * found =
+        lv_indev_search_obj(lv_disp_get_layer_sys(display), &point);
     if(found != NULL) return found;
     found = lv_indev_search_obj(lv_disp_get_layer_top(display), &point);
     if(found != NULL) return found;
@@ -147,7 +144,7 @@ static lv_obj_t * hit_test(adapter_t * adapter, int32_t x, int32_t y)
 }
 
 static void flush_cb(lv_disp_drv_t * disp_drv, const lv_area_t * area,
-                         lv_color_t * color_p)
+                     lv_color_t * color_p)
 {
     adapter_t * adapter = (adapter_t *)disp_drv->user_data;
     if(adapter != NULL) {
@@ -158,8 +155,10 @@ static void flush_cb(lv_disp_drv_t * disp_drv, const lv_area_t * area,
         uint32_t height = (uint32_t)lv_area_get_height(area);
         const uint8_t * src = (const uint8_t *)color_p;
         for(uint32_t y = 0; y < height; y++) {
-            size_t dst = ((size_t)(area->y1 + (int32_t)y)
-                          * adapter->common.width + (size_t)area->x1) * 4u;
+            size_t dst =
+                ((size_t)(area->y1 + (int32_t)y) * adapter->common.width +
+                 (size_t)area->x1) *
+                4u;
             memcpy(adapter->common.framebuffer + dst,
                    src + (size_t)y * width * 4u, (size_t)width * 4u);
         }
@@ -191,8 +190,8 @@ int adapter_prim_init(adapter_t * adapter, uint32_t width, uint32_t height,
     common->info.lvgl_src = LVGL_SRC_PATH;
     common->info.adapter_name = "8x";
 
-    adapter->draw_buffer = (lv_color_t *)malloc((size_t)width * height
-                                                * sizeof(lv_color_t));
+    adapter->draw_buffer =
+        (lv_color_t *)malloc((size_t)width * height * sizeof(lv_color_t));
     if(adapter->draw_buffer == NULL) return -1;
 
     lv_init();
@@ -253,8 +252,7 @@ int adapter_prim_init(adapter_t * adapter, uint32_t width, uint32_t height,
         adapter->real_keypad_drv.type = LV_INDEV_TYPE_KEYPAD;
         adapter->real_keypad_drv.read_cb = real_keypad_read_cb;
         adapter->real_keypad_drv.user_data = adapter;
-        adapter->real_keypad =
-            lv_indev_drv_register(&adapter->real_keypad_drv);
+        adapter->real_keypad = lv_indev_drv_register(&adapter->real_keypad_drv);
         if(adapter->real_keypad == NULL) return -1;
         common->has_real_keypad = true;
     }
@@ -317,12 +315,8 @@ void adapter_prim_read(adapter_t * adapter, adapter_indev_kind_t kind)
     }
 }
 
-void adapter_prim_hit(adapter_t * adapter,
-                      int32_t x,
-                      int32_t y,
-                      char * hit_name,
-                      size_t hit_name_size,
-                      char * hit_class,
+void adapter_prim_hit(adapter_t * adapter, int32_t x, int32_t y,
+                      char * hit_name, size_t hit_name_size, char * hit_class,
                       size_t hit_class_size)
 {
     if(hit_name_size > 0) hit_name[0] = '\0';
@@ -351,12 +345,9 @@ void adapter_prim_timer_handler(void)
     lv_timer_handler();
 }
 
-int adapter_prim_png_decode(const unsigned char * data,
-                            size_t size,
-                            const char * path,
-                            unsigned char ** pixels,
-                            uint32_t * width,
-                            uint32_t * height)
+int adapter_prim_png_decode(const unsigned char * data, size_t size,
+                            const char * path, unsigned char ** pixels,
+                            uint32_t * width, uint32_t * height)
 {
     *pixels = NULL;
     *width = 0;
@@ -365,8 +356,8 @@ int adapter_prim_png_decode(const unsigned char * data,
     unsigned char * decoded = NULL;
     unsigned png_width = 0;
     unsigned png_height = 0;
-    unsigned error = lodepng_decode32(&decoded, &png_width, &png_height,
-                                      data, size);
+    unsigned error =
+        lodepng_decode32(&decoded, &png_width, &png_height, data, size);
     if(error != 0 || decoded == NULL) {
         fprintf(stderr, "[engine] cannot decode reference %s: %s\n", path,
                 lodepng_error_text(error));

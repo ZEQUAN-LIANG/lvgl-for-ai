@@ -119,13 +119,13 @@ void intro_ui_create(void);
 
 lv_font_t * intro_font(intro_font_id_t id);
 lv_obj_t * intro_text_line(lv_obj_t * parent, int32_t x, int32_t y,
-                          const intro_seg_t * segs, uint8_t seg_count,
-                          uint32_t color, uint8_t opa, int8_t letter_space,
-                          uint16_t target_w, uint16_t clip_w, uint8_t flags);
-lv_obj_t * intro_box(lv_obj_t * parent, int32_t x, int32_t y, int32_t w, int32_t h,
-                    uint32_t bg, uint8_t bg_opa, uint32_t border,
-                    uint8_t border_opa, uint8_t border_w, uint16_t radius,
-                    uint8_t opa);
+                           const intro_seg_t * segs, uint8_t seg_count,
+                           uint32_t color, uint8_t opa, int8_t letter_space,
+                           uint16_t target_w, uint16_t clip_w, uint8_t flags);
+lv_obj_t * intro_box(lv_obj_t * parent, int32_t x, int32_t y, int32_t w,
+                     int32_t h, uint32_t bg, uint8_t bg_opa, uint32_t border,
+                     uint8_t border_opa, uint8_t border_w, uint16_t radius,
+                     uint8_t opa);
 void intro_show_screen(uint8_t screen, bool animate);
 void intro_set_tab_focus(uint8_t screen);
 void intro_action_attach(lv_obj_t * obj, uint8_t action);

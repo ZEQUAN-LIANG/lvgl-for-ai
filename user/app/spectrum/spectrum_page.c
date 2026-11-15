@@ -7,40 +7,28 @@
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
 
-#define SP_TEXT 0xE8F6FF
-#define SP_DIM 0x7E91B8
-#define SP_PANEL_BG 0x060E1C
+#define SP_TEXT      0xE8F6FF
+#define SP_DIM       0x7E91B8
+#define SP_PANEL_BG  0x060E1C
 #define SP_BUTTON_BG 0x060A08
 
 #define SEEK_X 226
 #define SEEK_W 348
 #define SEEK_Y 518
-#define VOL_X 552
-#define VOL_W 64
-#define VOL_Y 558
+#define VOL_X  552
+#define VOL_W  64
+#define VOL_Y  558
 
-static const char * const kFreqLabels[9] = {
-    "63", "125", "250", "500", "1k", "2k", "4k", "8k", "16k"
-};
+static const char * const kFreqLabels[9] = {"63", "125", "250", "500", "1k",
+                                            "2k", "4k",  "8k",  "16k"};
 static const char * const kModeNames[SPECTRUM_MODE_COUNT] = {
-    "ORBIT", "DUAL", "RADIAL", "SPIRAL", "SONAR", "STARS"
-};
+    "ORBIT", "DUAL", "RADIAL", "SPIRAL", "SONAR", "STARS"};
 static const char * const kModeTags[SPECTRUM_MODE_COUNT] = {
-    "MODE // ORBIT RING",
-    "MODE // DUAL COUNTER-RING",
-    "MODE // RADIAL ARRAY",
-    "MODE // SPIRAL SCAN",
-    "MODE // SONAR SWEEP",
-    "MODE // WARP FIELD"
-};
+    "MODE // ORBIT RING",  "MODE // DUAL COUNTER-RING", "MODE // RADIAL ARRAY",
+    "MODE // SPIRAL SCAN", "MODE // SONAR SWEEP",       "MODE // WARP FIELD"};
 static const spectrum_icon_id_t kModeIcons[SPECTRUM_MODE_COUNT] = {
-    SPECTRUM_ICON_ORBIT,
-    SPECTRUM_ICON_DUAL,
-    SPECTRUM_ICON_RADIAL,
-    SPECTRUM_ICON_SPIRAL,
-    SPECTRUM_ICON_SONAR,
-    SPECTRUM_ICON_STARS
-};
+    SPECTRUM_ICON_ORBIT,  SPECTRUM_ICON_DUAL,  SPECTRUM_ICON_RADIAL,
+    SPECTRUM_ICON_SPIRAL, SPECTRUM_ICON_SONAR, SPECTRUM_ICON_STARS};
 
 static lv_obj_t * left_panel;
 static lv_obj_t * right_panel;
@@ -91,7 +79,6 @@ static lv_obj_t * vol_knob;
 static uint32_t last_tick;
 static float ui_clock;
 
-
 static lv_obj_t * make_panel(lv_obj_t * parent, int x, int y, int w, int h)
 {
     lv_obj_t * panel = spectrum_card(parent, x, y, w, h, 0, SP_PANEL_BG, 198);
@@ -107,7 +94,8 @@ static lv_obj_t * make_panel(lv_obj_t * parent, int x, int y, int w, int h)
 static lv_obj_t * make_button(lv_obj_t * parent, int x, int y, int w, int h,
                               int radius, const char * name)
 {
-    lv_obj_t * button = spectrum_card(parent, x, y, w, h, radius, SP_BUTTON_BG, 210);
+    lv_obj_t * button =
+        spectrum_card(parent, x, y, w, h, radius, SP_BUTTON_BG, 210);
     lv_obj_set_style_border_width(button, 1, 0);
     lv_obj_set_style_border_color(button, lv_color_hex(SP_DIM), 0);
     lv_obj_set_style_border_opa(button, 34, 0);
@@ -138,8 +126,9 @@ static void refresh_progress(void)
     spectrum_format_time(buffer, sizeof(buffer), spectrum_sim.duration);
     lv_label_set_text(time_total, buffer);
 
-    float ratio = spectrum_sim.duration > 0.0f ?
-                  spectrum_sim.playhead / spectrum_sim.duration : 0.0f;
+    float ratio = spectrum_sim.duration > 0.0f
+                      ? spectrum_sim.playhead / spectrum_sim.duration
+                      : 0.0f;
     if(ratio < 0.0f) ratio = 0.0f;
     if(ratio > 1.0f) ratio = 1.0f;
     int width = (int)(ratio * (float)SEEK_W);
@@ -158,22 +147,25 @@ static void refresh_auto_button(void)
 {
     const spectrum_palette_t * pal = spectrum_palette();
     bool on = spectrum_state.auto_cycle;
-    lv_obj_set_style_border_color(auto_button, lv_color_hex(on ? pal->a : SP_DIM), 0);
+    lv_obj_set_style_border_color(auto_button,
+                                  lv_color_hex(on ? pal->a : SP_DIM), 0);
     lv_obj_set_style_border_opa(auto_button, on ? 110 : 34, 0);
     lv_obj_set_style_bg_color(auto_button, lv_color_hex(pal->a), 0);
     lv_obj_set_style_bg_opa(auto_button, on ? 20 : 0, 0);
-    lv_obj_set_style_image_recolor(auto_icon, lv_color_hex(on ? pal->a : SP_DIM), 0);
-    lv_obj_set_style_text_color(auto_label, lv_color_hex(on ? pal->a : SP_DIM), 0);
+    lv_obj_set_style_image_recolor(auto_icon,
+                                   lv_color_hex(on ? pal->a : SP_DIM), 0);
+    lv_obj_set_style_text_color(auto_label, lv_color_hex(on ? pal->a : SP_DIM),
+                                0);
 }
 
 static void refresh_like_button(void)
 {
     const spectrum_palette_t * pal = spectrum_palette();
     spectrum_set_icon(like_icon,
-                      spectrum_state.like ? SPECTRUM_ICON_HEART_FILLED : SPECTRUM_ICON_HEART,
+                      spectrum_state.like ? SPECTRUM_ICON_HEART_FILLED
+                                          : SPECTRUM_ICON_HEART,
                       15, spectrum_state.like ? pal->c : SP_DIM);
 }
-
 
 static void mode_event_cb(lv_event_t * event)
 {
@@ -268,7 +260,6 @@ static void volume_event_cb(lv_event_t * event)
     refresh_volume();
 }
 
-
 void spectrum_page_refresh_track(void)
 {
     const spectrum_track_t * track = spectrum_track();
@@ -295,20 +286,25 @@ void spectrum_page_refresh_mode(void)
     const spectrum_palette_t * pal = spectrum_palette();
     int mode = spectrum_state.mode;
     lv_label_set_text(mode_tag, kModeTags[mode]);
-    lv_label_set_text(sweep_tag, mode == SPECTRUM_MODE_SONAR ? "SWEEP 12.4 Hz" :
-                                 mode == SPECTRUM_MODE_STARS ? "WARP 0.9" :
-                                 mode == SPECTRUM_MODE_SPIRAL ? "NODES 240" :
-                                 mode == SPECTRUM_MODE_RADIAL ? "BANDS 72" :
-                                 mode == SPECTRUM_MODE_DUAL ? "CCW / CW" : "ORBIT 0.84");
+    lv_label_set_text(sweep_tag, mode == SPECTRUM_MODE_SONAR   ? "SWEEP 12.4 Hz"
+                                 : mode == SPECTRUM_MODE_STARS ? "WARP 0.9"
+                                 : mode == SPECTRUM_MODE_SPIRAL ? "NODES 240"
+                                 : mode == SPECTRUM_MODE_RADIAL ? "BANDS 72"
+                                 : mode == SPECTRUM_MODE_DUAL   ? "CCW / CW"
+                                                                : "ORBIT 0.84");
 
     for(int i = 0; i < SPECTRUM_MODE_COUNT; i++) {
         bool active = (i == mode);
-        lv_obj_set_style_border_color(mode_buttons[i], lv_color_hex(active ? pal->a : 0xFFFFFF), 0);
+        lv_obj_set_style_border_color(
+            mode_buttons[i], lv_color_hex(active ? pal->a : 0xFFFFFF), 0);
         lv_obj_set_style_border_opa(mode_buttons[i], active ? 140 : 18, 0);
-        lv_obj_set_style_bg_color(mode_buttons[i], lv_color_hex(active ? pal->a : 0xFFFFFF), 0);
+        lv_obj_set_style_bg_color(mode_buttons[i],
+                                  lv_color_hex(active ? pal->a : 0xFFFFFF), 0);
         lv_obj_set_style_bg_opa(mode_buttons[i], active ? 26 : 6, 0);
-        lv_obj_set_style_image_recolor(mode_icons[i], lv_color_hex(active ? 0xFFFFFF : 0x5C5C5C), 0);
-        lv_obj_set_style_text_color(mode_labels[i], lv_color_hex(active ? 0xFFFFFF : 0x5C5C5C), 0);
+        lv_obj_set_style_image_recolor(
+            mode_icons[i], lv_color_hex(active ? 0xFFFFFF : 0x5C5C5C), 0);
+        lv_obj_set_style_text_color(
+            mode_labels[i], lv_color_hex(active ? 0xFFFFFF : 0x5C5C5C), 0);
         lv_obj_set_style_shadow_width(mode_buttons[i], active ? 12 : 0, 0);
         lv_obj_set_style_shadow_color(mode_buttons[i], lv_color_hex(pal->a), 0);
         lv_obj_set_style_shadow_opa(mode_buttons[i], active ? 46 : 0, 0);
@@ -319,7 +315,8 @@ void spectrum_page_refresh_play(void)
 {
     const spectrum_palette_t * pal = spectrum_palette();
     spectrum_set_icon(play_icon,
-                      spectrum_sim.playing ? SPECTRUM_ICON_PAUSE : SPECTRUM_ICON_PLAY,
+                      spectrum_sim.playing ? SPECTRUM_ICON_PAUSE
+                                           : SPECTRUM_ICON_PLAY,
                       18, pal->a);
     lv_obj_set_style_border_color(play_button, lv_color_hex(pal->a), 0);
     lv_obj_set_style_border_opa(play_button, 140, 0);
@@ -332,7 +329,8 @@ void spectrum_page_refresh_theme(void)
     lv_color_t accent_b = lv_color_hex(pal->b);
 
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(pal->bg1), 0);
-    lv_obj_set_style_bg_grad_color(lv_screen_active(), lv_color_hex(pal->bg0), 0);
+    lv_obj_set_style_bg_grad_color(lv_screen_active(), lv_color_hex(pal->bg0),
+                                   0);
     lv_obj_set_style_bg_grad_dir(lv_screen_active(), LV_GRAD_DIR_VER, 0);
 
     lv_obj_t * panels[2] = {left_panel, right_panel};
@@ -409,7 +407,8 @@ void spectrum_page_refresh_meters(void)
     lv_label_set_text(peak_value, buffer);
     snprintf(buffer, sizeof(buffer), "%.1f dB", db - 5.7f);
     lv_label_set_text(rms_value, buffer);
-    snprintf(buffer, sizeof(buffer), "%d%%", (int)(92.0f + spectrum_sim.energy * 7.0f));
+    snprintf(buffer, sizeof(buffer), "%d%%",
+             (int)(92.0f + spectrum_sim.energy * 7.0f));
     lv_label_set_text(sync_value, buffer);
 
     int low = (int)(spectrum_sim.low * 100.0 + 0.5);
@@ -440,10 +439,13 @@ void spectrum_page_refresh_meters(void)
         uint32_t top = i >= 12 ? 0xFF3B5C : (i >= 9 ? pal->c : pal->a);
         uint32_t bottom = i >= 12 ? 0xFF3B5C : (i >= 9 ? pal->a : pal->b);
         lv_obj_set_style_bg_color(loud_segments[i], lv_color_hex(top), 0);
-        lv_obj_set_style_bg_grad_color(loud_segments[i], lv_color_hex(bottom), 0);
+        lv_obj_set_style_bg_grad_color(loud_segments[i], lv_color_hex(bottom),
+                                       0);
         lv_obj_set_style_bg_opa(loud_segments[i], on ? LV_OPA_COVER : 19, 0);
-        lv_obj_set_style_shadow_width(loud_segments[i], i <= 8 && on ? 7 : 0, 0);
-        lv_obj_set_style_shadow_color(loud_segments[i], lv_color_hex(pal->a), 0);
+        lv_obj_set_style_shadow_width(loud_segments[i], i <= 8 && on ? 7 : 0,
+                                      0);
+        lv_obj_set_style_shadow_color(loud_segments[i], lv_color_hex(pal->a),
+                                      0);
         lv_obj_set_style_shadow_opa(loud_segments[i], on ? 102 : 0, 0);
     }
 
@@ -451,7 +453,8 @@ void spectrum_page_refresh_meters(void)
         float f = (float)i / (float)(SPECTRUM_MINI_BARS - 1);
         float pos = f * (float)(SPECTRUM_BAND_COUNT - 1);
         int bi = (int)pos;
-        int bj = bi + 1 < SPECTRUM_BAND_COUNT ? bi + 1 : SPECTRUM_BAND_COUNT - 1;
+        int bj =
+            bi + 1 < SPECTRUM_BAND_COUNT ? bi + 1 : SPECTRUM_BAND_COUNT - 1;
         float frac = pos - (float)bi;
         float value = spectrum_sim.bands[bi] +
                       (spectrum_sim.bands[bj] - spectrum_sim.bands[bi]) * frac;
@@ -462,24 +465,27 @@ void spectrum_page_refresh_meters(void)
         lv_obj_set_y(mini_bars[i], 236 - height);
     }
 
-    int opacity = 150 + (int)(95.0f * (0.5f + 0.5f * sinf(spectrum_sim.time * 2.2f)));
+    int opacity =
+        150 + (int)(95.0f * (0.5f + 0.5f * sinf(spectrum_sim.time * 2.2f)));
     lv_obj_set_style_opa(status_dot, (lv_opa_t)opacity, 0);
 
     int mode = spectrum_state.mode;
     if(mode == SPECTRUM_MODE_SONAR) {
-        snprintf(buffer, sizeof(buffer), "SWEEP %.1f Hz", 8.0f + spectrum_sim.energy * 22.0f);
+        snprintf(buffer, sizeof(buffer), "SWEEP %.1f Hz",
+                 8.0f + spectrum_sim.energy * 22.0f);
         lv_label_set_text(sweep_tag, buffer);
     }
     else if(mode == SPECTRUM_MODE_STARS) {
-        snprintf(buffer, sizeof(buffer), "WARP %.1f", 0.4f + spectrum_sim.energy * 1.8f);
+        snprintf(buffer, sizeof(buffer), "WARP %.1f",
+                 0.4f + spectrum_sim.energy * 1.8f);
         lv_label_set_text(sweep_tag, buffer);
     }
     else if(mode == SPECTRUM_MODE_ORBIT) {
-        snprintf(buffer, sizeof(buffer), "ORBIT %.2f", 0.6f + spectrum_sim.energy);
+        snprintf(buffer, sizeof(buffer), "ORBIT %.2f",
+                 0.6f + spectrum_sim.energy);
         lv_label_set_text(sweep_tag, buffer);
     }
 }
-
 
 static void tick_cb(lv_timer_t * timer)
 {
@@ -515,38 +521,39 @@ static void tick_cb(lv_timer_t * timer)
     }
 }
 
-
 static void build_topbar(lv_obj_t * screen)
 {
     const spectrum_palette_t * pal = spectrum_palette();
-    brand_icon = spectrum_icon_obj(screen, SPECTRUM_ICON_LOGO, 22, 21, 22, pal->a);
+    brand_icon =
+        spectrum_icon_obj(screen, SPECTRUM_ICON_LOGO, 22, 21, 22, pal->a);
 
-    lv_obj_t * wordmark = spectrum_label(screen, "ORBITAL", SPECTRUM_FONT_SANS_14,
-                                         0xFFFFFF, 50, 18, 200, 17);
+    lv_obj_t * wordmark = spectrum_label(
+        screen, "ORBITAL", SPECTRUM_FONT_SANS_14, 0xFFFFFF, 50, 18, 200, 17);
     lv_obj_set_style_text_letter_space(wordmark, 4, 0);
-    lv_obj_t * subtitle = spectrum_label(screen, "SPECTRUM ARRAY / MK-IV",
-                                         SPECTRUM_FONT_MONO_7, SP_DIM,
-                                         50, 39, 220, 10);
+    lv_obj_t * subtitle =
+        spectrum_label(screen, "SPECTRUM ARRAY / MK-IV", SPECTRUM_FONT_MONO_7,
+                       SP_DIM, 50, 39, 220, 10);
     lv_obj_set_style_text_letter_space(subtitle, 2, 0);
 
-    title_label = spectrum_label_align(screen, "NEON SKYLINE",
-                                       SPECTRUM_FONT_SANS_14, 0xFFFFFF,
-                                       250, 21, 300, 17, LV_TEXT_ALIGN_CENTER);
+    title_label =
+        spectrum_label_align(screen, "NEON SKYLINE", SPECTRUM_FONT_SANS_14,
+                             0xFFFFFF, 250, 21, 300, 17, LV_TEXT_ALIGN_CENTER);
     lv_obj_set_style_text_letter_space(title_label, 2, 0);
-    artist_label = spectrum_label_align(screen, "AURORA WAVE",
-                                        SPECTRUM_FONT_MONO_8, SP_DIM,
-                                        250, 42, 300, 10, LV_TEXT_ALIGN_CENTER);
+    artist_label =
+        spectrum_label_align(screen, "AURORA WAVE", SPECTRUM_FONT_MONO_8,
+                             SP_DIM, 250, 42, 300, 10, LV_TEXT_ALIGN_CENTER);
     lv_obj_set_style_text_letter_space(artist_label, 2, 0);
 
-    status_dot = spectrum_card(screen, 618, 20, 5, 5, LV_RADIUS_CIRCLE, pal->a, 255);
+    status_dot =
+        spectrum_card(screen, 618, 20, 5, 5, LV_RADIUS_CIRCLE, pal->a, 255);
     lv_obj_set_style_shadow_width(status_dot, 6, 0);
     lv_obj_set_style_shadow_color(status_dot, lv_color_hex(pal->a), 0);
     lv_obj_set_style_shadow_opa(status_dot, 100, 0);
 
     sys_label = spectrum_label(screen, "SYS ONLINE", SPECTRUM_FONT_MONO_8,
                                pal->a, 629, 18, 76, 10);
-    spectrum_label(screen, "48 kHz", SPECTRUM_FONT_MONO_8, SP_DIM,
-                   697, 18, 42, 10);
+    spectrum_label(screen, "48 kHz", SPECTRUM_FONT_MONO_8, SP_DIM, 697, 18, 42,
+                   10);
     bpm_top_label = spectrum_label(screen, "141 BPM", SPECTRUM_FONT_MONO_8,
                                    pal->a, 745, 18, 42, 10);
 }
@@ -556,8 +563,8 @@ static void build_left_panel(lv_obj_t * screen)
     left_panel = make_panel(screen, SPECTRUM_LEFT_X, SPECTRUM_PANEL_Y,
                             SPECTRUM_PANEL_W, SPECTRUM_PANEL_H);
 
-    spectrum_label(left_panel, "PLAY QUEUE", SPECTRUM_FONT_MONO_8, SP_DIM,
-                   10, 10, 100, 10);
+    spectrum_label(left_panel, "PLAY QUEUE", SPECTRUM_FONT_MONO_8, SP_DIM, 10,
+                   10, 100, 10);
     left_count = spectrum_label_align(left_panel, "03", SPECTRUM_FONT_MONO_8,
                                       spectrum_palette()->a, 114, 10, 26, 10,
                                       LV_TEXT_ALIGN_RIGHT);
@@ -573,13 +580,15 @@ static void build_left_panel(lv_obj_t * screen)
     }
 
     for(int i = 0; i < SPECTRUM_TRACK_COUNT; i++) {
-        lv_obj_t * row = spectrum_card(left_panel, 10, 35 + i * 36, 130, 32,
-                                       2, spectrum_palette()->a, 0);
+        lv_obj_t * row = spectrum_card(left_panel, 10, 35 + i * 36, 130, 32, 2,
+                                       spectrum_palette()->a, 0);
         lv_obj_set_style_border_width(row, 1, 0);
-        lv_obj_set_style_border_color(row, lv_color_hex(spectrum_palette()->a), 0);
+        lv_obj_set_style_border_color(row, lv_color_hex(spectrum_palette()->a),
+                                      0);
         lv_obj_set_style_border_opa(row, 0, 0);
-        spectrum_clickable(row, i == 0 ? "spectrum_queue_0" :
-                                i == 1 ? "spectrum_queue_1" : "spectrum_queue_2");
+        spectrum_clickable(row, i == 0   ? "spectrum_queue_0"
+                                : i == 1 ? "spectrum_queue_1"
+                                         : "spectrum_queue_2");
         lv_obj_add_event_cb(row, queue_event_cb, LV_EVENT_CLICKED,
                             (void *)(intptr_t)i);
         queue_rows[i] = row;
@@ -589,42 +598,49 @@ static void build_left_panel(lv_obj_t * screen)
         lv_obj_t * index = spectrum_label(row, number, SPECTRUM_FONT_MONO_8,
                                           0x565656, 6, 11, 18, 9);
         lv_obj_set_style_text_letter_space(index, 0, 0);
-        queue_titles[i] = spectrum_label(row, spectrum_tracks[i].title,
-                                         SPECTRUM_FONT_MONO_9B, 0xDCDCDC,
-                                         27, 7, 100, 11);
-        queue_artists[i] = spectrum_label(row, spectrum_tracks[i].artist,
-                                          SPECTRUM_FONT_MONO_7, 0x5C5C5C,
-                                          27, 17, 100, 8);
+        queue_titles[i] =
+            spectrum_label(row, spectrum_tracks[i].title, SPECTRUM_FONT_MONO_9B,
+                           0xDCDCDC, 27, 7, 100, 11);
+        queue_artists[i] =
+            spectrum_label(row, spectrum_tracks[i].artist, SPECTRUM_FONT_MONO_7,
+                           0x5C5C5C, 27, 17, 100, 8);
     }
 
-    spectrum_label(left_panel, "SIGNAL", SPECTRUM_FONT_MONO_7, 0x505050,
-                   10, 276, 80, 9);
-    spectrum_label(left_panel, "PEAK", SPECTRUM_FONT_MONO_7, 0x505050,
-                   10, 289, 50, 9);
-    spectrum_label(left_panel, "RMS", SPECTRUM_FONT_MONO_7, 0x505050,
-                   10, 302, 50, 9);
-    spectrum_label(left_panel, "SYNC", SPECTRUM_FONT_MONO_7, 0x505050,
-                   10, 315, 50, 9);
-    peak_value = spectrum_label_align(left_panel, "-3.2 dB", SPECTRUM_FONT_MONO_7,
-                                      0xA8A8A8, 70, 289, 70, 9, LV_TEXT_ALIGN_RIGHT);
-    rms_value = spectrum_label_align(left_panel, "-14.8 dB", SPECTRUM_FONT_MONO_7,
-                                     0xA8A8A8, 70, 302, 70, 9, LV_TEXT_ALIGN_RIGHT);
-    sync_value = spectrum_label_align(left_panel, "96%", SPECTRUM_FONT_MONO_7,
-                                      0xA8A8A8, 70, 315, 70, 9, LV_TEXT_ALIGN_RIGHT);
+    spectrum_label(left_panel, "SIGNAL", SPECTRUM_FONT_MONO_7, 0x505050, 10,
+                   276, 80, 9);
+    spectrum_label(left_panel, "PEAK", SPECTRUM_FONT_MONO_7, 0x505050, 10, 289,
+                   50, 9);
+    spectrum_label(left_panel, "RMS", SPECTRUM_FONT_MONO_7, 0x505050, 10, 302,
+                   50, 9);
+    spectrum_label(left_panel, "SYNC", SPECTRUM_FONT_MONO_7, 0x505050, 10, 315,
+                   50, 9);
+    peak_value =
+        spectrum_label_align(left_panel, "-3.2 dB", SPECTRUM_FONT_MONO_7,
+                             0xA8A8A8, 70, 289, 70, 9, LV_TEXT_ALIGN_RIGHT);
+    rms_value =
+        spectrum_label_align(left_panel, "-14.8 dB", SPECTRUM_FONT_MONO_7,
+                             0xA8A8A8, 70, 302, 70, 9, LV_TEXT_ALIGN_RIGHT);
+    sync_value =
+        spectrum_label_align(left_panel, "96%", SPECTRUM_FONT_MONO_7, 0xA8A8A8,
+                             70, 315, 70, 9, LV_TEXT_ALIGN_RIGHT);
 
     spectrum_divider(left_panel, 10, 331, 130);
-    spectrum_label(left_panel, "SOURCE", SPECTRUM_FONT_MONO_7, 0x505050, 10, 345, 58, 9);
-    spectrum_label_align(left_panel, "SYNTHETIC", SPECTRUM_FONT_MONO_7, 0xA8A8A8,
-                         68, 345, 72, 9, LV_TEXT_ALIGN_RIGHT);
-    spectrum_label(left_panel, "FFT SIZE", SPECTRUM_FONT_MONO_7, 0x505050, 10, 358, 58, 9);
-    spectrum_label_align(left_panel, "2048", SPECTRUM_FONT_MONO_7, 0xA8A8A8,
-                         68, 358, 72, 9, LV_TEXT_ALIGN_RIGHT);
-    spectrum_label(left_panel, "WINDOW", SPECTRUM_FONT_MONO_7, 0x505050, 10, 371, 58, 9);
-    spectrum_label_align(left_panel, "HANN", SPECTRUM_FONT_MONO_7, 0xA8A8A8,
-                         68, 371, 72, 9, LV_TEXT_ALIGN_RIGHT);
-    spectrum_label(left_panel, "OVERLAP", SPECTRUM_FONT_MONO_7, 0x505050, 10, 384, 58, 9);
-    spectrum_label_align(left_panel, "75%", SPECTRUM_FONT_MONO_7, 0xA8A8A8,
-                         68, 384, 72, 9, LV_TEXT_ALIGN_RIGHT);
+    spectrum_label(left_panel, "SOURCE", SPECTRUM_FONT_MONO_7, 0x505050, 10,
+                   345, 58, 9);
+    spectrum_label_align(left_panel, "SYNTHETIC", SPECTRUM_FONT_MONO_7,
+                         0xA8A8A8, 68, 345, 72, 9, LV_TEXT_ALIGN_RIGHT);
+    spectrum_label(left_panel, "FFT SIZE", SPECTRUM_FONT_MONO_7, 0x505050, 10,
+                   358, 58, 9);
+    spectrum_label_align(left_panel, "2048", SPECTRUM_FONT_MONO_7, 0xA8A8A8, 68,
+                         358, 72, 9, LV_TEXT_ALIGN_RIGHT);
+    spectrum_label(left_panel, "WINDOW", SPECTRUM_FONT_MONO_7, 0x505050, 10,
+                   371, 58, 9);
+    spectrum_label_align(left_panel, "HANN", SPECTRUM_FONT_MONO_7, 0xA8A8A8, 68,
+                         371, 72, 9, LV_TEXT_ALIGN_RIGHT);
+    spectrum_label(left_panel, "OVERLAP", SPECTRUM_FONT_MONO_7, 0x505050, 10,
+                   384, 58, 9);
+    spectrum_label_align(left_panel, "75%", SPECTRUM_FONT_MONO_7, 0xA8A8A8, 68,
+                         384, 72, 9, LV_TEXT_ALIGN_RIGHT);
 }
 
 static void build_right_panel(lv_obj_t * screen)
@@ -632,8 +648,8 @@ static void build_right_panel(lv_obj_t * screen)
     right_panel = make_panel(screen, SPECTRUM_RIGHT_X, SPECTRUM_PANEL_Y,
                              SPECTRUM_PANEL_W, SPECTRUM_PANEL_H);
 
-    spectrum_label(right_panel, "TELEMETRY", SPECTRUM_FONT_MONO_8, SP_DIM,
-                   10, 10, 100, 10);
+    spectrum_label(right_panel, "TELEMETRY", SPECTRUM_FONT_MONO_8, SP_DIM, 10,
+                   10, 100, 10);
     right_count = spectrum_label_align(right_panel, "01", SPECTRUM_FONT_MONO_8,
                                        spectrum_palette()->a, 114, 10, 26, 10,
                                        LV_TEXT_ALIGN_RIGHT);
@@ -650,28 +666,30 @@ static void build_right_panel(lv_obj_t * screen)
 
     bpm_big_label = spectrum_label(right_panel, "141", SPECTRUM_FONT_MONO_32,
                                    spectrum_palette()->a, 10, 35, 90, 38);
-    spectrum_label(right_panel, "BPM", SPECTRUM_FONT_MONO_7, SP_DIM,
-                   69, 55, 34, 9);
+    spectrum_label(right_panel, "BPM", SPECTRUM_FONT_MONO_7, SP_DIM, 69, 55, 34,
+                   9);
 
     key_label = spectrum_label(right_panel, "KEY", SPECTRUM_FONT_MONO_7, SP_DIM,
                                10, 72, 40, 9);
     (void)key_label;
-    key_value = spectrum_label_align(right_panel, "8A", SPECTRUM_FONT_MONO_7,
-                                     0xC8C8C8, 64, 72, 76, 9, LV_TEXT_ALIGN_RIGHT);
-    level_label = spectrum_label(right_panel, "LEVEL", SPECTRUM_FONT_MONO_7, SP_DIM,
-                                 10, 86, 48, 9);
+    key_value =
+        spectrum_label_align(right_panel, "8A", SPECTRUM_FONT_MONO_7, 0xC8C8C8,
+                             64, 72, 76, 9, LV_TEXT_ALIGN_RIGHT);
+    level_label = spectrum_label(right_panel, "LEVEL", SPECTRUM_FONT_MONO_7,
+                                 SP_DIM, 10, 86, 48, 9);
     (void)level_label;
-    level_value = spectrum_label_align(right_panel, "-12.4", SPECTRUM_FONT_MONO_7,
-                                       spectrum_palette()->a, 64, 86, 76, 9,
-                                       LV_TEXT_ALIGN_RIGHT);
+    level_value = spectrum_label_align(
+        right_panel, "-12.4", SPECTRUM_FONT_MONO_7, spectrum_palette()->a, 64,
+        86, 76, 9, LV_TEXT_ALIGN_RIGHT);
 
     spectrum_divider(right_panel, 10, 106, 130);
 
     const char * meter_names[3] = {"LOW", "MID", "HIGH"};
     for(int i = 0; i < 3; i++) {
         int y = 120 + i * 13;
-        lv_obj_t * name = spectrum_label(right_panel, meter_names[i],
-                                         SPECTRUM_FONT_MONO_7, 0x4B4B4B, 10, y, 25, 9);
+        lv_obj_t * name =
+            spectrum_label(right_panel, meter_names[i], SPECTRUM_FONT_MONO_7,
+                           0x4B4B4B, 10, y, 25, 9);
         lv_obj_set_style_text_letter_space(name, 0, 0);
         lv_obj_t * track = spectrum_box(right_panel, 40, y + 2, 77, 3);
         lv_obj_set_style_bg_color(track, lv_color_hex(0xFFFFFF), 0);
@@ -679,16 +697,16 @@ static void build_right_panel(lv_obj_t * screen)
         meter_fill[i] = spectrum_box(right_panel, 40, y + 2, 0, 3);
         lv_obj_set_style_bg_opa(meter_fill[i], LV_OPA_COVER, 0);
         lv_obj_set_style_bg_grad_dir(meter_fill[i], LV_GRAD_DIR_HOR, 0);
-        meter_value[i] = spectrum_label_align(right_panel, "00",
-                                              SPECTRUM_FONT_MONO_7, 0x8F8F8F,
-                                              110, y, 30, 9, LV_TEXT_ALIGN_RIGHT);
+        meter_value[i] =
+            spectrum_label_align(right_panel, "00", SPECTRUM_FONT_MONO_7,
+                                 0x8F8F8F, 110, y, 30, 9, LV_TEXT_ALIGN_RIGHT);
         lv_obj_set_style_text_letter_space(meter_value[i], 0, 0);
     }
 
     spectrum_divider(right_panel, 10, 163, 130);
 
-    spectrum_label(right_panel, "LOUDNESS", SPECTRUM_FONT_MONO_7, 0x505050,
-                   10, 172, 80, 9);
+    spectrum_label(right_panel, "LOUDNESS", SPECTRUM_FONT_MONO_7, 0x505050, 10,
+                   172, 80, 9);
     for(int i = 0; i < SPECTRUM_LOUD_SEGMENTS; i++) {
         int x = 10 + (i * 942) / 100;
         loud_segments[i] = spectrum_box(right_panel, x, 186, 7, 7);
@@ -709,19 +727,20 @@ static void build_right_panel(lv_obj_t * screen)
     for(int i = 0; i < SPECTRUM_MODE_COUNT; i++) {
         int col = i % 2;
         int row = i / 2;
-        lv_obj_t * button = make_button(right_panel,
-                                        10 + col * 67, 255 + row * 30,
-                                        63, 26, 2, "spectrum_mode_0");
+        lv_obj_t * button =
+            make_button(right_panel, 10 + col * 67, 255 + row * 30, 63, 26, 2,
+                        "spectrum_mode_0");
         char name[24];
         snprintf(name, sizeof(name), "spectrum_mode_%d", i);
         lv_obj_set_name(button, name);
         lv_obj_add_event_cb(button, mode_event_cb, LV_EVENT_CLICKED,
                             (void *)(intptr_t)i);
         mode_buttons[i] = button;
-        mode_icons[i] = spectrum_icon_obj(button, kModeIcons[i], 5, 7, 11, 0x5C5C5C);
-        mode_labels[i] = spectrum_label(button, kModeNames[i],
-                                        SPECTRUM_FONT_MONO_7, 0x5C5C5C,
-                                        20, 8, 38, 11);
+        mode_icons[i] =
+            spectrum_icon_obj(button, kModeIcons[i], 5, 7, 11, 0x5C5C5C);
+        mode_labels[i] =
+            spectrum_label(button, kModeNames[i], SPECTRUM_FONT_MONO_7,
+                           0x5C5C5C, 20, 8, 38, 11);
         lv_obj_set_style_text_letter_space(mode_labels[i], 0, 0);
     }
 }
@@ -730,29 +749,30 @@ static void build_center(lv_obj_t * screen)
 {
     spectrum_viz_create(screen);
 
-    mode_tag = spectrum_label(screen, "MODE // ORBIT RING",
-                              SPECTRUM_FONT_MONO_7, spectrum_palette()->a,
-                              193, 81, 200, 9);
-    sweep_tag = spectrum_label_align(screen, "ORBIT 0.84",
-                                     SPECTRUM_FONT_MONO_7, SP_DIM,
-                                     427, 81, 180, 9, LV_TEXT_ALIGN_RIGHT);
+    mode_tag =
+        spectrum_label(screen, "MODE // ORBIT RING", SPECTRUM_FONT_MONO_7,
+                       spectrum_palette()->a, 193, 81, 200, 9);
+    sweep_tag =
+        spectrum_label_align(screen, "ORBIT 0.84", SPECTRUM_FONT_MONO_7, SP_DIM,
+                             427, 81, 180, 9, LV_TEXT_ALIGN_RIGHT);
 
-    static const int freq_center[9] = {196, 247, 300, 354, 404, 453, 502, 550, 601};
+    static const int freq_center[9] = {196, 247, 300, 354, 404,
+                                       453, 502, 550, 601};
     for(int i = 0; i < 9; i++) {
-        lv_obj_t * freq = spectrum_label_align(screen, kFreqLabels[i],
-                                               SPECTRUM_FONT_MONO_8, SP_DIM,
-                                               freq_center[i] - 10, 490, 20, 10,
-                                               LV_TEXT_ALIGN_CENTER);
+        lv_obj_t * freq = spectrum_label_align(
+            screen, kFreqLabels[i], SPECTRUM_FONT_MONO_8, SP_DIM,
+            freq_center[i] - 10, 490, 20, 10, LV_TEXT_ALIGN_CENTER);
         lv_obj_set_style_text_letter_space(freq, 0, 0);
     }
 }
 
 static void build_transport(lv_obj_t * screen)
 {
-    time_now = spectrum_label(screen, "0:00", SPECTRUM_FONT_MONO_9, SP_DIM,
-                              184, 514, 32, 10);
-    time_total = spectrum_label_align(screen, "3:58", SPECTRUM_FONT_MONO_9, SP_DIM,
-                                      584, 514, 32, 10, LV_TEXT_ALIGN_RIGHT);
+    time_now = spectrum_label(screen, "0:00", SPECTRUM_FONT_MONO_9, SP_DIM, 184,
+                              514, 32, 10);
+    time_total =
+        spectrum_label_align(screen, "3:58", SPECTRUM_FONT_MONO_9, SP_DIM, 584,
+                             514, 32, 10, LV_TEXT_ALIGN_RIGHT);
 
     lv_obj_t * seek_track = spectrum_box(screen, SEEK_X, SEEK_Y, SEEK_W, 2);
     lv_obj_set_style_bg_color(seek_track, lv_color_hex(0xFFFFFF), 0);
@@ -768,44 +788,46 @@ static void build_transport(lv_obj_t * screen)
     lv_obj_add_event_cb(seek_hit, seek_event_cb, LV_EVENT_PRESSED, NULL);
     lv_obj_add_event_cb(seek_hit, seek_event_cb, LV_EVENT_PRESSING, NULL);
 
-    lv_obj_t * palette_button = make_button(screen, 184, 545, 30, 30, 3,
-                                            "spectrum_palette");
-    lv_obj_add_event_cb(palette_button, palette_event_cb, LV_EVENT_CLICKED, NULL);
-    palette_icon = spectrum_icon_obj(palette_button, SPECTRUM_ICON_PALETTE,
-                                     8, 8, 14, spectrum_palette()->a);
+    lv_obj_t * palette_button =
+        make_button(screen, 184, 545, 30, 30, 3, "spectrum_palette");
+    lv_obj_add_event_cb(palette_button, palette_event_cb, LV_EVENT_CLICKED,
+                        NULL);
+    palette_icon = spectrum_icon_obj(palette_button, SPECTRUM_ICON_PALETTE, 8,
+                                     8, 14, spectrum_palette()->a);
 
     auto_button = make_button(screen, 221, 546, 54, 28, 3, "spectrum_auto");
     lv_obj_add_event_cb(auto_button, auto_event_cb, LV_EVENT_CLICKED, NULL);
-    auto_icon = spectrum_icon_obj(auto_button, SPECTRUM_ICON_AUTO,
-                                  9, 8, 11, SP_DIM);
+    auto_icon =
+        spectrum_icon_obj(auto_button, SPECTRUM_ICON_AUTO, 9, 8, 11, SP_DIM);
     auto_label = spectrum_label(auto_button, "AUTO", SPECTRUM_FONT_MONO_7,
                                 SP_DIM, 25, 8, 30, 10);
 
-    lv_obj_t * prev_button = make_button(screen, 320, 545, 30, 30, 3,
-                                         "spectrum_prev");
+    lv_obj_t * prev_button =
+        make_button(screen, 320, 545, 30, 30, 3, "spectrum_prev");
     lv_obj_add_event_cb(prev_button, prev_event_cb, LV_EVENT_CLICKED, NULL);
     spectrum_icon_obj(prev_button, SPECTRUM_ICON_PREV, 8, 8, 14, SP_DIM);
 
     play_button = spectrum_card(screen, 363, 537, 46, 46, LV_RADIUS_CIRCLE,
                                 SP_BUTTON_BG, 220);
     lv_obj_set_style_border_width(play_button, 1, 0);
-    lv_obj_set_style_border_color(play_button, lv_color_hex(spectrum_palette()->a), 0);
+    lv_obj_set_style_border_color(play_button,
+                                  lv_color_hex(spectrum_palette()->a), 0);
     lv_obj_set_style_border_opa(play_button, 140, 0);
     spectrum_clickable(play_button, "spectrum_play");
     lv_obj_add_event_cb(play_button, play_event_cb, LV_EVENT_CLICKED, NULL);
-    play_icon = spectrum_icon_obj(play_button, SPECTRUM_ICON_PAUSE,
-                                  14, 14, 18, spectrum_palette()->a);
+    play_icon = spectrum_icon_obj(play_button, SPECTRUM_ICON_PAUSE, 14, 14, 18,
+                                  spectrum_palette()->a);
 
-    lv_obj_t * next_button = make_button(screen, 422, 545, 30, 30, 3,
-                                         "spectrum_next");
+    lv_obj_t * next_button =
+        make_button(screen, 422, 545, 30, 30, 3, "spectrum_next");
     lv_obj_add_event_cb(next_button, next_event_cb, LV_EVENT_CLICKED, NULL);
     spectrum_icon_obj(next_button, SPECTRUM_ICON_NEXT, 8, 8, 14, SP_DIM);
 
-    lv_obj_t * like_button = make_button(screen, 496, 545, 30, 30, 3,
-                                         "spectrum_like");
+    lv_obj_t * like_button =
+        make_button(screen, 496, 545, 30, 30, 3, "spectrum_like");
     lv_obj_add_event_cb(like_button, like_event_cb, LV_EVENT_CLICKED, NULL);
-    like_icon = spectrum_icon_obj(like_button, SPECTRUM_ICON_HEART,
-                                  8, 7, 15, SP_DIM);
+    like_icon =
+        spectrum_icon_obj(like_button, SPECTRUM_ICON_HEART, 8, 7, 15, SP_DIM);
     lv_obj_center(like_icon);
 
     spectrum_icon_obj(screen, SPECTRUM_ICON_VOLUME, 533, 552, 13, SP_DIM);
@@ -818,7 +840,8 @@ static void build_transport(lv_obj_t * screen)
     vol_knob = spectrum_card(screen, VOL_X - 4, VOL_Y - 3, 9, 9,
                              LV_RADIUS_CIRCLE, 0xFFFFFF, LV_OPA_COVER);
 
-    lv_obj_t * vol_hit = spectrum_box(screen, VOL_X - 6, VOL_Y - 9, VOL_W + 12, 20);
+    lv_obj_t * vol_hit =
+        spectrum_box(screen, VOL_X - 6, VOL_Y - 9, VOL_W + 12, 20);
     spectrum_clickable(vol_hit, "spectrum_volume");
     lv_obj_add_event_cb(vol_hit, volume_event_cb, LV_EVENT_PRESSED, NULL);
     lv_obj_add_event_cb(vol_hit, volume_event_cb, LV_EVENT_PRESSING, NULL);
@@ -844,7 +867,8 @@ void spectrum_create(void)
     lv_obj_set_style_pad_all(screen, 0, 0);
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(screen, lv_color_hex(spectrum_palette()->bg1), 0);
-    lv_obj_set_style_bg_grad_color(screen, lv_color_hex(spectrum_palette()->bg0), 0);
+    lv_obj_set_style_bg_grad_color(screen,
+                                   lv_color_hex(spectrum_palette()->bg0), 0);
     lv_obj_set_style_bg_grad_dir(screen, LV_GRAD_DIR_VER, 0);
     lv_obj_set_scrollable(screen, false);
     lv_obj_set_scrollbar_mode(screen, LV_SCROLLBAR_MODE_OFF);

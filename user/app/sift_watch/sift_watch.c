@@ -17,7 +17,8 @@
 #include <string.h>
 #include <time.h>
 
-#if defined(LVGL_AI_EZIP_ASSETS) && (defined(ACC_USING_LSM6DSL) || defined(CONFIG_ACC_USING_LSM6DSL))
+#if defined(LVGL_AI_EZIP_ASSETS) &&                                            \
+    (defined(ACC_USING_LSM6DSL) || defined(CONFIG_ACC_USING_LSM6DSL))
 #define SIFT_HAS_IMU 1
 #include "rtthread.h"
 #include "st_lsm6dsl_sensor_v1.h"
@@ -27,7 +28,7 @@
 #define SIFT_HAS_IMU 0
 #endif
 
-#define SIFT_CLOCK_MIN_VALID 1600000000U
+#define SIFT_CLOCK_MIN_VALID        1600000000U
 #define SIFT_CLOCK_EPOCH_2026_01_01 1767225600U
 
 /* Physical keys and the vibration motor only exist on the SiFli SDK build.
@@ -36,75 +37,76 @@
 #if defined(LVGL_AI_EZIP_ASSETS)
 #define SIFT_HAS_KEY 1
 #include "rtdevice.h"
-#  if defined(BSP_KEY1_PIN)
-#    define SIFT_KEY1_PIN BSP_KEY1_PIN
-#  else
-#    define SIFT_KEY1_PIN 34
-#  endif
-#  if defined(BSP_KEY2_PIN)
-#    define SIFT_KEY2_PIN BSP_KEY2_PIN
-#  else
-#    define SIFT_KEY2_PIN 43
-#  endif
-#  define SIFT_VIBE_PIN 20
+#if defined(BSP_KEY1_PIN)
+#define SIFT_KEY1_PIN BSP_KEY1_PIN
+#else
+#define SIFT_KEY1_PIN 34
+#endif
+#if defined(BSP_KEY2_PIN)
+#define SIFT_KEY2_PIN BSP_KEY2_PIN
+#else
+#define SIFT_KEY2_PIN 43
+#endif
+#define SIFT_VIBE_PIN 20
 #else
 #define SIFT_HAS_KEY 0
 #endif
 
 #if defined(__has_include)
-#  if __has_include("app_mem.h")
-#    include "app_mem.h"
-#    define SIFT_HAS_APP_CANVAS_ALLOC 1
-#  endif
+#if __has_include("app_mem.h")
+#include "app_mem.h"
+#define SIFT_HAS_APP_CANVAS_ALLOC 1
+#endif
 #endif
 
-#define SIFT_W 390
-#define SIFT_H 450
-#define SIFT_PANEL_RADIUS 44
-#define SIFT_CELL 3
-#define SIFT_COLS 60
-#define SIFT_ROWS 80
-#define SIFT_GRID_X0 105
-#define SIFT_GRID_Y0 106
-#define SIFT_NECK_ROW 40
-#define SIFT_NECK_Y 226
-#define SIFT_HG_TOP 106
-#define SIFT_HG_BOTTOM 346
-#define SIFT_SIM_STEP_MS 66U
-#define SIFT_RENDER_MS 40U
-#define SIFT_SWIPE_MIN 42
-#define SIFT_SWIPE_LONG 90
-#define SIFT_FLIP_MS 680U
-#define SIFT_ORBIT_MIN_ELEV (-0.05f)
-#define SIFT_ORBIT_MAX_ELEV 0.85f
-#define SIFT_P3_PITCH_SIGN 1
+#define SIFT_W                390
+#define SIFT_H                450
+#define SIFT_PANEL_RADIUS     44
+#define SIFT_CELL             3
+#define SIFT_COLS             60
+#define SIFT_ROWS             80
+#define SIFT_GRID_X0          105
+#define SIFT_GRID_Y0          106
+#define SIFT_NECK_ROW         40
+#define SIFT_NECK_Y           226
+#define SIFT_HG_TOP           106
+#define SIFT_HG_BOTTOM        346
+#define SIFT_SIM_STEP_MS      66U
+#define SIFT_RENDER_MS        40U
+#define SIFT_SWIPE_MIN        42
+#define SIFT_SWIPE_LONG       90
+#define SIFT_FLIP_MS          680U
+#define SIFT_ORBIT_MIN_ELEV   (-0.05f)
+#define SIFT_ORBIT_MAX_ELEV   0.85f
+#define SIFT_P3_PITCH_SIGN    1
 #define SIFT_P3_BASE_PITCH_PX 9
-#define SIFT_P3_PARALLAX_PX 15
-#define SIFT_VX 24
-#define SIFT_VY 32
-#define SIFT_VZ 24
-#define SIFT_VNECK 16
-#define SIFT_VCELL 7.5f
-#define SIFT_HG_CX 195
-#define SIFT_HG_CY 226
-#define SIFT_FRAME_HALF_X 106
-#define SIFT_FRAME_HALF_Z 90
-#define SIFT_FRAME_POST_HALF 4
-#define SIFT_FRAME_POST_TOP 120
+#define SIFT_P3_PARALLAX_PX   15
+#define SIFT_VX               24
+#define SIFT_VY               32
+#define SIFT_VZ               24
+#define SIFT_VNECK            16
+#define SIFT_VCELL            7.5f
+#define SIFT_HG_CX            195
+#define SIFT_HG_CY            226
+#define SIFT_FRAME_HALF_X     106
+#define SIFT_FRAME_HALF_Z     90
+#define SIFT_FRAME_POST_HALF  4
+#define SIFT_FRAME_POST_TOP   120
 #define SIFT_FRAME_CAP_HALF_X 108
 #define SIFT_FRAME_CAP_HALF_Z 92
 #define SIFT_FRAME_CAP_HALF_Y 7
-#define SIFT_FRAME_CAP_Y 127
-#define SIFT_PI 3.14159265f
+#define SIFT_FRAME_CAP_Y      127
+#define SIFT_PI               3.14159265f
 /* This board's accelerometer z axis points into the screen: face-up is
  * negative, face-down is positive. */
-#define SIFT_IMU_FACE_DOWN_MG (550)
-#define SIFT_IMU_FACE_UP_MG (-250)
+#define SIFT_IMU_FACE_DOWN_MG     (550)
+#define SIFT_IMU_FACE_UP_MG       (-250)
 #define SIFT_IMU_FLIP_COOLDOWN_MS 1200U
-#define SIFT_TIMER_ALERT_MS 6000U
-#define SIFT_IDLE_DIM_MS 42000U
+#define SIFT_TIMER_ALERT_MS       6000U
+#define SIFT_IDLE_DIM_MS          42000U
 
-#define RGB565(r, g, b) ((uint16_t)((((r) & 0xF8U) << 8) | (((g) & 0xFCU) << 3) | ((b) >> 3)))
+#define RGB565(r, g, b)                                                        \
+    ((uint16_t)((((r) & 0xF8U) << 8) | (((g) & 0xFCU) << 3) | ((b) >> 3)))
 
 static const uint16_t COL_INK = RGB565(4, 11, 8);
 static const uint16_t COL_INK2 = RGB565(7, 19, 14);
@@ -130,7 +132,8 @@ static const uint16_t COL_SKY = RGB565(143, 203, 214);
 static const uint16_t COL_RAIN = RGB565(95, 144, 155);
 static const uint16_t COL_CLOUD = RGB565(168, 186, 178);
 
-static const char font_chars[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:.-+%/?~";
+static const char font_chars[] =
+    " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:.-+%/?~";
 static const uint8_t font_rows[][7] = {
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
     {0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11},
@@ -180,23 +183,22 @@ static const uint8_t font_rows[][7] = {
 };
 
 static const uint8_t hg_half_widths[40] = {
-    75, 75, 75, 74, 74, 74, 73, 73, 72, 71,
-    71, 70, 69, 68, 66, 65, 64, 63, 61, 60,
-    58, 56, 55, 53, 51, 49, 47, 45, 43, 40,
-    38, 35, 33, 30, 27, 25, 21, 18, 14, 10,
+    75, 75, 75, 74, 74, 74, 73, 73, 72, 71, 71, 70, 69, 68,
+    66, 65, 64, 63, 61, 60, 58, 56, 55, 53, 51, 49, 47, 45,
+    43, 40, 38, 35, 33, 30, 27, 25, 21, 18, 14, 10,
 };
 
 static const int16_t sw_ring_x[60] = {
     195, 205, 216, 226, 235, 244, 253, 261, 269, 275, 281, 285, 289, 292, 293,
     294, 293, 292, 289, 285, 281, 275, 269, 261, 253, 244, 235, 226, 216, 205,
-    195, 185, 174, 164, 155, 145, 137, 129, 121, 115, 109, 105, 101, 98, 97,
-    96, 97, 98, 101, 105, 109, 115, 121, 129, 137, 145, 155, 164, 174, 185,
+    195, 185, 174, 164, 155, 145, 137, 129, 121, 115, 109, 105, 101, 98,  97,
+    96,  97,  98,  101, 105, 109, 115, 121, 129, 137, 145, 155, 164, 174, 185,
 };
 static const int16_t sw_ring_y[60] = {
-    89, 90, 91, 94, 98, 102, 108, 114, 122, 130, 138, 148, 157, 167, 178,
+    89,  90,  91,  94,  98,  102, 108, 114, 122, 130, 138, 148, 157, 167, 178,
     188, 198, 209, 219, 228, 238, 246, 254, 262, 268, 274, 278, 282, 285, 286,
     287, 286, 285, 282, 278, 274, 268, 262, 254, 246, 238, 228, 219, 209, 198,
-    188, 178, 167, 157, 148, 138, 130, 122, 114, 108, 102, 98, 94, 91, 90,
+    188, 178, 167, 157, 148, 138, 130, 122, 114, 108, 102, 98,  94,  91,  90,
 };
 
 typedef enum {
@@ -295,10 +297,10 @@ typedef struct {
 } sift_state_t;
 
 static sift_state_t s;
-static uint16_t *s_fb;
-static lv_obj_t *s_canvas;
-static lv_group_t *s_group;
-static lv_timer_t *s_render_timer;
+static uint16_t * s_fb;
+static lv_obj_t * s_canvas;
+static lv_group_t * s_group;
+static lv_timer_t * s_render_timer;
 static uint8_t s_vox[SIFT_VX * SIFT_VY * SIFT_VZ];
 static uint8_t s_vox_tmp[SIFT_VX * SIFT_VY * SIFT_VZ];
 static uint8_t s_vox_inside[SIFT_VX * SIFT_VY * SIFT_VZ];
@@ -308,7 +310,7 @@ static uint16_t s_vox_total;
 static uint16_t s_vox_flow;
 static uint32_t s_vox_step;
 #define SIFT_VBINS 16
-#define SIFT_VCAP 512
+#define SIFT_VCAP  512
 static int16_t s_vpx[SIFT_VBINS * SIFT_VCAP];
 static int16_t s_vpy[SIFT_VBINS * SIFT_VCAP];
 static uint8_t s_vpc[SIFT_VBINS * SIFT_VCAP];
@@ -316,7 +318,7 @@ static uint16_t s_vbins[SIFT_VBINS];
 static uint16_t s_vox_sprite[4][8][8];
 static bool s_vox_sprites_ready;
 
-static uint16_t *s_game_bg;
+static uint16_t * s_game_bg;
 static bool s_game_ready;
 static zc_save_t s_game_save = {0, 0, 1};
 static bool s_game_save_loaded;
@@ -324,35 +326,40 @@ static bool s_game_save_loaded;
 static void sift_render(void);
 static void sift_game_enter(void);
 static void vibe_pulse_ms(uint32_t ms);
-static void sift_tick_cb(lv_timer_t *timer);
-static void sift_canvas_event_cb(lv_event_t *event);
+static void sift_tick_cb(lv_timer_t * timer);
+static void sift_canvas_event_cb(lv_event_t * event);
 static void sift_handle_tap(int x, int y);
 static void sift_handle_key(uint32_t key);
 static void sift_handle_swipe(int32_t dx, int32_t dy);
 static void sift_flip(void);
-static void weather_values(int *temp_c, int *high_c, int *low_c, int *humidity,
-                           int *wind, bool *night, int *condition);
+static void weather_values(int * temp_c, int * high_c, int * low_c,
+                           int * humidity, int * wind, bool * night,
+                           int * condition);
 static int weather_temp(int celsius);
 static void sift_imu_zero(void);
 static void vibe_pulse(void);
 
-static void game_sfx(zc_sfx_t id, void *user)
+static void game_sfx(zc_sfx_t id, void * user)
 {
     (void)user;
     zc_audio_play(id);
 }
 
-static void game_haptic(zc_haptic_t kind, void *user)
+static void game_haptic(zc_haptic_t kind, void * user)
 {
     (void)user;
     if(kind == ZC_HAPTIC_TAP) vibe_pulse_ms(18);
-    else if(kind == ZC_HAPTIC_HIT) vibe_pulse_ms(35);
-    else if(kind == ZC_HAPTIC_BOSS) vibe_pulse_ms(70);
-    else if(kind == ZC_HAPTIC_LEVEL) vibe_pulse_ms(25);
-    else vibe_pulse_ms(90);
+    else if(kind == ZC_HAPTIC_HIT)
+        vibe_pulse_ms(35);
+    else if(kind == ZC_HAPTIC_BOSS)
+        vibe_pulse_ms(70);
+    else if(kind == ZC_HAPTIC_LEVEL)
+        vibe_pulse_ms(25);
+    else
+        vibe_pulse_ms(90);
 }
 
-static bool game_load(zc_save_t *save, void *user)
+static bool game_load(zc_save_t * save, void * user)
 {
     (void)user;
     if(!s_game_save_loaded) return false;
@@ -360,21 +367,15 @@ static bool game_load(zc_save_t *save, void *user)
     return true;
 }
 
-static void game_store(const zc_save_t *save, void *user)
+static void game_store(const zc_save_t * save, void * user)
 {
     (void)user;
     s_game_save = *save;
     s_game_save_loaded = true;
 }
 
-static const zc_hooks_t s_game_hooks = {
-    game_sfx,
-    game_haptic,
-    NULL,
-    game_load,
-    game_store,
-    NULL
-};
+static const zc_hooks_t s_game_hooks = {game_sfx,  game_haptic, NULL,
+                                        game_load, game_store,  NULL};
 
 static int32_t clamp_i32(int32_t value, int32_t low, int32_t high)
 {
@@ -408,14 +409,15 @@ static void put_px(int32_t x, int32_t y, uint16_t color)
     s_fb[y * SIFT_W + x] = color;
 }
 
-static void fill_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t color)
+static void fill_rect(int32_t x, int32_t y, int32_t w, int32_t h,
+                      uint16_t color)
 {
     int32_t x0 = x < 0 ? 0 : x;
     int32_t y0 = y < 0 ? 0 : y;
     int32_t x1 = x + w > SIFT_W ? SIFT_W : x + w;
     int32_t y1 = y + h > SIFT_H ? SIFT_H : y + h;
     for(int32_t yy = y0; yy < y1; yy++) {
-        uint16_t *row = s_fb + yy * SIFT_W;
+        uint16_t * row = s_fb + yy * SIFT_W;
         for(int32_t xx = x0; xx < x1; xx++) row[xx] = color;
     }
 }
@@ -430,7 +432,8 @@ static void vline(int32_t x, int32_t y, int32_t h, uint16_t color)
     fill_rect(x, y, 1, h, color);
 }
 
-static void stroke_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t color, int32_t thickness)
+static void stroke_rect(int32_t x, int32_t y, int32_t w, int32_t h,
+                        uint16_t color, int32_t thickness)
 {
     fill_rect(x, y, w, thickness, color);
     fill_rect(x, y + h - thickness, w, thickness, color);
@@ -449,7 +452,8 @@ static void fill_disc(int32_t cx, int32_t cy, int32_t radius, uint16_t color)
     }
 }
 
-static void draw_line(int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint16_t color, int32_t size)
+static void draw_line(int32_t x1, int32_t y1, int32_t x2, int32_t y2,
+                      uint16_t color, int32_t size)
 {
     int32_t dx = x2 - x1;
     int32_t dy = y2 - y1;
@@ -467,25 +471,26 @@ static void draw_line(int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint16_t c
     }
 }
 
-static const uint8_t *font_for(char ch)
+static const uint8_t * font_for(char ch)
 {
     if(ch >= 'a' && ch <= 'z') ch = (char)(ch - 'a' + 'A');
-    if(ch == ' ' ) return font_rows[0];
-    const char *found = strchr(font_chars, ch);
+    if(ch == ' ') return font_rows[0];
+    const char * found = strchr(font_chars, ch);
     if(found == NULL || found == font_chars) return font_rows[0];
     size_t index = (size_t)(found - font_chars);
     if(index >= sizeof(font_rows) / sizeof(font_rows[0])) return font_rows[0];
     return font_rows[index];
 }
 
-static int32_t text_width(const char *text, int32_t scale)
+static int32_t text_width(const char * text, int32_t scale)
 {
     size_t len = strlen(text);
     if(len == 0) return 0;
     return (int32_t)(len * 6 * (size_t)scale - (size_t)scale);
 }
 
-static void draw_glyph(const uint8_t *glyph, int32_t x, int32_t y, int32_t scale, uint16_t color)
+static void draw_glyph(const uint8_t * glyph, int32_t x, int32_t y,
+                       int32_t scale, uint16_t color)
 {
     for(int32_t row = 0; row < 7; row++) {
         uint8_t bits = glyph[row];
@@ -494,21 +499,24 @@ static void draw_glyph(const uint8_t *glyph, int32_t x, int32_t y, int32_t scale
             bool on = col < 5 && (bits & (1U << (4 - col))) != 0U;
             if(on && start < 0) start = col;
             if(!on && start >= 0) {
-                fill_rect(x + start * scale, y + row * scale, (col - start) * scale, scale, color);
+                fill_rect(x + start * scale, y + row * scale,
+                          (col - start) * scale, scale, color);
                 start = -1;
             }
         }
     }
 }
 
-static void draw_text(const char *text, int32_t x, int32_t y, int32_t scale, uint16_t color, int align)
+static void draw_text(const char * text, int32_t x, int32_t y, int32_t scale,
+                      uint16_t color, int align)
 {
     int32_t width = text_width(text, scale);
     if(align == 1) x -= width / 2;
-    else if(align == 2) x -= width;
+    else if(align == 2)
+        x -= width;
     size_t len = strlen(text);
     for(size_t i = 0; i < len; i++) {
-        const uint8_t *glyph = font_for(text[i]);
+        const uint8_t * glyph = font_for(text[i]);
         draw_glyph(glyph, x, y, scale, color);
         x += 6 * scale;
     }
@@ -525,16 +533,17 @@ static uint16_t dim_color(uint16_t color, int32_t percent)
     return (uint16_t)((r << 11) | (g << 5) | b);
 }
 
-static const char *month_name(int month)
+static const char * month_name(int month)
 {
-    static const char *names[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-                                  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"};
+    static const char * names[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+                                   "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"};
     return (month >= 0 && month < 12) ? names[month] : "JAN";
 }
 
-static const char *day_name(int day)
+static const char * day_name(int day)
 {
-    static const char *names[] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
+    static const char * names[] = {"SUN", "MON", "TUE", "WED",
+                                   "THU", "FRI", "SAT"};
     return (day >= 0 && day < 7) ? names[day] : "THU";
 }
 
@@ -546,7 +555,7 @@ static void clock_update(void)
     s.clock_last_second = second;
 
     time_t raw = (time_t)(s.clock_epoch + elapsed);
-    struct tm *tm = localtime(&raw);
+    struct tm * tm = localtime(&raw);
     if(tm != NULL) {
         s.clock.hour = tm->tm_hour;
         s.clock.minute = tm->tm_min;
@@ -575,7 +584,7 @@ static int clock_hour(void)
     return hour == 0 ? 12 : hour;
 }
 
-static const char *clock_ampm(void)
+static const char * clock_ampm(void)
 {
     return s.clock.hour >= 12 ? "PM" : "AM";
 }
@@ -650,7 +659,8 @@ static void timer_toggle(uint32_t now)
     s.timer_done_at = 0;
     s.timer_alert_until = 0;
     s.last_input = now;
-    printf("[sift_watch] timer start remaining=%u\n", (unsigned)s.timer_remaining);
+    printf("[sift_watch] timer start remaining=%u\n",
+           (unsigned)s.timer_remaining);
 }
 
 static void timer_update(uint32_t now)
@@ -673,17 +683,19 @@ static void vox_count(void)
     uint16_t bottom = 0;
     for(int32_t iy = 0; iy < SIFT_VY; iy++) {
         for(int32_t ix = 0; ix < SIFT_VX; ix++) {
-            const uint8_t *row = &s_vox[(iy * SIFT_VX + ix) * SIFT_VZ];
+            const uint8_t * row = &s_vox[(iy * SIFT_VX + ix) * SIFT_VZ];
             for(int32_t iz = 0; iz < SIFT_VZ; iz++) {
                 if(row[iz] == 0) continue;
                 if(iy < SIFT_VNECK) top++;
-                else bottom++;
+                else
+                    bottom++;
             }
         }
     }
     s_vox_top = top;
     s_vox_bottom = bottom;
-    if((uint16_t)(top + bottom) > s_vox_total) s_vox_total = (uint16_t)(top + bottom);
+    if((uint16_t)(top + bottom) > s_vox_total)
+        s_vox_total = (uint16_t)(top + bottom);
     s.stats.top = top;
     s.stats.bottom = bottom;
     s.stats.total = s_vox_total > 0 ? s_vox_total : 1;
@@ -694,7 +706,8 @@ static void vox_init(void)
 {
     memset(s_vox_inside, 0, sizeof(s_vox_inside));
     for(int32_t iy = 0; iy < SIFT_VY; iy++) {
-        int32_t row = (int32_t)((iy + 0.5f) * ((float)SIFT_ROWS / (float)SIFT_VY));
+        int32_t row =
+            (int32_t)((iy + 0.5f) * ((float)SIFT_ROWS / (float)SIFT_VY));
         row = clamp_i32(row, 0, SIFT_ROWS - 1);
         int32_t table_row = row < SIFT_NECK_ROW ? row : (SIFT_ROWS - 1 - row);
         float r = (float)hg_half_widths[table_row];
@@ -716,7 +729,8 @@ static void vox_init(void)
             for(int32_t iz = 0; iz < SIFT_VZ; iz++) {
                 int32_t i = (iy * SIFT_VX + ix) * SIFT_VZ + iz;
                 if(!s_vox_inside[i]) continue;
-                s_vox[i] = (uint8_t)(1 + (sift_hash(ix * 7 + iz * 3, iy * 5) % 4U));
+                s_vox[i] =
+                    (uint8_t)(1 + (sift_hash(ix * 7 + iz * 3, iy * 5) % 4U));
                 top++;
             }
         }
@@ -790,8 +804,7 @@ static void sand_step(void)
     const uint32_t step = s_vox_step;
     uint16_t crossed = 0;
     static const int8_t dirs[8][2] = {
-        {1, 0}, {-1, 0}, {0, 1}, {0, -1},
-        {1, 1}, {1, -1}, {-1, 1}, {-1, -1},
+        {1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1},
     };
 
     for(int32_t iy = SIFT_VY - 1; iy >= 0; iy--) {
@@ -805,7 +818,9 @@ static void sand_step(void)
                 const int32_t i = row_base + iz;
                 const uint8_t v = s_vox[i];
                 if(v == 0) continue;
-                if((sift_hash(ix * 13 + iz * 7, iy * 11 + (int32_t)step) % 100U) < 35U) continue;
+                if((sift_hash(ix * 13 + iz * 7, iy * 11 + (int32_t)step) %
+                    100U) < 35U)
+                    continue;
 
                 bool moved = false;
                 if(iy + 1 < SIFT_VY) {
@@ -818,14 +833,18 @@ static void sand_step(void)
                     }
                 }
                 if(!moved && iy + 1 < SIFT_VY) {
-                    const int32_t start = (int32_t)(sift_hash(ix * 3 + iz * 5,
-                                                             iy * 7 + (int32_t)step) % 8U);
+                    const int32_t start =
+                        (int32_t)(sift_hash(ix * 3 + iz * 5,
+                                            iy * 7 + (int32_t)step) %
+                                  8U);
                     for(int32_t k = 0; k < 8; k++) {
-                        const int8_t *d = dirs[(start + k) & 7];
+                        const int8_t * d = dirs[(start + k) & 7];
                         const int32_t tx = ix + d[0];
                         const int32_t tz = iz + d[1];
-                        if(tx < 0 || tx >= SIFT_VX || tz < 0 || tz >= SIFT_VZ) continue;
-                        const int32_t ni = ((iy + 1) * SIFT_VX + tx) * SIFT_VZ + tz;
+                        if(tx < 0 || tx >= SIFT_VX || tz < 0 || tz >= SIFT_VZ)
+                            continue;
+                        const int32_t ni =
+                            ((iy + 1) * SIFT_VX + tx) * SIFT_VZ + tz;
                         if(!s_vox_inside[ni] || s_vox[ni] != 0) continue;
                         s_vox[ni] = v;
                         s_vox[i] = 0;
@@ -886,7 +905,8 @@ static void update_orbit(uint32_t elapsed_ms)
 
 static void update_idle(uint32_t now)
 {
-    if(s.view == VIEW_WATCH && s.dim_on && now - s.last_input > SIFT_IDLE_DIM_MS) {
+    if(s.view == VIEW_WATCH && s.dim_on &&
+       now - s.last_input > SIFT_IDLE_DIM_MS) {
         if(!s.dimmed) {
             s.dimmed = true;
             s.dim_start = now;
@@ -940,7 +960,8 @@ static void draw_battery(int32_t x, int32_t y)
     fill_rect(x, y, 22, 10, COL_DIM);
     fill_rect(x + 22, y + 3, 2, 4, COL_DIM);
     fill_rect(x + 2, y + 2, 18, 6, COL_INK);
-    for(int32_t i = 0; i < 4; i++) fill_rect(x + 3 + i * 4, y + 3, 3, 4, COL_MINT);
+    for(int32_t i = 0; i < 4; i++)
+        fill_rect(x + 3 + i * 4, y + 3, 3, 4, COL_MINT);
 }
 
 static void draw_apps_icon(int32_t x, int32_t y)
@@ -963,7 +984,8 @@ static void draw_back_chevron(int32_t x, int32_t y)
 static void draw_brand_header(void)
 {
     if((lv_tick_get() / 440U) % 2U == 0U) fill_rect(22, 15, 6, 6, COL_SAND);
-    else fill_rect(22, 15, 6, 6, COL_SAND_DIM);
+    else
+        fill_rect(22, 15, 6, 6, COL_SAND_DIM);
     draw_text("SIFT", 34, 13, 2, COL_MINT, 0);
     draw_apps_icon(100, 15);
     draw_text("APPS", 114, 16, 1, COL_MUTED, 0);
@@ -972,7 +994,9 @@ static void draw_brand_header(void)
 
 static void draw_sensor_label(void)
 {
-    const char *label = s.sensor_live ? "6-AXIS LIVE" : (s.auto_now ? "6-AXIS AUTO" : "6-AXIS SIM");
+    const char * label = s.sensor_live
+                             ? "6-AXIS LIVE"
+                             : (s.auto_now ? "6-AXIS AUTO" : "6-AXIS SIM");
     uint16_t color = s.sensor_live ? COL_MINT : COL_DIM;
     draw_text(label, 195, 17, 1, color, 1);
 }
@@ -997,7 +1021,8 @@ static void draw_clock(void)
 
     draw_text(day_name(s.clock.day), 368, 35, 2, COL_MINT, 2);
     char date[10];
-    snprintf(date, sizeof(date), "%02d %s", s.clock.mday, month_name(s.clock.month));
+    snprintf(date, sizeof(date), "%02d %s", s.clock.mday,
+             month_name(s.clock.month));
     draw_text(date, 368, 53, 2, COL_PAPER, 2);
     draw_text("SEC", 342, 78, 1, COL_MUTED, 2);
     draw_text(ss, 368, 70, 2, COL_SAND, 2);
@@ -1028,7 +1053,7 @@ typedef struct {
     uint16_t color;
 } quad_face_t;
 
-static void orbit_matrix(orbit_m_t *m)
+static void orbit_matrix(orbit_m_t * m)
 {
     m->cy = cosf(s.orbit_yaw);
     m->sy = sinf(s.orbit_yaw);
@@ -1046,48 +1071,49 @@ static float flip_sin(void)
     return s.flip_active ? sinf(s.flip_angle) : 0.0f;
 }
 
-static int32_t map_local_y(float local_y, const orbit_m_t *m)
+static int32_t map_local_y(float local_y, const orbit_m_t * m)
 {
     float k = flip_cos() * m->ce - flip_sin() * m->cy * m->se;
     return round_f32((float)SIFT_HG_CY + (local_y - (float)SIFT_HG_CY) * k);
 }
 
-static int32_t map_local_x(float x, float local_y, const orbit_m_t *m)
+static int32_t map_local_x(float x, float local_y, const orbit_m_t * m)
 {
     return round_f32(x + (local_y - (float)SIFT_HG_CY) * flip_sin() * m->sy);
 }
 
-static void project3(int32_t x, int32_t y, int32_t z, const orbit_m_t *m,
-                     int32_t *out_x, int32_t *out_y, int32_t *out_depth)
+static void project3(int32_t x, int32_t y, int32_t z, const orbit_m_t * m,
+                     int32_t * out_x, int32_t * out_y, int32_t * out_depth)
 {
     float fc = flip_cos();
     float fs = flip_sin();
     float yf = (float)y * fc - (float)z * fs;
     float zf = (float)y * fs + (float)z * fc;
     float px = (float)SIFT_HG_CX + (float)x * m->cy - zf * m->sy;
-    float py = (float)SIFT_HG_CY - yf * m->ce +
-               (float)x * m->sy * m->se + zf * m->cy * m->se;
-    float pd = -((float)x * m->ce * m->sy + yf * m->se +
-                 zf * m->ce * m->cy);
+    float py = (float)SIFT_HG_CY - yf * m->ce + (float)x * m->sy * m->se +
+               zf * m->cy * m->se;
+    float pd = -((float)x * m->ce * m->sy + yf * m->se + zf * m->ce * m->cy);
     *out_x = round_f32(px);
     *out_y = round_f32(py);
     *out_depth = round_f32(pd * 100.0f);
 }
 
 static void ellipse_arc(int32_t cx, int32_t cy, int32_t rx, int32_t ry,
-                        int32_t start_deg, int32_t end_deg, uint16_t color, int32_t size)
+                        int32_t start_deg, int32_t end_deg, uint16_t color,
+                        int32_t size)
 {
     int32_t steps = 48;
     for(int32_t i = 0; i <= steps; i++) {
-        float a = ((float)start_deg + (float)(end_deg - start_deg) *
-                   (float)i / (float)steps) * SIFT_PI / 180.0f;
+        float a = ((float)start_deg +
+                   (float)(end_deg - start_deg) * (float)i / (float)steps) *
+                  SIFT_PI / 180.0f;
         int32_t x = cx + round_f32((float)rx * cosf(a));
         int32_t y = cy + round_f32((float)ry * sinf(a));
         fill_rect(x - size / 2, y - size / 2, size, size, color);
     }
 }
 
-static void fill_quad(const int32_t *xs, const int32_t *ys, uint16_t color)
+static void fill_quad(const int32_t * xs, const int32_t * ys, uint16_t color)
 {
     int32_t min_y = ys[0];
     int32_t max_y = ys[0];
@@ -1105,8 +1131,9 @@ static void fill_quad(const int32_t *xs, const int32_t *ys, uint16_t color)
             int32_t y1 = ys[i];
             int32_t y2 = ys[j];
             if((y1 <= y && y2 > y) || (y2 <= y && y1 > y)) {
-                xi[count++] = xs[i] + (int32_t)(((int64_t)(y - y1) *
-                                                (xs[j] - xs[i])) / (y2 - y1));
+                xi[count++] =
+                    xs[i] + (int32_t)(((int64_t)(y - y1) * (xs[j] - xs[i])) /
+                                      (y2 - y1));
             }
         }
         if(count < 2) continue;
@@ -1120,17 +1147,15 @@ static void fill_quad(const int32_t *xs, const int32_t *ys, uint16_t color)
     }
 }
 
-static void draw_box3(int32_t cx, int32_t cy, int32_t cz,
-                      int32_t hx, int32_t hy, int32_t hz,
-                      const orbit_m_t *m, bool back)
+static void draw_box3(int32_t cx, int32_t cy, int32_t cz, int32_t hx,
+                      int32_t hy, int32_t hz, const orbit_m_t * m, bool back)
 {
     static const int8_t face_idx[6][4] = {
         {4, 5, 6, 7}, {1, 0, 3, 2}, {7, 6, 2, 3},
         {0, 1, 5, 4}, {5, 6, 2, 1}, {0, 4, 7, 3},
     };
     static const int8_t face_n[6][3] = {
-        {0, 0, 1}, {0, 0, -1}, {0, 1, 0},
-        {0, -1, 0}, {1, 0, 0}, {-1, 0, 0},
+        {0, 0, 1}, {0, 0, -1}, {0, 1, 0}, {0, -1, 0}, {1, 0, 0}, {-1, 0, 0},
     };
     int32_t corners[8][3] = {
         {cx - hx, cy - hy, cz - hz}, {cx + hx, cy - hy, cz - hz},
@@ -1154,7 +1179,7 @@ static void draw_box3(int32_t cx, int32_t cy, int32_t cz,
         quad_face_t face;
         int32_t depth = 0;
         for(int32_t k = 0; k < 4; k++) {
-            const int32_t *c = corners[face_idx[f][k]];
+            const int32_t * c = corners[face_idx[f][k]];
             int32_t d;
             project3(c[0], c[1], c[2], m, &face.xs[k], &face.ys[k], &d);
             depth += d;
@@ -1162,7 +1187,8 @@ static void draw_box3(int32_t cx, int32_t cy, int32_t cz,
         face.depth = depth / 4;
         if((face.depth > 0) != back) continue;
         float lum = nx * -0.35f + ny * 0.8f + nz * 0.45f;
-        face.color = lum > 0.5f ? COL_WOOD_HI : (lum > 0.05f ? COL_WOOD : COL_WOOD_DARK);
+        face.color =
+            lum > 0.5f ? COL_WOOD_HI : (lum > 0.05f ? COL_WOOD : COL_WOOD_DARK);
         list[count++] = face;
     }
 
@@ -1180,13 +1206,13 @@ static void draw_box3(int32_t cx, int32_t cy, int32_t cz,
         fill_quad(list[i].xs, list[i].ys, list[i].color);
         for(int32_t k = 0; k < 4; k++) {
             int32_t n = (k + 1) & 3;
-            draw_line(list[i].xs[k], list[i].ys[k],
-                      list[i].xs[n], list[i].ys[n], COL_WOOD_DARK, 1);
+            draw_line(list[i].xs[k], list[i].ys[k], list[i].xs[n],
+                      list[i].ys[n], COL_WOOD_DARK, 1);
         }
     }
 }
 
-static void draw_frame3d(const orbit_m_t *m, bool back)
+static void draw_frame3d(const orbit_m_t * m, bool back)
 {
     static const int16_t posts[4][2] = {
         {-SIFT_FRAME_HALF_X, -SIFT_FRAME_HALF_Z},
@@ -1195,16 +1221,16 @@ static void draw_frame3d(const orbit_m_t *m, bool back)
         {SIFT_FRAME_HALF_X, SIFT_FRAME_HALF_Z},
     };
     for(int32_t i = 0; i < 4; i++) {
-        draw_box3(posts[i][0], 0, posts[i][1],
-                  SIFT_FRAME_POST_HALF, SIFT_FRAME_POST_TOP, SIFT_FRAME_POST_HALF, m, back);
+        draw_box3(posts[i][0], 0, posts[i][1], SIFT_FRAME_POST_HALF,
+                  SIFT_FRAME_POST_TOP, SIFT_FRAME_POST_HALF, m, back);
     }
-    draw_box3(0, SIFT_FRAME_CAP_Y, 0,
-              SIFT_FRAME_CAP_HALF_X, SIFT_FRAME_CAP_HALF_Y, SIFT_FRAME_CAP_HALF_Z, m, back);
-    draw_box3(0, -SIFT_FRAME_CAP_Y, 0,
-              SIFT_FRAME_CAP_HALF_X, SIFT_FRAME_CAP_HALF_Y, SIFT_FRAME_CAP_HALF_Z, m, back);
+    draw_box3(0, SIFT_FRAME_CAP_Y, 0, SIFT_FRAME_CAP_HALF_X,
+              SIFT_FRAME_CAP_HALF_Y, SIFT_FRAME_CAP_HALF_Z, m, back);
+    draw_box3(0, -SIFT_FRAME_CAP_Y, 0, SIFT_FRAME_CAP_HALF_X,
+              SIFT_FRAME_CAP_HALF_Y, SIFT_FRAME_CAP_HALF_Z, m, back);
 }
 
-static void draw_cap_details(const orbit_m_t *m)
+static void draw_cap_details(const orbit_m_t * m)
 {
     int32_t faces[2];
     if(m->se > 0.05f) {
@@ -1237,18 +1263,18 @@ static void draw_cap_details(const orbit_m_t *m)
     }
 }
 
-static void draw_orbit_rims(const orbit_m_t *m)
+static void draw_orbit_rims(const orbit_m_t * m)
 {
     static const int16_t ring_y[2] = {120, -120};
     static const int16_t ring_r[2] = {80, 80};
     float fc = flip_cos();
     float fs = flip_sin();
     for(int32_t i = 0; i < 2; i++) {
-        int32_t cx = round_f32((float)SIFT_HG_CX -
-                               (float)ring_y[i] * fs * m->sy);
-        int32_t cy = round_f32((float)SIFT_HG_CY -
-                               (float)ring_y[i] * fc * m->ce +
-                               (float)ring_y[i] * fs * m->cy * m->se);
+        int32_t cx =
+            round_f32((float)SIFT_HG_CX - (float)ring_y[i] * fs * m->sy);
+        int32_t cy =
+            round_f32((float)SIFT_HG_CY - (float)ring_y[i] * fc * m->ce +
+                      (float)ring_y[i] * fs * m->cy * m->se);
         int32_t ry = round_f32((float)ring_r[i] *
                                fabsf(fs * m->ce + fc * m->cy * m->se));
         if(ry < 1) ry = 1;
@@ -1257,7 +1283,7 @@ static void draw_orbit_rims(const orbit_m_t *m)
     }
 }
 
-static void draw_glass_3d(const orbit_m_t *m)
+static void draw_glass_3d(const orbit_m_t * m)
 {
     float k = flip_cos() * m->ce - flip_sin() * m->cy * m->se;
     if(fabsf(k) < 0.02f) return;
@@ -1292,16 +1318,18 @@ static void draw_glass_3d(const orbit_m_t *m)
     int32_t neck_y = map_local_y((float)(SIFT_NECK_Y - 4), m);
     int32_t neck_h = round_f32(8.0f * fabsf(k));
     if(neck_h < 1) neck_h = 1;
-    int32_t neck_cx1 = map_local_x((float)(SIFT_HG_CX - 14 + 1), (float)(SIFT_NECK_Y - 4), m);
-    int32_t neck_cx2 = map_local_x((float)(SIFT_HG_CX + 14 - 3), (float)(SIFT_NECK_Y - 4), m);
+    int32_t neck_cx1 =
+        map_local_x((float)(SIFT_HG_CX - 14 + 1), (float)(SIFT_NECK_Y - 4), m);
+    int32_t neck_cx2 =
+        map_local_x((float)(SIFT_HG_CX + 14 - 3), (float)(SIFT_NECK_Y - 4), m);
     fill_rect(neck_cx1, neck_y - neck_h / 2, 2, neck_h, COL_MINT_DIM);
     fill_rect(neck_cx2, neck_y - neck_h / 2, 2, neck_h, COL_MINT_DIM);
 }
 
 static inline bool vox_solid(int32_t ix, int32_t iy, int32_t iz)
 {
-    if(ix < 0 || ix >= SIFT_VX || iy < 0 || iy >= SIFT_VY ||
-       iz < 0 || iz >= SIFT_VZ) {
+    if(ix < 0 || ix >= SIFT_VX || iy < 0 || iy >= SIFT_VY || iz < 0 ||
+       iz >= SIFT_VZ) {
         return false;
     }
     return s_vox[(iy * SIFT_VX + ix) * SIFT_VZ + iz] != 0;
@@ -1320,7 +1348,7 @@ static void build_vox_sprites(void)
     s_vox_sprites_ready = true;
 }
 
-static void draw_voxels(const orbit_m_t *m)
+static void draw_voxels(const orbit_m_t * m)
 {
     if(!s_vox_sprites_ready) build_vox_sprites();
     memset(s_vbins, 0, sizeof(s_vbins));
@@ -1338,12 +1366,14 @@ static void draw_voxels(const orbit_m_t *m)
                 }
                 const float wx = (ix + 0.5f) * SIFT_VCELL - 90.0f;
                 const float wz = (iz + 0.5f) * SIFT_VCELL - 90.0f;
-                const float y_local = (float)SIFT_HG_TOP +
-                    (iy + 0.5f) * ((float)(SIFT_HG_BOTTOM - SIFT_HG_TOP) / SIFT_VY);
+                const float y_local =
+                    (float)SIFT_HG_TOP +
+                    (iy + 0.5f) *
+                        ((float)(SIFT_HG_BOTTOM - SIFT_HG_TOP) / SIFT_VY);
                 const float wy = -(y_local - (float)SIFT_HG_CY);
                 int32_t px, py, depth;
-                project3(round_f32(wx), round_f32(wy), round_f32(wz), m,
-                         &px, &py, &depth);
+                project3(round_f32(wx), round_f32(wy), round_f32(wz), m, &px,
+                         &py, &depth);
                 int32_t bin = (depth + 22000) * SIFT_VBINS / 44000;
                 bin = clamp_i32(bin, 0, SIFT_VBINS - 1);
                 if(s_vbins[bin] >= SIFT_VCAP) continue;
@@ -1352,7 +1382,8 @@ static void draw_voxels(const orbit_m_t *m)
                 s_vpy[pos] = (int16_t)py;
                 int32_t ci = (int32_t)v - 1;
                 if(bin >= 12 && ci > 0) ci--;
-                else if(bin <= 3 && ci < 3) ci++;
+                else if(bin <= 3 && ci < 3)
+                    ci++;
                 s_vpc[pos] = (uint8_t)ci;
             }
         }
@@ -1380,7 +1411,8 @@ static void draw_hourglass(void)
         for(int32_t x = 45; x < 345; x += 9) {
             int32_t dx = x - 195;
             int32_t dy = y - 226;
-            if(dx * dx / 4 + dy * dy < 18000 && (sift_hash(x, y) % 100U) > 82U) {
+            if(dx * dx / 4 + dy * dy < 18000 &&
+               (sift_hash(x, y) % 100U) > 82U) {
                 put_px(x, y, COL_INK2);
             }
         }
@@ -1396,8 +1428,8 @@ static void draw_hourglass(void)
     draw_frame3d(&m, false);
     draw_cap_details(&m);
 
-    bool nearly_empty = s.stats.total > 0 &&
-                        (s.stats.top * 100U / s.stats.total) < 5U;
+    bool nearly_empty =
+        s.stats.total > 0 && (s.stats.top * 100U / s.stats.total) < 5U;
     if(!nearly_empty && s.stats.flow > 2U) {
         int32_t glow_y = map_local_y((float)SIFT_NECK_Y, &m);
         fill_rect(181, glow_y - 2, 28, 3, COL_SAND);
@@ -1406,8 +1438,9 @@ static void draw_hourglass(void)
     }
 }
 
-static void draw_button(int32_t x, int32_t y, int32_t w, int32_t h, const char *label,
-                        uint16_t fill, uint16_t border, uint16_t text)
+static void draw_button(int32_t x, int32_t y, int32_t w, int32_t h,
+                        const char * label, uint16_t fill, uint16_t border,
+                        uint16_t text)
 {
     fill_rect(x, y, w, h, fill);
     stroke_rect(x, y, w, h, border, 2);
@@ -1423,26 +1456,30 @@ static void draw_watch_footer(void)
     draw_text("ROLL", 22, 376, 1, COL_MUTED, 0);
     draw_text(value, 22, 385, 2, COL_PAPER, 0);
 
-    uint32_t percent = s.stats.total == 0 ? 0 : (uint32_t)s.stats.top * 100U / s.stats.total;
+    uint32_t percent =
+        s.stats.total == 0 ? 0 : (uint32_t)s.stats.top * 100U / s.stats.total;
     if(percent < 5U) percent = 0;
     snprintf(value, sizeof(value), "%u%%", (unsigned)percent);
     draw_text("SAND", 195, 376, 1, COL_MUTED, 1);
     draw_text(value, 195, 385, 2, COL_SAND, 1);
 
-    snprintf(value, sizeof(value), "%02u", (unsigned)(s.stats.flow > 99U ? 99U : s.stats.flow));
+    snprintf(value, sizeof(value), "%02u",
+             (unsigned)(s.stats.flow > 99U ? 99U : s.stats.flow));
     draw_text("FLOW", 368, 376, 1, COL_MUTED, 2);
     draw_text(value, 368, 385, 2, COL_MINT, 2);
 
     bool empty = s.stats.total > 0 && (s.stats.top * 100U / s.stats.total) < 5U;
     bool pulse = ((lv_tick_get() / 230U) % 2U) != 0U;
-    uint16_t flip_color = s.sensor_live ? (empty && pulse ? COL_SAND_HI : COL_SAND) : COL_DIM;
+    uint16_t flip_color =
+        s.sensor_live ? (empty && pulse ? COL_SAND_HI : COL_SAND) : COL_DIM;
     draw_text(s.sensor_live ? "SENSOR FLIP / TURN WATCH FACE DOWN"
                             : "SENSOR FLIP / LINK 6-AXIS",
               195, 404, 1, flip_color, 1);
 
-    const char *hint = "TAP FLIP  /  DRAG ORBIT  /  SWIPE PAGES";
+    const char * hint = "TAP FLIP  /  DRAG ORBIT  /  SWIPE PAGES";
     if(s.sensor_live) hint = "TAP FLIP  /  DRAG ORBIT  /  TILT SENSOR";
-    else if(s.auto_now) hint = "TAP FLIP  /  DRAG ORBIT  /  AUTO DRIFT";
+    else if(s.auto_now)
+        hint = "TAP FLIP  /  DRAG ORBIT  /  AUTO DRIFT";
     if(lv_tick_get() < s.notice_until) hint = s.notice;
     draw_text(hint, 195, 419, 1, COL_MUTED, 1);
 }
@@ -1456,10 +1493,11 @@ static void draw_watch(void)
     draw_watch_footer();
 }
 
-static void draw_app_header(const char *title, const char *subtitle)
+static void draw_app_header(const char * title, const char * subtitle)
 {
     char time_text[8];
-    snprintf(time_text, sizeof(time_text), "%02d:%02d", clock_hour(), s.clock.minute);
+    snprintf(time_text, sizeof(time_text), "%02d:%02d", clock_hour(),
+             s.clock.minute);
     draw_back_chevron(22, 22);
     draw_text(title, 48, 16, 3, COL_PAPER, 0);
     draw_text(time_text, 368, 18, 2, COL_PAPER, 2);
@@ -1468,7 +1506,8 @@ static void draw_app_header(const char *title, const char *subtitle)
     draw_text(subtitle, 22, 52, 1, COL_MUTED, 0);
 }
 
-static void draw_mini_hourglass(int32_t cx, int32_t cy, uint16_t color, uint16_t sand)
+static void draw_mini_hourglass(int32_t cx, int32_t cy, uint16_t color,
+                                uint16_t sand)
 {
     fill_rect(cx - 15, cy - 18, 30, 4, color);
     fill_rect(cx - 15, cy + 14, 30, 4, color);
@@ -1541,13 +1580,18 @@ static void draw_icon_zombie(int32_t cx, int32_t cy)
 static void draw_tile_icon(uint8_t index, int32_t cx, int32_t cy)
 {
     if(index == 0) draw_mini_hourglass(cx, cy, COL_SAND, COL_SAND_HI);
-    else if(index == 1) draw_icon_stopwatch(cx, cy);
-    else if(index == 2) draw_icon_weather(cx, cy);
-    else if(index == 3) draw_icon_settings(cx, cy);
-    else draw_icon_zombie(cx, cy);
+    else if(index == 1)
+        draw_icon_stopwatch(cx, cy);
+    else if(index == 2)
+        draw_icon_weather(cx, cy);
+    else if(index == 3)
+        draw_icon_settings(cx, cy);
+    else
+        draw_icon_zombie(cx, cy);
 }
 
-static void app_tile_rect(uint8_t index, int32_t *x, int32_t *y, int32_t *w, int32_t *h)
+static void app_tile_rect(uint8_t index, int32_t * x, int32_t * y, int32_t * w,
+                          int32_t * h)
 {
     *x = 22 + (index % 3) * 119;
     *y = 82 + (index / 3) * 142;
@@ -1555,35 +1599,43 @@ static void app_tile_rect(uint8_t index, int32_t *x, int32_t *y, int32_t *w, int
     *h = 130;
 }
 
-static const char *app_title(uint8_t index)
+static const char * app_title(uint8_t index)
 {
-    static const char *names[] = {"TIMER", "STOPWATCH", "WEATHER", "SETTINGS", "ZOMBIE"};
+    static const char * names[] = {"TIMER", "STOPWATCH", "WEATHER", "SETTINGS",
+                                   "ZOMBIE"};
     return names[index < 5U ? index : 0U];
 }
 
-static const char *app_subtitle(uint8_t index)
+static const char * app_subtitle(uint8_t index)
 {
-    static const char *names[] = {"FOCUS", "PRECISION", "LOCAL SKY", "SYSTEM", "ENDLESS"};
+    static const char * names[] = {"FOCUS", "PRECISION", "LOCAL SKY", "SYSTEM",
+                                   "ENDLESS"};
     return names[index < 5U ? index : 0U];
 }
 
-static void app_status(uint8_t index, char *out, size_t out_size)
+static void app_status(uint8_t index, char * out, size_t out_size)
 {
     if(index == 0) {
         if(s.timer_running) {
             uint32_t secs = (s.timer_remaining + 999U) / 1000U;
-            snprintf(out, out_size, "%02u:%02u", (unsigned)(secs / 60U), (unsigned)(secs % 60U));
+            snprintf(out, out_size, "%02u:%02u", (unsigned)(secs / 60U),
+                     (unsigned)(secs % 60U));
         }
-        else if(s.timer_remaining == 0U) snprintf(out, out_size, "DONE");
-        else snprintf(out, out_size, "%uM", (unsigned)(s.timer_duration / 60000U));
+        else if(s.timer_remaining == 0U)
+            snprintf(out, out_size, "DONE");
+        else
+            snprintf(out, out_size, "%uM",
+                     (unsigned)(s.timer_duration / 60000U));
     }
     else if(index == 1) {
-        snprintf(out, out_size, "%s", s.sw_running ? "RUN" : (s.sw_elapsed ? "HOLD" : "ZERO"));
+        snprintf(out, out_size, "%s",
+                 s.sw_running ? "RUN" : (s.sw_elapsed ? "HOLD" : "ZERO"));
     }
     else if(index == 2) {
         int temp_c, high_c, low_c, humidity, wind, condition;
         bool night;
-        weather_values(&temp_c, &high_c, &low_c, &humidity, &wind, &night, &condition);
+        weather_values(&temp_c, &high_c, &low_c, &humidity, &wind, &night,
+                       &condition);
         int temp = weather_temp(temp_c);
         snprintf(out, out_size, "%d~%c", temp, s.weather_unit);
     }
@@ -1592,8 +1644,10 @@ static void app_status(uint8_t index, char *out, size_t out_size)
     }
     else {
         int32_t best = zc_best_wave();
-        if(best > 0) snprintf(out, out_size, "WAVE %02d", (int)(best > 99 ? 99 : best));
-        else snprintf(out, out_size, "READY");
+        if(best > 0)
+            snprintf(out, out_size, "WAVE %02d", (int)(best > 99 ? 99 : best));
+        else
+            snprintf(out, out_size, "READY");
     }
 }
 
@@ -1608,7 +1662,8 @@ static void draw_app_drawer(void)
         app_tile_rect(i, &x, &y, &w, &h);
         bool selected = i == s.app_index;
         fill_rect(x, y, w, h, selected ? COL_INK2 : COL_INK);
-        stroke_rect(x, y, w, h, selected ? COL_SAND : COL_LINE, selected ? 2 : 1);
+        stroke_rect(x, y, w, h, selected ? COL_SAND : COL_LINE,
+                    selected ? 2 : 1);
         char number[4];
         snprintf(number, sizeof(number), "%02u", (unsigned)(i + 1));
         draw_text(number, x + 10, y + 9, 1, selected ? COL_SAND : COL_DIM, 0);
@@ -1621,33 +1676,40 @@ static void draw_app_drawer(void)
         draw_text(app_subtitle(i), x + w / 2, y + 91, 1, COL_MUTED, 1);
         char status[16];
         app_status(i, status, sizeof(status));
-        draw_text(status, x + w / 2, y + 109, 1, selected ? COL_SAND : COL_MUTED, 1);
+        draw_text(status, x + w / 2, y + 109, 1,
+                  selected ? COL_SAND : COL_MUTED, 1);
         if((i == 0 && s.timer_running) || (i == 1 && s.sw_running)) {
-            if((lv_tick_get() / 240U) % 2U == 0U) fill_rect(x + w - 16, y + h - 14, 4, 4, COL_SAND);
+            if((lv_tick_get() / 240U) % 2U == 0U)
+                fill_rect(x + w - 16, y + h - 14, 4, 4, COL_SAND);
         }
     }
     hline(22, 376, 346, COL_LINE);
     draw_text("TAP OPEN  /  SWIPE PAGES", 195, 390, 1, COL_DIM, 1);
 }
 
-static void draw_timer_bar(int32_t x, int32_t y, int32_t w, int32_t h, int32_t percent, bool active)
+static void draw_timer_bar(int32_t x, int32_t y, int32_t w, int32_t h,
+                           int32_t percent, bool active)
 {
     fill_rect(x, y, w, h, COL_INK2);
     stroke_rect(x, y, w, h, COL_LINE2, 1);
     int32_t fill_w = (w - 4) * clamp_i32(percent, 0, 100) / 100;
     if(fill_w > 0) {
-        fill_rect(x + 2, y + 2, fill_w, h - 4, active ? COL_SAND : COL_SAND_DIM);
+        fill_rect(x + 2, y + 2, fill_w, h - 4,
+                  active ? COL_SAND : COL_SAND_DIM);
     }
-    for(int32_t tx = x + 10; tx < x + w - 4; tx += 10) fill_rect(tx, y + 2, 1, h - 4, COL_INK);
+    for(int32_t tx = x + 10; tx < x + w - 4; tx += 10)
+        fill_rect(tx, y + 2, 1, h - 4, COL_INK);
 }
 
 static void draw_timer(void)
 {
     char time_text[12];
     uint32_t secs = (s.timer_remaining + 999U) / 1000U;
-    snprintf(time_text, sizeof(time_text), "%02u:%02u", (unsigned)(secs / 60U), (unsigned)(secs % 60U));
+    snprintf(time_text, sizeof(time_text), "%02u:%02u", (unsigned)(secs / 60U),
+             (unsigned)(secs % 60U));
     char subtitle[32];
-    snprintf(subtitle, sizeof(subtitle), "COUNTDOWN / %u MIN", (unsigned)(s.timer_duration / 60000U));
+    snprintf(subtitle, sizeof(subtitle), "COUNTDOWN / %u MIN",
+             (unsigned)(s.timer_duration / 60000U));
     draw_app_header("TIMER", subtitle);
 
     bool done = s.timer_remaining == 0U && !s.timer_running;
@@ -1655,26 +1717,33 @@ static void draw_timer(void)
     if(done && blink) stroke_rect(58, 84, 274, 64, COL_SAND, 2);
     draw_text(time_text, 195, 94, 7, done && blink ? COL_SAND : COL_PAPER, 1);
     draw_text("REMAINING", 195, 150, 1, COL_DIM, 1);
-    int32_t progress = s.timer_duration ? (int32_t)(s.timer_remaining * 100U / s.timer_duration) : 0;
+    int32_t progress =
+        s.timer_duration
+            ? (int32_t)(s.timer_remaining * 100U / s.timer_duration)
+            : 0;
     draw_timer_bar(45, 170, 300, 15, progress, s.timer_running);
 
     static const uint32_t presets[] = {60000U, 180000U, 300000U, 600000U};
-    static const char *labels[] = {"1M", "3M", "5M", "10M"};
+    static const char * labels[] = {"1M", "3M", "5M", "10M"};
     for(uint8_t i = 0; i < 4; i++) {
         int32_t x = 22 + i * 89;
         bool selected = i == s.timer_selected;
-        draw_button(x, 214, 79, 30, labels[i],
-                    selected ? COL_INK2 : COL_INK,
+        draw_button(x, 214, 79, 30, labels[i], selected ? COL_INK2 : COL_INK,
                     selected ? COL_SAND : COL_LINE2,
                     selected ? COL_SAND : COL_MUTED);
     }
 
-    const char *status = s.timer_running ? "RUNNING" :
-                         (done ? "TIME UP" : (s.timer_remaining < presets[s.timer_selected] ? "PAUSED" : "READY"));
+    const char * status =
+        s.timer_running ? "RUNNING"
+                        : (done ? "TIME UP"
+                                : (s.timer_remaining < presets[s.timer_selected]
+                                       ? "PAUSED"
+                                       : "READY"));
     draw_text(status, 195, 260, 2,
               s.timer_running ? COL_MINT : (done ? COL_SAND : COL_PAPER), 1);
 
-    const char *start_label = s.timer_running ? "PAUSE" : (done ? "AGAIN" : "START");
+    const char * start_label =
+        s.timer_running ? "PAUSE" : (done ? "AGAIN" : "START");
     draw_button(72, 302, 150, 42, start_label,
                 (s.timer_running || done) ? COL_SAND : COL_INK,
                 (s.timer_running || done) ? COL_SAND_HI : COL_SAND,
@@ -1690,9 +1759,12 @@ static void draw_stopwatch(void)
     uint32_t total_sec = elapsed / 1000U;
     char time_text[12];
     char cs_text[6];
-    snprintf(time_text, sizeof(time_text), "%02u:%02u", (unsigned)((total_sec / 60U) % 100U), (unsigned)(total_sec % 60U));
-    snprintf(cs_text, sizeof(cs_text), ".%02u", (unsigned)((elapsed / 10U) % 100U));
-    draw_app_header("STOPWATCH", s.sw_running ? "RUNNING / ENTER TO STOP" : "PRECISION / ENTER TO START");
+    snprintf(time_text, sizeof(time_text), "%02u:%02u",
+             (unsigned)((total_sec / 60U) % 100U), (unsigned)(total_sec % 60U));
+    snprintf(cs_text, sizeof(cs_text), ".%02u",
+             (unsigned)((elapsed / 10U) % 100U));
+    draw_app_header("STOPWATCH", s.sw_running ? "RUNNING / ENTER TO STOP"
+                                              : "PRECISION / ENTER TO START");
 
     uint32_t current = total_sec % 60U;
     for(uint8_t i = 0; i < 60; i++) {
@@ -1707,23 +1779,24 @@ static void draw_stopwatch(void)
             color = COL_SAND;
             size = 4;
         }
-        fill_rect(sw_ring_x[i] - size / 2, sw_ring_y[i] - size / 2, size, size, color);
+        fill_rect(sw_ring_x[i] - size / 2, sw_ring_y[i] - size / 2, size, size,
+                  color);
     }
 
     draw_text(time_text, 195, 157, 6, COL_PAPER, 1);
     draw_text(cs_text, 195, 206, 2, COL_SAND, 1);
-    if(s.sw_running && (now / 220U) % 2U == 0U) fill_rect(144, 222, 4, 4, COL_CORAL);
+    if(s.sw_running && (now / 220U) % 2U == 0U)
+        fill_rect(144, 222, 4, 4, COL_CORAL);
 
     char lap[28];
     if(s.sw_lap_count > 0) {
         uint32_t ms = s.sw_laps[s.sw_lap_count - 1];
         snprintf(lap, sizeof(lap), "LAP %02u  %02u:%02u.%02u",
-                 (unsigned)s.sw_lap_count,
-                 (unsigned)((ms / 60000U) % 100U),
-                 (unsigned)((ms / 1000U) % 60U),
-                 (unsigned)((ms / 10U) % 100U));
+                 (unsigned)s.sw_lap_count, (unsigned)((ms / 60000U) % 100U),
+                 (unsigned)((ms / 1000U) % 60U), (unsigned)((ms / 10U) % 100U));
     }
-    else snprintf(lap, sizeof(lap), "NO LAPS YET");
+    else
+        snprintf(lap, sizeof(lap), "NO LAPS YET");
     draw_text(lap, 195, 296, 1, COL_MUTED, 1);
 
     draw_button(22, 318, 107, 38, s.sw_running ? "STOP" : "START",
@@ -1737,8 +1810,9 @@ static void draw_stopwatch(void)
     draw_text("SWIPE PAGES / START LAP RESET", 195, 414, 1, COL_DIM, 1);
 }
 
-static void weather_values(int *temp_c, int *high_c, int *low_c, int *humidity,
-                           int *wind, bool *night, int *condition)
+static void weather_values(int * temp_c, int * high_c, int * low_c,
+                           int * humidity, int * wind, bool * night,
+                           int * condition)
 {
     int seed = s.clock.mday * 13 + s.clock.month * 7 + (s.clock.valid ? 0 : 5);
     int base = 15 + (seed % 8);
@@ -1760,9 +1834,8 @@ static void draw_sun(int32_t cx, int32_t cy, int32_t radius)
 {
     fill_disc(cx, cy, radius, COL_SAND);
     for(int32_t i = 0; i < 8; i++) {
-        static const int8_t dirs[8][2] = {
-            {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}, {0, -1}, {1, -1}
-        };
+        static const int8_t dirs[8][2] = {{1, 0},  {1, 1},   {0, 1},  {-1, 1},
+                                          {-1, 0}, {-1, -1}, {0, -1}, {1, -1}};
         int32_t x1 = cx + dirs[i][0] * (radius + 4);
         int32_t y1 = cy + dirs[i][1] * (radius + 4);
         int32_t x2 = cx + dirs[i][0] * (radius + 10);
@@ -1779,7 +1852,8 @@ static void draw_moon(int32_t cx, int32_t cy, int32_t radius)
             if(r2 > radius * radius) continue;
             int32_t bx = dx - radius / 2;
             int32_t by = dy - radius / 6;
-            if(bx * bx + by * by < (radius * 4 / 5) * (radius * 4 / 5)) continue;
+            if(bx * bx + by * by < (radius * 4 / 5) * (radius * 4 / 5))
+                continue;
             fill_rect(cx + dx, cy + dy, 3, 3, COL_PAPER);
         }
     }
@@ -1798,11 +1872,13 @@ static void draw_weather_art(int32_t cx, int32_t cy, int condition, bool night)
 {
     if(condition == 0) {
         if(night) draw_moon(cx, cy, 27);
-        else draw_sun(cx, cy, 24);
+        else
+            draw_sun(cx, cy, 24);
     }
     else if(condition == 1) {
         if(night) draw_moon(cx - 14, cy - 12, 18);
-        else draw_sun(cx - 15, cy - 12, 16);
+        else
+            draw_sun(cx - 15, cy - 12, 16);
         draw_cloud(cx + 3, cy + 4);
     }
     else {
@@ -1819,11 +1895,13 @@ static void draw_mini_weather(int32_t cx, int32_t cy, int condition, bool night)
 {
     if(condition == 0) {
         if(night) draw_moon(cx, cy, 8);
-        else fill_disc(cx, cy, 7, COL_SAND);
+        else
+            fill_disc(cx, cy, 7, COL_SAND);
     }
     else if(condition == 1) {
         if(night) draw_moon(cx - 4, cy - 3, 6);
-        else fill_disc(cx - 4, cy - 3, 5, COL_SAND);
+        else
+            fill_disc(cx - 4, cy - 3, 5, COL_SAND);
         fill_rect(cx - 5, cy + 2, 20, 6, COL_CLOUD);
         fill_rect(cx, cy - 2, 10, 9, COL_CLOUD);
     }
@@ -1839,7 +1917,8 @@ static void draw_weather(void)
 {
     int temp_c, high_c, low_c, humidity, wind, condition;
     bool night;
-    weather_values(&temp_c, &high_c, &low_c, &humidity, &wind, &night, &condition);
+    weather_values(&temp_c, &high_c, &low_c, &humidity, &wind, &night,
+                   &condition);
     char text[32];
 
     draw_app_header("WEATHER", "LOCAL SKY / OFFLINE SAMPLE");
@@ -1852,9 +1931,10 @@ static void draw_weather(void)
     snprintf(text, sizeof(text), "~%c", s.weather_unit);
     draw_text(text, 336, 102, 2, COL_SKY, 1);
 
-    static const char *conditions[] = {"CLEAR", "CLOUD", "RAIN"};
+    static const char * conditions[] = {"CLEAR", "CLOUD", "RAIN"};
     draw_text(conditions[condition], 164, 154, 2, COL_SKY, 0);
-    snprintf(text, sizeof(text), "H %d~  L %d~", weather_temp(high_c), weather_temp(low_c));
+    snprintf(text, sizeof(text), "H %d~  L %d~", weather_temp(high_c),
+             weather_temp(low_c));
     draw_text(text, 164, 178, 1, COL_MUTED, 0);
 
     hline(22, 212, 346, COL_LINE);
@@ -1863,7 +1943,8 @@ static void draw_weather(void)
         int32_t hour_temp = temp_c + ((i == 0) ? 0 : (i == 4 ? -1 : 1));
         char label[6];
         if(i == 0) snprintf(label, sizeof(label), "NOW");
-        else snprintf(label, sizeof(label), "+%dH", (int)i);
+        else
+            snprintf(label, sizeof(label), "+%dH", (int)i);
         draw_text(label, cx, 224, 1, COL_DIM, 1);
         draw_mini_weather(cx, 250, condition, night);
         snprintf(text, sizeof(text), "%d~", weather_temp(hour_temp));
@@ -1891,10 +1972,12 @@ static void draw_switch(int32_t x, int32_t y, bool on)
     fill_rect(x, y, 50, 22, on ? COL_INK2 : COL_INK);
     stroke_rect(x, y, 50, 22, on ? COL_SAND : COL_LINE2, 2);
     if(on) fill_rect(x + 34, y + 4, 12, 14, COL_SAND);
-    else fill_rect(x + 4, y + 4, 12, 14, COL_DIM);
+    else
+        fill_rect(x + 4, y + 4, 12, 14, COL_DIM);
 }
 
-static void settings_row_rect(uint8_t index, int32_t *x, int32_t *y, int32_t *w, int32_t *h)
+static void settings_row_rect(uint8_t index, int32_t * x, int32_t * y,
+                              int32_t * w, int32_t * h)
 {
     *x = 22;
     *y = 80 + index * 58;
@@ -1904,8 +1987,10 @@ static void settings_row_rect(uint8_t index, int32_t *x, int32_t *y, int32_t *w,
 
 static void draw_settings(void)
 {
-    static const char *titles[] = {"AUTO DRIFT", "24H CLOCK", "DIM STANDBY", "SENSOR ZERO"};
-    static const char *subs[] = {"IDLE MOTION", "TIME FORMAT", "AFTER 42S", "TOUCH TO CALIBRATE"};
+    static const char * titles[] = {"AUTO DRIFT", "24H CLOCK", "DIM STANDBY",
+                                    "SENSOR ZERO"};
+    static const char * subs[] = {"IDLE MOTION", "TIME FORMAT", "AFTER 42S",
+                                  "TOUCH TO CALIBRATE"};
     draw_app_header("SETTINGS", "SYSTEM / 04 OPTIONS");
 
     for(uint8_t i = 0; i < 4; i++) {
@@ -1921,7 +2006,8 @@ static void draw_settings(void)
         if(i < 3) {
             bool on = i == 0 ? s.auto_drift : (i == 1 ? s.h24 : s.dim_on);
             draw_switch(x + 292, y + 16, on);
-            draw_text(on ? "ON" : "OFF", x + 284, y + 21, 1, on ? COL_SAND : COL_DIM, 2);
+            draw_text(on ? "ON" : "OFF", x + 284, y + 21, 1,
+                      on ? COL_SAND : COL_DIM, 2);
         }
         else {
             draw_text(s.sensor_live ? "6-AXIS" : "SIM", x + w - 2, y + 21, 1,
@@ -1931,13 +2017,15 @@ static void draw_settings(void)
     }
 
     hline(22, 316, 346, COL_LINE);
-    const char *sensor = s.sensor_live ? "6-AXIS LIVE" : "SIMULATED";
-    static const char *labels[] = {"SENSOR", "PANEL", "KEYS", "IMU", "OS"};
-    static const char *values[] = {NULL, "390 X 450", "KEY1 / KEY2", "LSM6DS3TR-C", "SIFT 0.6"};
+    const char * sensor = s.sensor_live ? "6-AXIS LIVE" : "SIMULATED";
+    static const char * labels[] = {"SENSOR", "PANEL", "KEYS", "IMU", "OS"};
+    static const char * values[] = {NULL, "390 X 450", "KEY1 / KEY2",
+                                    "LSM6DS3TR-C", "SIFT 0.6"};
     for(uint8_t i = 0; i < 5; i++) {
         int32_t y = 328 + i * 14;
         draw_text(labels[i], 22, y, 1, COL_DIM, 0);
-        draw_text(i == 0 ? sensor : values[i], 368, y, 1, i == 0 && s.sensor_live ? COL_MINT : COL_MUTED, 2);
+        draw_text(i == 0 ? sensor : values[i], 368, y, 1,
+                  i == 0 && s.sensor_live ? COL_MINT : COL_MUTED, 2);
     }
     draw_text("SWIPE PAGES / TAP ROW / BACK", 195, 414, 1, COL_DIM, 1);
 }
@@ -1955,7 +2043,8 @@ static void draw_dimmed(uint32_t now)
 {
     int32_t percent = dim_percent(now);
     if(percent <= 0) return;
-    for(int32_t i = 0; i < SIFT_W * SIFT_H; i++) s_fb[i] = dim_color(s_fb[i], percent);
+    for(int32_t i = 0; i < SIFT_W * SIFT_H; i++)
+        s_fb[i] = dim_color(s_fb[i], percent);
     if(percent < 25) return;
     fill_rect(124, 210, 142, 30, COL_INK);
     stroke_rect(124, 210, 142, 30, COL_MINT_DIM, 1);
@@ -1983,32 +2072,33 @@ static void sift_render(void)
     clock_update();
     if(s.view == VIEW_ZOMBIE) {
         if(s_game_ready) zc_render();
-        else draw_background();
+        else
+            draw_background();
         draw_panel_mask();
         if(s_canvas != NULL) lv_obj_invalidate(s_canvas);
         return;
     }
     draw_background();
     switch(s.view) {
-    case VIEW_APPS:
-        draw_app_drawer();
-        break;
-    case VIEW_TIMER:
-        draw_timer();
-        break;
-    case VIEW_STOPWATCH:
-        draw_stopwatch();
-        break;
-    case VIEW_WEATHER:
-        draw_weather();
-        break;
-    case VIEW_SETTINGS:
-        draw_settings();
-        break;
-    case VIEW_WATCH:
-    default:
-        draw_watch();
-        break;
+        case VIEW_APPS:
+            draw_app_drawer();
+            break;
+        case VIEW_TIMER:
+            draw_timer();
+            break;
+        case VIEW_STOPWATCH:
+            draw_stopwatch();
+            break;
+        case VIEW_WEATHER:
+            draw_weather();
+            break;
+        case VIEW_SETTINGS:
+            draw_settings();
+            break;
+        case VIEW_WATCH:
+        default:
+            draw_watch();
+            break;
     }
     draw_panel_mask();
     if(s.view == VIEW_WATCH) draw_dimmed(lv_tick_get());
@@ -2016,7 +2106,8 @@ static void sift_render(void)
     if(s_canvas != NULL) lv_obj_invalidate(s_canvas);
 }
 
-static bool point_in_rect(int32_t x, int32_t y, int32_t rx, int32_t ry, int32_t rw, int32_t rh)
+static bool point_in_rect(int32_t x, int32_t y, int32_t rx, int32_t ry,
+                          int32_t rw, int32_t rh)
 {
     return x >= rx && x < rx + rw && y >= ry && y < ry + rh;
 }
@@ -2042,9 +2133,11 @@ static void sift_game_enter(void)
     }
     if(s_game_bg == NULL) {
 #if defined(SIFT_HAS_APP_CANVAS_ALLOC)
-        s_game_bg = (uint16_t *)app_canvas_mem_alloc((size_t)SIFT_W * SIFT_H * sizeof(uint16_t));
+        s_game_bg = (uint16_t *)app_canvas_mem_alloc((size_t)SIFT_W * SIFT_H *
+                                                     sizeof(uint16_t));
 #else
-        s_game_bg = (uint16_t *)lv_malloc((size_t)SIFT_W * SIFT_H * sizeof(uint16_t));
+        s_game_bg =
+            (uint16_t *)lv_malloc((size_t)SIFT_W * SIFT_H * sizeof(uint16_t));
 #endif
     }
     zc_config_t cfg;
@@ -2091,7 +2184,8 @@ static void go_back(void)
 
 static void sift_page_step(int32_t direction)
 {
-    int32_t next = ((int32_t)s.view + direction + SIFT_PAGE_COUNT) % SIFT_PAGE_COUNT;
+    int32_t next =
+        ((int32_t)s.view + direction + SIFT_PAGE_COUNT) % SIFT_PAGE_COUNT;
     open_view((sift_view_t)next);
 }
 
@@ -2110,8 +2204,8 @@ static void sift_handle_swipe(int32_t dx, int32_t dy)
     else {
         open_view(VIEW_WATCH);
     }
-    printf("[sift_watch] swipe dx=%ld dy=%ld view=%d\n",
-           (long)dx, (long)dy, (int)s.view);
+    printf("[sift_watch] swipe dx=%ld dy=%ld view=%d\n", (long)dx, (long)dy,
+           (int)s.view);
 }
 
 static void sift_handle_tap(int x, int y)
@@ -2123,7 +2217,8 @@ static void sift_handle_tap(int x, int y)
         return;
     }
     s.last_input = now;
-    if(s.view != VIEW_TIMER && lv_tick_get() < s.timer_alert_until && point_in_rect(x, y, 22, 404, 346, 28)) {
+    if(s.view != VIEW_TIMER && lv_tick_get() < s.timer_alert_until &&
+       point_in_rect(x, y, 22, 404, 346, 28)) {
         open_view(VIEW_TIMER);
         return;
     }
@@ -2164,14 +2259,17 @@ static void sift_handle_tap(int x, int y)
             }
         }
         if(point_in_rect(x, y, 72, 302, 150, 42)) timer_toggle(now);
-        else if(point_in_rect(x, y, 234, 302, 84, 42)) timer_reset();
+        else if(point_in_rect(x, y, 234, 302, 84, 42))
+            timer_reset();
         return;
     }
 
     if(s.view == VIEW_STOPWATCH) {
         if(point_in_rect(x, y, 22, 318, 107, 38)) sw_toggle(now);
-        else if(point_in_rect(x, y, 141, 318, 107, 38)) sw_lap(now);
-        else if(point_in_rect(x, y, 260, 318, 108, 38)) sw_reset();
+        else if(point_in_rect(x, y, 141, 318, 107, 38))
+            sw_lap(now);
+        else if(point_in_rect(x, y, 260, 318, 108, 38))
+            sw_reset();
         return;
     }
 
@@ -2190,8 +2288,10 @@ static void sift_handle_tap(int x, int y)
             if(!point_in_rect(x, y, rx, ry, rw, rh)) continue;
             s.settings_index = i;
             if(i == 0) s.auto_drift = !s.auto_drift;
-            else if(i == 1) s.h24 = !s.h24;
-            else if(i == 2) s.dim_on = !s.dim_on;
+            else if(i == 1)
+                s.h24 = !s.h24;
+            else if(i == 2)
+                s.dim_on = !s.dim_on;
             else {
                 sift_imu_zero();
                 s.manual_until = 0;
@@ -2212,7 +2312,8 @@ static void sift_handle_key(uint32_t key)
     }
 
     if(s.view == VIEW_ZOMBIE) {
-        if(!zc_key(key) && (key == LV_KEY_HOME || key == LV_KEY_ESC)) open_view(VIEW_APPS);
+        if(!zc_key(key) && (key == LV_KEY_HOME || key == LV_KEY_ESC))
+            open_view(VIEW_APPS);
         s.last_input = now;
         return;
     }
@@ -2221,9 +2322,12 @@ static void sift_handle_key(uint32_t key)
         if(key == LV_KEY_ENTER || key == LV_KEY_NEXT || key == LV_KEY_RIGHT) {
             open_view(VIEW_APPS);
         }
-        else if(key == LV_KEY_LEFT) s.target_roll = clamp_i32(s.target_roll - 6, -45, 45);
-        else if(key == LV_KEY_UP) s.target_pitch = clamp_i32(s.target_pitch - 5, -32, 32);
-        else if(key == LV_KEY_DOWN) s.target_pitch = clamp_i32(s.target_pitch + 5, -32, 32);
+        else if(key == LV_KEY_LEFT)
+            s.target_roll = clamp_i32(s.target_roll - 6, -45, 45);
+        else if(key == LV_KEY_UP)
+            s.target_pitch = clamp_i32(s.target_pitch - 5, -32, 32);
+        else if(key == LV_KEY_DOWN)
+            s.target_pitch = clamp_i32(s.target_pitch + 5, -32, 32);
         s.manual_until = now + 800U;
         s.last_input = now;
         return;
@@ -2237,11 +2341,16 @@ static void sift_handle_key(uint32_t key)
     if(s.view == VIEW_APPS) {
         int32_t col = s.app_index % 3;
         if(key == LV_KEY_RIGHT && s.app_index + 1 < 5) s.app_index++;
-        else if(key == LV_KEY_LEFT && col > 0) s.app_index--;
-        else if(key == LV_KEY_DOWN && s.app_index + 3 < 5) s.app_index = (uint8_t)(s.app_index + 3);
-        else if(key == LV_KEY_UP && s.app_index >= 3) s.app_index = (uint8_t)(s.app_index - 3);
+        else if(key == LV_KEY_LEFT && col > 0)
+            s.app_index--;
+        else if(key == LV_KEY_DOWN && s.app_index + 3 < 5)
+            s.app_index = (uint8_t)(s.app_index + 3);
+        else if(key == LV_KEY_UP && s.app_index >= 3)
+            s.app_index = (uint8_t)(s.app_index - 3);
         else if(key == LV_KEY_ENTER) {
-            open_view(s.app_index == 4 ? VIEW_ZOMBIE : (sift_view_t)(VIEW_TIMER + s.app_index));
+            open_view(s.app_index == 4
+                          ? VIEW_ZOMBIE
+                          : (sift_view_t)(VIEW_TIMER + s.app_index));
         }
         s.last_input = now;
         return;
@@ -2249,34 +2358,43 @@ static void sift_handle_key(uint32_t key)
 
     if(s.view == VIEW_TIMER) {
         if(key == LV_KEY_ENTER) timer_toggle(now);
-        else if(key == LV_KEY_LEFT) timer_select((uint8_t)((s.timer_selected + 3) & 3U));
-        else if(key == LV_KEY_RIGHT) timer_select((uint8_t)((s.timer_selected + 1) & 3U));
+        else if(key == LV_KEY_LEFT)
+            timer_select((uint8_t)((s.timer_selected + 3) & 3U));
+        else if(key == LV_KEY_RIGHT)
+            timer_select((uint8_t)((s.timer_selected + 1) & 3U));
         s.last_input = now;
         return;
     }
 
     if(s.view == VIEW_STOPWATCH) {
         if(key == LV_KEY_ENTER) sw_toggle(now);
-        else if(key == LV_KEY_NEXT) sw_lap(now);
-        else if(key == LV_KEY_LEFT) sw_reset();
+        else if(key == LV_KEY_NEXT)
+            sw_lap(now);
+        else if(key == LV_KEY_LEFT)
+            sw_reset();
         s.last_input = now;
         return;
     }
 
     if(s.view == VIEW_WEATHER) {
-        if(key == LV_KEY_ENTER) s.weather_unit = s.weather_unit == 'C' ? 'F' : 'C';
+        if(key == LV_KEY_ENTER)
+            s.weather_unit = s.weather_unit == 'C' ? 'F' : 'C';
         s.last_input = now;
         return;
     }
 
     if(s.view == VIEW_SETTINGS) {
-        if(key == LV_KEY_DOWN) s.settings_index = (uint8_t)((s.settings_index + 1) & 3U);
-        else if(key == LV_KEY_UP) s.settings_index = (uint8_t)((s.settings_index + 3) & 3U);
+        if(key == LV_KEY_DOWN)
+            s.settings_index = (uint8_t)((s.settings_index + 1) & 3U);
+        else if(key == LV_KEY_UP)
+            s.settings_index = (uint8_t)((s.settings_index + 3) & 3U);
         else if(key == LV_KEY_ENTER) {
             uint8_t i = s.settings_index;
             if(i == 0) s.auto_drift = !s.auto_drift;
-            else if(i == 1) s.h24 = !s.h24;
-            else if(i == 2) s.dim_on = !s.dim_on;
+            else if(i == 1)
+                s.h24 = !s.h24;
+            else if(i == 2)
+                s.dim_on = !s.dim_on;
             else {
                 sift_imu_zero();
             }
@@ -2285,10 +2403,10 @@ static void sift_handle_key(uint32_t key)
     }
 }
 
-static bool event_point(lv_event_t *event, int32_t *x, int32_t *y)
+static bool event_point(lv_event_t * event, int32_t * x, int32_t * y)
 {
     (void)event;
-    lv_indev_t *indev = lv_indev_active();
+    lv_indev_t * indev = lv_indev_active();
     if(indev == NULL) return false;
     lv_point_t point;
     lv_indev_get_point(indev, &point);
@@ -2299,7 +2417,7 @@ static bool event_point(lv_event_t *event, int32_t *x, int32_t *y)
     return *x >= 0 && *x < SIFT_W && *y >= 0 && *y < SIFT_H;
 }
 
-static void sift_canvas_event_cb(lv_event_t *event)
+static void sift_canvas_event_cb(lv_event_t * event)
 {
     lv_event_code_t code = lv_event_get_code(event);
     if(code == LV_EVENT_KEY) {
@@ -2317,7 +2435,8 @@ static void sift_canvas_event_cb(lv_event_t *event)
             if(has_point) zc_pointer(ZC_POINTER_MOVE, (int)x, (int)y);
         }
         else if(code == LV_EVENT_RELEASED) {
-            zc_pointer(has_point ? ZC_POINTER_UP : ZC_POINTER_CANCEL, (int)x, (int)y);
+            zc_pointer(has_point ? ZC_POINTER_UP : ZC_POINTER_CANCEL, (int)x,
+                       (int)y);
         }
         else if(code == LV_EVENT_PRESS_LOST) {
             zc_pointer(ZC_POINTER_CANCEL, 0, 0);
@@ -2368,18 +2487,21 @@ static void sift_canvas_event_cb(lv_event_t *event)
             s.target_pitch = s.touch_start_pitch;
             s.manual_until = 0;
         }
-        if(!s.touch_suppress && s.view == VIEW_WATCH && s.touch_orbit && !s.touch_swiping) {
+        if(!s.touch_suppress && s.view == VIEW_WATCH && s.touch_orbit &&
+           !s.touch_swiping) {
             s.orbit_yaw_target = s.touch_start_yaw +
                                  (float)dx * (2.0f * SIFT_PI) / (float)SIFT_W;
-            s.orbit_elev_target = clamp_f32(s.touch_start_elev -
-                                            (float)dy * 1.15f / (float)SIFT_H,
-                                            SIFT_ORBIT_MIN_ELEV, SIFT_ORBIT_MAX_ELEV);
+            s.orbit_elev_target = clamp_f32(
+                s.touch_start_elev - (float)dy * 1.15f / (float)SIFT_H,
+                SIFT_ORBIT_MIN_ELEV, SIFT_ORBIT_MAX_ELEV);
             s.manual_until = lv_tick_get() + 1800U;
             s.last_input = lv_tick_get();
         }
         else if(!s.touch_suppress && s.view == VIEW_WATCH && !s.touch_swiping) {
-            s.target_roll = clamp_i32(s.touch_start_roll + dx * 150 / SIFT_W, -45, 45);
-            s.target_pitch = clamp_i32(s.touch_start_pitch + dy * 105 / SIFT_H, -32, 32);
+            s.target_roll =
+                clamp_i32(s.touch_start_roll + dx * 150 / SIFT_W, -45, 45);
+            s.target_pitch =
+                clamp_i32(s.touch_start_pitch + dy * 105 / SIFT_H, -32, 32);
             s.manual_until = lv_tick_get() + 1800U;
             s.last_input = lv_tick_get();
         }
@@ -2408,16 +2530,19 @@ static void sift_canvas_event_cb(lv_event_t *event)
         int32_t ay = dy < 0 ? -dy : dy;
         int32_t maxd = ax > ay ? ax : ay;
         uint32_t elapsed = lv_tick_get() - s.touch_at;
-        bool swipe = !orbit && (swiping || (has_point && !suppress &&
-                     (maxd >= SIFT_SWIPE_LONG ||
-                      (maxd >= SIFT_SWIPE_MIN &&
-                       (s.view != VIEW_WATCH || elapsed <= 280U)))));
+        bool swipe =
+            !orbit &&
+            (swiping || (has_point && !suppress &&
+                         (maxd >= SIFT_SWIPE_LONG ||
+                          (maxd >= SIFT_SWIPE_MIN &&
+                           (s.view != VIEW_WATCH || elapsed <= 280U)))));
         if(swipe) {
             sift_handle_swipe(dx, dy);
             return;
         }
         if(!moved && has_point) sift_handle_tap(x, y);
-        else if(s.view == VIEW_WATCH && moved) s.manual_until = lv_tick_get() + 650U;
+        else if(s.view == VIEW_WATCH && moved)
+            s.manual_until = lv_tick_get() + 650U;
         return;
     }
 
@@ -2471,7 +2596,8 @@ static void imu_init(void)
         s_imu_acce = NULL;
         return;
     }
-    rt_device_control(s_imu_acce, RT_SENSOR_CTRL_SET_ODR, (void *)(rt_uint32_t)104);
+    rt_device_control(s_imu_acce, RT_SENSOR_CTRL_SET_ODR,
+                      (void *)(rt_uint32_t)104);
 }
 
 static void sift_imu_zero(void)
@@ -2543,14 +2669,20 @@ static void imu_update(void)
     }
     else if(fz <= SIFT_IMU_FACE_UP_MG) {
         s_imu_face_down = false;
-        if(!s_imu_flip_armed && now - s_imu_last_flip_at >= SIFT_IMU_FLIP_COOLDOWN_MS) {
+        if(!s_imu_flip_armed &&
+           now - s_imu_last_flip_at >= SIFT_IMU_FLIP_COOLDOWN_MS) {
             s_imu_flip_armed = true;
         }
     }
 }
 #else
-static void imu_init(void) {}
-static void imu_update(void) { s.sensor_live = false; }
+static void imu_init(void)
+{
+}
+static void imu_update(void)
+{
+    s.sensor_live = false;
+}
 static void sift_imu_zero(void)
 {
     s.sensor_roll = 0;
@@ -2581,11 +2713,12 @@ static void key_init(void)
     s_key1_raw_at = 0;
     s_key2_raw_at = 0;
     printf("[sift_watch] keys ready key1=%d key2=%d levels=%d,%d\n",
-           (int)SIFT_KEY1_PIN, (int)SIFT_KEY2_PIN,
-           s_key1_down ? 1 : 0, s_key2_down ? 1 : 0);
+           (int)SIFT_KEY1_PIN, (int)SIFT_KEY2_PIN, s_key1_down ? 1 : 0,
+           s_key2_down ? 1 : 0);
 }
 
-static bool key_pressed_edge(int pin, bool *raw, bool *down, uint32_t *raw_at, uint32_t now)
+static bool key_pressed_edge(int pin, bool * raw, bool * down,
+                             uint32_t * raw_at, uint32_t now)
 {
     bool level = rt_pin_read(pin) != 0; /* KEY1/KEY2 are active high. */
     if(level != *raw) {
@@ -2602,14 +2735,16 @@ static bool key_pressed_edge(int pin, bool *raw, bool *down, uint32_t *raw_at, u
 static void key_poll(void)
 {
     uint32_t now = lv_tick_get();
-    if(key_pressed_edge(SIFT_KEY1_PIN, &s_key1_raw, &s_key1_down, &s_key1_raw_at, now)) {
+    if(key_pressed_edge(SIFT_KEY1_PIN, &s_key1_raw, &s_key1_down,
+                        &s_key1_raw_at, now)) {
         printf("[sift_watch] key1 press\n");
         vibe_pulse();
         sift_handle_key(LV_KEY_HOME);
         snprintf(s.notice, sizeof(s.notice), "KEY1");
         s.notice_until = lv_tick_get() + 600U;
     }
-    if(key_pressed_edge(SIFT_KEY2_PIN, &s_key2_raw, &s_key2_down, &s_key2_raw_at, now)) {
+    if(key_pressed_edge(SIFT_KEY2_PIN, &s_key2_raw, &s_key2_down,
+                        &s_key2_raw_at, now)) {
         printf("[sift_watch] key2 press\n");
         vibe_pulse();
         sift_handle_key(LV_KEY_ENTER);
@@ -2650,15 +2785,29 @@ static void vibe_update(uint32_t now)
     }
 }
 #else
-static void key_init(void) {}
-static void key_poll(void) {}
-static void vibe_init(void) {}
-static void vibe_pulse_ms(uint32_t ms) { (void)ms; }
-static void vibe_pulse(void) {}
-static void vibe_update(uint32_t now) { (void)now; }
+static void key_init(void)
+{
+}
+static void key_poll(void)
+{
+}
+static void vibe_init(void)
+{
+}
+static void vibe_pulse_ms(uint32_t ms)
+{
+    (void)ms;
+}
+static void vibe_pulse(void)
+{
+}
+static void vibe_update(uint32_t now)
+{
+    (void)now;
+}
 #endif
 
-static void sift_tick_cb(lv_timer_t *timer)
+static void sift_tick_cb(lv_timer_t * timer)
 {
     (void)timer;
     uint32_t now = lv_tick_get();
@@ -2704,7 +2853,8 @@ static void sift_tick_cb(lv_timer_t *timer)
             if(s.empty_since == 0U) s.empty_since = now;
             s.stats.flow = 0;
         }
-        else s.empty_since = 0;
+        else
+            s.empty_since = 0;
     }
 
     update_idle(now);
@@ -2717,7 +2867,7 @@ static void sift_create_group(void)
     lv_group_add_obj(s_group, s_canvas);
     lv_group_focus_obj(s_canvas);
 
-    lv_indev_t *indev = NULL;
+    lv_indev_t * indev = NULL;
     while((indev = lv_indev_get_next(indev)) != NULL) {
         lv_indev_type_t type = lv_indev_get_type(indev);
         if(type == LV_INDEV_TYPE_KEYPAD || type == LV_INDEV_TYPE_ENCODER) {
@@ -2728,10 +2878,13 @@ static void sift_create_group(void)
 
 void sift_watch_create(void)
 {
-    lv_obj_t *screen = lv_screen_active();
-    lv_display_t *display = lv_display_get_default();
-    int32_t screen_w = display != NULL ? lv_display_get_horizontal_resolution(display) : SIFT_W;
-    int32_t screen_h = display != NULL ? lv_display_get_vertical_resolution(display) : SIFT_H;
+    lv_obj_t * screen = lv_screen_active();
+    lv_display_t * display = lv_display_get_default();
+    int32_t screen_w = display != NULL
+                           ? lv_display_get_horizontal_resolution(display)
+                           : SIFT_W;
+    int32_t screen_h =
+        display != NULL ? lv_display_get_vertical_resolution(display) : SIFT_H;
 
     app_set_name("sift_watch");
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x040B08), 0);
@@ -2756,19 +2909,22 @@ void sift_watch_create(void)
     s.flip_angle = 0.0f;
 
     time_t now_time = time(NULL);
-    if(now_time > (time_t)SIFT_CLOCK_MIN_VALID) s.clock_epoch = (uint32_t)now_time;
-    else s.clock_epoch = SIFT_CLOCK_EPOCH_2026_01_01;
+    if(now_time > (time_t)SIFT_CLOCK_MIN_VALID)
+        s.clock_epoch = (uint32_t)now_time;
+    else
+        s.clock_epoch = SIFT_CLOCK_EPOCH_2026_01_01;
     s.clock_base_tick = lv_tick_get();
 
     sand_init();
 
 #if defined(SIFT_HAS_APP_CANVAS_ALLOC)
-    s_fb = (uint16_t *)app_canvas_mem_alloc((size_t)SIFT_W * SIFT_H * sizeof(uint16_t));
+    s_fb = (uint16_t *)app_canvas_mem_alloc((size_t)SIFT_W * SIFT_H *
+                                            sizeof(uint16_t));
 #else
     s_fb = (uint16_t *)lv_malloc((size_t)SIFT_W * SIFT_H * sizeof(uint16_t));
 #endif
     if(s_fb == NULL) {
-        lv_obj_t *error = lv_label_create(screen);
+        lv_obj_t * error = lv_label_create(screen);
         lv_label_set_text(error, "SIFT framebuffer allocation failed");
         lv_obj_center(error);
         printf("[sift_watch] framebuffer allocation failed\n");
@@ -2796,7 +2952,8 @@ void sift_watch_create(void)
     lv_obj_set_style_radius(s_canvas, 0, 0);
     lv_obj_remove_flag(s_canvas, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(s_canvas, LV_OBJ_FLAG_CLICKABLE);
-    lv_canvas_set_buffer(s_canvas, s_fb, SIFT_W, SIFT_H, LV_COLOR_FORMAT_RGB565);
+    lv_canvas_set_buffer(s_canvas, s_fb, SIFT_W, SIFT_H,
+                         LV_COLOR_FORMAT_RGB565);
     lv_obj_add_event_cb(s_canvas, sift_canvas_event_cb, LV_EVENT_ALL, NULL);
     sift_create_group();
 
@@ -2809,11 +2966,12 @@ void sift_watch_create(void)
     if(s_render_timer == NULL) {
         printf("[sift_watch] render timer failed\n");
     }
-    printf("[sift_watch] created display=%ldx%ld\n", (long)screen_w, (long)screen_h);
+    printf("[sift_watch] created display=%ldx%ld\n", (long)screen_w,
+           (long)screen_h);
 }
 
 #if defined(LVGL_AI_EZIP_ASSETS) && defined(RT_USING_FINSH)
-static int sift_zgame(int argc, char **argv)
+static int sift_zgame(int argc, char ** argv)
 {
     (void)argc;
     (void)argv;

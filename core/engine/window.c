@@ -16,15 +16,15 @@
 #ifdef _WIN32
 
 #ifndef WIN32_LEAN_AND_MEAN
-    #define WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
 #ifndef NOMINMAX
-    #define NOMINMAX
+#define NOMINMAX
 #endif
 
 #include <windows.h>
 
-#define WINDOW_CLASS L"engine_window"
+#define WINDOW_CLASS      L"engine_window"
 #define WINDOW_CLASS_UTF8 "engine_window"
 
 struct window {
@@ -97,18 +97,12 @@ typedef struct {
 
 /* LVGL key codes from lv_key_t; names match lvgl_ai_tools.core.keys. */
 static const key_map_t key_map[] = {
-    {VK_UP, 17, "UP"},
-    {VK_DOWN, 18, "DOWN"},
-    {VK_RIGHT, 19, "RIGHT"},
-    {VK_LEFT, 20, "LEFT"},
-    {VK_ESCAPE, 27, "ESC"},
-    {VK_DELETE, 127, "DEL"},
-    {VK_BACK, 8, "BACKSPACE"},
-    {VK_RETURN, 10, "ENTER"},
-    {VK_NEXT, 9, "NEXT"},
-    {VK_PRIOR, 11, "PREV"},
-    {VK_HOME, 2, "HOME"},
-    {VK_END, 3, "END"},
+    {VK_UP, 17, "UP"},         {VK_DOWN, 18, "DOWN"},
+    {VK_RIGHT, 19, "RIGHT"},   {VK_LEFT, 20, "LEFT"},
+    {VK_ESCAPE, 27, "ESC"},    {VK_DELETE, 127, "DEL"},
+    {VK_BACK, 8, "BACKSPACE"}, {VK_RETURN, 10, "ENTER"},
+    {VK_NEXT, 9, "NEXT"},      {VK_PRIOR, 11, "PREV"},
+    {VK_HOME, 2, "HOME"},      {VK_END, 3, "END"},
 };
 
 static const key_map_t * lookup_key(UINT vk)
@@ -119,11 +113,8 @@ static const key_map_t * lookup_key(UINT vk)
     return NULL;
 }
 
-static void emit_pointer_at(window_t * window,
-                                window_pointer_action_t action,
-                                int32_t x,
-                                int32_t y,
-                                bool pressed)
+static void emit_pointer_at(window_t * window, window_pointer_action_t action,
+                            int32_t x, int32_t y, bool pressed)
 {
     window_event_t event;
     memset(&event, 0, sizeof(event));
@@ -135,8 +126,7 @@ static void emit_pointer_at(window_t * window,
     if(window->callback != NULL) window->callback(window->user, &event);
 }
 
-static void emit_key(window_t * window, const key_map_t * key,
-                         bool pressed)
+static void emit_key(window_t * window, const key_map_t * key, bool pressed)
 {
     window_event_t event;
     memset(&event, 0, sizeof(event));
@@ -147,11 +137,10 @@ static void emit_key(window_t * window, const key_map_t * key,
     if(window->callback != NULL) window->callback(window->user, &event);
 }
 
-static LRESULT CALLBACK window_proc(HWND hwnd, UINT message,
-                                        WPARAM wparam, LPARAM lparam)
+static LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam,
+                                    LPARAM lparam)
 {
-    window_t * window =
-        (window_t *)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    window_t * window = (window_t *)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
 
     switch(message) {
         case WM_NCCREATE: {
@@ -189,9 +178,8 @@ static LRESULT CALLBACK window_proc(HWND hwnd, UINT message,
                     clamp((int32_t)(short)LOWORD(lparam), window->width);
                 window->pointer_y =
                     clamp((int32_t)(short)HIWORD(lparam), window->height);
-                emit_pointer_at(window, WINDOW_POINTER_MOVE,
-                                    window->pointer_x, window->pointer_y,
-                                    (wparam & MK_LBUTTON) != 0);
+                emit_pointer_at(window, WINDOW_POINTER_MOVE, window->pointer_x,
+                                window->pointer_y, (wparam & MK_LBUTTON) != 0);
             }
             return 0;
         case WM_LBUTTONDOWN:
@@ -202,8 +190,8 @@ static LRESULT CALLBACK window_proc(HWND hwnd, UINT message,
                 window->pointer_y =
                     clamp((int32_t)(short)HIWORD(lparam), window->height);
                 SetCapture(hwnd);
-                emit_pointer_at(window, WINDOW_POINTER_DOWN,
-                                    window->pointer_x, window->pointer_y, true);
+                emit_pointer_at(window, WINDOW_POINTER_DOWN, window->pointer_x,
+                                window->pointer_y, true);
             }
             return 0;
         case WM_LBUTTONUP:
@@ -214,9 +202,8 @@ static LRESULT CALLBACK window_proc(HWND hwnd, UINT message,
                 window->pointer_y =
                     clamp((int32_t)(short)HIWORD(lparam), window->height);
                 ReleaseCapture();
-                emit_pointer_at(window, WINDOW_POINTER_UP,
-                                    window->pointer_x, window->pointer_y,
-                                    false);
+                emit_pointer_at(window, WINDOW_POINTER_UP, window->pointer_x,
+                                window->pointer_y, false);
             }
             return 0;
         case WM_CAPTURECHANGED:
@@ -224,9 +211,8 @@ static LRESULT CALLBACK window_proc(HWND hwnd, UINT message,
              * next real click does not start from a stuck pressed state. */
             if(window != NULL && window->pointer_down) {
                 window->pointer_down = false;
-                emit_pointer_at(window, WINDOW_POINTER_UP,
-                                    window->pointer_x, window->pointer_y,
-                                    false);
+                emit_pointer_at(window, WINDOW_POINTER_UP, window->pointer_x,
+                                window->pointer_y, false);
             }
             return 0;
         case WM_KEYDOWN:
@@ -253,11 +239,8 @@ bool window_available(void)
     return true;
 }
 
-window_t * window_create(uint32_t width,
-                                 uint32_t height,
-                                 const char * title,
-                                 window_input_cb callback,
-                                 void * user)
+window_t * window_create(uint32_t width, uint32_t height, const char * title,
+                         window_input_cb callback, void * user)
 {
     if(width == 0 || height == 0) return NULL;
 
@@ -298,10 +281,9 @@ window_t * window_create(uint32_t width,
                         -1, wide_title,
                         (int)(sizeof(wide_title) / sizeof(wide_title[0])));
 
-    HWND hwnd = CreateWindowExW(0, WINDOW_CLASS, wide_title, style, 100,
-                                100, rect.right - rect.left,
-                                rect.bottom - rect.top, NULL, NULL, instance,
-                                window);
+    HWND hwnd = CreateWindowExW(0, WINDOW_CLASS, wide_title, style, 100, 100,
+                                rect.right - rect.left, rect.bottom - rect.top,
+                                NULL, NULL, instance, window);
     if(hwnd == NULL) {
         fprintf(stderr, "[engine] cannot create the window (error %lu)\n",
                 (unsigned long)GetLastError());
@@ -362,20 +344,16 @@ bool window_available(void)
     return false;
 }
 
-window_t * window_create(uint32_t width,
-                                 uint32_t height,
-                                 const char * title,
-                                 window_input_cb callback,
-                                 void * user)
+window_t * window_create(uint32_t width, uint32_t height, const char * title,
+                         window_input_cb callback, void * user)
 {
     (void)width;
     (void)height;
     (void)title;
     (void)callback;
     (void)user;
-    fprintf(stderr,
-            "[engine] window mode is only implemented on Windows; "
-            "continuing headless\n");
+    fprintf(stderr, "[engine] window mode is only implemented on Windows; "
+                    "continuing headless\n");
     return NULL;
 }
 

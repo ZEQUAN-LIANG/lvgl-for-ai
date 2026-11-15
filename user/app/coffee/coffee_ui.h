@@ -12,30 +12,30 @@
 
 #define COFFEE_SCREEN_W 800
 #define COFFEE_SCREEN_H 600
-#define COFFEE_TOP_H 58
-#define COFFEE_NAV_W 96
-#define COFFEE_PAGE_W (COFFEE_SCREEN_W - COFFEE_NAV_W)
-#define COFFEE_PAGE_H (COFFEE_SCREEN_H - COFFEE_TOP_H)
+#define COFFEE_TOP_H    58
+#define COFFEE_NAV_W    96
+#define COFFEE_PAGE_W   (COFFEE_SCREEN_W - COFFEE_NAV_W)
+#define COFFEE_PAGE_H   (COFFEE_SCREEN_H - COFFEE_TOP_H)
 
-#define COFFEE_BG 0x0D0B09
-#define COFFEE_BG_DEEP 0x070605
-#define COFFEE_BG_WARM 0x1B1510
-#define COFFEE_CARD 0x17140F
-#define COFFEE_CARD_UP 0x211B14
-#define COFFEE_LINE 0x2E261C
-#define COFFEE_LINE_SOFT 0x241E17
-#define COFFEE_GOLD 0xC8A464
+#define COFFEE_BG          0x0D0B09
+#define COFFEE_BG_DEEP     0x070605
+#define COFFEE_BG_WARM     0x1B1510
+#define COFFEE_CARD        0x17140F
+#define COFFEE_CARD_UP     0x211B14
+#define COFFEE_LINE        0x2E261C
+#define COFFEE_LINE_SOFT   0x241E17
+#define COFFEE_GOLD        0xC8A464
 #define COFFEE_GOLD_BRIGHT 0xE6C68C
-#define COFFEE_GOLD_DIM 0x7C6440
-#define COFFEE_CREAM 0xF3EBDD
-#define COFFEE_TEXT 0xF3EBDD
-#define COFFEE_MUTED 0x9A8E7D
-#define COFFEE_DIM 0x6E6355
-#define COFFEE_GREEN 0x8FB47E
-#define COFFEE_AMBER 0xD9A441
-#define COFFEE_RED 0xC56C5A
-#define COFFEE_BLUE 0x7FA7B8
-#define COFFEE_SHADOW 0x000000
+#define COFFEE_GOLD_DIM    0x7C6440
+#define COFFEE_CREAM       0xF3EBDD
+#define COFFEE_TEXT        0xF3EBDD
+#define COFFEE_MUTED       0x9A8E7D
+#define COFFEE_DIM         0x6E6355
+#define COFFEE_GREEN       0x8FB47E
+#define COFFEE_AMBER       0xD9A441
+#define COFFEE_RED         0xC56C5A
+#define COFFEE_BLUE        0x7FA7B8
+#define COFFEE_SHADOW      0x000000
 
 typedef enum {
     COFFEE_FT_12,
@@ -206,12 +206,12 @@ lv_obj_t * coffee_card(lv_obj_t * parent, int x, int y, int w, int h,
 lv_obj_t * coffee_label(lv_obj_t * parent, const char * text,
                         coffee_font_id_t font, uint32_t color);
 lv_obj_t * coffee_label_at(lv_obj_t * parent, const char * text,
-                           coffee_font_id_t font, uint32_t color,
-                           int x, int y, int w, int h);
-lv_obj_t * coffee_icon_obj(lv_obj_t * parent, coffee_icon_id_t icon,
-                           int x, int y, int size, uint32_t color);
-lv_obj_t * coffee_art_obj(lv_obj_t * parent, coffee_art_id_t art,
-                          int x, int y, int size);
+                           coffee_font_id_t font, uint32_t color, int x, int y,
+                           int w, int h);
+lv_obj_t * coffee_icon_obj(lv_obj_t * parent, coffee_icon_id_t icon, int x,
+                           int y, int size, uint32_t color);
+lv_obj_t * coffee_art_obj(lv_obj_t * parent, coffee_art_id_t art, int x, int y,
+                          int size);
 lv_obj_t * coffee_icon_button(lv_obj_t * parent, int x, int y, int size,
                               coffee_icon_id_t icon, uint32_t color,
                               uint32_t bg, const char * name);
@@ -219,13 +219,13 @@ lv_obj_t * coffee_pill(lv_obj_t * parent, int x, int y, int w, int h,
                        uint32_t bg, const char * text, coffee_font_id_t font,
                        uint32_t fg, int radius);
 lv_obj_t * coffee_button(lv_obj_t * parent, int x, int y, int w, int h,
-                         bool primary, const char * text,
-                         coffee_font_id_t font, const char * name);
+                         bool primary, const char * text, coffee_font_id_t font,
+                         const char * name);
 lv_obj_t * coffee_bar(lv_obj_t * parent, int x, int y, int w, int h,
                       uint32_t track, uint32_t fill, const char * name);
 void coffee_bar_set(lv_obj_t * fill, int pct);
-lv_obj_t * coffee_toggle(lv_obj_t * parent, int x, int y, int w, int h,
-                         bool on, const char * name);
+lv_obj_t * coffee_toggle(lv_obj_t * parent, int x, int y, int w, int h, bool on,
+                         const char * name);
 void coffee_toggle_set(lv_obj_t * track, bool on);
 void coffee_clickable(lv_obj_t * obj, const char * name);
 void coffee_hide(lv_obj_t * obj, bool hidden);

@@ -26,20 +26,24 @@ static const char * const strength_ids[5] = {
     "custom_strength_4", "custom_strength_5",
 };
 static const char * const temp_ids[3] = {
-    "custom_temp_88", "custom_temp_93", "custom_temp_96",
+    "custom_temp_88",
+    "custom_temp_93",
+    "custom_temp_96",
 };
 static const char * const foam_ids[4] = {
-    "custom_foam_none", "custom_foam_light",
-    "custom_foam_creamy", "custom_foam_rich",
+    "custom_foam_none",
+    "custom_foam_light",
+    "custom_foam_creamy",
+    "custom_foam_rich",
 };
 
 static void style_pill(lv_obj_t * pill, lv_obj_t * label, bool on)
 {
-    lv_obj_set_style_bg_color(pill, lv_color_hex(on ? COFFEE_GOLD
-                                                    : COFFEE_CARD_UP), 0);
+    lv_obj_set_style_bg_color(
+        pill, lv_color_hex(on ? COFFEE_GOLD : COFFEE_CARD_UP), 0);
     lv_obj_set_style_border_width(pill, 1, 0);
-    lv_obj_set_style_border_color(pill, lv_color_hex(on ? COFFEE_GOLD
-                                                        : COFFEE_LINE), 0);
+    lv_obj_set_style_border_color(
+        pill, lv_color_hex(on ? COFFEE_GOLD : COFFEE_LINE), 0);
     lv_obj_set_style_text_color(label,
                                 lv_color_hex(on ? 0x191207 : COFFEE_MUTED), 0);
 }
@@ -54,7 +58,8 @@ static void custom_refresh(void)
             lv_obj_set_style_image_recolor(icon,
                                            lv_color_hex(i < drink->strength
                                                             ? COFFEE_GOLD_BRIGHT
-                                                            : COFFEE_LINE), 0);
+                                                            : COFFEE_LINE),
+                                           0);
         }
     }
     if(strength_value != NULL) {
@@ -74,19 +79,19 @@ static void custom_refresh(void)
         lv_label_set_text(volume_value, buffer);
     }
 
-    static const int temps[3] = { 88, 93, 96 };
+    static const int temps[3] = {88, 93, 96};
     for(int i = 0; i < 3; i++) {
         if(temp_pills[i] == NULL) continue;
         char temp_text[16];
         coffee_format_temp(temp_text, sizeof(temp_text), temps[i]);
         lv_label_set_text(temp_labels[i], temp_text);
-        style_pill(temp_pills[i], temp_labels[i],
-                   drink->temp_c == temps[i]);
+        style_pill(temp_pills[i], temp_labels[i], drink->temp_c == temps[i]);
     }
 
     if(milk_value != NULL) {
         char buffer[24];
-        snprintf(buffer, sizeof(buffer), "%d %s", drink->milk_ml, COFFEE_TXT_ML);
+        snprintf(buffer, sizeof(buffer), "%d %s", drink->milk_ml,
+                 COFFEE_TXT_ML);
         lv_label_set_text(milk_value, buffer);
     }
 
@@ -103,14 +108,14 @@ static void custom_refresh(void)
         lv_image_set_src(favorite_icon,
                          coffee_icon(favorite ? COFFEE_ICON_HEART_FILLED
                                               : COFFEE_ICON_HEART));
-        lv_obj_set_style_image_recolor(favorite_icon,
-                                       lv_color_hex(favorite
-                                                        ? COFFEE_GOLD_BRIGHT
-                                                        : COFFEE_MUTED), 0);
+        lv_obj_set_style_image_recolor(
+            favorite_icon,
+            lv_color_hex(favorite ? COFFEE_GOLD_BRIGHT : COFFEE_MUTED), 0);
     }
     if(favorite_label != NULL) {
-        lv_label_set_text(favorite_label, favorite ? COFFEE_TXT_FAVORITED
-                                                   : COFFEE_TXT_SAVE_TO_FAVORITE);
+        lv_label_set_text(favorite_label, favorite
+                                              ? COFFEE_TXT_FAVORITED
+                                              : COFFEE_TXT_SAVE_TO_FAVORITE);
     }
 }
 
@@ -181,7 +186,8 @@ static void double_event_cb(lv_event_t * event)
     if(lv_event_get_code(event) != LV_EVENT_CLICKED) return;
     coffee_drink_t * drink = &coffee_drinks[drink_id];
     drink->double_cup = !drink->double_cup;
-    coffee_log("custom double=%d drink=%d", drink->double_cup ? 1 : 0, drink_id);
+    coffee_log("custom double=%d drink=%d", drink->double_cup ? 1 : 0,
+               drink_id);
     custom_refresh();
 }
 
@@ -216,12 +222,11 @@ static void cancel_event_cb(lv_event_t * event)
 static void save_event_cb(lv_event_t * event)
 {
     if(lv_event_get_code(event) != LV_EVENT_CLICKED) return;
-    coffee_log("custom save drink=%d volume=%d strength=%d temp=%d milk=%d foam=%d",
-               drink_id, coffee_drinks[drink_id].volume,
-               coffee_drinks[drink_id].strength,
-               coffee_drinks[drink_id].temp_c,
-               coffee_drinks[drink_id].milk_ml,
-               coffee_drinks[drink_id].foam);
+    coffee_log(
+        "custom save drink=%d volume=%d strength=%d temp=%d milk=%d foam=%d",
+        drink_id, coffee_drinks[drink_id].volume,
+        coffee_drinks[drink_id].strength, coffee_drinks[drink_id].temp_c,
+        coffee_drinks[drink_id].milk_ml, coffee_drinks[drink_id].foam);
     coffee_modal_close();
     coffee_toast(COFFEE_TXT_SAVED);
     coffee_home_refresh();
@@ -272,14 +277,14 @@ void coffee_open_custom(int drink)
     lv_obj_t * panel = coffee_modal_open(640, 480);
     if(panel == NULL) return;
 
-    coffee_label_at(panel, COFFEE_TXT_CUSTOM_TITLE, COFFEE_FT_18B,
-                    COFFEE_CREAM, 24, 16, 300, 24);
-    coffee_label_at(panel, COFFEE_TXT_CUSTOM_SUB, COFFEE_FT_12,
-                    COFFEE_MUTED, 24, 42, 360, 16);
+    coffee_label_at(panel, COFFEE_TXT_CUSTOM_TITLE, COFFEE_FT_18B, COFFEE_CREAM,
+                    24, 16, 300, 24);
+    coffee_label_at(panel, COFFEE_TXT_CUSTOM_SUB, COFFEE_FT_12, COFFEE_MUTED,
+                    24, 42, 360, 16);
 
-    lv_obj_t * close = coffee_icon_button(panel, 586, 16, 34,
-                                           COFFEE_ICON_CLOSE, COFFEE_MUTED,
-                                           COFFEE_CARD_UP, "custom_close");
+    lv_obj_t * close =
+        coffee_icon_button(panel, 586, 16, 34, COFFEE_ICON_CLOSE, COFFEE_MUTED,
+                           COFFEE_CARD_UP, "custom_close");
     lv_obj_add_event_cb(close, cancel_event_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t * art_glow = coffee_box(panel, 24, 74, 176, 176);
@@ -291,20 +296,19 @@ void coffee_open_custom(int drink)
     lv_obj_t * name = coffee_label_at(panel, drink_ptr->name, COFFEE_FT_18B,
                                       COFFEE_CREAM, 24, 260, 176, 24);
     lv_obj_set_style_text_align(name, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_t * italian = coffee_label_at(panel, drink_ptr->italian,
-                                         COFFEE_FT_12, COFFEE_GOLD,
-                                         24, 286, 176, 16);
+    lv_obj_t * italian = coffee_label_at(
+        panel, drink_ptr->italian, COFFEE_FT_12, COFFEE_GOLD, 24, 286, 176, 16);
     lv_obj_set_style_text_align(italian, LV_TEXT_ALIGN_CENTER, 0);
 
-    lv_obj_t * fav = coffee_card(panel, 24, 316, 176, 42, 21,
-                                 COFFEE_CARD_UP, COFFEE_GOLD_DIM);
+    lv_obj_t * fav = coffee_card(panel, 24, 316, 176, 42, 21, COFFEE_CARD_UP,
+                                 COFFEE_GOLD_DIM);
     coffee_clickable(fav, "custom_favorite");
     lv_obj_add_event_cb(fav, favorite_event_cb, LV_EVENT_CLICKED, NULL);
-    favorite_icon = coffee_icon_obj(fav, COFFEE_ICON_HEART, 14, 11, 20,
-                                    COFFEE_MUTED);
-    favorite_label = coffee_label_at(fav, COFFEE_TXT_SAVE_TO_FAVORITE,
-                                     COFFEE_FT_13, COFFEE_CREAM,
-                                     42, 11, 124, 20);
+    favorite_icon =
+        coffee_icon_obj(fav, COFFEE_ICON_HEART, 14, 11, 20, COFFEE_MUTED);
+    favorite_label =
+        coffee_label_at(fav, COFFEE_TXT_SAVE_TO_FAVORITE, COFFEE_FT_13,
+                        COFFEE_CREAM, 42, 11, 124, 20);
     lv_obj_set_style_text_align(favorite_label, LV_TEXT_ALIGN_CENTER, 0);
 
     int x = 228;
@@ -312,98 +316,84 @@ void coffee_open_custom(int drink)
     int y = 76;
 
     if(drink_ptr->strength > 0) {
-        coffee_label_at(panel, COFFEE_TXT_STRENGTH, COFFEE_FT_13,
-                        COFFEE_MUTED, x, y + 12, 60, 18);
+        coffee_label_at(panel, COFFEE_TXT_STRENGTH, COFFEE_FT_13, COFFEE_MUTED,
+                        x, y + 12, 60, 18);
         for(int i = 0; i < 5; i++) {
-            lv_obj_t * button = coffee_icon_button(panel, x + 70 + i * 32,
-                                                    y + 4, 30,
-                                                    COFFEE_ICON_BEAN,
-                                                    COFFEE_LINE,
-                                                    COFFEE_CARD,
-                                                    strength_ids[i]);
+            lv_obj_t * button = coffee_icon_button(
+                panel, x + 70 + i * 32, y + 4, 30, COFFEE_ICON_BEAN,
+                COFFEE_LINE, COFFEE_CARD, strength_ids[i]);
             lv_obj_add_event_cb(button, strength_event_cb, LV_EVENT_CLICKED,
                                 coffee_int(i));
             strength_buttons[i] = button;
         }
-        strength_value = coffee_label_at(panel, "", COFFEE_FT_13,
-                                          COFFEE_MUTED, x + 290, y + 12,
-                                          50, 18);
+        strength_value = coffee_label_at(panel, "", COFFEE_FT_13, COFFEE_MUTED,
+                                         x + 290, y + 12, 50, 18);
         lv_obj_set_style_text_align(strength_value, LV_TEXT_ALIGN_RIGHT, 0);
     }
     y += 46;
     add_divider(panel, x, y - 8, width);
 
     if(!drink_ptr->steam_only) {
-        coffee_label_at(panel, COFFEE_TXT_VOLUME, COFFEE_FT_13,
-                        COFFEE_MUTED, x, y + 18, 60, 18);
-        lv_obj_t * minus = coffee_icon_button(panel, x + 70, y + 4, 38,
-                                               COFFEE_ICON_MINUS,
-                                               COFFEE_GOLD_BRIGHT,
-                                               COFFEE_CARD_UP,
-                                               "custom_volume_minus");
+        coffee_label_at(panel, COFFEE_TXT_VOLUME, COFFEE_FT_13, COFFEE_MUTED, x,
+                        y + 18, 60, 18);
+        lv_obj_t * minus = coffee_icon_button(
+            panel, x + 70, y + 4, 38, COFFEE_ICON_MINUS, COFFEE_GOLD_BRIGHT,
+            COFFEE_CARD_UP, "custom_volume_minus");
         lv_obj_add_event_cb(minus, volume_event_cb, LV_EVENT_CLICKED,
                             coffee_int(-1));
-        volume_value = coffee_label_at(panel, "", COFFEE_FT_32B,
-                                        COFFEE_CREAM, x + 120, y, 130, 42);
+        volume_value = coffee_label_at(panel, "", COFFEE_FT_32B, COFFEE_CREAM,
+                                       x + 120, y, 130, 42);
         lv_obj_set_style_text_align(volume_value, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_t * plus = coffee_icon_button(panel, x + 258, y + 4, 38,
-                                              COFFEE_ICON_PLUS,
-                                              COFFEE_GOLD_BRIGHT,
-                                              COFFEE_CARD_UP,
-                                              "custom_volume_plus");
+        lv_obj_t * plus = coffee_icon_button(
+            panel, x + 258, y + 4, 38, COFFEE_ICON_PLUS, COFFEE_GOLD_BRIGHT,
+            COFFEE_CARD_UP, "custom_volume_plus");
         lv_obj_add_event_cb(plus, volume_event_cb, LV_EVENT_CLICKED,
                             coffee_int(1));
     }
     else {
         coffee_label_at(panel, COFFEE_TXT_MILK_AMOUNT, COFFEE_FT_13,
                         COFFEE_MUTED, x, y + 18, 60, 18);
-        lv_obj_t * minus = coffee_icon_button(panel, x + 70, y + 4, 38,
-                                               COFFEE_ICON_MINUS,
-                                               COFFEE_GOLD_BRIGHT,
-                                               COFFEE_CARD_UP,
-                                               "custom_volume_minus");
+        lv_obj_t * minus = coffee_icon_button(
+            panel, x + 70, y + 4, 38, COFFEE_ICON_MINUS, COFFEE_GOLD_BRIGHT,
+            COFFEE_CARD_UP, "custom_volume_minus");
         lv_obj_add_event_cb(minus, volume_event_cb, LV_EVENT_CLICKED,
                             coffee_int(-1));
-        volume_value = coffee_label_at(panel, "", COFFEE_FT_32B,
-                                        COFFEE_CREAM, x + 120, y, 130, 42);
+        volume_value = coffee_label_at(panel, "", COFFEE_FT_32B, COFFEE_CREAM,
+                                       x + 120, y, 130, 42);
         lv_obj_set_style_text_align(volume_value, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_t * plus = coffee_icon_button(panel, x + 258, y + 4, 38,
-                                              COFFEE_ICON_PLUS,
-                                              COFFEE_GOLD_BRIGHT,
-                                              COFFEE_CARD_UP,
-                                              "custom_volume_plus");
+        lv_obj_t * plus = coffee_icon_button(
+            panel, x + 258, y + 4, 38, COFFEE_ICON_PLUS, COFFEE_GOLD_BRIGHT,
+            COFFEE_CARD_UP, "custom_volume_plus");
         lv_obj_add_event_cb(plus, volume_event_cb, LV_EVENT_CLICKED,
                             coffee_int(1));
     }
     y += 60;
     add_divider(panel, x, y - 8, width);
 
-    coffee_label_at(panel, COFFEE_TXT_TEMPERATURE, COFFEE_FT_13,
-                    COFFEE_MUTED, x, y + 12, 60, 18);
+    coffee_label_at(panel, COFFEE_TXT_TEMPERATURE, COFFEE_FT_13, COFFEE_MUTED,
+                    x, y + 12, 60, 18);
     if(drink_ptr->cold) {
         char cold_text[32];
         char cold_temp[16];
         coffee_format_temp(cold_temp, sizeof(cold_temp), 4);
-        snprintf(cold_text, sizeof(cold_text), "%s %s",
-                 COFFEE_TXT_COLD_EXTRACT, cold_temp);
-        lv_obj_t * cold = coffee_pill(panel, x + 70, y, 180, 36,
-                                      COFFEE_CARD_UP, cold_text,
-                                      COFFEE_FT_13, COFFEE_BLUE, 18);
+        snprintf(cold_text, sizeof(cold_text), "%s %s", COFFEE_TXT_COLD_EXTRACT,
+                 cold_temp);
+        lv_obj_t * cold = coffee_pill(panel, x + 70, y, 180, 36, COFFEE_CARD_UP,
+                                      cold_text, COFFEE_FT_13, COFFEE_BLUE, 18);
         (void)cold;
     }
     else {
-        static const int temps[3] = { 88, 93, 96 };
+        static const int temps[3] = {88, 93, 96};
         for(int i = 0; i < 3; i++) {
             char text[8];
             snprintf(text, sizeof(text), "%d", temps[i]);
-            lv_obj_t * pill = coffee_card(panel, x + 70 + i * 74, y,
-                                          64, 36, 18, COFFEE_CARD_UP,
-                                          COFFEE_LINE);
+            lv_obj_t * pill = coffee_card(panel, x + 70 + i * 74, y, 64, 36, 18,
+                                          COFFEE_CARD_UP, COFFEE_LINE);
             coffee_clickable(pill, temp_ids[i]);
             lv_obj_add_event_cb(pill, temp_event_cb, LV_EVENT_CLICKED,
                                 coffee_int(temps[i]));
-            lv_obj_t * label = coffee_label(pill, text, COFFEE_FT_14,
-                                            COFFEE_MUTED);
+            lv_obj_t * label =
+                coffee_label(pill, text, COFFEE_FT_14, COFFEE_MUTED);
             lv_obj_center(label);
             temp_pills[i] = pill;
             temp_labels[i] = label;
@@ -415,40 +405,37 @@ void coffee_open_custom(int drink)
     if(drink_ptr->milk_drink && !drink_ptr->steam_only) {
         coffee_label_at(panel, COFFEE_TXT_MILK_AMOUNT, COFFEE_FT_13,
                         COFFEE_MUTED, x, y + 18, 60, 18);
-        lv_obj_t * minus = coffee_icon_button(panel, x + 70, y + 4, 38,
-                                               COFFEE_ICON_MINUS,
-                                               COFFEE_GOLD_BRIGHT,
-                                               COFFEE_CARD_UP,
-                                               "custom_milk_minus");
+        lv_obj_t * minus = coffee_icon_button(
+            panel, x + 70, y + 4, 38, COFFEE_ICON_MINUS, COFFEE_GOLD_BRIGHT,
+            COFFEE_CARD_UP, "custom_milk_minus");
         lv_obj_add_event_cb(minus, milk_event_cb, LV_EVENT_CLICKED,
                             coffee_int(-1));
-        milk_value = coffee_label_at(panel, "", COFFEE_FT_32B,
-                                      COFFEE_CREAM, x + 120, y, 130, 42);
+        milk_value = coffee_label_at(panel, "", COFFEE_FT_32B, COFFEE_CREAM,
+                                     x + 120, y, 130, 42);
         lv_obj_set_style_text_align(milk_value, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_t * plus = coffee_icon_button(panel, x + 258, y + 4, 38,
-                                              COFFEE_ICON_PLUS,
-                                              COFFEE_GOLD_BRIGHT,
-                                              COFFEE_CARD_UP,
-                                              "custom_milk_plus");
+        lv_obj_t * plus = coffee_icon_button(
+            panel, x + 258, y + 4, 38, COFFEE_ICON_PLUS, COFFEE_GOLD_BRIGHT,
+            COFFEE_CARD_UP, "custom_milk_plus");
         lv_obj_add_event_cb(plus, milk_event_cb, LV_EVENT_CLICKED,
                             coffee_int(1));
         y += 60;
 
-        coffee_label_at(panel, COFFEE_TXT_FOAM, COFFEE_FT_13, COFFEE_MUTED,
-                        x, y + 10, 60, 18);
+        coffee_label_at(panel, COFFEE_TXT_FOAM, COFFEE_FT_13, COFFEE_MUTED, x,
+                        y + 10, 60, 18);
         static const char * const foam_texts[4] = {
-            COFFEE_TXT_FOAM_NONE, COFFEE_TXT_FOAM_LIGHT,
-            COFFEE_TXT_FOAM_CREAMY, COFFEE_TXT_FOAM_RICH,
+            COFFEE_TXT_FOAM_NONE,
+            COFFEE_TXT_FOAM_LIGHT,
+            COFFEE_TXT_FOAM_CREAMY,
+            COFFEE_TXT_FOAM_RICH,
         };
         for(int i = 0; i < 4; i++) {
-            lv_obj_t * pill = coffee_card(panel, x + 70 + i * 66, y,
-                                          56, 34, 17, COFFEE_CARD_UP,
-                                          COFFEE_LINE);
+            lv_obj_t * pill = coffee_card(panel, x + 70 + i * 66, y, 56, 34, 17,
+                                          COFFEE_CARD_UP, COFFEE_LINE);
             coffee_clickable(pill, foam_ids[i]);
             lv_obj_add_event_cb(pill, foam_event_cb, LV_EVENT_CLICKED,
                                 coffee_int(i));
-            lv_obj_t * label = coffee_label(pill, foam_texts[i],
-                                            COFFEE_FT_12, COFFEE_MUTED);
+            lv_obj_t * label =
+                coffee_label(pill, foam_texts[i], COFFEE_FT_12, COFFEE_MUTED);
             lv_obj_center(label);
             foam_pills[i] = pill;
             foam_labels[i] = label;
@@ -461,30 +448,29 @@ void coffee_open_custom(int drink)
         coffee_label_at(panel, COFFEE_TXT_DOUBLE_CUP, COFFEE_FT_13,
                         COFFEE_MUTED, x, toggle_y + 4, 56, 20);
         double_track = coffee_toggle(panel, x + 62, toggle_y, 52, 28,
-                                     drink_ptr->double_cup,
-                                     "custom_double");
+                                     drink_ptr->double_cup, "custom_double");
         lv_obj_add_event_cb(double_track, double_event_cb, LV_EVENT_CLICKED,
                             NULL);
     }
     int preheat_x = x + 160;
-    coffee_label_at(panel, COFFEE_TXT_PREHEAT_CUP, COFFEE_FT_13,
-                    COFFEE_MUTED, preheat_x, toggle_y + 4, 70, 20);
+    coffee_label_at(panel, COFFEE_TXT_PREHEAT_CUP, COFFEE_FT_13, COFFEE_MUTED,
+                    preheat_x, toggle_y + 4, 70, 20);
     preheat_track = coffee_toggle(panel, preheat_x + 76, toggle_y, 52, 28,
                                   drink_ptr->preheat, "custom_preheat");
     lv_obj_add_event_cb(preheat_track, preheat_event_cb, LV_EVENT_CLICKED,
                         NULL);
 
-    lv_obj_t * cancel = coffee_button(panel, x, 406, 96, 44, false,
-                                      COFFEE_TXT_CANCEL, COFFEE_FT_14B,
-                                      "custom_cancel");
+    lv_obj_t * cancel =
+        coffee_button(panel, x, 406, 96, 44, false, COFFEE_TXT_CANCEL,
+                      COFFEE_FT_14B, "custom_cancel");
     lv_obj_add_event_cb(cancel, cancel_event_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_t * save = coffee_button(panel, x + 108, 406, 124, 44, false,
-                                    COFFEE_TXT_SAVE_RECIPE, COFFEE_FT_14B,
-                                    "custom_save");
+    lv_obj_t * save =
+        coffee_button(panel, x + 108, 406, 124, 44, false,
+                      COFFEE_TXT_SAVE_RECIPE, COFFEE_FT_14B, "custom_save");
     lv_obj_add_event_cb(save, save_event_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_t * start = coffee_button(panel, x + 244, 406, 144, 44, true,
-                                     COFFEE_TXT_BREW, COFFEE_FT_14B,
-                                     "custom_brew");
+    lv_obj_t * start =
+        coffee_button(panel, x + 244, 406, 144, 44, true, COFFEE_TXT_BREW,
+                      COFFEE_FT_14B, "custom_brew");
     lv_obj_add_event_cb(start, start_event_cb, LV_EVENT_CLICKED, NULL);
 
     custom_refresh();

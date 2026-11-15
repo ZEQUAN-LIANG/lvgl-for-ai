@@ -49,24 +49,17 @@ typedef struct {
  * Open frame_diffs.ndjson under session_dir. record=false disables writing.
  * Returns false when the file cannot be written or memory is unavailable.
  */
-bool frame_diff_open_previous(frame_diff_t * diff,
-                              const char * session_dir,
-                              uint32_t width,
-                              uint32_t height,
-                              int threshold,
+bool frame_diff_open_previous(frame_diff_t * diff, const char * session_dir,
+                              uint32_t width, uint32_t height, int threshold,
                               bool record);
 
 /**
  * Open reference_diffs.ndjson under session_dir. ``reference`` is borrowed
  * XRGB8888 pixels with the same dimensions as the framebuffer.
  */
-bool frame_diff_open_reference(frame_diff_t * diff,
-                               const char * session_dir,
-                               const uint8_t * reference,
-                               uint32_t width,
-                               uint32_t height,
-                               int threshold,
-                               bool record);
+bool frame_diff_open_reference(frame_diff_t * diff, const char * session_dir,
+                               const uint8_t * reference, uint32_t width,
+                               uint32_t height, int threshold, bool record);
 
 /**
  * Compare against the previous recorded frame; the first call only stores it.
@@ -74,17 +67,13 @@ bool frame_diff_open_reference(frame_diff_t * diff,
  * same previous frame (the session shares the changed-only traversal); when
  * it is NULL the diff computes the analysis from its own previous buffer.
  */
-void frame_diff_record_previous(frame_diff_t * diff,
-                                const uint8_t * frame,
-                                long frame_no,
-                                uint32_t t_ms,
+void frame_diff_record_previous(frame_diff_t * diff, const uint8_t * frame,
+                                long frame_no, uint32_t t_ms,
                                 const frame_analysis_t * analysis);
 
 /** Compare ``frame`` against the reference pixels for every call. */
-void frame_diff_record_reference(frame_diff_t * diff,
-                                 const uint8_t * frame,
-                                 long frame_no,
-                                 uint32_t t_ms);
+void frame_diff_record_reference(frame_diff_t * diff, const uint8_t * frame,
+                                 long frame_no, uint32_t t_ms);
 
 void frame_diff_close(frame_diff_t * diff);
 

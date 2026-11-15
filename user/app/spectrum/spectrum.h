@@ -10,24 +10,24 @@
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
 
-#define SPECTRUM_SCREEN_W 800
-#define SPECTRUM_SCREEN_H 600
-#define SPECTRUM_PANEL_Y 74
-#define SPECTRUM_PANEL_W 152
-#define SPECTRUM_PANEL_H 404
-#define SPECTRUM_LEFT_X 20
-#define SPECTRUM_RIGHT_X 628
-#define SPECTRUM_VIZ_X 0
-#define SPECTRUM_VIZ_Y 0
-#define SPECTRUM_VIZ_W 800
-#define SPECTRUM_VIZ_H 600
-#define SPECTRUM_VIZ_CX 400
-#define SPECTRUM_VIZ_CY 282
-#define SPECTRUM_TRACK_COUNT 3
-#define SPECTRUM_BAND_COUNT 48
-#define SPECTRUM_WAVE_COUNT 160
+#define SPECTRUM_SCREEN_W      800
+#define SPECTRUM_SCREEN_H      600
+#define SPECTRUM_PANEL_Y       74
+#define SPECTRUM_PANEL_W       152
+#define SPECTRUM_PANEL_H       404
+#define SPECTRUM_LEFT_X        20
+#define SPECTRUM_RIGHT_X       628
+#define SPECTRUM_VIZ_X         0
+#define SPECTRUM_VIZ_Y         0
+#define SPECTRUM_VIZ_W         800
+#define SPECTRUM_VIZ_H         600
+#define SPECTRUM_VIZ_CX        400
+#define SPECTRUM_VIZ_CY        282
+#define SPECTRUM_TRACK_COUNT   3
+#define SPECTRUM_BAND_COUNT    48
+#define SPECTRUM_WAVE_COUNT    160
 #define SPECTRUM_LOUD_SEGMENTS 14
-#define SPECTRUM_MINI_BARS 16
+#define SPECTRUM_MINI_BARS     16
 
 typedef enum {
     SPECTRUM_MODE_ORBIT,
@@ -151,16 +151,15 @@ lv_obj_t * spectrum_box(lv_obj_t * parent, int x, int y, int w, int h);
 lv_obj_t * spectrum_card(lv_obj_t * parent, int x, int y, int w, int h,
                          int radius, uint32_t bg, lv_opa_t bg_opa);
 lv_obj_t * spectrum_label(lv_obj_t * parent, const char * text,
-                          spectrum_font_id_t font, uint32_t color,
-                          int x, int y, int w, int h);
+                          spectrum_font_id_t font, uint32_t color, int x, int y,
+                          int w, int h);
 lv_obj_t * spectrum_label_align(lv_obj_t * parent, const char * text,
-                                spectrum_font_id_t font, uint32_t color,
-                                int x, int y, int w, int h,
-                                lv_text_align_t align);
-lv_obj_t * spectrum_icon_obj(lv_obj_t * parent, spectrum_icon_id_t icon,
-                             int x, int y, int size, uint32_t color);
-void spectrum_set_icon(lv_obj_t * image, spectrum_icon_id_t icon,
-                       int size, uint32_t color);
+                                spectrum_font_id_t font, uint32_t color, int x,
+                                int y, int w, int h, lv_text_align_t align);
+lv_obj_t * spectrum_icon_obj(lv_obj_t * parent, spectrum_icon_id_t icon, int x,
+                             int y, int size, uint32_t color);
+void spectrum_set_icon(lv_obj_t * image, spectrum_icon_id_t icon, int size,
+                       uint32_t color);
 void spectrum_clickable(lv_obj_t * obj, const char * name);
 void spectrum_divider(lv_obj_t * parent, int x, int y, int w);
 

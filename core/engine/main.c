@@ -13,10 +13,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEFAULT_DISPLAY_WIDTH 800u
+#define DEFAULT_DISPLAY_WIDTH  800u
 #define DEFAULT_DISPLAY_HEIGHT 600u
-#define MAX_DISPLAY_DIMENSION 4096u
-#define DEFAULT_MAX_FRAMES 600
+#define MAX_DISPLAY_DIMENSION  4096u
+#define DEFAULT_MAX_FRAMES     600
 
 extern void app_create(void);
 
@@ -29,15 +29,14 @@ typedef struct {
 
 static void print_usage(FILE * out)
 {
-    fprintf(out,
-            "usage: lvgl_engine --session DIR [--record|--no-record]\n"
-            "                  [--live-frame] [--record-changed-only]\n"
-            "                  [--async-encode]\n"
-            "                  [--diff-threshold 0-255]\n"
-            "                  [--reference PNG] [--max-frames N]\n"
-            "                  [--width W --height H] (default 800x600, "
-            "1..4096)\n"
-            "                  [--window|--headless]\n");
+    fprintf(out, "usage: lvgl_engine --session DIR [--record|--no-record]\n"
+                 "                  [--live-frame] [--record-changed-only]\n"
+                 "                  [--async-encode]\n"
+                 "                  [--diff-threshold 0-255]\n"
+                 "                  [--reference PNG] [--max-frames N]\n"
+                 "                  [--width W --height H] (default 800x600, "
+                 "1..4096)\n"
+                 "                  [--window|--headless]\n");
 }
 
 static bool only_spaces(const char * text)
@@ -144,8 +143,8 @@ static bool handle_pointer(engine_t * engine, FILE * out,
     char action_text[16] = "";
     char x_text[32] = "";
     char y_text[32] = "";
-    const char * rest = next_token(command->args, action_text,
-                                   sizeof(action_text));
+    const char * rest =
+        next_token(command->args, action_text, sizeof(action_text));
     rest = next_token(rest, x_text, sizeof(x_text));
     rest = next_token(rest, y_text, sizeof(y_text));
     long x = 0;
@@ -153,28 +152,29 @@ static bool handle_pointer(engine_t * engine, FILE * out,
     if(rest == NULL || !only_spaces(rest) || !parse_long(x_text, &x) ||
        !parse_long(y_text, &y) || x < 0 || y < 0) {
         protocol_reply_error(out, command->seq, "bad_args",
-                                 "usage: pointer down|move|up X Y");
+                             "usage: pointer down|move|up X Y");
         return true;
     }
 
     pointer_action_t action;
     if(strcmp(action_text, "down") == 0) action = POINTER_DOWN;
-    else if(strcmp(action_text, "move") == 0) action = POINTER_MOVE;
-    else if(strcmp(action_text, "up") == 0) action = POINTER_UP;
+    else if(strcmp(action_text, "move") == 0)
+        action = POINTER_MOVE;
+    else if(strcmp(action_text, "up") == 0)
+        action = POINTER_UP;
     else {
         protocol_reply_error(out, command->seq, "bad_args",
-                                 "pointer action must be down, move or up");
+                             "pointer action must be down, move or up");
         return true;
     }
 
     if(adapter_pointer(engine->adapter, action, (int32_t)x, (int32_t)y) != 0) {
         protocol_reply_error(out, command->seq, "input_failed",
-                                 "the pointer indev is not available");
+                             "the pointer indev is not available");
         return true;
     }
 
-    const pointer_reply_t * pointer =
-        adapter_last_pointer(engine->adapter);
+    const pointer_reply_t * pointer = adapter_last_pointer(engine->adapter);
     const char * hit = pointer != NULL ? pointer->hit : "";
     const char * hit_class = pointer != NULL ? pointer->hit_class : "";
     session_input_pointer(&engine->session, command->seq, "virtual",
@@ -185,7 +185,7 @@ static bool handle_pointer(engine_t * engine, FILE * out,
     if(json_quote(hit, hit_json, sizeof(hit_json)) != 0 ||
        json_quote(hit_class, class_json, sizeof(class_json)) != 0) {
         protocol_reply_error(out, command->seq, "input_failed",
-                                 "hit name is too long");
+                             "hit name is too long");
         return true;
     }
     char extra[1400];
@@ -202,8 +202,7 @@ static bool handle_tick(engine_t * engine, FILE * out,
     const char * rest = next_token(command->args, ms_text, sizeof(ms_text));
     unsigned long ms = 0;
     if(rest == NULL || !only_spaces(rest) || !parse_ulong(ms_text, &ms)) {
-        protocol_reply_error(out, command->seq, "bad_args",
-                                 "usage: tick <ms>");
+        protocol_reply_error(out, command->seq, "bad_args", "usage: tick <ms>");
         return true;
     }
     session_tick(&engine->session, (uint32_t)ms);
@@ -218,7 +217,7 @@ static bool handle_wait(engine_t * engine, FILE * out,
     const char * rest = next_token(command->args, first, sizeof(first));
     if(rest == NULL) {
         protocol_reply_error(out, command->seq, "bad_args",
-                                 "usage: wait <ms> | wait frames <n>");
+                             "usage: wait <ms> | wait frames <n>");
         return true;
     }
 
@@ -229,21 +228,19 @@ static bool handle_wait(engine_t * engine, FILE * out,
         if(rest == NULL || !only_spaces(rest) ||
            !parse_ulong(frames_text, &frames)) {
             protocol_reply_error(out, command->seq, "bad_args",
-                                     "usage: wait frames <n>");
+                                 "usage: wait frames <n>");
             return true;
         }
-        bool changed =
-            session_wait_frames(&engine->session, frames,
-                                engine_service_window, engine);
-        reply_state(out, command->seq, engine,
-                    wait_changed_field(changed));
+        bool changed = session_wait_frames(&engine->session, frames,
+                                           engine_service_window, engine);
+        reply_state(out, command->seq, engine, wait_changed_field(changed));
         return true;
     }
 
     unsigned long ms = 0;
     if(!only_spaces(rest) || !parse_ulong(first, &ms)) {
         protocol_reply_error(out, command->seq, "bad_args",
-                                 "usage: wait <ms> | wait frames <n>");
+                             "usage: wait <ms> | wait frames <n>");
         return true;
     }
     bool changed =
@@ -258,8 +255,7 @@ static bool handle_mark(engine_t * engine, FILE * out,
     char id[128];
     const char * rest = next_token(command->args, id, sizeof(id));
     if(rest == NULL || !only_spaces(rest) || !token_valid(id)) {
-        protocol_reply_error(out, command->seq, "bad_args",
-                                 "usage: mark <id>");
+        protocol_reply_error(out, command->seq, "bad_args", "usage: mark <id>");
         return true;
     }
     session_mark(&engine->session, id);
@@ -274,22 +270,22 @@ static bool handle_snapshot(engine_t * engine, FILE * out,
     const char * rest = next_token(command->args, label, sizeof(label));
     if(rest == NULL || !only_spaces(rest) || !token_valid(label)) {
         protocol_reply_error(out, command->seq, "bad_args",
-                                 "usage: snapshot <label>");
+                             "usage: snapshot <label>");
         return true;
     }
 
     char relative[256];
-    if(session_snapshot(&engine->session, label, relative,
-                        sizeof(relative)) != 0) {
+    if(session_snapshot(&engine->session, label, relative, sizeof(relative)) !=
+       0) {
         protocol_reply_error(out, command->seq, "capture_failed",
-                                 "cannot write the snapshot PNG");
+                             "cannot write the snapshot PNG");
         return true;
     }
 
     char file_json[512];
     if(json_quote(relative, file_json, sizeof(file_json)) != 0) {
         protocol_reply_error(out, command->seq, "capture_failed",
-                                 "snapshot path is too long");
+                             "snapshot path is too long");
         return true;
     }
     char extra[600];
@@ -298,8 +294,7 @@ static bool handle_snapshot(engine_t * engine, FILE * out,
     return true;
 }
 
-static bool handle_key(engine_t * engine, FILE * out,
-                       const command_t * command)
+static bool handle_key(engine_t * engine, FILE * out, const command_t * command)
 {
     char action[16] = "";
     char code_text[32] = "";
@@ -307,23 +302,21 @@ static bool handle_key(engine_t * engine, FILE * out,
     const char * rest = next_token(command->args, action, sizeof(action));
     rest = next_token(rest, code_text, sizeof(code_text));
     rest = next_token(rest, key_name, sizeof(key_name));
-    bool valid_action = strcmp(action, "press") == 0 ||
-                        strcmp(action, "release") == 0;
+    bool valid_action =
+        strcmp(action, "press") == 0 || strcmp(action, "release") == 0;
     unsigned long key_code = 0;
     if(rest == NULL || !only_spaces(rest) || !valid_action ||
        !parse_ulong(code_text, &key_code) || !token_valid(key_name)) {
         protocol_reply_error(out, command->seq, "bad_args",
-                                 "usage: key press|release <code> <name>");
+                             "usage: key press|release <code> <name>");
         return true;
     }
 
-    key_action_t key_action = strcmp(action, "press") == 0
-                                      ? KEY_PRESS
-                                      : KEY_RELEASE;
-    if(adapter_key(engine->adapter, key_action,
-                       (uint32_t)key_code) != 0) {
+    key_action_t key_action =
+        strcmp(action, "press") == 0 ? KEY_PRESS : KEY_RELEASE;
+    if(adapter_key(engine->adapter, key_action, (uint32_t)key_code) != 0) {
         protocol_reply_error(out, command->seq, "input_failed",
-                                 "the keypad indev did not read the key");
+                             "the keypad indev did not read the key");
         return true;
     }
 
@@ -332,7 +325,7 @@ static bool handle_key(engine_t * engine, FILE * out,
     char key_json[256];
     if(json_quote(key_name, key_json, sizeof(key_json)) != 0) {
         protocol_reply_error(out, command->seq, "input_failed",
-                                 "key name is too long");
+                             "key name is too long");
         return true;
     }
     char extra[320];
@@ -352,13 +345,13 @@ static bool handle_encoder(engine_t * engine, FILE * out,
     if(rest == NULL || !only_spaces(rest) || strcmp(action, "turn") != 0 ||
        !parse_long(diff_text, &diff) || diff < -32768 || diff > 32767) {
         protocol_reply_error(out, command->seq, "bad_args",
-                                 "usage: encoder turn <diff -32768..32767>");
+                             "usage: encoder turn <diff -32768..32767>");
         return true;
     }
 
     if(adapter_encoder(engine->adapter, (int32_t)diff) != 0) {
         protocol_reply_error(out, command->seq, "input_failed",
-                                 "the encoder indev did not read the turn");
+                             "the encoder indev did not read the turn");
         return true;
     }
 
@@ -370,9 +363,12 @@ static bool handle_encoder(engine_t * engine, FILE * out,
 static const char * pointer_action_name(window_pointer_action_t action)
 {
     switch(action) {
-        case WINDOW_POINTER_DOWN: return "down";
-        case WINDOW_POINTER_UP: return "up";
-        default: return "move";
+        case WINDOW_POINTER_DOWN:
+            return "down";
+        case WINDOW_POINTER_UP:
+            return "up";
+        default:
+            return "move";
     }
 }
 
@@ -390,33 +386,31 @@ static void engine_real_input(void * user, const window_event_t * event)
     if(event->kind == WINDOW_EVENT_POINTER) {
         pointer_action_t action = POINTER_MOVE;
         if(event->action == WINDOW_POINTER_DOWN) action = POINTER_DOWN;
-        else if(event->action == WINDOW_POINTER_UP) action = POINTER_UP;
+        else if(event->action == WINDOW_POINTER_UP)
+            action = POINTER_UP;
 
-        if(adapter_real_pointer(engine->adapter, action, event->x,
-                                    event->y) == 0) {
+        if(adapter_real_pointer(engine->adapter, action, event->x, event->y) ==
+           0) {
             /* Hover moves are delivered to LVGL but not written to the
              * timeline; pressed moves carry drag evidence. */
             if(action != POINTER_MOVE || event->pressed) {
                 const pointer_reply_t * reply =
                     adapter_last_real_pointer(engine->adapter);
-                session_input_pointer(
-                    &engine->session, -1, "real",
-                    pointer_action_name(event->action), event->x, event->y,
-                    reply != NULL ? reply->hit : "",
-                    reply != NULL ? reply->hit_class : "");
+                session_input_pointer(&engine->session, -1, "real",
+                                      pointer_action_name(event->action),
+                                      event->x, event->y,
+                                      reply != NULL ? reply->hit : "",
+                                      reply != NULL ? reply->hit_class : "");
             }
         }
         repaint = action != POINTER_MOVE || event->pressed;
     }
     else if(event->kind == WINDOW_EVENT_KEY) {
-        key_action_t action =
-            event->pressed ? KEY_PRESS : KEY_RELEASE;
-        int delivered = adapter_real_key(engine->adapter, action,
-                                             event->key);
-        session_input_key(&engine->session, -1, "real",
-                          event->pressed ? "press" : "release",
-                          event->key_name != NULL ? event->key_name : "",
-                          delivered == 0);
+        key_action_t action = event->pressed ? KEY_PRESS : KEY_RELEASE;
+        int delivered = adapter_real_key(engine->adapter, action, event->key);
+        session_input_key(
+            &engine->session, -1, "real", event->pressed ? "press" : "release",
+            event->key_name != NULL ? event->key_name : "", delivered == 0);
         repaint = true;
     }
 
@@ -432,7 +426,7 @@ static bool process_command(engine_t * engine, FILE * out, char * line)
     command_t command;
     if(!protocol_parse(line, &command)) {
         protocol_reply_error(out, 0, "bad_command",
-                                 "expected <seq> <verb> [args]");
+                             "expected <seq> <verb> [args]");
         return true;
     }
 
@@ -463,7 +457,7 @@ static bool process_command(engine_t * engine, FILE * out, char * line)
         return false;
     }
     protocol_reply_error(out, command.seq, "unknown_command",
-                             "command is not implemented");
+                         "command is not implemented");
     return true;
 }
 
@@ -496,8 +490,7 @@ static void run_window_loop(engine_t * engine, FILE * out)
 }
 
 /** Window title names the session so FindWindow can target one engine. */
-static void session_window_title(const char * session_dir,
-                                 char * out,
+static void session_window_title(const char * session_dir, char * out,
                                  size_t out_size)
 {
     const char * base = session_dir;
@@ -534,8 +527,7 @@ int main(int argc, char ** argv)
         else if(strcmp(argv[i], "--diff-threshold") == 0 && i + 1 < argc) {
             if(!parse_long(argv[++i], &diff_threshold) || diff_threshold < 0 ||
                diff_threshold > 255) {
-                fprintf(stderr,
-                        "[engine] --diff-threshold must be 0..255\n");
+                fprintf(stderr, "[engine] --diff-threshold must be 0..255\n");
                 return 2;
             }
         }
@@ -614,9 +606,8 @@ int main(int argc, char ** argv)
     setvbuf(stderr, NULL, _IONBF, 0);
 
     bool window_supported = window_requested && window_available();
-    adapter_t * adapter = adapter_create((uint32_t)display_width,
-                                                 (uint32_t)display_height,
-                                                 window_supported);
+    adapter_t * adapter = adapter_create(
+        (uint32_t)display_width, (uint32_t)display_height, window_supported);
     if(adapter == NULL) {
         fprintf(stderr, "[engine] failed to create the LVGL display\n");
         return 2;
@@ -626,8 +617,8 @@ int main(int argc, char ** argv)
     uint32_t reference_width = 0;
     uint32_t reference_height = 0;
     if(reference_path != NULL) {
-        if(adapter_load_png(reference_path, &reference_pixels,
-                                &reference_width, &reference_height) != 0) {
+        if(adapter_load_png(reference_path, &reference_pixels, &reference_width,
+                            &reference_height) != 0) {
             fprintf(stderr, "[engine] cannot read reference %s\n",
                     reference_path);
             adapter_destroy(adapter);
@@ -635,10 +626,9 @@ int main(int argc, char ** argv)
         }
         if(reference_width != (uint32_t)display_width ||
            reference_height != (uint32_t)display_height) {
-            fprintf(stderr,
-                    "[engine] reference is %ux%u, expected %ux%u\n",
-                    reference_width, reference_height,
-                    (uint32_t)display_width, (uint32_t)display_height);
+            fprintf(stderr, "[engine] reference is %ux%u, expected %ux%u\n",
+                    reference_width, reference_height, (uint32_t)display_width,
+                    (uint32_t)display_height);
             adapter_free_pixels(reference_pixels);
             adapter_destroy(adapter);
             return 2;
@@ -682,9 +672,9 @@ int main(int argc, char ** argv)
     if(window_requested) {
         char title[256];
         session_window_title(session_dir, title, sizeof(title));
-        engine.window = window_create((uint32_t)display_width,
-                                          (uint32_t)display_height, title,
-                                          engine_real_input, &engine);
+        engine.window =
+            window_create((uint32_t)display_width, (uint32_t)display_height,
+                          title, engine_real_input, &engine);
         if(engine.window == NULL) {
             fprintf(stderr,
                     "[engine] window unavailable; continuing headless\n");
@@ -692,9 +682,8 @@ int main(int argc, char ** argv)
         else {
             engine.stdin_queue = stdin_queue_start();
             if(engine.stdin_queue == NULL) {
-                fprintf(stderr,
-                        "[engine] cannot start the stdin reader; "
-                        "closing the window and continuing headless\n");
+                fprintf(stderr, "[engine] cannot start the stdin reader; "
+                                "closing the window and continuing headless\n");
                 window_destroy(engine.window);
                 engine.window = NULL;
             }
@@ -713,10 +702,9 @@ int main(int argc, char ** argv)
     fprintf(stderr,
             "[engine] lvgl=%s adapter=%s mode=%s display=%ux%u record=%s "
             "changed_only=%s async_encode=%s\n",
-            info->lvgl_version, info->adapter_name, mode,
-            info->width, info->height, record ? "on" : "off",
-            record_changed_only ? "on" : "off",
-            async_encode ? "on" : "off");
+            info->lvgl_version, info->adapter_name, mode, info->width,
+            info->height, record ? "on" : "off",
+            record_changed_only ? "on" : "off", async_encode ? "on" : "off");
 
     const char * capabilities =
         record ? "[\"pointer\",\"key\",\"encoder\",\"tick\",\"wait\","
@@ -724,10 +712,10 @@ int main(int argc, char ** argv)
                : "[\"pointer\",\"key\",\"encoder\",\"tick\",\"wait\","
                  "\"snapshot\",\"mark\"]";
     protocol_ready(stdout, "lvgl-ai-engine-v1", info->lvgl_version,
-                       info->lvgl_src, info->width, info->height, mode,
-                       info->adapter_name, session_frame_count(&engine.session),
-                       max_frames, session_truncated(&engine.session),
-                       capabilities);
+                   info->lvgl_src, info->width, info->height, mode,
+                   info->adapter_name, session_frame_count(&engine.session),
+                   max_frames, session_truncated(&engine.session),
+                   capabilities);
 
     if(engine.window != NULL) {
         run_window_loop(&engine, stdout);

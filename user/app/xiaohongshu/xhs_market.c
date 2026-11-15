@@ -15,19 +15,19 @@ typedef struct {
 } xhs_product_t;
 
 static xhs_product_t products[4] = {
-    { XHS_TXT_PRODUCT_0_NAME, XHS_TXT_PRODUCT_0_PRICE,
-      XHS_TXT_PRODUCT_0_SALES, 0, 1 },
-    { XHS_TXT_PRODUCT_1_NAME, XHS_TXT_PRODUCT_1_PRICE,
-      XHS_TXT_PRODUCT_1_SALES, 5, 2 },
-    { XHS_TXT_PRODUCT_2_NAME, XHS_TXT_PRODUCT_2_PRICE,
-      XHS_TXT_PRODUCT_2_SALES, 3, 3 },
-    { XHS_TXT_PRODUCT_3_NAME, XHS_TXT_PRODUCT_3_PRICE,
-      XHS_TXT_PRODUCT_3_SALES, 2, 1 },
+    {XHS_TXT_PRODUCT_0_NAME, XHS_TXT_PRODUCT_0_PRICE, XHS_TXT_PRODUCT_0_SALES,
+     0, 1},
+    {XHS_TXT_PRODUCT_1_NAME, XHS_TXT_PRODUCT_1_PRICE, XHS_TXT_PRODUCT_1_SALES,
+     5, 2},
+    {XHS_TXT_PRODUCT_2_NAME, XHS_TXT_PRODUCT_2_PRICE, XHS_TXT_PRODUCT_2_SALES,
+     3, 3},
+    {XHS_TXT_PRODUCT_3_NAME, XHS_TXT_PRODUCT_3_PRICE, XHS_TXT_PRODUCT_3_SALES,
+     2, 1},
 };
 #define XHS_PRODUCT_COUNT 4
 
 static const char * const market_categories[6] = {
-    XHS_TXT_MARKET_ALL, XHS_TXT_MARKET_HOME, XHS_TXT_CAT_OUTFIT,
+    XHS_TXT_MARKET_ALL,     XHS_TXT_MARKET_HOME, XHS_TXT_CAT_OUTFIT,
     XHS_TXT_MARKET_DIGITAL, XHS_TXT_MARKET_FOOD, XHS_TXT_MARKET_SPORT,
 };
 
@@ -45,14 +45,12 @@ static void xhs_product_event_cb(lv_event_t * event);
 static void xhs_market_chip_style(int active)
 {
     for(int i = 0; i < 6; i++) {
-        lv_obj_set_style_bg_color(market_chips[i],
-                                  lv_color_hex(i == active ? XHS_RED
-                                                           : XHS_SOFT), 0);
+        lv_obj_set_style_bg_color(
+            market_chips[i], lv_color_hex(i == active ? XHS_RED : XHS_SOFT), 0);
         lv_obj_t * label = lv_obj_get_child(market_chips[i], 0);
         if(label != NULL) {
-            lv_obj_set_style_text_color(label,
-                                        lv_color_hex(i == active ? XHS_WHITE
-                                                                 : XHS_MUTED), 0);
+            lv_obj_set_style_text_color(
+                label, lv_color_hex(i == active ? XHS_WHITE : XHS_MUTED), 0);
         }
     }
 }
@@ -61,23 +59,24 @@ static void xhs_product_card(lv_obj_t * parent, int index, int x, int y)
 {
     xhs_product_t * product = &products[index];
     lv_obj_t * card = xhs_box(parent, x, y, XHS_COVER_W, 196);
-    xhs_clickable(card, index == 0 ? "product_0" : index == 1 ? "product_1" :
-                         index == 2 ? "product_2" : "product_3");
+    xhs_clickable(card, index == 0   ? "product_0"
+                        : index == 1 ? "product_1"
+                        : index == 2 ? "product_2"
+                                     : "product_3");
     lv_obj_add_event_cb(card, xhs_product_event_cb, LV_EVENT_CLICKED,
                         (void *)(intptr_t)index);
 
     xhs_cover_thumb(card, product->cover_index, 0, 0, XHS_COVER_W, 112, 8);
 
-    lv_obj_t * name = xhs_label_at(card, product->name, XHS_FT_12, XHS_TITLE,
-                                   0, 118, XHS_COVER_W, 34);
+    lv_obj_t * name = xhs_label_at(card, product->name, XHS_FT_12, XHS_TITLE, 0,
+                                   118, XHS_COVER_W, 34);
     lv_label_set_long_mode(name, LV_LABEL_LONG_MODE_DOTS);
     lv_obj_set_style_text_line_space(name, 1, 0);
 
     char price[24];
     snprintf(price, sizeof(price), "%s%s", XHS_TXT_YUAN, product->price);
     xhs_label_at(card, price, XHS_FT_14B, XHS_RED, 0, 156, 100, 20);
-    xhs_label_at(card, product->sales, XHS_FT_11, XHS_MUTED,
-                 0, 178, 138, 16);
+    xhs_label_at(card, product->sales, XHS_FT_11, XHS_MUTED, 0, 178, 138, 16);
 }
 
 static void xhs_market_grid_build(void)
@@ -94,15 +93,14 @@ static void xhs_market_grid_build(void)
         }
         int column = shown % 2;
         int row = shown / 2;
-        xhs_product_card(market_grid, i, column == 0 ? 10 : 156,
-                         row * 206);
+        xhs_product_card(market_grid, i, column == 0 ? 10 : 156, row * 206);
         shown++;
     }
 
     if(shown == 0) {
-        lv_obj_t * empty = xhs_label_at(market_grid, XHS_TXT_MARKET_EMPTY,
-                                        XHS_FT_12, XHS_MUTED,
-                                        0, 60, XHS_SCREEN_W, 20);
+        lv_obj_t * empty =
+            xhs_label_at(market_grid, XHS_TXT_MARKET_EMPTY, XHS_FT_12,
+                         XHS_MUTED, 0, 60, XHS_SCREEN_W, 20);
         lv_obj_set_style_text_align(empty, LV_TEXT_ALIGN_CENTER, 0);
     }
     else {
@@ -116,7 +114,8 @@ static void xhs_market_chip_cb(lv_event_t * event)
     active_market_category = (int)(intptr_t)lv_event_get_user_data(event);
     xhs_market_chip_style(active_market_category);
     xhs_market_grid_build();
-    printf("[xhs] market category=%s\n", market_categories[active_market_category]);
+    printf("[xhs] market category=%s\n",
+           market_categories[active_market_category]);
 }
 
 static void xhs_market_banner_cb(lv_event_t * event)
@@ -180,10 +179,9 @@ static void xhs_product_build(lv_obj_t * page, int index)
     int cover_bottom = 10 + cover_h * 2;
 
     lv_point_t name_size;
-    lv_text_get_size(&name_size, product->name, xhs_font(XHS_FT_14B),
-                     0, 2, 272, LV_TEXT_FLAG_NONE);
-    lv_obj_t * name = xhs_label(content, product->name, XHS_FT_14B,
-                                XHS_TITLE);
+    lv_text_get_size(&name_size, product->name, xhs_font(XHS_FT_14B), 0, 2, 272,
+                     LV_TEXT_FLAG_NONE);
+    lv_obj_t * name = xhs_label(content, product->name, XHS_FT_14B, XHS_TITLE);
     lv_obj_set_pos(name, 16, cover_bottom + 12);
     lv_obj_set_width(name, 272);
     lv_label_set_long_mode(name, LV_LABEL_LONG_MODE_WRAP);
@@ -191,8 +189,7 @@ static void xhs_product_build(lv_obj_t * page, int index)
     int price_y = cover_bottom + 12 + name_size.y + 10;
     char price[24];
     snprintf(price, sizeof(price), "%s%s", XHS_TXT_YUAN, product->price);
-    xhs_label_at(content, price, XHS_FT_14B, XHS_RED,
-                 16, price_y, 120, 22);
+    xhs_label_at(content, price, XHS_FT_14B, XHS_RED, 16, price_y, 120, 22);
     lv_obj_t * sales = xhs_label_at(content, product->sales, XHS_FT_11,
                                     XHS_MUTED, 184, price_y + 5, 104, 16);
     lv_obj_set_style_text_align(sales, LV_TEXT_ALIGN_RIGHT, 0);
@@ -202,9 +199,9 @@ static void xhs_product_build(lv_obj_t * page, int index)
     lv_obj_set_style_bg_color(divider, lv_color_hex(XHS_LINE), 0);
     lv_obj_set_style_bg_opa(divider, LV_OPA_COVER, 0);
 
-    lv_obj_t * guarantee = xhs_label_at(content, XHS_TXT_MARKET_GUARANTEE,
-                                        XHS_FT_11, XHS_MUTED,
-                                        16, divider_y + 16, 272, 18);
+    lv_obj_t * guarantee =
+        xhs_label_at(content, XHS_TXT_MARKET_GUARANTEE, XHS_FT_11, XHS_MUTED,
+                     16, divider_y + 16, 272, 18);
     lv_label_set_long_mode(guarantee, LV_LABEL_LONG_MODE_DOTS);
 
     xhs_box(content, 0, divider_y + 60, 1, 1);
@@ -216,8 +213,8 @@ static void xhs_product_build(lv_obj_t * page, int index)
     lv_obj_set_style_bg_color(bar_line, lv_color_hex(XHS_LINE), 0);
     lv_obj_set_style_bg_opa(bar_line, LV_OPA_COVER, 0);
 
-    lv_obj_t * cart = xhs_pill(bar, 16, 4, 272, 36, XHS_RED,
-                               XHS_TXT_ADD_CART, XHS_FT_13, XHS_WHITE, 18);
+    lv_obj_t * cart = xhs_pill(bar, 16, 4, 272, 36, XHS_RED, XHS_TXT_ADD_CART,
+                               XHS_FT_13, XHS_WHITE, 18);
     xhs_clickable(cart, "add_cart");
     lv_obj_add_event_cb(cart, xhs_product_cart_cb, LV_EVENT_CLICKED, NULL);
     product_cart_label = lv_obj_get_child(cart, 0);
@@ -240,9 +237,9 @@ lv_obj_t * xhs_market_create(lv_obj_t * parent)
 {
     market_page = xhs_root_page(parent);
 
-    lv_obj_t * title = xhs_label_at(market_page, XHS_TXT_MARKET_TITLE,
-                                    XHS_FT_14B, XHS_TEXT,
-                                    0, 12, XHS_SCREEN_W, 20);
+    lv_obj_t * title =
+        xhs_label_at(market_page, XHS_TXT_MARKET_TITLE, XHS_FT_14B, XHS_TEXT, 0,
+                     12, XHS_SCREEN_W, 20);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t * search = xhs_image(market_page, XHS_ICON_SEARCH, 272, 12);
@@ -272,16 +269,16 @@ lv_obj_t * xhs_market_create(lv_obj_t * parent)
     lv_obj_set_style_bg_color(bubble, lv_color_hex(XHS_WHITE), 0);
     lv_obj_set_style_bg_opa(bubble, 20, 0);
 
-    xhs_label_at(banner, XHS_TXT_MARKET_BANNER_TITLE, XHS_FT_14B, XHS_WHITE,
-                 16, 16, 200, 22);
-    xhs_label_at(banner, XHS_TXT_MARKET_BANNER_SUB, XHS_FT_11, XHS_WHITE,
-                 16, 45, 200, 18);
+    xhs_label_at(banner, XHS_TXT_MARKET_BANNER_TITLE, XHS_FT_14B, XHS_WHITE, 16,
+                 16, 200, 22);
+    xhs_label_at(banner, XHS_TXT_MARKET_BANNER_SUB, XHS_FT_11, XHS_WHITE, 16,
+                 45, 200, 18);
 
     for(int i = 0; i < 6; i++) {
-        lv_obj_t * chip = xhs_pill(market_page, 8 + i * 48, 140, 42, 22,
-                                   i == 0 ? XHS_RED : XHS_SOFT,
-                                   market_categories[i], XHS_FT_11,
-                                   i == 0 ? XHS_WHITE : XHS_MUTED, 11);
+        lv_obj_t * chip =
+            xhs_pill(market_page, 8 + i * 48, 140, 42, 22,
+                     i == 0 ? XHS_RED : XHS_SOFT, market_categories[i],
+                     XHS_FT_11, i == 0 ? XHS_WHITE : XHS_MUTED, 11);
         xhs_clickable(chip, NULL);
         lv_obj_add_event_cb(chip, xhs_market_chip_cb, LV_EVENT_CLICKED,
                             (void *)(intptr_t)i);

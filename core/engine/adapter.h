@@ -13,9 +13,9 @@ typedef struct adapter adapter_t;
 typedef struct {
     uint32_t width;
     uint32_t height;
-    const char * lvgl_version;  /**< e.g. "9.6.0" */
-    const char * lvgl_src;      /**< exact source tree this adapter was built from */
-    const char * adapter_name;  /**< e.g. "9x" */
+    const char * lvgl_version; /**< e.g. "9.6.0" */
+    const char * lvgl_src; /**< exact source tree this adapter was built from */
+    const char * adapter_name; /**< e.g. "9x" */
 } adapter_info_t;
 
 typedef enum {
@@ -27,8 +27,8 @@ typedef enum {
 typedef struct {
     int32_t x;
     int32_t y;
-    const char * hit;        /**< Object name, "" when unnamed or no hit. */
-    const char * hit_class;  /**< e.g. "lv_button", "" when no hit. */
+    const char * hit;       /**< Object name, "" when unnamed or no hit. */
+    const char * hit_class; /**< e.g. "lv_button", "" when no hit. */
 } pointer_reply_t;
 
 typedef enum {
@@ -42,9 +42,7 @@ typedef enum {
  * indevs for OS input are created too, so real and virtual input never share
  * device state. No focus group is created: groups belong to user/app.
  */
-adapter_t * adapter_create(uint32_t width,
-                                   uint32_t height,
-                                   bool real_input);
+adapter_t * adapter_create(uint32_t width, uint32_t height, bool real_input);
 
 void adapter_destroy(adapter_t * adapter);
 
@@ -59,10 +57,8 @@ bool adapter_last_refresh_painted(const adapter_t * adapter);
  * LVGL process it. The hit test runs before delivery, so the reply names the
  * object under the point even if the event handler deletes it.
  */
-int adapter_pointer(adapter_t * adapter,
-                        pointer_action_t action,
-                        int32_t x,
-                        int32_t y);
+int adapter_pointer(adapter_t * adapter, pointer_action_t action, int32_t x,
+                    int32_t y);
 
 const pointer_reply_t * adapter_last_pointer(const adapter_t * adapter);
 
@@ -72,22 +68,17 @@ const pointer_reply_t * adapter_last_pointer(const adapter_t * adapter);
  * human mouse never overwrite each other. Returns 0 when the real indev
  * exists.
  */
-int adapter_real_pointer(adapter_t * adapter,
-                             pointer_action_t action,
-                             int32_t x,
-                             int32_t y);
+int adapter_real_pointer(adapter_t * adapter, pointer_action_t action,
+                         int32_t x, int32_t y);
 
-const pointer_reply_t * adapter_last_real_pointer(
-    const adapter_t * adapter);
+const pointer_reply_t * adapter_last_real_pointer(const adapter_t * adapter);
 
 /**
  * Deliver one real (OS) key press/release to the real keypad indev. The state
  * is kept even when LVGL blocks the read so the next timer read can deliver
  * it. Returns 0 when LVGL read the indev, -1 otherwise.
  */
-int adapter_real_key(adapter_t * adapter,
-                         key_action_t action,
-                         uint32_t key);
+int adapter_real_key(adapter_t * adapter, key_action_t action, uint32_t key);
 
 /**
  * Inject one key press/release into the standard virtual keypad indev and let
@@ -95,9 +86,7 @@ int adapter_real_key(adapter_t * adapter,
  * blocked or missing indev returns -1. The caller records ``delivered`` from
  * this return value, never from the intent to send.
  */
-int adapter_key(adapter_t * adapter,
-                    key_action_t action,
-                    uint32_t key);
+int adapter_key(adapter_t * adapter, key_action_t action, uint32_t key);
 
 /**
  * Turn the standard virtual encoder indev by ``diff`` steps. Positive values
@@ -127,10 +116,8 @@ int adapter_save_rgba(const adapter_t * adapter, const char * path);
  * On success the caller owns ``*pixels`` and releases it with
  * adapter_free_pixels(). Returns 0 on success.
  */
-int adapter_load_png(const char * path,
-                         uint8_t ** pixels,
-                         uint32_t * width,
-                         uint32_t * height);
+int adapter_load_png(const char * path, uint8_t ** pixels, uint32_t * width,
+                     uint32_t * height);
 
 void adapter_free_pixels(uint8_t * pixels);
 

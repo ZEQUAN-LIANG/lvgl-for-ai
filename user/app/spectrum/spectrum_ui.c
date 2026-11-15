@@ -16,50 +16,77 @@ spectrum_sim_t spectrum_sim;
 
 const spectrum_track_t spectrum_tracks[SPECTRUM_TRACK_COUNT] = {
     {"NEON SKYLINE", "AURORA WAVE", 141, 238, "8A", 11, SPECTRUM_PALETTE_ION},
-    {"MIDNIGHT CIRCUIT", "VOLT RUNNER", 128, 252, "6B", 29, SPECTRUM_PALETTE_MAGMA},
+    {"MIDNIGHT CIRCUIT", "VOLT RUNNER", 128, 252, "6B", 29,
+     SPECTRUM_PALETTE_MAGMA},
     {"SOLAR DRIFT", "LUMEN FIELD", 96, 306, "9A", 47, SPECTRUM_PALETTE_VERDANT},
 };
 
 const spectrum_palette_t spectrum_palettes[SPECTRUM_PALETTE_COUNT] = {
-    {"ION", 0x03060F, 0x0A1430, 0x25E7FF, 0x7C5CFF, 0xFF4FD8, 0xA9F7FF, 0x7E91B8},
-    {"MAGMA", 0x100308, 0x2A0A1C, 0xFF4F8B, 0xFF8A3D, 0xFFD166, 0xFFC2D6, 0xBD8FA4},
-    {"VERDANT", 0x020D0A, 0x07261F, 0x5DFFB0, 0x29D7FF, 0xD4FF4D, 0xC4FFE4, 0x7FB5A5},
+    {"ION", 0x03060F, 0x0A1430, 0x25E7FF, 0x7C5CFF, 0xFF4FD8, 0xA9F7FF,
+     0x7E91B8},
+    {"MAGMA", 0x100308, 0x2A0A1C, 0xFF4F8B, 0xFF8A3D, 0xFFD166, 0xFFC2D6,
+     0xBD8FA4},
+    {"VERDANT", 0x020D0A, 0x07261F, 0x5DFFB0, 0x29D7FF, 0xD4FF4D, 0xC4FFE4,
+     0x7FB5A5},
 };
-
 
 const lv_font_t * spectrum_font(spectrum_font_id_t id)
 {
     switch(id) {
-        case SPECTRUM_FONT_SANS_14: return &spectrum_sans_14;
-        case SPECTRUM_FONT_MONO_7: return &spectrum_mono_7;
-        case SPECTRUM_FONT_MONO_8: return &spectrum_mono_8;
-        case SPECTRUM_FONT_MONO_9: return &spectrum_mono_9;
-        case SPECTRUM_FONT_MONO_9B: return &spectrum_mono_9b;
-        case SPECTRUM_FONT_MONO_32: return &spectrum_mono_32;
-        default: return &spectrum_mono_8;
+        case SPECTRUM_FONT_SANS_14:
+            return &spectrum_sans_14;
+        case SPECTRUM_FONT_MONO_7:
+            return &spectrum_mono_7;
+        case SPECTRUM_FONT_MONO_8:
+            return &spectrum_mono_8;
+        case SPECTRUM_FONT_MONO_9:
+            return &spectrum_mono_9;
+        case SPECTRUM_FONT_MONO_9B:
+            return &spectrum_mono_9b;
+        case SPECTRUM_FONT_MONO_32:
+            return &spectrum_mono_32;
+        default:
+            return &spectrum_mono_8;
     }
 }
 
 const lv_image_dsc_t * spectrum_icon(spectrum_icon_id_t id)
 {
     switch(id) {
-        case SPECTRUM_ICON_LOGO: return &spectrum_icon_logo;
-        case SPECTRUM_ICON_PLAY: return &spectrum_icon_play;
-        case SPECTRUM_ICON_PAUSE: return &spectrum_icon_pause;
-        case SPECTRUM_ICON_PREV: return &spectrum_icon_prev;
-        case SPECTRUM_ICON_NEXT: return &spectrum_icon_next;
-        case SPECTRUM_ICON_HEART: return &spectrum_icon_heart;
-        case SPECTRUM_ICON_HEART_FILLED: return &spectrum_icon_heart_filled;
-        case SPECTRUM_ICON_PALETTE: return &spectrum_icon_palette;
-        case SPECTRUM_ICON_AUTO: return &spectrum_icon_auto;
-        case SPECTRUM_ICON_VOLUME: return &spectrum_icon_volume;
-        case SPECTRUM_ICON_ORBIT: return &spectrum_icon_orbit;
-        case SPECTRUM_ICON_DUAL: return &spectrum_icon_dual;
-        case SPECTRUM_ICON_RADIAL: return &spectrum_icon_radial;
-        case SPECTRUM_ICON_SPIRAL: return &spectrum_icon_spiral;
-        case SPECTRUM_ICON_SONAR: return &spectrum_icon_sonar;
-        case SPECTRUM_ICON_STARS: return &spectrum_icon_stars;
-        default: return &spectrum_icon_logo;
+        case SPECTRUM_ICON_LOGO:
+            return &spectrum_icon_logo;
+        case SPECTRUM_ICON_PLAY:
+            return &spectrum_icon_play;
+        case SPECTRUM_ICON_PAUSE:
+            return &spectrum_icon_pause;
+        case SPECTRUM_ICON_PREV:
+            return &spectrum_icon_prev;
+        case SPECTRUM_ICON_NEXT:
+            return &spectrum_icon_next;
+        case SPECTRUM_ICON_HEART:
+            return &spectrum_icon_heart;
+        case SPECTRUM_ICON_HEART_FILLED:
+            return &spectrum_icon_heart_filled;
+        case SPECTRUM_ICON_PALETTE:
+            return &spectrum_icon_palette;
+        case SPECTRUM_ICON_AUTO:
+            return &spectrum_icon_auto;
+        case SPECTRUM_ICON_VOLUME:
+            return &spectrum_icon_volume;
+        case SPECTRUM_ICON_ORBIT:
+            return &spectrum_icon_orbit;
+        case SPECTRUM_ICON_DUAL:
+            return &spectrum_icon_dual;
+        case SPECTRUM_ICON_RADIAL:
+            return &spectrum_icon_radial;
+        case SPECTRUM_ICON_SPIRAL:
+            return &spectrum_icon_spiral;
+        case SPECTRUM_ICON_SONAR:
+            return &spectrum_icon_sonar;
+        case SPECTRUM_ICON_STARS:
+            return &spectrum_icon_stars;
+        default:
+            return &spectrum_icon_logo;
     }
 }
 
@@ -67,10 +94,14 @@ const lv_image_dsc_t * spectrum_cover(int track, int palette)
 {
     track = (track + SPECTRUM_TRACK_COUNT) % SPECTRUM_TRACK_COUNT;
     palette = (palette + SPECTRUM_PALETTE_COUNT) % SPECTRUM_PALETTE_COUNT;
-    static const lv_image_dsc_t * const covers[SPECTRUM_TRACK_COUNT][SPECTRUM_PALETTE_COUNT] = {
-        {&spectrum_cover_t0_p0, &spectrum_cover_t0_p1, &spectrum_cover_t0_p2},
-        {&spectrum_cover_t1_p0, &spectrum_cover_t1_p1, &spectrum_cover_t1_p2},
-        {&spectrum_cover_t2_p0, &spectrum_cover_t2_p1, &spectrum_cover_t2_p2},
+    static const lv_image_dsc_t * const
+        covers[SPECTRUM_TRACK_COUNT][SPECTRUM_PALETTE_COUNT] = {
+            {&spectrum_cover_t0_p0, &spectrum_cover_t0_p1,
+             &spectrum_cover_t0_p2},
+            {&spectrum_cover_t1_p0, &spectrum_cover_t1_p1,
+             &spectrum_cover_t1_p2},
+            {&spectrum_cover_t2_p0, &spectrum_cover_t2_p1,
+             &spectrum_cover_t2_p2},
     };
     return covers[track][palette];
 }
@@ -79,10 +110,14 @@ const lv_image_dsc_t * spectrum_cover_spin(int track, int palette)
 {
     track = (track + SPECTRUM_TRACK_COUNT) % SPECTRUM_TRACK_COUNT;
     palette = (palette + SPECTRUM_PALETTE_COUNT) % SPECTRUM_PALETTE_COUNT;
-    static const lv_image_dsc_t * const covers[SPECTRUM_TRACK_COUNT][SPECTRUM_PALETTE_COUNT] = {
-        {&spectrum_cover_spin_t0_p0, &spectrum_cover_spin_t0_p1, &spectrum_cover_spin_t0_p2},
-        {&spectrum_cover_spin_t1_p0, &spectrum_cover_spin_t1_p1, &spectrum_cover_spin_t1_p2},
-        {&spectrum_cover_spin_t2_p0, &spectrum_cover_spin_t2_p1, &spectrum_cover_spin_t2_p2},
+    static const lv_image_dsc_t * const
+        covers[SPECTRUM_TRACK_COUNT][SPECTRUM_PALETTE_COUNT] = {
+            {&spectrum_cover_spin_t0_p0, &spectrum_cover_spin_t0_p1,
+             &spectrum_cover_spin_t0_p2},
+            {&spectrum_cover_spin_t1_p0, &spectrum_cover_spin_t1_p1,
+             &spectrum_cover_spin_t1_p2},
+            {&spectrum_cover_spin_t2_p0, &spectrum_cover_spin_t2_p1,
+             &spectrum_cover_spin_t2_p2},
     };
     return covers[track][palette];
 }
@@ -91,10 +126,14 @@ const lv_image_dsc_t * spectrum_cover_spin96(int track, int palette)
 {
     track = (track + SPECTRUM_TRACK_COUNT) % SPECTRUM_TRACK_COUNT;
     palette = (palette + SPECTRUM_PALETTE_COUNT) % SPECTRUM_PALETTE_COUNT;
-    static const lv_image_dsc_t * const covers[SPECTRUM_TRACK_COUNT][SPECTRUM_PALETTE_COUNT] = {
-        {&spectrum_cover_spin96_t0_p0, &spectrum_cover_spin96_t0_p1, &spectrum_cover_spin96_t0_p2},
-        {&spectrum_cover_spin96_t1_p0, &spectrum_cover_spin96_t1_p1, &spectrum_cover_spin96_t1_p2},
-        {&spectrum_cover_spin96_t2_p0, &spectrum_cover_spin96_t2_p1, &spectrum_cover_spin96_t2_p2},
+    static const lv_image_dsc_t * const
+        covers[SPECTRUM_TRACK_COUNT][SPECTRUM_PALETTE_COUNT] = {
+            {&spectrum_cover_spin96_t0_p0, &spectrum_cover_spin96_t0_p1,
+             &spectrum_cover_spin96_t0_p2},
+            {&spectrum_cover_spin96_t1_p0, &spectrum_cover_spin96_t1_p1,
+             &spectrum_cover_spin96_t1_p2},
+            {&spectrum_cover_spin96_t2_p0, &spectrum_cover_spin96_t2_p1,
+             &spectrum_cover_spin96_t2_p2},
     };
     return covers[track][palette];
 }
@@ -103,10 +142,14 @@ const lv_image_dsc_t * spectrum_cover_spin88(int track, int palette)
 {
     track = (track + SPECTRUM_TRACK_COUNT) % SPECTRUM_TRACK_COUNT;
     palette = (palette + SPECTRUM_PALETTE_COUNT) % SPECTRUM_PALETTE_COUNT;
-    static const lv_image_dsc_t * const covers[SPECTRUM_TRACK_COUNT][SPECTRUM_PALETTE_COUNT] = {
-        {&spectrum_cover_spin88_t0_p0, &spectrum_cover_spin88_t0_p1, &spectrum_cover_spin88_t0_p2},
-        {&spectrum_cover_spin88_t1_p0, &spectrum_cover_spin88_t1_p1, &spectrum_cover_spin88_t1_p2},
-        {&spectrum_cover_spin88_t2_p0, &spectrum_cover_spin88_t2_p1, &spectrum_cover_spin88_t2_p2},
+    static const lv_image_dsc_t * const
+        covers[SPECTRUM_TRACK_COUNT][SPECTRUM_PALETTE_COUNT] = {
+            {&spectrum_cover_spin88_t0_p0, &spectrum_cover_spin88_t0_p1,
+             &spectrum_cover_spin88_t0_p2},
+            {&spectrum_cover_spin88_t1_p0, &spectrum_cover_spin88_t1_p1,
+             &spectrum_cover_spin88_t1_p2},
+            {&spectrum_cover_spin88_t2_p0, &spectrum_cover_spin88_t2_p1,
+             &spectrum_cover_spin88_t2_p2},
     };
     return covers[track][palette];
 }
@@ -115,10 +158,14 @@ const lv_image_dsc_t * spectrum_cover_spin78(int track, int palette)
 {
     track = (track + SPECTRUM_TRACK_COUNT) % SPECTRUM_TRACK_COUNT;
     palette = (palette + SPECTRUM_PALETTE_COUNT) % SPECTRUM_PALETTE_COUNT;
-    static const lv_image_dsc_t * const covers[SPECTRUM_TRACK_COUNT][SPECTRUM_PALETTE_COUNT] = {
-        {&spectrum_cover_spin78_t0_p0, &spectrum_cover_spin78_t0_p1, &spectrum_cover_spin78_t0_p2},
-        {&spectrum_cover_spin78_t1_p0, &spectrum_cover_spin78_t1_p1, &spectrum_cover_spin78_t1_p2},
-        {&spectrum_cover_spin78_t2_p0, &spectrum_cover_spin78_t2_p1, &spectrum_cover_spin78_t2_p2},
+    static const lv_image_dsc_t * const
+        covers[SPECTRUM_TRACK_COUNT][SPECTRUM_PALETTE_COUNT] = {
+            {&spectrum_cover_spin78_t0_p0, &spectrum_cover_spin78_t0_p1,
+             &spectrum_cover_spin78_t0_p2},
+            {&spectrum_cover_spin78_t1_p0, &spectrum_cover_spin78_t1_p1,
+             &spectrum_cover_spin78_t1_p2},
+            {&spectrum_cover_spin78_t2_p0, &spectrum_cover_spin78_t2_p1,
+             &spectrum_cover_spin78_t2_p2},
     };
     return covers[track][palette];
 }
@@ -127,10 +174,14 @@ const lv_image_dsc_t * spectrum_cover_base88(int track, int palette)
 {
     track = (track + SPECTRUM_TRACK_COUNT) % SPECTRUM_TRACK_COUNT;
     palette = (palette + SPECTRUM_PALETTE_COUNT) % SPECTRUM_PALETTE_COUNT;
-    static const lv_image_dsc_t * const covers[SPECTRUM_TRACK_COUNT][SPECTRUM_PALETTE_COUNT] = {
-        {&spectrum_cover_base88_t0_p0, &spectrum_cover_base88_t0_p1, &spectrum_cover_base88_t0_p2},
-        {&spectrum_cover_base88_t1_p0, &spectrum_cover_base88_t1_p1, &spectrum_cover_base88_t1_p2},
-        {&spectrum_cover_base88_t2_p0, &spectrum_cover_base88_t2_p1, &spectrum_cover_base88_t2_p2},
+    static const lv_image_dsc_t * const
+        covers[SPECTRUM_TRACK_COUNT][SPECTRUM_PALETTE_COUNT] = {
+            {&spectrum_cover_base88_t0_p0, &spectrum_cover_base88_t0_p1,
+             &spectrum_cover_base88_t0_p2},
+            {&spectrum_cover_base88_t1_p0, &spectrum_cover_base88_t1_p1,
+             &spectrum_cover_base88_t1_p2},
+            {&spectrum_cover_base88_t2_p0, &spectrum_cover_base88_t2_p1,
+             &spectrum_cover_base88_t2_p2},
     };
     return covers[track][palette];
 }
@@ -139,10 +190,14 @@ const lv_image_dsc_t * spectrum_cover_base78(int track, int palette)
 {
     track = (track + SPECTRUM_TRACK_COUNT) % SPECTRUM_TRACK_COUNT;
     palette = (palette + SPECTRUM_PALETTE_COUNT) % SPECTRUM_PALETTE_COUNT;
-    static const lv_image_dsc_t * const covers[SPECTRUM_TRACK_COUNT][SPECTRUM_PALETTE_COUNT] = {
-        {&spectrum_cover_base78_t0_p0, &spectrum_cover_base78_t0_p1, &spectrum_cover_base78_t0_p2},
-        {&spectrum_cover_base78_t1_p0, &spectrum_cover_base78_t1_p1, &spectrum_cover_base78_t1_p2},
-        {&spectrum_cover_base78_t2_p0, &spectrum_cover_base78_t2_p1, &spectrum_cover_base78_t2_p2},
+    static const lv_image_dsc_t * const
+        covers[SPECTRUM_TRACK_COUNT][SPECTRUM_PALETTE_COUNT] = {
+            {&spectrum_cover_base78_t0_p0, &spectrum_cover_base78_t0_p1,
+             &spectrum_cover_base78_t0_p2},
+            {&spectrum_cover_base78_t1_p0, &spectrum_cover_base78_t1_p1,
+             &spectrum_cover_base78_t1_p2},
+            {&spectrum_cover_base78_t2_p0, &spectrum_cover_base78_t2_p1,
+             &spectrum_cover_base78_t2_p2},
     };
     return covers[track][palette];
 }
@@ -151,7 +206,6 @@ const lv_image_dsc_t * spectrum_glow_asset(void)
 {
     return &spectrum_glow;
 }
-
 
 lv_obj_t * spectrum_box(lv_obj_t * parent, int x, int y, int w, int h)
 {
@@ -179,9 +233,8 @@ lv_obj_t * spectrum_card(lv_obj_t * parent, int x, int y, int w, int h,
 }
 
 lv_obj_t * spectrum_label_align(lv_obj_t * parent, const char * text,
-                                spectrum_font_id_t font, uint32_t color,
-                                int x, int y, int w, int h,
-                                lv_text_align_t align)
+                                spectrum_font_id_t font, uint32_t color, int x,
+                                int y, int w, int h, lv_text_align_t align)
 {
     lv_obj_t * label = lv_label_create(parent);
     lv_obj_set_pos(label, x, y);
@@ -191,24 +244,25 @@ lv_obj_t * spectrum_label_align(lv_obj_t * parent, const char * text,
     lv_obj_set_style_text_font(label, spectrum_font(font), 0);
     lv_obj_set_style_text_color(label, lv_color_hex(color), 0);
     lv_obj_set_style_text_align(label, align, 0);
-    lv_obj_set_style_text_letter_space(label,
-                                       (font == SPECTRUM_FONT_MONO_7 ||
-                                        font == SPECTRUM_FONT_MONO_8) ? 1 : 0, 0);
+    lv_obj_set_style_text_letter_space(
+        label,
+        (font == SPECTRUM_FONT_MONO_7 || font == SPECTRUM_FONT_MONO_8) ? 1 : 0,
+        0);
     lv_obj_set_style_pad_all(label, 0, 0);
     lv_obj_set_clickable(label, false);
     return label;
 }
 
 lv_obj_t * spectrum_label(lv_obj_t * parent, const char * text,
-                          spectrum_font_id_t font, uint32_t color,
-                          int x, int y, int w, int h)
+                          spectrum_font_id_t font, uint32_t color, int x, int y,
+                          int w, int h)
 {
     return spectrum_label_align(parent, text, font, color, x, y, w, h,
                                 LV_TEXT_ALIGN_LEFT);
 }
 
-void spectrum_set_icon(lv_obj_t * image, spectrum_icon_id_t icon,
-                       int size, uint32_t color)
+void spectrum_set_icon(lv_obj_t * image, spectrum_icon_id_t icon, int size,
+                       uint32_t color)
 {
     if(image == NULL) return;
     lv_image_set_src(image, spectrum_icon(icon));
@@ -219,8 +273,8 @@ void spectrum_set_icon(lv_obj_t * image, spectrum_icon_id_t icon,
     lv_obj_set_clickable(image, false);
 }
 
-lv_obj_t * spectrum_icon_obj(lv_obj_t * parent, spectrum_icon_id_t icon,
-                             int x, int y, int size, uint32_t color)
+lv_obj_t * spectrum_icon_obj(lv_obj_t * parent, spectrum_icon_id_t icon, int x,
+                             int y, int size, uint32_t color)
 {
     lv_obj_t * image = lv_image_create(parent);
     lv_image_set_src(image, spectrum_icon(icon));
@@ -246,7 +300,6 @@ void spectrum_divider(lv_obj_t * parent, int x, int y, int w)
     lv_obj_set_style_bg_opa(line, 18, 0);
 }
 
-
 static double sp_clamp(double value, double lo, double hi)
 {
     return value < lo ? lo : value > hi ? hi : value;
@@ -269,8 +322,10 @@ static double sp_noise1(double x)
 uint32_t spectrum_mix(uint32_t first, uint32_t second, float t)
 {
     t = sp_clamp(t, 0.0f, 1.0f);
-    uint32_t ar = (first >> 16) & 0xFF, ag = (first >> 8) & 0xFF, ab = first & 0xFF;
-    uint32_t br = (second >> 16) & 0xFF, bg = (second >> 8) & 0xFF, bb = second & 0xFF;
+    uint32_t ar = (first >> 16) & 0xFF, ag = (first >> 8) & 0xFF,
+             ab = first & 0xFF;
+    uint32_t br = (second >> 16) & 0xFF, bg = (second >> 8) & 0xFF,
+             bb = second & 0xFF;
     uint32_t r = (uint32_t)((float)ar + ((float)br - (float)ar) * t);
     uint32_t g = (uint32_t)((float)ag + ((float)bg - (float)ag) * t);
     uint32_t b = (uint32_t)((float)ab + ((float)bb - (float)ab) * t);
@@ -337,9 +392,11 @@ void spectrum_track_select(int index)
 
 void spectrum_track_next(void)
 {
-    spectrum_state.track_index = (spectrum_state.track_index + 1) % SPECTRUM_TRACK_COUNT;
+    spectrum_state.track_index =
+        (spectrum_state.track_index + 1) % SPECTRUM_TRACK_COUNT;
     if(!spectrum_state.palette_locked) {
-        spectrum_state.palette_index = spectrum_tracks[spectrum_state.track_index].palette;
+        spectrum_state.palette_index =
+            spectrum_tracks[spectrum_state.track_index].palette;
     }
     spectrum_sim_reset();
 }
@@ -347,9 +404,11 @@ void spectrum_track_next(void)
 void spectrum_track_prev(void)
 {
     spectrum_state.track_index =
-        (spectrum_state.track_index + SPECTRUM_TRACK_COUNT - 1) % SPECTRUM_TRACK_COUNT;
+        (spectrum_state.track_index + SPECTRUM_TRACK_COUNT - 1) %
+        SPECTRUM_TRACK_COUNT;
     if(!spectrum_state.palette_locked) {
-        spectrum_state.palette_index = spectrum_tracks[spectrum_state.track_index].palette;
+        spectrum_state.palette_index =
+            spectrum_tracks[spectrum_state.track_index].palette;
     }
     spectrum_sim_reset();
 }
@@ -363,7 +422,8 @@ void spectrum_seek(float ratio)
 {
     ratio = sp_clamp(ratio, 0.0f, 1.0f);
     spectrum_sim.playhead = ratio * spectrum_sim.duration;
-    spectrum_sim.beat = (int)floorf((spectrum_sim.playhead * spectrum_sim.bpm) / 60.0f);
+    spectrum_sim.beat =
+        (int)floorf((spectrum_sim.playhead * spectrum_sim.bpm) / 60.0f);
     spectrum_sim.beat_phase = 0.0f;
     spectrum_sim.just_beat = false;
     spectrum_sim.just_drop = false;
@@ -404,7 +464,8 @@ bool spectrum_sim_update(double dt)
     spectrum_sim.time += dt;
     spectrum_sim.just_beat = false;
     spectrum_sim.just_drop = false;
-    spectrum_sim.burst = spectrum_sim.burst > dt * 2.2 ? spectrum_sim.burst - dt * 2.2 : 0.0;
+    spectrum_sim.burst =
+        spectrum_sim.burst > dt * 2.2 ? spectrum_sim.burst - dt * 2.2 : 0.0;
 
     if(spectrum_sim.playing) {
         spectrum_sim.playhead += dt;
@@ -449,8 +510,7 @@ bool spectrum_sim_update(double dt)
         v += 0.11 * sin((double)i * 1.7 + t * 2.3) *
              sin((double)i * 0.29 + t * 0.8);
         v += 0.09 * (sp_noise1((double)i * 0.37 + t * 1.9) - 0.5);
-        v *= 0.78 + 0.22 * sin((double)i * 0.55 + t * 3.8 +
-                               sin(t * 0.6) * 2.0);
+        v *= 0.78 + 0.22 * sin((double)i * 0.55 + t * 3.8 + sin(t * 0.6) * 2.0);
 
         if(i < 9) v += kick * 0.55 * (1.0 - (double)i / 11.0);
         v += kick * 0.14 * exp(-pow((f - 0.35) / 0.18, 2.0));
@@ -459,31 +519,38 @@ bool spectrum_sim_update(double dt)
         v += spectrum_sim.drop * 0.28 *
              (0.45 + 0.55 * sin(t * 2.6 + (double)i * 0.5));
 
-        v = sp_clamp(v * (0.55 + 0.65 * (spectrum_sim.energy > 0.1 ?
-                                         spectrum_sim.energy : 0.1)) * play,
-                     0.02, 1.2);
+        v = sp_clamp(
+            v *
+                (0.55 + 0.65 * (spectrum_sim.energy > 0.1 ? spectrum_sim.energy
+                                                          : 0.1)) *
+                play,
+            0.02, 1.2);
         spectrum_sim.targets[i] = (float)v;
 
         float current = spectrum_sim.bands[i];
-        double k = v > current ? 1.0 - exp(-dt / 0.028)
-                               : 1.0 - exp(-dt / 0.2);
-        spectrum_sim.bands[i] = (float)((double)current + (v - (double)current) * k);
+        double k = v > current ? 1.0 - exp(-dt / 0.028) : 1.0 - exp(-dt / 0.2);
+        spectrum_sim.bands[i] =
+            (float)((double)current + (v - (double)current) * k);
 
         float bv = spectrum_sim.bands[i];
         if(bv >= spectrum_sim.peaks[i]) spectrum_sim.peaks[i] = bv;
-        else spectrum_sim.peaks[i] = bv > spectrum_sim.peaks[i] - (float)(dt * 0.62) ?
-                                     bv : spectrum_sim.peaks[i] - (float)(dt * 0.62);
+        else
+            spectrum_sim.peaks[i] =
+                bv > spectrum_sim.peaks[i] - (float)(dt * 0.62)
+                    ? bv
+                    : spectrum_sim.peaks[i] - (float)(dt * 0.62);
 
         if(i < 12) low_sum += bv;
-        else if(i < 32) mid_sum += bv;
-        else high_sum += bv;
+        else if(i < 32)
+            mid_sum += bv;
+        else
+            high_sum += bv;
     }
 
     spectrum_sim.low = low_sum / 12.0;
     spectrum_sim.mid = mid_sum / 20.0;
     spectrum_sim.high = high_sum / (double)(SPECTRUM_BAND_COUNT - 32);
-    spectrum_sim.energy = spectrum_sim.low * 0.5 +
-                          spectrum_sim.mid * 0.3 +
+    spectrum_sim.energy = spectrum_sim.low * 0.5 + spectrum_sim.mid * 0.3 +
                           spectrum_sim.high * 0.2;
 
     double amp = 0.10 + spectrum_sim.energy * 0.55 +
@@ -492,11 +559,13 @@ bool spectrum_sim_update(double dt)
         double p = (double)j / (double)(SPECTRUM_WAVE_COUNT - 1);
         double y =
             sin(p * SP_PI * 4.0 + t * 3.8 +
-                sin(p * SP_PI * 2.8 + t * 1.5) * 1.6) * 0.55 +
+                sin(p * SP_PI * 2.8 + t * 1.5) * 1.6) *
+                0.55 +
             sin(p * SP_PI * 10.0 - t * 2.7 + sin(t * 1.1) * 0.8) * 0.28 +
             sin(p * SP_PI * 22.0 + t * 5.2) * 0.08 * (0.4 + spectrum_sim.high) +
             sin(p * SP_PI * 46.0 - t * 7.0) * 0.03;
-        spectrum_sim.wave[j] = (float)(y * amp * (spectrum_sim.playing ? 1.0 : 0.35));
+        spectrum_sim.wave[j] =
+            (float)(y * amp * (spectrum_sim.playing ? 1.0 : 0.35));
     }
 
     return false;

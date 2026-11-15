@@ -10,17 +10,17 @@
 #ifdef _WIN32
 #include <direct.h>
 #include <windows.h>
-#define make_dir(path) _mkdir(path)
+#define make_dir(path)   _mkdir(path)
 #define remove_dir(path) _rmdir(path)
 #else
 #include <pthread.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#define make_dir(path) mkdir((path), (S_IRWXU | S_IRWXG | S_IRWXO))
+#define make_dir(path)   mkdir((path), (S_IRWXU | S_IRWXG | S_IRWXO))
 #define remove_dir(path) rmdir(path)
 #endif
 
-#define ENCODER_PATH_SIZE 1200
+#define ENCODER_PATH_SIZE     1200
 #define FRAME_ENCODER_WORKERS 3
 
 typedef struct frame_job {
@@ -117,9 +117,7 @@ static void encoder_wait_progress(frame_encoder_t * encoder)
 #endif
 }
 
-static bool build_path(char * out,
-                       size_t out_size,
-                       const char * directory,
+static bool build_path(char * out, size_t out_size, const char * directory,
                        const char * name)
 {
     int written = snprintf(out, out_size, "%s/%s", directory, name);
@@ -133,10 +131,8 @@ static bool numbered_name(char * out, size_t out_size, long frame_no,
     return (written > 0) && ((size_t)written < out_size);
 }
 
-static bool tmp_path_for(const frame_encoder_t * encoder,
-                         long frame_no,
-                         char * out,
-                         size_t out_size)
+static bool tmp_path_for(const frame_encoder_t * encoder, long frame_no,
+                         char * out, size_t out_size)
 {
     char name[64];
     if(!numbered_name(name, sizeof(name), frame_no, ".png.tmp")) {
@@ -145,10 +141,8 @@ static bool tmp_path_for(const frame_encoder_t * encoder,
     return build_path(out, out_size, encoder->temp_dir, name);
 }
 
-static bool final_path_for(const frame_encoder_t * encoder,
-                           long frame_no,
-                           char * out,
-                           size_t out_size)
+static bool final_path_for(const frame_encoder_t * encoder, long frame_no,
+                           char * out, size_t out_size)
 {
     char name[64];
     if(!numbered_name(name, sizeof(name), frame_no, ".png")) {
@@ -297,14 +291,14 @@ static bool start_workers(frame_encoder_t * encoder)
 {
     for(long i = 0; i < FRAME_ENCODER_WORKERS; i++) {
 #ifdef _WIN32
-        encoder->threads[i] = CreateThread(NULL, 0, worker_entry, encoder, 0,
-                                           NULL);
+        encoder->threads[i] =
+            CreateThread(NULL, 0, worker_entry, encoder, 0, NULL);
         if(encoder->threads[i] == NULL) {
             return false;
         }
 #else
-        if(pthread_create(&encoder->threads[i], NULL, worker_entry, encoder)
-           != 0) {
+        if(pthread_create(&encoder->threads[i], NULL, worker_entry, encoder) !=
+           0) {
             return false;
         }
 #endif
@@ -334,18 +328,15 @@ static void rollback_bytes(frame_encoder_t * encoder, uint64_t bytes)
     encoder_unlock(encoder);
 }
 
-frame_encoder_t * frame_encoder_start(const char * session_dir,
-                                      uint32_t width,
-                                      uint32_t height,
-                                      uint64_t byte_budget)
+frame_encoder_t * frame_encoder_start(const char * session_dir, uint32_t width,
+                                      uint32_t height, uint64_t byte_budget)
 {
     if((session_dir == NULL) || (width == 0u) || (height == 0u) ||
        (byte_budget == 0u)) {
         return NULL;
     }
     uint64_t pixels = (uint64_t)width * (uint64_t)height;
-    if((pixels > (UINT64_MAX / 4u)) ||
-       ((pixels * 4u) > (uint64_t)SIZE_MAX)) {
+    if((pixels > (UINT64_MAX / 4u)) || ((pixels * 4u) > (uint64_t)SIZE_MAX)) {
         return NULL;
     }
     frame_encoder_t * encoder = (frame_encoder_t *)calloc(1u, sizeof(*encoder));
@@ -400,8 +391,7 @@ frame_encoder_t * frame_encoder_start(const char * session_dir,
     return encoder;
 }
 
-int frame_encoder_submit(frame_encoder_t * encoder,
-                         long frame_no,
+int frame_encoder_submit(frame_encoder_t * encoder, long frame_no,
                          const uint8_t * xrgb)
 {
     if((encoder == NULL) || (xrgb == NULL) || (frame_no <= 0)) {
@@ -412,8 +402,8 @@ int frame_encoder_submit(frame_encoder_t * encoder,
     encoder_lock(encoder);
     while(!encoder->stopping && !encoder->failed &&
           (encoder->pending_bytes > 0u) &&
-          ((encoder->pending_bytes + encoder->frame_bytes)
-           > encoder->byte_budget)) {
+          ((encoder->pending_bytes + encoder->frame_bytes) >
+           encoder->byte_budget)) {
         encoder_wait_progress(encoder);
     }
     if(encoder->stopping || encoder->failed) {

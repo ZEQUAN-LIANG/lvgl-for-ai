@@ -15,18 +15,19 @@ static lv_obj_t * overlay_host;
 static lv_obj_t * bottom_nav;
 
 static const char * const nav_texts[4] = {
-    XHS_TXT_NAV_HOME, XHS_TXT_NAV_MARKET, XHS_TXT_NAV_MESSAGE, XHS_TXT_NAV_ME,
+    XHS_TXT_NAV_HOME,
+    XHS_TXT_NAV_MARKET,
+    XHS_TXT_NAV_MESSAGE,
+    XHS_TXT_NAV_ME,
 };
 
 static void xhs_nav_style(int active)
 {
     for(int i = 0; i < 4; i++) {
-        lv_obj_set_style_text_font(nav_labels[i],
-                                   xhs_font(i == active ? XHS_FT_12B
-                                                        : XHS_FT_12), 0);
-        lv_obj_set_style_text_color(nav_labels[i],
-                                    lv_color_hex(i == active ? XHS_TEXT
-                                                             : XHS_MUTED), 0);
+        lv_obj_set_style_text_font(
+            nav_labels[i], xhs_font(i == active ? XHS_FT_12B : XHS_FT_12), 0);
+        lv_obj_set_style_text_color(
+            nav_labels[i], lv_color_hex(i == active ? XHS_TEXT : XHS_MUTED), 0);
     }
 }
 
@@ -95,8 +96,8 @@ static void xhs_build_status_bar(lv_obj_t * panel)
 
 static void xhs_bottom_nav(lv_obj_t * panel)
 {
-    bottom_nav = xhs_box(panel, 0, XHS_SCREEN_H - XHS_NAV_H,
-                         XHS_SCREEN_W, XHS_NAV_H);
+    bottom_nav =
+        xhs_box(panel, 0, XHS_SCREEN_H - XHS_NAV_H, XHS_SCREEN_W, XHS_NAV_H);
     lv_obj_set_style_bg_color(bottom_nav, lv_color_hex(XHS_WHITE), 0);
     lv_obj_set_style_bg_opa(bottom_nav, LV_OPA_COVER, 0);
 
@@ -104,10 +105,10 @@ static void xhs_bottom_nav(lv_obj_t * panel)
     lv_obj_set_style_bg_color(divider, lv_color_hex(XHS_LINE), 0);
     lv_obj_set_style_bg_opa(divider, LV_OPA_COVER, 0);
 
-    const int centers[4] = { 38, 104, 200, 266 };
+    const int centers[4] = {38, 104, 200, 266};
     for(int i = 0; i < 4; i++) {
-        lv_obj_t * label = xhs_label(bottom_nav, nav_texts[i],
-                                     XHS_FT_12, XHS_MUTED);
+        lv_obj_t * label =
+            xhs_label(bottom_nav, nav_texts[i], XHS_FT_12, XHS_MUTED);
         lv_obj_set_pos(label, centers[i] - 20, 11);
         lv_obj_set_size(label, 40, 17);
         lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
@@ -122,8 +123,8 @@ static void xhs_bottom_nav(lv_obj_t * panel)
     lv_obj_set_style_bg_color(dot, lv_color_hex(XHS_RED), 0);
     lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, 0);
 
-    lv_obj_t * publish = xhs_pill(bottom_nav, 131, 9, 42, 28,
-                                  XHS_RED, "", XHS_FT_12, XHS_WHITE, 14);
+    lv_obj_t * publish = xhs_pill(bottom_nav, 131, 9, 42, 28, XHS_RED, "",
+                                  XHS_FT_12, XHS_WHITE, 14);
     lv_obj_set_style_shadow_color(publish, lv_color_hex(XHS_RED), 0);
     lv_obj_set_style_shadow_width(publish, 8, 0);
     lv_obj_set_style_shadow_opa(publish, 55, 0);

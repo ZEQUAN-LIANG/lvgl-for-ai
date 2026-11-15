@@ -13,14 +13,9 @@
 #define make_dir(path) mkdir(path, 0777)
 #endif
 
-bool capture_init(capture_t * capture,
-                  adapter_t * adapter,
-                  const char * session_dir,
-                  bool record,
-                  long max_frames,
-                  bool live,
-                  bool async_encode,
-                  uint64_t encode_budget_bytes)
+bool capture_init(capture_t * capture, adapter_t * adapter,
+                  const char * session_dir, bool record, long max_frames,
+                  bool live, bool async_encode, uint64_t encode_budget_bytes)
 {
     memset(capture, 0, sizeof(*capture));
     capture->adapter = adapter;
@@ -46,22 +41,19 @@ bool capture_init(capture_t * capture,
     capture->enabled = true;
     if(async_encode) {
         const adapter_info_t * info = adapter_info(adapter);
-        uint64_t budget = encode_budget_bytes == 0u
-                              ? FRAME_ENCODER_BUDGET_BYTES
-                              : encode_budget_bytes;
+        uint64_t budget = encode_budget_bytes == 0u ? FRAME_ENCODER_BUDGET_BYTES
+                                                    : encode_budget_bytes;
         if(info == NULL || info->width == 0u || info->height == 0u) {
             return false;
         }
-        capture->encoder = frame_encoder_start(session_dir, info->width,
-                                               info->height, budget);
+        capture->encoder =
+            frame_encoder_start(session_dir, info->width, info->height, budget);
         if(capture->encoder == NULL) return false;
     }
     return true;
 }
 
-int capture_frame(capture_t * capture,
-                  char * relpath,
-                  size_t relpath_size,
+int capture_frame(capture_t * capture, char * relpath, size_t relpath_size,
                   capture_frame_result_t * result)
 {
     if(result != NULL) memset(result, 0, sizeof(*result));
@@ -150,9 +142,7 @@ bool capture_encoder_failed(capture_t * capture)
            frame_encoder_failed(capture->encoder);
 }
 
-int capture_snapshot(capture_t * capture,
-                     const char * label,
-                     char * relpath,
+int capture_snapshot(capture_t * capture, const char * label, char * relpath,
                      size_t relpath_size)
 {
     if(relpath != NULL && relpath_size > 0) relpath[0] = '\0';

@@ -11,8 +11,7 @@ static int clamp_threshold(int threshold)
     return threshold;
 }
 
-static bool open_writer(frame_diff_t * diff,
-                        const char * session_dir,
+static bool open_writer(frame_diff_t * diff, const char * session_dir,
                         const char * filename)
 {
     char path[2048];
@@ -33,16 +32,14 @@ static void reset(frame_diff_t * diff)
     memset(diff, 0, sizeof(*diff));
 }
 
-bool frame_diff_open_previous(frame_diff_t * diff,
-                              const char * session_dir,
-                              uint32_t width,
-                              uint32_t height,
-                              int threshold,
+bool frame_diff_open_previous(frame_diff_t * diff, const char * session_dir,
+                              uint32_t width, uint32_t height, int threshold,
                               bool record)
 {
     if(diff == NULL) return false;
     reset(diff);
-    if(!record || session_dir == NULL || width == 0 || height == 0) return false;
+    if(!record || session_dir == NULL || width == 0 || height == 0)
+        return false;
 
     diff->width = width;
     diff->height = height;
@@ -60,13 +57,9 @@ bool frame_diff_open_previous(frame_diff_t * diff,
     return true;
 }
 
-bool frame_diff_open_reference(frame_diff_t * diff,
-                               const char * session_dir,
-                               const uint8_t * reference,
-                               uint32_t width,
-                               uint32_t height,
-                               int threshold,
-                               bool record)
+bool frame_diff_open_reference(frame_diff_t * diff, const char * session_dir,
+                               const uint8_t * reference, uint32_t width,
+                               uint32_t height, int threshold, bool record)
 {
     if(diff == NULL) return false;
     reset(diff);
@@ -87,19 +80,17 @@ bool frame_diff_open_reference(frame_diff_t * diff,
     return true;
 }
 
-static void write_row(frame_diff_t * diff,
-                      long frame_no,
-                      long prev_frame_no,
-                      bool has_previous,
-                      uint32_t t_ms,
+static void write_row(frame_diff_t * diff, long frame_no, long prev_frame_no,
+                      bool has_previous, uint32_t t_ms,
                       const frame_analysis_t * stats)
 {
     double pixels = (double)diff->width * (double)diff->height;
-    fprintf(diff->out,
-            "{\"schema\":\"lvgl-ai-frame-diffs-v1\",\"frame_no\":%ld,\"t_ms\":%lu,"
-            "\"width\":%u,\"height\":%u,\"threshold\":%d,",
-            frame_no, (unsigned long)t_ms, diff->width, diff->height,
-            diff->threshold);
+    fprintf(
+        diff->out,
+        "{\"schema\":\"lvgl-ai-frame-diffs-v1\",\"frame_no\":%ld,\"t_ms\":%lu,"
+        "\"width\":%u,\"height\":%u,\"threshold\":%d,",
+        frame_no, (unsigned long)t_ms, diff->width, diff->height,
+        diff->threshold);
     if(has_previous) {
         fprintf(diff->out, "\"prev_frame_no\":%ld,", prev_frame_no);
     }
@@ -110,10 +101,8 @@ static void write_row(frame_diff_t * diff,
         fputs("\"bbox\":null,", diff->out);
     }
     else {
-        fprintf(diff->out,
-                "\"bbox\":{\"x\":%u,\"y\":%u,\"w\":%u,\"h\":%u},",
-                stats->min_x, stats->min_y,
-                stats->max_x - stats->min_x + 1u,
+        fprintf(diff->out, "\"bbox\":{\"x\":%u,\"y\":%u,\"w\":%u,\"h\":%u},",
+                stats->min_x, stats->min_y, stats->max_x - stats->min_x + 1u,
                 stats->max_y - stats->min_y + 1u);
     }
     fprintf(diff->out,
@@ -124,10 +113,8 @@ static void write_row(frame_diff_t * diff,
     fflush(diff->out);
 }
 
-void frame_diff_record_previous(frame_diff_t * diff,
-                                const uint8_t * frame,
-                                long frame_no,
-                                uint32_t t_ms,
+void frame_diff_record_previous(frame_diff_t * diff, const uint8_t * frame,
+                                long frame_no, uint32_t t_ms,
                                 const frame_analysis_t * analysis)
 {
     if(diff == NULL || !diff->enabled || frame == NULL) return;
@@ -142,8 +129,8 @@ void frame_diff_record_previous(frame_diff_t * diff,
 
     frame_analysis_t computed;
     if(analysis == NULL) {
-        frame_analysis_compare(diff->previous, frame, diff->width,
-                               diff->height, diff->threshold, &computed);
+        frame_analysis_compare(diff->previous, frame, diff->width, diff->height,
+                               diff->threshold, &computed);
         analysis = &computed;
     }
     write_row(diff, frame_no, diff->prev_frame_no, true, t_ms, analysis);
@@ -151,10 +138,8 @@ void frame_diff_record_previous(frame_diff_t * diff,
     diff->prev_frame_no = frame_no;
 }
 
-void frame_diff_record_reference(frame_diff_t * diff,
-                                 const uint8_t * frame,
-                                 long frame_no,
-                                 uint32_t t_ms)
+void frame_diff_record_reference(frame_diff_t * diff, const uint8_t * frame,
+                                 long frame_no, uint32_t t_ms)
 {
     if(diff == NULL || !diff->enabled || !diff->reference_mode ||
        frame == NULL || diff->reference == NULL) {

@@ -18,19 +18,19 @@
 #include "probe_img_rgb565.h"
 #include "probe_img_rgb888.h"
 #include "probe_img_a8.h"
-#define PROBE_IMG_ARGB (&probe_img_argb)
+#define PROBE_IMG_ARGB   (&probe_img_argb)
 #define PROBE_IMG_RGB565 (&probe_img_rgb565)
 #define PROBE_IMG_RGB888 (&probe_img_rgb888)
-#define PROBE_IMG_A8 (&probe_img_a8)
+#define PROBE_IMG_A8     (&probe_img_a8)
 #else
 #include "probe_img_argb_v8.h"
 #include "probe_img_rgb565_v8.h"
 #include "probe_img_rgb888_v8.h"
 #include "probe_img_a8_v8.h"
-#define PROBE_IMG_ARGB (&probe_img_argb_v8)
+#define PROBE_IMG_ARGB   (&probe_img_argb_v8)
 #define PROBE_IMG_RGB565 (&probe_img_rgb565_v8)
 #define PROBE_IMG_RGB888 (&probe_img_rgb888_v8)
-#define PROBE_IMG_A8 (&probe_img_a8_v8)
+#define PROBE_IMG_A8     (&probe_img_a8_v8)
 #endif
 
 #include <stdio.h>

@@ -20,7 +20,6 @@ static float rnd(rng_t * r)
     return (float)(t ^ (t >> 14)) / 4294967296.0f;
 }
 
-
 #include "zc_sprites_data.h"
 
 const zc_sprite_def_t * zc_art_sprite(int type)
@@ -29,7 +28,8 @@ const zc_sprite_def_t * zc_art_sprite(int type)
     return zc_sprites[type];
 }
 
-void zc_art_sprite_draw(int type, int frame, int x, int y, int mode, uint8_t alpha)
+void zc_art_sprite_draw(int type, int frame, int x, int y, int mode,
+                        uint8_t alpha)
 {
     const zc_sprite_def_t * def = zc_art_sprite(type);
     if(frame < 0 || frame >= def->frames) frame = 0;
@@ -42,15 +42,20 @@ void zc_art_sprite_draw(int type, int frame, int x, int y, int mode, uint8_t alp
             if(ch == '.') continue;
             uint16_t color;
             if(mode == 1) color = ZC_RGB565(244, 236, 207);
-            else if(mode == 2) color = ZC_RGB565(7, 10, 7);
-            else if(ch >= 'A' && ch <= 'Z') color = def->pal[ch - 'A'];
-            else color = ZC_WHITE;
-            if(alpha >= 255) zc_rect_world(x + col * s, y + row * s, s, s, color);
-            else zc_blend_rect_world(x + col * s, y + row * s, s, s, color, alpha);
+            else if(mode == 2)
+                color = ZC_RGB565(7, 10, 7);
+            else if(ch >= 'A' && ch <= 'Z')
+                color = def->pal[ch - 'A'];
+            else
+                color = ZC_WHITE;
+            if(alpha >= 255)
+                zc_rect_world(x + col * s, y + row * s, s, s, color);
+            else
+                zc_blend_rect_world(x + col * s, y + row * s, s, s, color,
+                                    alpha);
         }
     }
 }
-
 
 static void bd_dead_tree(rng_t * r, int baseX, int baseY)
 {
@@ -127,10 +132,11 @@ static void draw_backdrop(void)
     rng_t rng = {2307U};
     int W = zc.w;
     int H = zc.h;
-    static const int stops[][4] = {
-        {0, 5, 8, 6}, {26, 7, 16, 11}, {58, 12, 23, 16},
-        {84, 18, 33, 23}, {110, 26, 42, 27}
-    };
+    static const int stops[][4] = {{0, 5, 8, 6},
+                                   {26, 7, 16, 11},
+                                   {58, 12, 23, 16},
+                                   {84, 18, 33, 23},
+                                   {110, 26, 42, 27}};
     for(int y = 0; y < 116; y += 2) {
         int a = 0;
         int b = 1;
@@ -141,7 +147,9 @@ static void draw_backdrop(void)
                 break;
             }
         }
-        float t = (float)(y - stops[a][0]) / (float)(stops[b][0] > stops[a][0] ? stops[b][0] - stops[a][0] : 1);
+        float t =
+            (float)(y - stops[a][0]) /
+            (float)(stops[b][0] > stops[a][0] ? stops[b][0] - stops[a][0] : 1);
         if(t < 0) t = 0;
         if(t > 1) t = 1;
         int rr = (int)(stops[a][1] + (stops[b][1] - stops[a][1]) * t);
@@ -159,7 +167,8 @@ static void draw_backdrop(void)
             zc_blend_rect(sx - 1, sy + 1, 4, 1, ZC_RGB565(219, 225, 173), 140);
         }
         else {
-            uint16_t col = bright > 0.5f ? ZC_RGB565(186, 198, 148) : ZC_RGB565(136, 156, 124);
+            uint16_t col = bright > 0.5f ? ZC_RGB565(186, 198, 148)
+                                         : ZC_RGB565(136, 156, 124);
             uint8_t alpha = bright > 0.5f ? 82 : 56;
             zc_blend_rect(sx, sy, 1, 1, col, alpha);
         }
@@ -183,13 +192,13 @@ static void draw_backdrop(void)
         if(w > edge) w = edge;
         zc_rect(mx - dx, my + yy, w, 1, ZC_RGB565(182, 189, 128));
         if((yy < 0 ? -yy : yy) > 18) {
-            zc_blend_rect(mx + dx - 5, my + yy, 5, 1, ZC_RGB565(105, 112, 72), 89);
+            zc_blend_rect(mx + dx - 5, my + yy, 5, 1, ZC_RGB565(105, 112, 72),
+                          89);
         }
     }
-    static const int craters[][4] = {
-        {-11, -10, 7, 4}, {-3, -18, 4, 2}, {9, -4, 6, 3},
-        {12, 11, 4, 2}, {-12, 9, 5, 2}, {2, 5, 3, 2}
-    };
+    static const int craters[][4] = {{-11, -10, 7, 4}, {-3, -18, 4, 2},
+                                     {9, -4, 6, 3},    {12, 11, 4, 2},
+                                     {-12, 9, 5, 2},   {2, 5, 3, 2}};
     for(size_t i = 0; i < sizeof(craters) / sizeof(craters[0]); i++) {
         int cx = craters[i][0];
         int cy = craters[i][1];
@@ -204,18 +213,20 @@ static void draw_backdrop(void)
     zc_blend_rect(mx + 23, my - 2, 36, 2, ZC_RGB565(5, 10, 7), 140);
 
     static const int skyline[][4] = {
-        {0, 92, 38, 28}, {21, 83, 17, 37}, {43, 99, 35, 21}, {68, 88, 10, 32},
-        {89, 103, 19, 17}, {110, 86, 8, 34}, {122, 78, 14, 42}, {139, 97, 29, 23},
-        {174, 104, 21, 16}, {201, 90, 13, 30}, {218, 99, 31, 21}, {250, 84, 5, 36},
-        {261, 96, 25, 24}, {287, 103, 17, 17}, {307, 80, 38, 40}, {346, 98, 23, 22},
-        {370, 90, 20, 30}
-    };
+        {0, 92, 38, 28},   {21, 83, 17, 37},   {43, 99, 35, 21},
+        {68, 88, 10, 32},  {89, 103, 19, 17},  {110, 86, 8, 34},
+        {122, 78, 14, 42}, {139, 97, 29, 23},  {174, 104, 21, 16},
+        {201, 90, 13, 30}, {218, 99, 31, 21},  {250, 84, 5, 36},
+        {261, 96, 25, 24}, {287, 103, 17, 17}, {307, 80, 38, 40},
+        {346, 98, 23, 22}, {370, 90, 20, 30}};
     for(size_t i = 0; i < sizeof(skyline) / sizeof(skyline[0]); i++) {
-        zc_rect(skyline[i][0], skyline[i][1], skyline[i][2], skyline[i][3], ZC_RGB565(9, 16, 11));
+        zc_rect(skyline[i][0], skyline[i][1], skyline[i][2], skyline[i][3],
+                ZC_RGB565(9, 16, 11));
     }
     for(int x = 4; x < W; x += 19) {
         int h = 3 + (int)(rnd(&rng) * 8.0f);
-        zc_rect(x, 112 - h, 6 + (int)(rnd(&rng) * 7.0f), h, ZC_RGB565(9, 16, 11));
+        zc_rect(x, 112 - h, 6 + (int)(rnd(&rng) * 7.0f), h,
+                ZC_RGB565(9, 16, 11));
     }
 
     zc_rect(320, 66, 24, 18, ZC_RGB565(10, 17, 12));
@@ -238,11 +249,13 @@ static void draw_backdrop(void)
     zc_rect(263, 89, 3, 28, ZC_RGB565(8, 14, 10));
     zc_rect(256, 94, 17, 2, ZC_RGB565(8, 14, 10));
     for(int x = 92; x < 256; x += 2) {
-        int ty = 90 + (int)lroundf(sinf((float)(x - 92) / 164.0f * ZC_PI_F) * 7.0f);
+        int ty =
+            90 + (int)lroundf(sinf((float)(x - 92) / 164.0f * ZC_PI_F) * 7.0f);
         zc_blend_rect(x, ty, 2, 1, ZC_RGB565(7, 12, 8), 204);
     }
     for(int x = 264; x < W; x += 2) {
-        int ty = 96 + (int)lroundf(sinf((float)(x - 264) / 126.0f * ZC_PI_F) * 5.0f);
+        int ty =
+            96 + (int)lroundf(sinf((float)(x - 264) / 126.0f * ZC_PI_F) * 5.0f);
         zc_blend_rect(x, ty, 2, 1, ZC_RGB565(7, 12, 8), 204);
     }
 
@@ -250,7 +263,8 @@ static void draw_backdrop(void)
         float alpha = (float)(y - 104) / 34.0f;
         uint8_t a = (uint8_t)((0.03f + alpha * 0.055f) * 255.0f);
         for(int x = y % 4; x < W; x += 4) {
-            if(rnd(&rng) > 0.3f) zc_blend_rect(x, y, 4, 2, ZC_RGB565(121, 143, 103), a);
+            if(rnd(&rng) > 0.3f)
+                zc_blend_rect(x, y, 4, 2, ZC_RGB565(121, 143, 103), a);
         }
     }
 
@@ -258,14 +272,16 @@ static void draw_backdrop(void)
     for(int y = 116; y < H; y += 2) {
         float t = (float)(y - 116) / (float)(H - 116);
         int shade = (int)(15.0f + 13.0f * t);
-        zc_rect(0, y, W, 2, ZC_RGB565(shade, shade + 1, shade - 4 > 7 ? shade - 4 : 7));
+        zc_rect(0, y, W, 2,
+                ZC_RGB565(shade, shade + 1, shade - 4 > 7 ? shade - 4 : 7));
     }
     for(int i = 0; i < 700; i++) {
         int x = (int)(rnd(&rng) * W);
         int y = 116 + (int)(rnd(&rng) * (float)(H - 116));
         bool light = rnd(&rng) > 0.55f;
         int w = rnd(&rng) > 0.82f ? 3 : 1;
-        zc_blend_rect(x, y, w, 1, light ? ZC_RGB565(87, 79, 49) : ZC_RGB565(4, 8, 5),
+        zc_blend_rect(x, y, w, 1,
+                      light ? ZC_RGB565(87, 79, 49) : ZC_RGB565(4, 8, 5),
                       light ? 33 : 56);
     }
 
@@ -283,7 +299,8 @@ static void draw_backdrop(void)
         int x = (int)(195.0f + (rnd(&rng) * 2.0f - 1.0f) * (float)half * 0.82f);
         bool light = rnd(&rng) > 0.5f;
         int w = 1 + (int)(rnd(&rng) * 5.0f);
-        zc_blend_rect(x, y, w, 1, light ? ZC_RGB565(106, 94, 57) : ZC_RGB565(6, 8, 5),
+        zc_blend_rect(x, y, w, 1,
+                      light ? ZC_RGB565(106, 94, 57) : ZC_RGB565(6, 8, 5),
                       light ? 56 : 82);
     }
     int dashY = 140;
@@ -295,7 +312,8 @@ static void draw_backdrop(void)
         if(w < 2) w = 2;
         if(h < 2) h = 2;
         if((dashIndex & 1) == 0) {
-            zc_blend_rect(195 - w / 2, dashY, w, h, ZC_RGB565(118, 104, 57), 89);
+            zc_blend_rect(195 - w / 2, dashY, w, h, ZC_RGB565(118, 104, 57),
+                          89);
         }
         dashY += 22 + (int)(t * 22.0f);
         dashIndex++;
@@ -322,10 +340,12 @@ static void draw_backdrop(void)
     bd_bones(119, 377);
     bd_road_sign(86, 212);
     for(int i = 0; i < 28; i++) {
-        int x = rnd(&rng) < 0.5f ? (int)(20.0f + rnd(&rng) * 90.0f) : (int)(280.0f + rnd(&rng) * 90.0f);
+        int x = rnd(&rng) < 0.5f ? (int)(20.0f + rnd(&rng) * 90.0f)
+                                 : (int)(280.0f + rnd(&rng) * 90.0f);
         int y = (int)(140.0f + rnd(&rng) * 260.0f);
         bool light = rnd(&rng) > 0.5f;
-        zc_rect(x, y, 1, 2 + (int)(rnd(&rng) * 3.0f), light ? ZC_RGB565(38, 48, 28) : ZC_RGB565(29, 36, 23));
+        zc_rect(x, y, 1, 2 + (int)(rnd(&rng) * 3.0f),
+                light ? ZC_RGB565(38, 48, 28) : ZC_RGB565(29, 36, 23));
     }
 
     for(int y = 0; y < H; y++) {
@@ -336,7 +356,8 @@ static void draw_backdrop(void)
             float t = (d - 115.0f) / 165.0f;
             if(t <= 0) continue;
             if(t > 1) t = 1;
-            float a = t < 0.72f ? 0.10f * (t / 0.72f) : 0.10f + 0.52f * ((t - 0.72f) / 0.28f);
+            float a = t < 0.72f ? 0.10f * (t / 0.72f)
+                                : 0.10f + 0.52f * ((t - 0.72f) / 0.28f);
             if(a <= 0) continue;
             zc_blend_pixel(x, y, ZC_BLACK, (uint8_t)(a * 255.0f));
         }
@@ -345,7 +366,8 @@ static void draw_backdrop(void)
         int x = (int)(rnd(&rng) * W);
         int y = (int)(rnd(&rng) * H);
         bool light = rnd(&rng) > 0.5f;
-        zc_blend_rect(x, y, 1, 1, light ? ZC_RGB565(227, 219, 174) : ZC_BLACK, light ? 9 : 26);
+        zc_blend_rect(x, y, 1, 1, light ? ZC_RGB565(227, 219, 174) : ZC_BLACK,
+                      light ? 9 : 26);
     }
 }
 
@@ -374,7 +396,6 @@ void zc_art_backdrop_draw(void)
     draw_backdrop();
 }
 
-
 typedef struct {
     int16_t x;
     int16_t y;
@@ -394,7 +415,9 @@ static void make_fog(uint32_t seed, int width, int height, float alpha_base,
 {
     rng_t rng = {seed};
     int n = 0;
-    struct cluster { float x, y, rx, ry; } clusters[18];
+    struct cluster {
+        float x, y, rx, ry;
+    } clusters[18];
     for(int i = 0; i < 18; i++) {
         clusters[i].x = rnd(&rng) * (float)width;
         clusters[i].y = (float)height * (0.2f + rnd(&rng) * 0.65f);
@@ -406,16 +429,20 @@ static void make_fog(uint32_t seed, int width, int height, float alpha_base,
         for(int j = 0; j < cnt && n < ZC_FOG_MAX; j++) {
             float a = rnd(&rng) * 6.2831853f;
             float rr = sqrtf(rnd(&rng));
-            int px = (int)lroundf(clusters[i].x + cosf(a) * clusters[i].rx * rr);
-            int py = (int)lroundf(clusters[i].y + sinf(a) * clusters[i].ry * rr);
+            int px =
+                (int)lroundf(clusters[i].x + cosf(a) * clusters[i].rx * rr);
+            int py =
+                (int)lroundf(clusters[i].y + sinf(a) * clusters[i].ry * rr);
             int w = 2 + (int)(rnd(&rng) * 8.0f);
             int h = 1 + (int)(rnd(&rng) * 2.0f);
-            if(px < -16 || px > width + 8 || py < -4 || py > height + 4) continue;
+            if(px < -16 || px > width + 8 || py < -4 || py > height + 4)
+                continue;
             out[n].x = (int16_t)px;
             out[n].y = (int16_t)py;
             out[n].w = (uint8_t)w;
             out[n].h = (uint8_t)h;
-            out[n].a = (uint8_t)(alpha_base * (0.4f + rnd(&rng) * 0.6f) * 255.0f);
+            out[n].a =
+                (uint8_t)(alpha_base * (0.4f + rnd(&rng) * 0.6f) * 255.0f);
             n++;
             if(rnd(&rng) > 0.6f && n < ZC_FOG_MAX) {
                 out[n].x = (int16_t)(px + 2);
@@ -436,7 +463,8 @@ void zc_art_fog_init(void)
     make_fog(177U, 460, 120, 0.045f, fog_b, &fog_b_count);
 }
 
-static void draw_fog_layer(const fog_dot_t * dots, int count, int x, int y, uint8_t layer_alpha)
+static void draw_fog_layer(const fog_dot_t * dots, int count, int x, int y,
+                           uint8_t layer_alpha)
 {
     for(int i = 0; i < count; i++) {
         uint16_t a = (uint16_t)((dots[i].a * layer_alpha) / 255U);
@@ -453,7 +481,6 @@ void zc_art_fog_draw(float t)
     draw_fog_layer(fog_a, fog_a_count, x1, 88 + zc.oy, 122);
     draw_fog_layer(fog_b, fog_b_count, x2, 144 + zc.oy, 66);
 }
-
 
 typedef struct {
     float x;
@@ -510,7 +537,6 @@ void zc_art_motes_draw(float t)
     }
 }
 
-
 static void art_r(int x, int y, int w, int h, uint16_t c)
 {
     zc_rect_world(x, y, w, h, c);
@@ -535,18 +561,24 @@ static void draw_barrel(float angle, float recoil)
     float sy = (float)py + sinf(angle) * (7.0f + recoil * 4.0f);
     float ex = (float)px + cosf(angle) * len;
     float ey = (float)py + sinf(angle) * len;
-    zc_line_world((int)lroundf(sx), (int)lroundf(sy), (int)lroundf(ex), (int)lroundf(ey), 11, ZC_RGB565(8, 11, 7));
-    zc_line_world((int)lroundf(sx), (int)lroundf(sy), (int)lroundf(ex), (int)lroundf(ey), 8, ZC_RGB565(63, 72, 45));
-    zc_line_world((int)lroundf(sx) + 1, (int)lroundf(sy) + 1, (int)lroundf(ex) + 1, (int)lroundf(ey) + 1, 3, ZC_RGB565(137, 145, 98));
+    zc_line_world((int)lroundf(sx), (int)lroundf(sy), (int)lroundf(ex),
+                  (int)lroundf(ey), 11, ZC_RGB565(8, 11, 7));
+    zc_line_world((int)lroundf(sx), (int)lroundf(sy), (int)lroundf(ex),
+                  (int)lroundf(ey), 8, ZC_RGB565(63, 72, 45));
+    zc_line_world((int)lroundf(sx) + 1, (int)lroundf(sy) + 1,
+                  (int)lroundf(ex) + 1, (int)lroundf(ey) + 1, 3,
+                  ZC_RGB565(137, 145, 98));
     float bandT = 0.66f;
     float bandX = sx + (ex - sx) * bandT;
     float bandY = sy + (ey - sy) * bandT;
     float bxv = cosf(angle + ZC_PI_F * 0.5f);
     float byv = sinf(angle + ZC_PI_F * 0.5f);
-    zc_line_world((int)lroundf(bandX - bxv * 5.0f), (int)lroundf(bandY - byv * 5.0f),
-                  (int)lroundf(bandX + bxv * 5.0f), (int)lroundf(bandY + byv * 5.0f), 2,
-                  ZC_RGB565(35, 42, 25));
-    art_r((int)lroundf(bandX) - 1, (int)lroundf(bandY) - 1, 2, 2, ZC_RGB565(156, 160, 109));
+    zc_line_world((int)lroundf(bandX - bxv * 5.0f),
+                  (int)lroundf(bandY - byv * 5.0f),
+                  (int)lroundf(bandX + bxv * 5.0f),
+                  (int)lroundf(bandY + byv * 5.0f), 2, ZC_RGB565(35, 42, 25));
+    art_r((int)lroundf(bandX) - 1, (int)lroundf(bandY) - 1, 2, 2,
+          ZC_RGB565(156, 160, 109));
     int bx = (int)lroundf(ex);
     int by = (int)lroundf(ey);
     art_r(bx - 5, by - 5, 10, 10, ZC_RGB565(8, 11, 7));
@@ -568,9 +600,15 @@ static void draw_barrel_twin(float angle, float recoil)
     float ey = (float)py + sinf(angle) * len;
     float ox = cosf(angle + ZC_PI_F * 0.5f) * 6.0f;
     float oy = sinf(angle + ZC_PI_F * 0.5f) * 6.0f;
-    zc_line_world((int)lroundf(sx + ox), (int)lroundf(sy + oy), (int)lroundf(ex + ox), (int)lroundf(ey + oy), 8, ZC_RGB565(8, 11, 7));
-    zc_line_world((int)lroundf(sx + ox), (int)lroundf(sy + oy), (int)lroundf(ex + ox), (int)lroundf(ey + oy), 5, ZC_RGB565(70, 80, 52));
-    zc_line_world((int)lroundf(sx + ox) + 1, (int)lroundf(sy + oy) + 1, (int)lroundf(ex + ox) + 1, (int)lroundf(ey + oy) + 1, 2, ZC_RGB565(129, 138, 92));
+    zc_line_world((int)lroundf(sx + ox), (int)lroundf(sy + oy),
+                  (int)lroundf(ex + ox), (int)lroundf(ey + oy), 8,
+                  ZC_RGB565(8, 11, 7));
+    zc_line_world((int)lroundf(sx + ox), (int)lroundf(sy + oy),
+                  (int)lroundf(ex + ox), (int)lroundf(ey + oy), 5,
+                  ZC_RGB565(70, 80, 52));
+    zc_line_world((int)lroundf(sx + ox) + 1, (int)lroundf(sy + oy) + 1,
+                  (int)lroundf(ex + ox) + 1, (int)lroundf(ey + oy) + 1, 2,
+                  ZC_RGB565(129, 138, 92));
     int mx = (int)lroundf(ex + ox);
     int my = (int)lroundf(ey + oy);
     art_r(mx - 4, my - 4, 8, 8, ZC_RGB565(8, 11, 7));
@@ -584,8 +622,7 @@ static void draw_sandbags(float t)
     static const uint16_t cols[3][3] = {
         {ZC_RGB565(26, 26, 16), ZC_RGB565(95, 87, 55), ZC_RGB565(123, 112, 71)},
         {ZC_RGB565(23, 24, 15), ZC_RGB565(85, 78, 50), ZC_RGB565(110, 100, 64)},
-        {ZC_RGB565(19, 21, 13), ZC_RGB565(72, 66, 43), ZC_RGB565(97, 88, 55)}
-    };
+        {ZC_RGB565(19, 21, 13), ZC_RGB565(72, 66, 43), ZC_RGB565(97, 88, 55)}};
     for(int row = 0; row < 3; row++) {
         int y = rows[row] + zc.dy;
         int offset = row % 2 ? 14 : 0;
@@ -610,7 +647,8 @@ static void draw_sandbags(float t)
         art_r(x, 414 + zc.dy + (x % 3), 2, 2, c);
     }
     float blink = sinf(t * 3.1f) > 0.3f ? 1.0f : 0.2f;
-    art_blend(149, 421 + zc.dy, 3, 3, ZC_RED, (uint8_t)((0.2f + blink * 0.7f) * 255.0f));
+    art_blend(149, 421 + zc.dy, 3, 3, ZC_RED,
+              (uint8_t)((0.2f + blink * 0.7f) * 255.0f));
     if(blink > 0.5f) art_circle(150, 422, 10, ZC_RED, 20);
 }
 
@@ -624,7 +662,9 @@ static void draw_wire(float t)
     for(int layer = 0; layer < 3; layer++) {
         for(int x = 0; x < zc.w; x += 3) {
             int y = 417 + zc.dy + layer * 4 +
-                    (int)lroundf(sinf((float)x * 0.07f + (float)layer * 1.8f + t * 0.8f) * 2.0f);
+                    (int)lroundf(sinf((float)x * 0.07f + (float)layer * 1.8f +
+                                      t * 0.8f) *
+                                 2.0f);
             art_r(x, y, 2, 1, ZC_RGB565(48, 54, 31));
             if(x % 18 < 3) art_r(x + 1, y - 2, 1, 4, ZC_RGB565(48, 54, 31));
         }
@@ -639,8 +679,9 @@ void zc_art_base_draw(float t, float aim, float recoil, int base_hp, bool twin)
     for(int i = 0; i < 26; i++) {
         int yy = 348 + dy + i / 5;
         int cut = (i % 5 == 4 && sinf(t * 1.6f + (float)i) > 0.1f) ? 1 : 0;
-        art_r(52 + i, yy + (int)lroundf(sinf(t * 3.0f + (float)i * 0.3f) * 1.5f),
-              1, 12 - cut, ZC_RGB565(140, 49, 39));
+        art_r(52 + i,
+              yy + (int)lroundf(sinf(t * 3.0f + (float)i * 0.3f) * 1.5f), 1,
+              12 - cut, ZC_RGB565(140, 49, 39));
     }
     art_r(54, 352 + dy, 2, 2, ZC_RGB565(92, 32, 27));
     art_r(64, 354 + dy, 3, 1, ZC_RGB565(92, 32, 27));
@@ -660,14 +701,17 @@ void zc_art_base_draw(float t, float aim, float recoil, int base_hp, bool twin)
     art_r(316, 365 + dy, 5, 2, ZC_RGB565(62, 59, 38));
     art_r(318, 379 + dy, 2, 3, ZC_RGB565(62, 59, 38));
     float flick = 0.5f + 0.5f * sinf(t * 8.4f) * sinf(t * 2.1f + 1.0f);
-    art_circle(318, 373, 30, ZC_RGB565(246, 179, 83), (uint8_t)((0.045f + flick * 0.035f) * 255.0f));
-    art_circle(318, 373, 18, ZC_RGB565(246, 179, 83), (uint8_t)((0.04f + flick * 0.025f) * 255.0f));
+    art_circle(318, 373, 30, ZC_RGB565(246, 179, 83),
+               (uint8_t)((0.045f + flick * 0.035f) * 255.0f));
+    art_circle(318, 373, 18, ZC_RGB565(246, 179, 83),
+               (uint8_t)((0.04f + flick * 0.025f) * 255.0f));
 
     art_circle(195, 414, 45, ZC_BLACK, 97);
     art_r(151, 409 + dy, 88, 10, ZC_RGB565(9, 12, 7));
     art_r(159, 410 + dy, 72, 7, ZC_RGB565(37, 44, 26));
     art_r(165, 412 + dy, 60, 3, ZC_RGB565(61, 73, 42));
-    for(int i = 0; i < 4; i++) art_r(169 + i * 17, 413 + dy, 2, 2, ZC_RGB565(124, 129, 90));
+    for(int i = 0; i < 4; i++)
+        art_r(169 + i * 17, 413 + dy, 2, 2, ZC_RGB565(124, 129, 90));
 
     art_r(158, 390 + dy, 18, 24, ZC_RGB565(10, 13, 8));
     art_r(161, 392 + dy, 13, 20, ZC_RGB565(61, 72, 41));
@@ -696,30 +740,37 @@ void zc_art_base_draw(float t, float aim, float recoil, int base_hp, bool twin)
     art_r(190, 390 + dy, 10, 2, ZC_RGB565(113, 126, 76));
     art_r(202, 387 + dy, 2, 8, ZC_RGB565(27, 33, 19));
     float optic = 0.5f + 0.5f * sinf(t * 3.7f);
-    art_blend(205, 390 + dy, 2, 2, ZC_ACID, (uint8_t)((0.4f + optic * 0.5f) * 255.0f));
+    art_blend(205, 390 + dy, 2, 2, ZC_ACID,
+              (uint8_t)((0.4f + optic * 0.5f) * 255.0f));
     art_r(228, 414 + dy, 4, 2, ZC_RGB565(183, 133, 63));
     art_r(234, 413 + dy, 2, 2, ZC_RGB565(183, 133, 63));
     art_r(159, 415 + dy, 3, 2, ZC_RGB565(183, 133, 63));
     art_r(229, 416 + dy, 2, 1, ZC_RGB565(110, 84, 42));
     float blink = sinf(t * 2.4f) > 0.5f ? 1.0f : 0.2f;
-    art_blend(220, 405 + dy, 3, 3, ZC_RED, (uint8_t)((0.35f + blink * 0.55f) * 255.0f));
+    art_blend(220, 405 + dy, 3, 3, ZC_RED,
+              (uint8_t)((0.35f + blink * 0.55f) * 255.0f));
     if(blink > 0.5f) art_circle(221, 406, 13, ZC_RED, 26);
 
     draw_sandbags(t);
     draw_wire(t);
     int smoke_count = base_hp <= 2 ? 8 : 4;
     for(int i = 0; i < smoke_count; i++) {
-        int sx = 202 + (i % 4) * 9 + (int)lroundf(sinf(t * 0.7f + (float)i) * 4.0f);
+        int sx =
+            202 + (i % 4) * 9 + (int)lroundf(sinf(t * 0.7f + (float)i) * 4.0f);
         int sy = 394 + dy - (i / 4) * 9 - (int)fmodf(t * 4.0f, 12.0f);
-        uint8_t a = (uint8_t)(((base_hp <= 2 ? 0.22f : 0.16f) - (float)(i % 4) * 0.025f) * 255.0f);
+        uint8_t a = (uint8_t)(((base_hp <= 2 ? 0.22f : 0.16f) -
+                               (float)(i % 4) * 0.025f) *
+                              255.0f);
         art_blend(sx, sy, 7, 3, ZC_RGB565(18, 22, 15), a);
     }
     if(base_hp <= 2) {
         float pulse = 0.35f + 0.25f * sinf(t * 8.0f);
         for(int i = 0; i < 4; i++) {
-            int fx = 175 + i * 12 + (int)lroundf(sinf(t * 7.0f + (float)i) * 2.0f);
+            int fx =
+                175 + i * 12 + (int)lroundf(sinf(t * 7.0f + (float)i) * 2.0f);
             int fh = 3 + (int)lroundf(sinf(t * 9.0f + (float)i) * 2.0f);
-            art_blend(fx, 414 + dy - fh, 2, fh, ZC_ORANGE, (uint8_t)(pulse * 255.0f));
+            art_blend(fx, 414 + dy - fh, 2, fh, ZC_ORANGE,
+                      (uint8_t)(pulse * 255.0f));
         }
     }
 }
