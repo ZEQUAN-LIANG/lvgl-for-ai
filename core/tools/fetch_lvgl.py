@@ -10,12 +10,17 @@ trees are untrusted data: they live in their own directories under
 ``.scratch/tmp`` and are only read by this script, which never executes
 anything from them.
 
+``--source auto`` tries GitHub codeload first and the Gitee mirror second.
+The Gitee mirror may answer with an HTML/400 page; a download is accepted only
+when it starts with the gzip magic bytes.
+
 Usage:
     python -I core/tools/fetch_lvgl.py --version 9.5 --repo-root .
-    python -I core/tools/fetch_lvgl.py --version 8.3 --source gitee
+    python -I core/tools/fetch_lvgl.py --version 8.3 --source auto
     python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --no-patch
     python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --patch-dir my-patches
 """
+
 
 from __future__ import annotations
 
@@ -30,14 +35,13 @@ import sys
 import tarfile
 from pathlib import Path
 
-TAGS = {
-    "8.4": "v8.4.0",
-    "8.3": "v8.3.11",
-    "9.6": "v9.6.0",
-    "9.5": "v9.5.0",
-    "9.4": "v9.4.0",
-    "9.1": "v9.1.0",
-}
+_TOOL_ROOT = Path(__file__).resolve().parent.parent
+if str(_TOOL_ROOT) not in sys.path:
+    sys.path.insert(0, str(_TOOL_ROOT))
+
+from lvgl_ai import versions
+
+TAGS = versions.tags()
 
 SOURCE_SCHEMA = "lvgl-ai-lvgl-source-v1"
 
@@ -78,6 +82,8 @@ def _curl(url: str, archive: Path, *, resolve_ip: str | None) -> int:
         "curl",
         "-L",
         "--fail",
+        "-A",
+        "Mozilla/5.0 (compatible; lvgl-ai)",
         "--silent",
         "--show-error",
         "--retry",
@@ -93,6 +99,14 @@ def _curl(url: str, archive: Path, *, resolve_ip: str | None) -> int:
         command.extend(["--resolve", f"codeload.github.com:443:{resolve_ip}"])
     command.append(url)
     return subprocess.run(command).returncode
+
+
+def _is_gzip(path: Path) -> bool:
+    try:
+        with path.open("rb") as handle:
+            return handle.read(2) == b"\x1f\x8b"
+    except OSError:
+        return False
 
 
 def download(tag: str, archive: Path, source: str) -> None:
@@ -118,6 +132,10 @@ def download(tag: str, archive: Path, source: str) -> None:
         print(f"download {label}", flush=True)
         returncode = _curl(url, archive, resolve_ip=resolve_ip)
         if returncode == 0 and archive.is_file() and archive.stat().st_size > 0:
+            if not _is_gzip(archive):
+                errors.append(f"{label}: response is not a gzip archive")
+                archive.unlink(missing_ok=True)
+                continue
             print(f"downloaded {archive.stat().st_size} bytes", flush=True)
             return
         errors.append(f"{label}: curl exit {returncode}")
@@ -132,7 +150,6 @@ def extract(archive: Path, extract_root: Path) -> Path:
     with tarfile.open(archive, "r:gz") as tar:
         root = tar.getmembers()[0].name.split("/")[0]
         for member in tar.getmembers():
-            # Reject absolute or parent-traversing members before writing.
             if member.issym() or member.islnk():
                 raise SystemExit(f"unsafe archive member: {member.name}")
             target = (extract_root / member.name).resolve()
@@ -142,7 +159,6 @@ def extract(archive: Path, extract_root: Path) -> Path:
             tar.extractall(extract_root, filter="data")
         except TypeError:
             # Python < 3.12 has no extraction filters; the member check above
-            # already rejects absolute and parent-traversing names.
             tar.extractall(extract_root)
     tree = extract_root / root
     if not tree.is_dir():
@@ -153,7 +169,6 @@ def extract(archive: Path, extract_root: Path) -> Path:
 def verify_tree(tree: Path, version: str) -> tuple[int, int, int]:
     actual = parse_version_header(tree)
     # The tag is the release identity, including patch-level tags such as
-    # v8.3.11; the version macros must name exactly that release.
     tag = TAGS[version]
     expected = tuple(int(part) for part in tag.lstrip("v").split("."))
     if actual != expected:
@@ -198,11 +213,6 @@ def _read_series(series: Path) -> list[str]:
 
 
 def discover_patches(patch_dir: Path) -> list[Path]:
-    """Return the patches to apply, in order.
-
-    ``series`` is authoritative when present.  Without it, every ``*.patch`` in
-    the version directory is applied in lexical order.
-    """
     if not patch_dir.is_dir():
         return []
     series = patch_dir / "series"
@@ -226,8 +236,6 @@ def _git_apply(tree: Path, patch: Path, *, check: bool) -> None:
     command.append(str(patch))
     # The installed tree can live inside the tool repository (lvgl-src/) or a
     # temp directory under it. Stop repository discovery at the tree's parent
-    # so git treats the tree as a plain directory and resolves patch paths
-    # relative to it instead of silently skipping them.
     env = os.environ.copy()
     env["GIT_CEILING_DIRECTORIES"] = str(tree.resolve().parent)
     try:
@@ -298,7 +306,12 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", required=True, choices=sorted(TAGS))
     parser.add_argument("--repo-root", type=Path, required=True)
-    parser.add_argument("--source", choices=("auto", "codeload", "gitee"), default="auto")
+    parser.add_argument(
+        "--source",
+        choices=("auto", "codeload", "gitee"),
+        default="auto",
+        help="auto tries GitHub codeload first, then the Gitee mirror",
+    )
     parser.add_argument("--force", action="store_true")
     parser.add_argument(
         "--patch-dir",

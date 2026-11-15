@@ -1,4 +1,3 @@
-"""SHA-256 helpers shared by SDK export, prebuilt builds and releases."""
 
 from __future__ import annotations
 

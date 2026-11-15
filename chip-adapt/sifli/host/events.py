@@ -1,10 +1,3 @@
-"""Small in-process event bus for the web activity feed.
-
-Serial API calls and build/flash jobs publish here.  The browser subscribes
-with SSE, so a flash started by an AI/CLI command is visible in the page even
-when no human clicked anything.
-"""
-
 from __future__ import annotations
 
 import threading

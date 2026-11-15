@@ -1,8 +1,3 @@
-/**
- * @file xhs_messages.c
- * The 消息 tab: notification channels, the conversation list, a chat overlay
- * with a working send button and per-channel notification lists.
- */
 
 #include "xhs_ui.h"
 
@@ -53,9 +48,6 @@ static lv_obj_t * chat_messages;
 static int open_chat = -1;
 static int chat_next_y;
 
-/* ------------------------------------------------------------------------- */
-/* Chat overlay                                                              */
-/* ------------------------------------------------------------------------- */
 
 static lv_obj_t * xhs_chat_bubble(lv_obj_t * parent, const char * text,
                                   bool mine, int y, int * advance)
@@ -191,9 +183,6 @@ static void xhs_message_event_cb(lv_event_t * event)
     printf("[xhs] chat open index=%d\n", index);
 }
 
-/* ------------------------------------------------------------------------- */
-/* Channel overlay                                                           */
-/* ------------------------------------------------------------------------- */
 
 static void xhs_channel_row_cb(lv_event_t * event)
 {
@@ -252,9 +241,6 @@ static void xhs_channel_event_cb(lv_event_t * event)
     printf("[xhs] channel open=%s\n", channel_names[index]);
 }
 
-/* ------------------------------------------------------------------------- */
-/* Messages page                                                             */
-/* ------------------------------------------------------------------------- */
 
 static void xhs_channel_entry(lv_obj_t * page, int index)
 {
@@ -354,4 +340,4 @@ lv_obj_t * xhs_messages_create(lv_obj_t * parent)
     return messages_page;
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

@@ -1,8 +1,3 @@
-"""Thin CLI: flag mapping, --json, exit codes, idle and the real scenario run.
-
-Unit tests replace ``cli.Runtime`` with ``FakeRuntime``; the integration tests
-below run the real engine into a temporary session root.
-"""
 
 from __future__ import annotations
 
@@ -103,6 +98,28 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(fake.commands, [])
         self.assertEqual(out.strip(), str(fake.session_dir))
         self.assertEqual(err, "")
+
+    def test_scenario_lvgl_is_used_when_the_flag_is_omitted(self) -> None:
+        fake, factory = self._patch_runtime()
+        path = self._scenario(lvgl="9.4")
+        code, _, _ = run_cli(["--scenario", str(path)])
+
+        factory.assert_called_once_with(
+            lvgl="9.4", build=True, record=True, record_changed_only=True
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(fake.start_calls, 1)
+
+    def test_explicit_lvgl_flag_wins_over_the_scenario(self) -> None:
+        fake, factory = self._patch_runtime()
+        path = self._scenario(lvgl="9.4")
+        code, _, _ = run_cli(["--lvgl", "9.6", "--scenario", str(path)])
+
+        factory.assert_called_once_with(
+            lvgl="9.6", build=True, record=True, record_changed_only=True
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(fake.start_calls, 1)
 
     def test_build_mode_flags_are_forwarded(self) -> None:
         cases = [("--prebuilt", "prebuilt"), ("--source", "source")]

@@ -266,11 +266,6 @@ def ccache_available() -> bool:
 
 
 def missing_build_tools() -> list[str]:
-    """Return the source-build prerequisites missing from ``PATH``.
-
-    The caller turns this list into an actionable
-    :class:`~lvgl_ai.control.errors.BuildError`.
-    """
     return [name for name in BUILD_TOOL_NAMES if shutil.which(name) is None]
 
 
@@ -281,7 +276,6 @@ def build_environment_message(
     missing_tools: Sequence[str],
     png_sources: Sequence[Path] = (),
 ) -> str:
-    """Compose an actionable message for a source-build preflight failure."""
     if not lvgl_src.is_dir():
         return (
             f"LVGL source not found: {lvgl_src}. Source builds need "

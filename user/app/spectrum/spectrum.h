@@ -1,12 +1,3 @@
-/**
- * @file spectrum.h
- * ORBITAL spectrum player app variant for the LVGL 9.6 engine.
- *
- * The layout constants in this header and the generated spectrum_*.h asset
- * headers are the source of truth: a queue panel on the left, telemetry on the
- * right, a 432x404 canvas HUD in the middle and a transport strip at the
- * bottom.
- */
 
 #ifndef SPECTRUM_H
 #define SPECTRUM_H
@@ -145,7 +136,6 @@ extern spectrum_sim_t spectrum_sim;
 extern const spectrum_track_t spectrum_tracks[SPECTRUM_TRACK_COUNT];
 extern const spectrum_palette_t spectrum_palettes[SPECTRUM_PALETTE_COUNT];
 
-/* Generated assets. Only spectrum_ui.c includes the generated headers. */
 const lv_font_t * spectrum_font(spectrum_font_id_t id);
 const lv_image_dsc_t * spectrum_icon(spectrum_icon_id_t id);
 const lv_image_dsc_t * spectrum_cover(int track, int palette);
@@ -157,7 +147,6 @@ const lv_image_dsc_t * spectrum_cover_base88(int track, int palette);
 const lv_image_dsc_t * spectrum_cover_base78(int track, int palette);
 const lv_image_dsc_t * spectrum_glow_asset(void);
 
-/* Small builders shared by the page and the canvas. */
 lv_obj_t * spectrum_box(lv_obj_t * parent, int x, int y, int w, int h);
 lv_obj_t * spectrum_card(lv_obj_t * parent, int x, int y, int w, int h,
                          int radius, uint32_t bg, lv_opa_t bg_opa);
@@ -175,7 +164,6 @@ void spectrum_set_icon(lv_obj_t * image, spectrum_icon_id_t icon,
 void spectrum_clickable(lv_obj_t * obj, const char * name);
 void spectrum_divider(lv_obj_t * parent, int x, int y, int w);
 
-/* Model. */
 const spectrum_track_t * spectrum_track(void);
 const spectrum_palette_t * spectrum_palette(void);
 float spectrum_db(void);
@@ -194,7 +182,6 @@ void spectrum_toggle_auto(void);
 void spectrum_toggle_like(void);
 void spectrum_set_volume(float ratio);
 
-/* Page shell. */
 void spectrum_create(void);
 void spectrum_page_refresh_track(void);
 void spectrum_page_refresh_theme(void);
@@ -202,11 +189,10 @@ void spectrum_page_refresh_mode(void);
 void spectrum_page_refresh_play(void);
 void spectrum_page_refresh_meters(void);
 
-/* Canvas HUD. */
 void spectrum_viz_create(lv_obj_t * parent);
 void spectrum_viz_update(double dt);
 void spectrum_viz_reset(void);
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif
 
-#endif /* SPECTRUM_H */
+#endif

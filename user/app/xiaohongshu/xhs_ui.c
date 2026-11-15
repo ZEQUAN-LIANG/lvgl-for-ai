@@ -1,8 +1,3 @@
-/**
- * @file xhs_ui.c
- * The only translation unit that includes the generated Xiaohongshu assets;
- * everything else goes through the small wrappers below.
- */
 
 #include "xhs_ui.h"
 
@@ -373,4 +368,4 @@ void xhs_home_sync_likes(void)
     }
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

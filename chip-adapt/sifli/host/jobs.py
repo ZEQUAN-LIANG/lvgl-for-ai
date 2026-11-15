@@ -1,5 +1,3 @@
-"""In-memory job records for build and flash operations."""
-
 from __future__ import annotations
 
 import re
@@ -30,7 +28,7 @@ class Job:
         self.kind = kind
         self.title = title
         self.actor = actor
-        self.status = "queued"  # queued / running / ok / failed / cancelled
+        self.status = "queued"
         self.created_at = now_iso()
         self.started_at: str | None = None
         self.ended_at: str | None = None

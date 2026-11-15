@@ -1,4 +1,3 @@
-"""Tests for the user app scaffold at core/tools/new_app.py."""
 
 from __future__ import annotations
 
@@ -19,10 +18,10 @@ for path in (str(TOOL_ROOT), str(TOOLS_DIR)):
     if path not in sys.path:
         sys.path.insert(0, path)
 
-import new_app  # noqa: E402
-from lvgl_ai import apps as app_domain  # noqa: E402
-from lvgl_ai.apps import common as app_common  # noqa: E402
-from lvgl_ai.scenario import load_scenario  # noqa: E402
+import new_app
+from lvgl_ai import apps as app_domain
+from lvgl_ai.apps import common as app_common
+from lvgl_ai.scenario import load_scenario
 
 REPO_ROOT = TOOL_ROOT.parent
 APP_C = REPO_ROOT / "user" / "app" / "app.c"

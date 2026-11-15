@@ -1,23 +1,9 @@
-"""Runtime test double; never imported by production code.
-
-Records the commands that ``play_scenario`` and the CLI send, without
-spawning an engine or touching the filesystem. It mirrors the Runtime surface
-those callers use: lifecycle methods and attributes, ``pointer``, ``wait``,
-``mark`` and ``snapshot``.
-
-``start_error`` / ``stop_error`` / ``errors`` inject typed failures so tests
-can verify error mapping (RuntimeCrash -> exit 1, ScenarioError -> exit 2).
-``session_dir`` points the double at a prepared session fixture so callers can
-read evidence after ``stop()``.
-"""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
-# Test modules import this double before creating temp dirs; the side effect
-# installs the Windows-safe TemporaryDirectory for the whole test process.
 import support  # noqa: F401
 
 FAKE_SESSION_ID = "20260102-030405-abcd"
@@ -66,7 +52,6 @@ class FakeRuntime:
         self.t_ms = 0
         self._snapshots = 0
 
-    # ---- lifecycle -----------------------------------------------------
 
     def start(self) -> FakeRuntime:
         self.start_calls += 1
@@ -89,7 +74,6 @@ class FakeRuntime:
         return []
 
     def record_error(self, error: BaseException) -> None:
-        # Runtime.record_error is idempotent for the same exception object.
         if not self.recorded_errors or self.recorded_errors[-1] is not error:
             self.recorded_errors.append(error)
 
@@ -112,7 +96,6 @@ class FakeRuntime:
         if error is not None:
             raise error
 
-    # ---- commands ------------------------------------------------------
 
     def pointer(self, action: str, x: int, y: int) -> dict[str, Any]:
         self._raise_if("pointer")

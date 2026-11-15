@@ -27,6 +27,9 @@
 #define SIFT_HAS_IMU 0
 #endif
 
+#define SIFT_CLOCK_MIN_VALID 1600000000U
+#define SIFT_CLOCK_EPOCH_2026_01_01 1767225600U
+
 /* Physical keys and the vibration motor only exist on the SiFli SDK build.
  * The exporter prepends lvgl_ai_sdk.h, which defines LVGL_AI_EZIP_ASSETS and
  * pulls in rtthread.h; headless builds get empty stubs. */
@@ -74,12 +77,9 @@
 #define SIFT_FLIP_MS 680U
 #define SIFT_ORBIT_MIN_ELEV (-0.05f)
 #define SIFT_ORBIT_MAX_ELEV 0.85f
-/* PSEUDO3D: the glass stays a lathe; only pitch offsets, the back sand
- * silhouette, the stream layer and the wooden frame move in depth. */
 #define SIFT_P3_PITCH_SIGN 1
 #define SIFT_P3_BASE_PITCH_PX 9
 #define SIFT_P3_PARALLAX_PX 15
-/* True-3D sand: 24 x 32 x 24 voxels clipped to the glass lathe. */
 #define SIFT_VX 24
 #define SIFT_VY 32
 #define SIFT_VZ 24
@@ -121,7 +121,6 @@ static const uint16_t COL_SAND = RGB565(243, 183, 79);
 static const uint16_t COL_SAND_HI = RGB565(255, 213, 125);
 static const uint16_t COL_SAND_DIM = RGB565(168, 103, 44);
 static const uint16_t COL_SAND_PALE = RGB565(255, 227, 160);
-/* Shadow edge on the voxel grain sprites. */
 static const uint16_t COL_SAND_SHADOW = RGB565(107, 63, 28);
 static const uint16_t COL_WOOD = RGB565(157, 93, 47);
 static const uint16_t COL_WOOD_DARK = RGB565(72, 40, 21);
@@ -131,57 +130,55 @@ static const uint16_t COL_SKY = RGB565(143, 203, 214);
 static const uint16_t COL_RAIN = RGB565(95, 144, 155);
 static const uint16_t COL_CLOUD = RGB565(168, 186, 178);
 
-/* 5x7 font. '~' is the degree symbol. */
 static const char font_chars[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:.-+%/?~";
 static const uint8_t font_rows[][7] = {
-    {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, /* space */
-    {0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11}, /* A */
-    {0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E}, /* B */
-    {0x0F, 0x10, 0x10, 0x10, 0x10, 0x10, 0x0F}, /* C */
-    {0x1E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1E}, /* D */
-    {0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F}, /* E */
-    {0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x10}, /* F */
-    {0x0E, 0x11, 0x10, 0x17, 0x11, 0x11, 0x0E}, /* G */
-    {0x11, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11}, /* H */
-    {0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x1F}, /* I */
-    {0x07, 0x02, 0x02, 0x02, 0x12, 0x12, 0x0C}, /* J */
-    {0x11, 0x12, 0x14, 0x18, 0x14, 0x12, 0x11}, /* K */
-    {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F}, /* L */
-    {0x11, 0x1B, 0x15, 0x15, 0x11, 0x11, 0x11}, /* M */
-    {0x11, 0x19, 0x15, 0x13, 0x11, 0x11, 0x11}, /* N */
-    {0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E}, /* O */
-    {0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10}, /* P */
-    {0x0E, 0x11, 0x11, 0x11, 0x15, 0x12, 0x0D}, /* Q */
-    {0x1E, 0x11, 0x11, 0x1E, 0x14, 0x12, 0x11}, /* R */
-    {0x0F, 0x10, 0x10, 0x0E, 0x01, 0x01, 0x1E}, /* S */
-    {0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04}, /* T */
-    {0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E}, /* U */
-    {0x11, 0x11, 0x11, 0x11, 0x11, 0x0A, 0x04}, /* V */
-    {0x11, 0x11, 0x11, 0x15, 0x15, 0x1B, 0x11}, /* W */
-    {0x11, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x11}, /* X */
-    {0x11, 0x11, 0x0A, 0x04, 0x04, 0x04, 0x04}, /* Y */
-    {0x1F, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1F}, /* Z */
-    {0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E}, /* 0 */
-    {0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E}, /* 1 */
-    {0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F}, /* 2 */
-    {0x1E, 0x01, 0x01, 0x0E, 0x01, 0x01, 0x1E}, /* 3 */
-    {0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02}, /* 4 */
-    {0x1F, 0x10, 0x10, 0x1E, 0x01, 0x01, 0x1E}, /* 5 */
-    {0x0E, 0x10, 0x10, 0x1E, 0x11, 0x11, 0x0E}, /* 6 */
-    {0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08}, /* 7 */
-    {0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E}, /* 8 */
-    {0x0E, 0x11, 0x11, 0x0F, 0x01, 0x01, 0x0E}, /* 9 */
-    {0x00, 0x04, 0x04, 0x00, 0x04, 0x04, 0x00}, /* : */
-    {0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x0C}, /* . */
-    {0x00, 0x00, 0x00, 0x1F, 0x00, 0x00, 0x00}, /* - */
-    {0x00, 0x04, 0x04, 0x1F, 0x04, 0x04, 0x00}, /* + */
-    {0x19, 0x1B, 0x04, 0x04, 0x08, 0x1B, 0x13}, /* % */
-    {0x01, 0x02, 0x02, 0x04, 0x08, 0x08, 0x10}, /* / */
-    {0x0E, 0x11, 0x01, 0x02, 0x04, 0x00, 0x04}, /* ? */
-    {0x0E, 0x0A, 0x0E, 0x00, 0x00, 0x00, 0x00}, /* ~ degree */
+    {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+    {0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11},
+    {0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E},
+    {0x0F, 0x10, 0x10, 0x10, 0x10, 0x10, 0x0F},
+    {0x1E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1E},
+    {0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F},
+    {0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x10},
+    {0x0E, 0x11, 0x10, 0x17, 0x11, 0x11, 0x0E},
+    {0x11, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11},
+    {0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x1F},
+    {0x07, 0x02, 0x02, 0x02, 0x12, 0x12, 0x0C},
+    {0x11, 0x12, 0x14, 0x18, 0x14, 0x12, 0x11},
+    {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F},
+    {0x11, 0x1B, 0x15, 0x15, 0x11, 0x11, 0x11},
+    {0x11, 0x19, 0x15, 0x13, 0x11, 0x11, 0x11},
+    {0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E},
+    {0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10},
+    {0x0E, 0x11, 0x11, 0x11, 0x15, 0x12, 0x0D},
+    {0x1E, 0x11, 0x11, 0x1E, 0x14, 0x12, 0x11},
+    {0x0F, 0x10, 0x10, 0x0E, 0x01, 0x01, 0x1E},
+    {0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04},
+    {0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E},
+    {0x11, 0x11, 0x11, 0x11, 0x11, 0x0A, 0x04},
+    {0x11, 0x11, 0x11, 0x15, 0x15, 0x1B, 0x11},
+    {0x11, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x11},
+    {0x11, 0x11, 0x0A, 0x04, 0x04, 0x04, 0x04},
+    {0x1F, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1F},
+    {0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E},
+    {0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E},
+    {0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F},
+    {0x1E, 0x01, 0x01, 0x0E, 0x01, 0x01, 0x1E},
+    {0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02},
+    {0x1F, 0x10, 0x10, 0x1E, 0x01, 0x01, 0x1E},
+    {0x0E, 0x10, 0x10, 0x1E, 0x11, 0x11, 0x0E},
+    {0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08},
+    {0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E},
+    {0x0E, 0x11, 0x11, 0x0F, 0x01, 0x01, 0x0E},
+    {0x00, 0x04, 0x04, 0x00, 0x04, 0x04, 0x00},
+    {0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x0C},
+    {0x00, 0x00, 0x00, 0x1F, 0x00, 0x00, 0x00},
+    {0x00, 0x04, 0x04, 0x1F, 0x04, 0x04, 0x00},
+    {0x19, 0x1B, 0x04, 0x04, 0x08, 0x1B, 0x13},
+    {0x01, 0x02, 0x02, 0x04, 0x08, 0x08, 0x10},
+    {0x0E, 0x11, 0x01, 0x02, 0x04, 0x00, 0x04},
+    {0x0E, 0x0A, 0x0E, 0x00, 0x00, 0x00, 0x00},
 };
 
-/* Interior half widths for the top chamber, sampled every 3 px. */
 static const uint8_t hg_half_widths[40] = {
     75, 75, 75, 74, 74, 74, 73, 73, 72, 71,
     71, 70, 69, 68, 66, 65, 64, 63, 61, 60,
@@ -212,8 +209,6 @@ typedef enum {
     VIEW_ZOMBIE
 } sift_view_t;
 
-/* The horizontal page ring stays the six original watch pages; ZOMBIE is
- * launched from the app drawer, not by wrapping past SETTINGS. */
 #define SIFT_PAGE_COUNT 6
 
 typedef struct {
@@ -289,8 +284,6 @@ typedef struct {
     float touch_start_yaw;
     float touch_start_elev;
     uint32_t touch_at;
-    /* PSEUDO3D: orbit camera, flip animation and the per-column sand
-     * surface used by the 3D rendering. */
     float orbit_yaw;
     float orbit_yaw_target;
     float orbit_elev;
@@ -323,8 +316,6 @@ static uint16_t s_vbins[SIFT_VBINS];
 static uint16_t s_vox_sprite[4][8][8];
 static bool s_vox_sprites_ready;
 
-/* The game canvas shares s_fb with the watch.  The second buffer is the
- * pre-rendered backdrop; it is allocated on first entry into the game page. */
 static uint16_t *s_game_bg;
 static bool s_game_ready;
 static zc_save_t s_game_save = {0, 0, 1};
@@ -345,7 +336,6 @@ static int weather_temp(int celsius);
 static void sift_imu_zero(void);
 static void vibe_pulse(void);
 
-/* Stable game platform seam: zc_audio owns the audprc/audcodec/AW8155 path. */
 static void game_sfx(zc_sfx_t id, void *user)
 {
     (void)user;
@@ -780,8 +770,6 @@ static void sift_flip(void)
     printf("[sift_watch] flip=%d\n", s.flips);
 }
 
-/* A real X-axis rotation: the frame turns in depth and the glass/sand plane
- * shears; the voxel grid is projected with the same rotation. */
 static void update_flip(uint32_t now)
 {
     if(!s.flip_active) return;
@@ -887,8 +875,6 @@ static void update_tilt(uint32_t now)
     s.smooth_pitch += (s.target_pitch - s.smooth_pitch) / ease;
 }
 
-/* PSEUDO3D: the orbit camera eases toward the drag target at ~12/s, matching
- * the HTML preview. Angles are radians. */
 static void update_orbit(uint32_t elapsed_ms)
 {
     float dt = (float)elapsed_ms / 1000.0f;
@@ -923,7 +909,6 @@ static void draw_background(void)
 {
     fill_rect(0, 0, SIFT_W, SIFT_H, COL_INK);
 
-    /* A sparse dot field keeps the dark panel from looking empty. */
     for(int32_t y = 8; y < SIFT_H; y += 7) {
         for(int32_t x = 8; x < SIFT_W; x += 7) {
             uint32_t h = sift_hash(x, y);
@@ -933,7 +918,6 @@ static void draw_background(void)
         }
     }
 
-    /* Fixed star clusters. */
     for(int32_t i = 0; i < 30; i++) {
         int32_t x = (int32_t)(sift_hash(i, 3) % SIFT_W);
         int32_t y = (int32_t)(sift_hash(i, 7) % SIFT_H);
@@ -1030,10 +1014,6 @@ static int32_t hg_half_width(int32_t row)
     return hg_half_widths[row];
 }
 
-/* PSEUDO3D: orthographic orbit camera. World +x right, +y up, +z toward the
- * viewer; yaw spins around the hourglass axis and elevation lifts the camera.
- * The glass is a lathe, so only the wooden frame and the sand layers reveal
- * the rotation. Cost per frame: 4 trig calls, 6 boxes, <=18 quads. */
 typedef struct {
     float cy;
     float sy;
@@ -1066,8 +1046,6 @@ static float flip_sin(void)
     return s.flip_active ? sinf(s.flip_angle) : 0.0f;
 }
 
-/* Local glass/voxel plane: X rotation compresses vertically and shears rows
- * sideways at nonzero yaw. */
 static int32_t map_local_y(float local_y, const orbit_m_t *m)
 {
     float k = flip_cos() * m->ce - flip_sin() * m->cy * m->se;
@@ -1096,8 +1074,6 @@ static void project3(int32_t x, int32_t y, int32_t z, const orbit_m_t *m,
     *out_depth = round_f32(pd * 100.0f);
 }
 
-/* Half-ellipse outline sampled every few degrees; 2 px blocks keep the
- * pixel-art edge and avoid per-pixel anti-aliasing. */
 static void ellipse_arc(int32_t cx, int32_t cy, int32_t rx, int32_t ry,
                         int32_t start_deg, int32_t end_deg, uint16_t color, int32_t size)
 {
@@ -1190,7 +1166,6 @@ static void draw_box3(int32_t cx, int32_t cy, int32_t cz,
         list[count++] = face;
     }
 
-    /* Farther faces first inside each batch. */
     for(int32_t i = 1; i < count; i++) {
         quad_face_t key = list[i];
         int32_t j = i - 1;
@@ -1229,7 +1204,6 @@ static void draw_frame3d(const orbit_m_t *m, bool back)
               SIFT_FRAME_CAP_HALF_X, SIFT_FRAME_CAP_HALF_Y, SIFT_FRAME_CAP_HALF_Z, m, back);
 }
 
-/* Grain and bolt details on the cap face currently facing the camera. */
 static void draw_cap_details(const orbit_m_t *m)
 {
     int32_t faces[2];
@@ -1265,7 +1239,6 @@ static void draw_cap_details(const orbit_m_t *m)
 
 static void draw_orbit_rims(const orbit_m_t *m)
 {
-    /* Only the two cap rims; the neck ring read as a floating circle. */
     static const int16_t ring_y[2] = {120, -120};
     static const int16_t ring_r[2] = {80, 80};
     float fc = flip_cos();
@@ -1284,8 +1257,6 @@ static void draw_orbit_rims(const orbit_m_t *m)
     }
 }
 
-/* Glass body as a lathe under the card transform: local rows map to screen
- * with the X rotation, and yaw shears the rows sideways. */
 static void draw_glass_3d(const orbit_m_t *m)
 {
     float k = flip_cos() * m->ce - flip_sin() * m->cy * m->se;
@@ -1343,16 +1314,12 @@ static void build_vox_sprites(void)
         for(int32_t r = 0; r < 8; r++) {
             for(int32_t c = 0; c < 8; c++) s_vox_sprite[i][r][c] = tones[i];
         }
-        /* Only a light upper/left edge: a dark lower edge would line up
-         * across a voxel layer and read as a stripe through the pile. */
         for(int32_t c = 0; c < 8; c++) s_vox_sprite[i][0][c] = COL_SAND_PALE;
         for(int32_t r = 0; r < 8; r++) s_vox_sprite[i][r][0] = COL_SAND_PALE;
     }
     s_vox_sprites_ready = true;
 }
 
-/* Draw visible voxels into 16 depth bins, then paint far-to-near. Each voxel
- * is one 7x7 lit grain sprite; interior cells are skipped entirely. */
 static void draw_voxels(const orbit_m_t *m)
 {
     if(!s_vox_sprites_ready) build_vox_sprites();
@@ -1409,7 +1376,6 @@ static void draw_voxels(const orbit_m_t *m)
 
 static void draw_hourglass(void)
 {
-    /* Warm glow behind the glass. */
     for(int32_t y = 110; y < 350; y += 9) {
         for(int32_t x = 45; x < 345; x += 9) {
             int32_t dx = x - 195;
@@ -1553,7 +1519,6 @@ static void draw_icon_settings(int32_t cx, int32_t cy)
 
 static void draw_icon_zombie(int32_t cx, int32_t cy)
 {
-    /* A small infected head behind a cannon, framed by a reticle. */
     fill_rect(cx - 8, cy - 20, 16, 13, COL_LINE);
     fill_rect(cx - 6, cy - 18, 12, 9, COL_MINT_DIM);
     fill_rect(cx - 4, cy - 15, 3, 3, COL_SAND);
@@ -1565,7 +1530,6 @@ static void draw_icon_zombie(int32_t cx, int32_t cy)
     fill_rect(cx - 4, cy + 3, 8, 8, COL_LINE2);
     draw_line(cx, cy + 4, cx + 15, cy - 6, COL_SAND_DIM, 3);
     fill_rect(cx + 13, cy - 9, 5, 5, COL_SAND);
-    /* reticle brackets */
     fill_rect(cx - 24, cy + 2, 7, 2, COL_MINT);
     fill_rect(cx - 24, cy + 2, 2, 7, COL_MINT);
     fill_rect(cx + 18, cy + 2, 7, 2, COL_MINT);
@@ -2057,8 +2021,6 @@ static bool point_in_rect(int32_t x, int32_t y, int32_t rx, int32_t ry, int32_t 
     return x >= rx && x < rx + rw && y >= ry && y < ry + rh;
 }
 
-/* Dragging the hourglass itself orbits the 3D view; page swipes start
- * outside this region so the two gestures do not fight. */
 static bool inside_orbit_zone(int32_t x, int32_t y)
 {
     return x > 36 && x < 354 && y > 74 && y < 372;
@@ -2140,7 +2102,6 @@ static void sift_handle_swipe(int32_t dx, int32_t dy)
     if(ax < SIFT_SWIPE_MIN && ay < SIFT_SWIPE_MIN) return;
 
     if(ax >= ay) {
-        /* Left swipe advances in the ring; right swipe goes back. */
         sift_page_step(dx < 0 ? 1 : -1);
     }
     else if(dy < 0) {
@@ -2168,8 +2129,6 @@ static void sift_handle_tap(int x, int y)
     }
 
     if(s.view == VIEW_WATCH) {
-        /* Header apps icon still opens the drawer; every other tap flips
-         * the hourglass, same as the HTML preview. */
         if(point_in_rect(x, y, 96, 8, 58, 32)) {
             open_view(VIEW_APPS);
         }
@@ -2253,8 +2212,6 @@ static void sift_handle_key(uint32_t key)
     }
 
     if(s.view == VIEW_ZOMBIE) {
-        /* ENTER confirms, HOME/ESC pauses or leaves.  zc_key owns the mode
-         * policy; only an unhandled HOME falls back to the app drawer. */
         if(!zc_key(key) && (key == LV_KEY_HOME || key == LV_KEY_ESC)) open_view(VIEW_APPS);
         s.last_input = now;
         return;
@@ -2540,8 +2497,6 @@ static void imu_update(void)
     int32_t ay = data.data.acce.y;
     int32_t az = data.data.acce.z;
 
-    /* Light first-order EMA (alpha = 3/4): one sample of lag at the 25 Hz
-     * render cadence keeps the tilt responsive while trimming spikes. */
     if(!s_imu_filter_ready) {
         s_imu_fx = ax;
         s_imu_fy = ay;
@@ -2732,8 +2687,6 @@ static void sift_tick_cb(lv_timer_t *timer)
     update_orbit(elapsed);
 
     if(s.flip_active) {
-        /* The grid is mirrored at the end of the squash; stepping it mid
-         * flip would let sand move in the wrong frame. */
         s.sim_accum = 0;
     }
     else {
@@ -2749,8 +2702,6 @@ static void sift_tick_cb(lv_timer_t *timer)
         uint32_t top_percent = (uint32_t)s.stats.top * 100U / s.stats.total;
         if(top_percent < 5U) {
             if(s.empty_since == 0U) s.empty_since = now;
-            /* A finished hourglass stays finished; only a six-axis flip
-             * or a fresh app start moves the sand again. */
             s.stats.flow = 0;
         }
         else s.empty_since = 0;
@@ -2805,8 +2756,8 @@ void sift_watch_create(void)
     s.flip_angle = 0.0f;
 
     time_t now_time = time(NULL);
-    if(now_time > (time_t)1600000000) s.clock_epoch = (uint32_t)now_time;
-    else s.clock_epoch = 1767225600U; /* deterministic fallback: 2026-01-01 */
+    if(now_time > (time_t)SIFT_CLOCK_MIN_VALID) s.clock_epoch = (uint32_t)now_time;
+    else s.clock_epoch = SIFT_CLOCK_EPOCH_2026_01_01;
     s.clock_base_tick = lv_tick_get();
 
     sand_init();
@@ -2873,4 +2824,4 @@ static int sift_zgame(int argc, char **argv)
 MSH_CMD_EXPORT_ALIAS(sift_zgame, zgame, open zombie game);
 #endif
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4 */
+#endif

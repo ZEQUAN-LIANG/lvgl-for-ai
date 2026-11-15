@@ -1,12 +1,3 @@
-/**
- * @file spectrum_viz.c
- * ARGB-free HUD canvas for the ORBITAL app.
- *
- * The canvas is an opaque 432x404 XRGB8888 buffer. Every timer tick we redraw
- * the backdrop, HUD furniture and the active effect, then invalidate once.
- * The circular album cover is a separate image object above the canvas so it
- * can rotate and scale without being repainted by hand.
- */
 
 #include "spectrum.h"
 
@@ -123,7 +114,6 @@ static float band_at(const float * values, float f)
     return values[i] + (values[j] - values[i]) * t;
 }
 
-/* ------------------------------------------------------------- drawing */
 
 static void draw_line(lv_layer_t * layer, int x1, int y1, int x2, int y2,
                       uint32_t color, int width, int opa)
@@ -235,7 +225,6 @@ static void draw_dashed_circle(lv_layer_t * layer, int cx, int cy, int radius,
     lv_draw_line(layer, &dsc);
 }
 
-/* ----------------------------------------------------------- backdrop */
 
 static void viz_apply_white(uint32_t * pixel, float alpha)
 {
@@ -331,7 +320,6 @@ static void viz_build_base(const spectrum_palette_t * pal)
         }
     }
 
-    /* The canvas strokes from 0.5, 40.5, ...: one full pixel per 40/160 px. */
     for(int x = 0; x < VIZ_W; x += 40) {
         for(int y = 0; y < VIZ_H; y++) viz_apply_white(&viz_bg_base[y * VIZ_W + x], 0.026f);
     }
@@ -532,7 +520,6 @@ static void draw_background(lv_layer_t * layer, const spectrum_palette_t * pal)
     }
 }
 
-/* --------------------------------------------------------------- cover */
 
 static void viz_add_halo(const spectrum_palette_t * pal, int size)
 {
@@ -583,7 +570,6 @@ static void viz_add_halo(const spectrum_palette_t * pal, int size)
     }
 }
 
-/* ------------------------------------------------------------- effects */
 
 static void draw_orbit(lv_layer_t * layer, const spectrum_palette_t * pal)
 {
@@ -827,7 +813,6 @@ static void draw_stars(lv_layer_t * layer, const spectrum_palette_t * pal, doubl
     draw_ring(layer, VIZ_CX, VIZ_CY, 228, 1, pal->a, 56);
 }
 
-/* ---------------------------------------------------------------- api */
 
 void spectrum_viz_reset(void)
 {
@@ -887,8 +872,6 @@ void spectrum_viz_create(lv_obj_t * parent)
     lv_obj_set_clickable(viz_ring_outer, false);
     lv_obj_set_scrollable(viz_ring_outer, false);
 
-    /* CSS scanlines + stage vignette sit above the canvas (and the cover) but
-     * below the panels, tags and transport. */
     viz_create_overlay(parent);
 }
 
@@ -920,8 +903,6 @@ void spectrum_viz_update(double dt)
     }
     lv_canvas_finish_layer(viz_canvas, &layer);
 
-    /* HTML draws a 'lighter' radial glow, then the cover, on top of the
-     * effect. The halo is composited additively straight into the canvas. */
     viz_add_halo(pal, size);
 
     int spin = (int)(spectrum_sim.time * cover_speed[mode] * 1800.0 / SP_PI);
@@ -1000,4 +981,4 @@ void spectrum_viz_update(double dt)
     lv_obj_invalidate(viz_cover_spin);
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

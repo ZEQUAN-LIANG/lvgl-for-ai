@@ -13,7 +13,7 @@ HOST_DIR = Path(__file__).resolve().parents[1]
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
-import build_flash  # noqa: E402
+import build_flash
 
 
 class BuildFlashTest(unittest.TestCase):

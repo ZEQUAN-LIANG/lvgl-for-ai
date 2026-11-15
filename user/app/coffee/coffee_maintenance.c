@@ -1,8 +1,3 @@
-/**
- * @file coffee_maintenance.c
- * Maintenance programs and machine supplies. Programs run on a virtual-time
- * timer and end by restoring the matching life counter to 100%.
- */
 
 #include "coffee_ui.h"
 
@@ -298,4 +293,4 @@ lv_obj_t * coffee_maintenance_create(lv_obj_t * parent)
     return page;
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

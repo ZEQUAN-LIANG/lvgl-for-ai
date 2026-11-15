@@ -1,9 +1,3 @@
-"""Ticket 10: typed error layers, session before build, checks, caps, logs.
-
-Integration tests use the real 9.6 engine or a real failing gcc command, with
-a temporary session root. Nothing is written to ``user/app`` or the real
-``sessions/`` directory.
-"""
 
 from __future__ import annotations
 
@@ -59,7 +53,6 @@ def read_ndjson(path: Path) -> list[dict]:
 
 
 class TypedErrorShapesTest(unittest.TestCase):
-    """Every error layer exposes the field the AI needs to fix that layer."""
 
     def test_status_vocabulary_is_exactly_five_values(self) -> None:
         self.assertEqual(
@@ -162,7 +155,6 @@ class TypedErrorShapesTest(unittest.TestCase):
 
 
 class GccDiagnosticsTest(unittest.TestCase):
-    """Real gcc output is parsed without compiling LVGL."""
 
     def setUp(self) -> None:
         self.gcc = shutil.which("gcc")
@@ -208,7 +200,6 @@ class GccDiagnosticsTest(unittest.TestCase):
 
 
 class BuildFailureSessionTest(unittest.TestCase):
-    """build/link failures happen after the session directory exists."""
 
     def setUp(self) -> None:
         self.gcc = shutil.which("gcc")
@@ -349,7 +340,6 @@ class EngineNotFoundSessionTest(unittest.TestCase):
 
 
 class FakeEngineErrorSessionTest(unittest.TestCase):
-    """Protocol/scenario failures on a live session are typed and recorded."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -447,7 +437,6 @@ class FakeEngineErrorSessionTest(unittest.TestCase):
         self.assertEqual(manifest["status"], "harness_error")
         self.assertEqual(manifest["error"]["code"], "scenario_error")
         self.assertEqual(manifest["error"]["detail"]["step"], 1)
-        # Validation happens before the first command is sent.
         self.assertEqual(
             [check["cmd"] for check in manifest["checks"]], ["quit"]
         )
@@ -614,7 +603,7 @@ class MaxFramesIntegrationTest(unittest.TestCase):
             lvgl="9.6", build=False, sessions_root=self.sessions_root
         )
         self.assertEqual(runtime.max_frames, 600)
-        self.assertEqual(runtime.max_log_bytes, 16 * 1024 * 1024)
+        self.assertEqual(runtime._store.max_log_bytes, 16 * 1024 * 1024)
 
         with mock.patch.dict(
             os.environ, {"LVGL_AI_MAX_FRAMES": "7", "LVGL_AI_MAX_LOG_BYTES": "12345"}
@@ -623,7 +612,7 @@ class MaxFramesIntegrationTest(unittest.TestCase):
                 lvgl="9.6", build=False, sessions_root=self.sessions_root
             )
         self.assertEqual(configured.max_frames, 7)
-        self.assertEqual(configured.max_log_bytes, 12345)
+        self.assertEqual(configured._store.max_log_bytes, 12345)
 
         for kwargs in (
             {"max_frames": 0},
@@ -684,7 +673,6 @@ class MaxFramesIntegrationTest(unittest.TestCase):
         self.assertIs(waited["truncated"], True)
         self.assertEqual(waited["t_ms"], 80)
 
-        # Pointer hit testing, marks and snapshots still work after the cap.
         pointer = runtime.pointer("down", *BUTTON_CENTER)
         self.assertEqual(pointer["frames"], 3)
         self.assertEqual(pointer["hit"], "demo_button")

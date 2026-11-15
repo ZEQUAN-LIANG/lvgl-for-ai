@@ -1,0 +1,58 @@
+{
+  "schema": "lvgl-verify-loop-versions-v1",
+  "default": "9.6",
+  "core": {
+    "version": "0.2.0",
+    "platform": "win64"
+  },
+  "versions": {
+    "9.6": {
+      "tag": "v9.6.0",
+      "intro": true,
+      "description": "default host preview",
+      "sdk": true,
+      "bundled": true,
+      "legacy": false
+    },
+    "9.5": {
+      "tag": "v9.5.0",
+      "intro": true,
+      "description": "host preview",
+      "sdk": true,
+      "legacy": false,
+      "bundled": true
+    },
+    "9.4": {
+      "tag": "v9.4.0",
+      "intro": true,
+      "description": "device baseline",
+      "sdk": true,
+      "legacy": false,
+      "bundled": true
+    },
+    "9.1": {
+      "tag": "v9.1.0",
+      "intro": false,
+      "description": "legacy event-semantics check",
+      "sdk": true,
+      "legacy": true,
+      "bundled": true
+    },
+    "8.4": {
+      "tag": "v8.4.0",
+      "intro": false,
+      "description": "legacy event-semantics check",
+      "sdk": true,
+      "legacy": true,
+      "bundled": true
+    },
+    "8.3": {
+      "tag": "v8.3.11",
+      "intro": false,
+      "description": "legacy event-semantics check",
+      "sdk": true,
+      "legacy": true,
+      "bundled": true
+    }
+  }
+}

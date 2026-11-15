@@ -1,10 +1,3 @@
-"""Prebuilt build selection, command construction and error mapping.
-
-Everything drives ``BuildPlan`` through its scripted runner seam, so no
-compiler, CMake, Ninja or LVGL source is required.  The SDK fixture is a
-validated ``lvgl-ai-host-sdk-v1`` manifest with real hashes over dummy library
-bytes.
-"""
 
 from __future__ import annotations
 
@@ -30,14 +23,13 @@ def sha256(data: bytes) -> str:
 
 
 class WritingRunner:
-    """Scripted runner that creates the output file each command writes."""
 
     def __init__(self, *, fail_on: str | None = None, stderr: str = "") -> None:
         self.calls: list[list[str]] = []
         self.fail_on = fail_on
         self.stderr = stderr
 
-    def __call__(self, command, *, timeout, env=None):  # noqa: ANN001
+    def __call__(self, command, *, timeout, env=None):
         command = list(command)
         self.calls.append(command)
         phase = None
@@ -254,28 +246,53 @@ class ManifestTest(PrebuiltCase):
             self.plan().preflight()
         self.assertIn("no C sources", str(caught.exception))
 
+    def test_shared_sdk_payload_is_resolved(self) -> None:
+        common = self.root / "sdk" / "common"
+        (common / "lib").mkdir(parents=True)
+        (common / "include").mkdir(parents=True)
+        (common / "include" / "shared.h").write_text(
+            "#define SHARED 1\n", encoding="utf-8"
+        )
+        (self.sdk_dir / "lib" / "libfreetype.dll.a").replace(
+            common / "lib" / "libfreetype.dll.a"
+        )
+        (common / "lib" / "libfreetype.dll").write_bytes(b"dll")
+        path = self.sdk_dir / "manifest.json"
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        manifest["libs"] = [
+            name for name in manifest["libs"] if name != "libfreetype.dll.a"
+        ]
+        manifest["runtime_dlls"] = []
+        manifest["shared_root"] = "common"
+        manifest["shared_libs"] = ["libfreetype.dll.a"]
+        manifest["shared_runtime_dlls"] = ["libfreetype.dll"]
+        manifest["shared_include_dirs"] = ["include"]
+        path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        sdk = prebuilt.HostSdk.load(self.sdk_dir, expected_version="9.6")
+        self.assertIn(
+            common / "lib" / "libfreetype.dll.a", sdk.lib_paths
+        )
+        self.assertIn(
+            common / "lib" / "libfreetype.dll", sdk.runtime_dll_paths
+        )
+        self.assertIn(common / "include", sdk.include_paths)
+        self.assertTrue(sdk.manifest_sha256)
+
+    def test_shared_root_cannot_escape_the_sdk_parent(self) -> None:
+        path = self.sdk_dir / "manifest.json"
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        manifest["shared_root"] = ".."
+        manifest["shared_libs"] = ["libfreetype.dll.a"]
+        path.write_text(json.dumps(manifest), encoding="utf-8")
+        with self.assertRaises(BuildError) as caught:
+            prebuilt.HostSdk.load(self.sdk_dir, expected_version="9.6")
+        self.assertIn("must be a file name", str(caught.exception))
+
 
 class CompilerResolutionTest(unittest.TestCase):
-    def test_bundled_compiler_wins_over_env_and_path(self) -> None:
-        with tempfile.TemporaryDirectory() as raw:
-            bundled = Path(raw) / "gcc.exe"
-            bundled.write_bytes(b"")
-            with mock.patch.object(
-                prebuilt, "_bundled_compiler", return_value=bundled
-            ), mock.patch.object(
-                prebuilt.shutil, "which", return_value="/path/gcc"
-            ), mock.patch.dict(
-                os.environ, {"LVGL_AI_GCC": "/env/gcc"}
-            ):
-                compiler, version = prebuilt.resolve_compiler(version="15.2.0")
-        self.assertEqual(compiler, str(bundled))
-        self.assertEqual(version, "15.2.0")
-
-    def test_environment_wins_when_no_bundled_compiler_exists(self) -> None:
-        missing = Path("missing-bundled-gcc")
+    def test_environment_wins_over_path(self) -> None:
         with mock.patch.object(
-            prebuilt, "_bundled_compiler", return_value=missing
-        ), mock.patch.object(
             prebuilt.shutil, "which", return_value="/path/gcc"
         ), mock.patch.dict(
             os.environ, {"LVGL_AI_GCC": "/env/gcc"}
@@ -284,10 +301,7 @@ class CompilerResolutionTest(unittest.TestCase):
         self.assertEqual(compiler, "/env/gcc")
 
     def test_path_is_the_last_resort(self) -> None:
-        missing = Path("missing-bundled-gcc")
         with mock.patch.object(
-            prebuilt, "_bundled_compiler", return_value=missing
-        ), mock.patch.object(
             prebuilt.shutil, "which", return_value="/path/gcc"
         ), mock.patch.dict(os.environ, {"LVGL_AI_GCC": ""}):
             compiler, _ = prebuilt.resolve_compiler(version="15.2.0")
@@ -295,8 +309,6 @@ class CompilerResolutionTest(unittest.TestCase):
 
     def test_no_compiler_is_a_build_error(self) -> None:
         with mock.patch.object(
-            prebuilt, "_bundled_compiler", return_value=Path("missing")
-        ), mock.patch.object(
             prebuilt.shutil, "which", return_value=None
         ), mock.patch.dict(os.environ, {"LVGL_AI_GCC": ""}):
             with self.assertRaises(BuildError) as caught:

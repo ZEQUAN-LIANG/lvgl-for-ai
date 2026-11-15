@@ -1,13 +1,3 @@
-"""The docs index pages stay indexes, not copies of drifting facts.
-
-``docs/app.html`` and ``docs/scenario-server.html`` must point at code or
-README instead of restating the app list, HTTP routes, server constants or
-scenario step vocabulary.  These tests pin that static invariant: every link
-resolves, every symbol pointer names something in the linked file, and facts
-owned by code do not reappear in the pages.
-``chip-adapt/docs/sifli.html`` is link-checked only, so its SDK download links may
-be absent.
-"""
 
 from __future__ import annotations
 
@@ -22,17 +12,16 @@ TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
-from lvgl_ai import paths  # noqa: E402
-from lvgl_ai.apps import parse_app_entries  # noqa: E402
-from lvgl_ai.scenario import SCENARIO_SCHEMA, STEP_TYPES  # noqa: E402
-from lvgl_ai.web import live_session, webapp, wire  # noqa: E402
+from lvgl_ai import paths
+from lvgl_ai.apps import parse_app_entries
+from lvgl_ai.control import session_schema
+from lvgl_ai.scenario import SCENARIO_SCHEMA, STEP_TYPES
+from lvgl_ai.web import live_session, routes, webapp, wire
 
 DOCS_DIR = paths.REPO_ROOT / "docs"
 SIFLI_PAGE = paths.REPO_ROOT / "chip-adapt" / "docs" / "sifli.html"
 PAGE_NAMES = ("app.html", "scenario-server.html")
-# sifli.html is link-checked but is not an index page: it may mention app
-# names, routes and constants as capability facts.
-LINK_PAGES = PAGE_NAMES + ("sifli.html",)
+LINK_PAGES = PAGE_NAMES + ("index.html", "sifli.html")
 
 
 def _link_page(name: str) -> Path:
@@ -41,8 +30,6 @@ def _link_page(name: str) -> Path:
     return DOCS_DIR / name
 
 
-# Server constants whose values may not be copied into the docs.  Names may
-# appear as symbol pointers; values may not.
 CONSTANT_SOURCES = {
     webapp: (
         "DEFAULT_HOST",
@@ -62,7 +49,7 @@ CONSTANT_SOURCES = {
     ),
     wire: ("PAGE_HEARTBEAT_INTERVAL_MS", "STREAM_MAGIC", "MAX_FRAME_BYTES"),
 }
-REGEX_CONSTANTS = ((webapp, "SESSION_ID_RE"), (webapp, "FILE_NAME_RE"))
+REGEX_CONSTANTS = ((session_schema, "SESSION_ID_RE"), (webapp, "FILE_NAME_RE"))
 ROUTE_PREFIXES = ("/api/", "/frames/", "/snapshots/", "/regions/")
 LINE_POINTER = re.compile(
     r"\b[\w./-]+\.(?:c|h|py|md|json|html|txt|ndjson)\s*:\s*\d"
@@ -166,7 +153,7 @@ def _numeric_pattern(fact: str) -> re.Pattern[str]:
 
 
 def _server_route_literals() -> tuple[str, ...]:
-    source = Path(webapp.__file__).read_text(encoding="utf-8")
+    source = Path(routes.__file__).read_text(encoding="utf-8")
     return tuple(
         sorted(
             set(
@@ -231,6 +218,18 @@ class DocsLinkPolicyTest(unittest.TestCase):
             self._check("../chip-adapt/vendor/sifli-sdk/version.txt"), []
         )
 
+class DocsEntryPageTest(unittest.TestCase):
+    def test_index_page_is_link_checked(self) -> None:
+        self.assertIn("index.html", LINK_PAGES)
+        self.assertTrue((DOCS_DIR / "index.html").is_file())
+
+    def test_index_page_links_to_the_index_pages(self) -> None:
+        hrefs = set(_parse_page(DOCS_DIR / "index.html").hrefs)
+        for name in PAGE_NAMES:
+            self.assertIn(name, hrefs)
+        self.assertIn("../core/SKILL.md", hrefs)
+
+
 class DocsSingleSourceTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -262,7 +261,6 @@ class DocsSingleSourceTest(unittest.TestCase):
         for name in LINK_PAGES:
             with self.subTest(name=name):
                 self.assertTrue(_link_page(name).is_file(), name)
-        # The sifli page is link-checked against real repository links only.
         self.assertTrue(_parse_page(SIFLI_PAGE).hrefs)
 
     def test_sifli_page_is_link_checked_but_not_an_index_page(self) -> None:
@@ -270,8 +268,6 @@ class DocsSingleSourceTest(unittest.TestCase):
         self.assertNotIn("sifli.html", PAGE_NAMES)
 
     def test_one_off_audit_report_is_not_an_index_page(self) -> None:
-        # The untracked audit report may exist in the main checkout; it never
-        # joins the index or link-check lists.
         audit_pages = sorted(
             path.name for path in DOCS_DIR.glob("audit-*.html")
         )
@@ -333,7 +329,7 @@ class DocsSingleSourceTest(unittest.TestCase):
                 route,
                 text,
                 f"docs copy HTTP route {route!r}; "
-                "link to webapp._WebHandler._route instead",
+                "link to routes.route instead",
             )
 
     def test_no_scenario_vocabulary_copy(self) -> None:

@@ -33,7 +33,6 @@ PAGE_HEARTBEAT_INTERVAL_MS = 10000
 
 
 def header_fields() -> dict[str, int]:
-    """Byte offsets derived from the one header layout, for the JS parser."""
     offsets: dict[str, int] = {}
     offset = 0
     for name, fmt in HEADER_FIELDS:
@@ -43,7 +42,6 @@ def header_fields() -> dict[str, int]:
 
 
 def page_config() -> dict[str, Any]:
-    """Values the browser needs to parse frames and refresh its page id."""
     return {
         "magic": STREAM_MAGIC.decode("ascii"),
         "headerSize": HEADER_SIZE,

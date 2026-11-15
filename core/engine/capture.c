@@ -69,7 +69,6 @@ int capture_frame(capture_t * capture,
     if(capture == NULL) return 0;
 
     if(!capture->enabled) {
-        /* Test/live view: keep exactly one raw preview frame and no history. */
         if(!capture->live || capture->session_dir[0] == '\0') return 0;
         char live_path[2048];
         snprintf(live_path, sizeof(live_path), "%s/live.rgba",
@@ -109,10 +108,6 @@ int capture_frame(capture_t * capture,
         if(result != NULL) result->frame_written = true;
     }
     else {
-        /* Cap reached: video time keeps moving, but no further frame PNG or
-         * frame_diff row is written. The raw live frame below still updates
-         * so the web preview does not freeze. Timeline input/mark/snapshot
-         * rows still record what the commands did. */
         capture->truncated = true;
     }
 

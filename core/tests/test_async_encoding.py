@@ -1,4 +1,3 @@
-"""Background PNG encoding against the real engine."""
 
 from __future__ import annotations
 

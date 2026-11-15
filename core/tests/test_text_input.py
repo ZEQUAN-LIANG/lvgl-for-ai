@@ -1,12 +1,3 @@
-"""``text`` scenario step and per-character keypad input.
-
-The scenario seam expands each printable ASCII character into a keypad press
-and release carrying the stable ``CHAR_<code>`` token. The runtime unit tests
-check that the token reaches the engine through the fake engine. The
-``TextInputEngineIntegrationTest`` at the end builds the real 9.6 engine and
-proves the characters enter the evidence app's textarea, like the other
-``*IntegrationTest`` classes in the full suite.
-"""
 
 from __future__ import annotations
 
@@ -86,7 +77,6 @@ class TextScenarioTest(unittest.TestCase):
 
 
 class TextInputEngineIntegrationTest(unittest.TestCase):
-    """Real textarea evidence; builds the 9.6 engine like other *IntegrationTest."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()

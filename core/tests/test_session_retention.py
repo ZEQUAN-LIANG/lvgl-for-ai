@@ -1,8 +1,3 @@
-"""Session retention: newest N kept, build_error always dropped.
-
-Pure unit tests: sessions are fake directories with a minimal manifest, so no
-engine is started and the real ``sessions/`` is never touched.
-"""
 
 from __future__ import annotations
 
@@ -126,7 +121,7 @@ class RuntimeRetentionConfigTest(unittest.TestCase):
                 sessions_root=Path(tmp) / "sessions",
             )
             self.assertEqual(
-                runtime.session_retention, DEFAULT_SESSION_LIMIT
+                runtime._store.retention, DEFAULT_SESSION_LIMIT
             )
 
     def test_none_disables_and_negative_is_rejected(self) -> None:
@@ -137,7 +132,7 @@ class RuntimeRetentionConfigTest(unittest.TestCase):
                 sessions_root=Path(tmp) / "sessions",
                 session_retention=None,
             )
-            self.assertIsNone(runtime.session_retention)
+            self.assertIsNone(runtime._store.retention)
             with self.assertRaises(ValueError):
                 Runtime(
                     lvgl="9.6",

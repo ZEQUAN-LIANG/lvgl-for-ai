@@ -47,9 +47,7 @@ typedef struct {
     uint16_t * backdrop;
     int w;
     int h;
-    /* Bottom-anchored art is lifted by this amount on the 390x450 watch. */
     int dy;
-    /* 0 on the HTML canvas; 44 inside the round-corner watch panel. */
     int safe;
     int ox;
     int oy;
@@ -60,4 +58,4 @@ typedef struct {
 
 extern zc_ctx_t zc;
 
-#endif /* ZC_PRIV_H */
+#endif

@@ -38,7 +38,6 @@ def _is_int(value: Any) -> bool:
 
 
 def _display(value: Any) -> str:
-    """Text form used inside labels: ``None`` renders as an empty string."""
     return "" if value is None else str(value)
 
 
@@ -51,7 +50,6 @@ def _note_view(
     session_id: str | None,
     frames_by_no: dict[int, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Note fields, labels, region text, frame links and crop URLs."""
     tags_value = note.get("tags")
     tags = " ".join(f"#{tag}" for tag in tags_value) if tags_value else ""
     anchors_value = note.get("anchors")
@@ -161,20 +159,12 @@ def _note_view(
 
 
 class ReplayModel:
-    """The view data one replay page or ``/api/sessions`` response renders.
-
-    Sections are read from the recording on first access and cached, so each
-    evidence file is read at most once per model.  ``load()`` returns an
-    unprimed model for the JSON endpoints; the page calls ``prime()`` because
-    it renders every section.
-    """
 
     def __init__(self, recording: Recording | None = None) -> None:
         self._recording = recording
 
     @classmethod
     def empty(cls) -> ReplayModel:
-        """The model rendered when no session is selected."""
         return cls(None)
 
     @property
@@ -208,9 +198,7 @@ class ReplayModel:
     def frames(self) -> list[dict[str, Any]]:
         if self._recording is None:
             return []
-        # Read the timeline first: Recording fills its shared view cache from
-        # this read, so frame_views() does not read the file a second time.
-        self.timeline
+        self._prime_timeline()
         session_id = self._recording.path.name
         return [
             {
@@ -226,8 +214,7 @@ class ReplayModel:
     def snapshots(self) -> list[dict[str, Any]]:
         if self._recording is None:
             return []
-        # Same order as frames: one timeline read feeds both view lists.
-        self.timeline
+        self._prime_timeline()
         session_id = self._recording.path.name
         return [
             {
@@ -318,7 +305,6 @@ class ReplayModel:
         return len(self.annotations.get("notes") or [])
 
     def note_views(self) -> list[dict[str, Any]]:
-        """Notes rendered by the page; ``page_render._render_notes`` renders them."""
         notes = self.annotations.get("notes") or []
         frames_by_no = {
             frame["frame_no"]: frame
@@ -329,8 +315,10 @@ class ReplayModel:
             _note_view(note, self.session_id, frames_by_no) for note in notes
         ]
 
+    def _prime_timeline(self) -> None:
+        _ = self.timeline
+
     def prime(self) -> None:
-        """Read every section the replay page renders, in its historical order."""
         self.manifest
         self.timeline
         self.frame_diffs
@@ -343,5 +331,4 @@ class ReplayModel:
 
 
 def load(recording: Recording) -> ReplayModel:
-    """Build the shared replay model; sections are read on first access."""
     return ReplayModel(recording)

@@ -28,7 +28,6 @@ CHAR_PREFIX = "CHAR_"
 ASCII_PRINTABLE_MIN = 32
 ASCII_PRINTABLE_MAX = 126
 
-# Sorted by LVGL's enum, not alphabetically, to make header comparison easy.
 LV_KEYS: dict[str, int] = {
     "UP": 17,
     "DOWN": 18,
@@ -49,17 +48,10 @@ _CHAR_RE = re.compile(r"CHAR_([0-9]+)\Z")
 
 
 def char_key(char: str) -> str:
-    """Return the stable ``CHAR_<code>`` token for one printable ASCII char."""
     return f"{CHAR_PREFIX}{ord(char)}"
 
 
 def resolve_key(name: Any, *, step: int | None = None) -> tuple[str, int]:
-    """Return ``(canonical_name, lv_key_code)`` for ``name``.
-
-    Raises :class:`ScenarioError` for a non-string or unknown key. ``step`` is
-    included in the message and attached to the error when the key came from
-    a ``lvgl-ai-input-v1`` event list.
-    """
     prefix = "" if step is None else f"step {step}: "
     if not isinstance(name, str):
         raise ScenarioError(f"{prefix}key must be a string; got {name!r}", step=step)

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Run the host unit tests without pytest."""
 
 from __future__ import annotations
 

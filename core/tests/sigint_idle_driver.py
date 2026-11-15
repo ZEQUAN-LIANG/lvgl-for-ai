@@ -1,9 +1,3 @@
-"""Run the CLI idle path and deliver a real OS SIGINT after startup.
-
-Used by ``test_cli`` to cover the Ctrl+C stop path end to end. The watcher
-raises the signal in the main thread only once the session manifest shows a
-recorded frame, so the interrupt cannot land inside the build.
-"""
 
 from __future__ import annotations
 
@@ -19,7 +13,7 @@ TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
-import cli  # noqa: E402
+import cli
 
 
 def wait_for_session(root: Path, timeout: float = 120.0) -> Path | None:

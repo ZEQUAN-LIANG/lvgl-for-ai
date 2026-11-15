@@ -1,4 +1,3 @@
-"""PNG crop tests; no engine or sessions."""
 
 from __future__ import annotations
 

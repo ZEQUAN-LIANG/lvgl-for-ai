@@ -1,12 +1,3 @@
-/**
- * @file png_writer.h
- * PNG encoding for full-frame evidence and snapshots.
- *
- * This is deliberately independent of LVGL: it takes an XRGB8888 byte buffer
- * (the engine framebuffer layout) and writes an RGB PNG with libpng. The
- * background encoder may call it from its own thread.
- */
-
 #ifndef PNG_WRITER_H
 #define PNG_WRITER_H
 
@@ -29,4 +20,4 @@ int png_writer_write_xrgb(const uint8_t * xrgb,
 }
 #endif
 
-#endif /* PNG_WRITER_H */
+#endif

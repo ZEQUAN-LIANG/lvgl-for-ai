@@ -36,7 +36,6 @@ __all__ = [
 def encode_frame(
     width: int, height: int, frame_no: int, t_ms: int, pixels: bytes
 ) -> bytes:
-    """Pack one frame header and its RGBA pixels."""
     if width <= 0 or height <= 0:
         raise ValueError("frame dimensions must be positive")
     if len(pixels) != width * height * 4:
@@ -46,7 +45,6 @@ def encode_frame(
 
 @dataclass(frozen=True)
 class LiveFrame:
-    """One published preview frame; ``pixels`` is immutable RGBA bytes."""
 
     seq: int
     t_ms: int
@@ -55,14 +53,12 @@ class LiveFrame:
     pixels: bytes
 
     def to_bytes(self) -> bytes:
-        """Encode this frame for ``GET /api/live/stream``."""
         return encode_frame(
             self.width, self.height, self.seq, self.t_ms, self.pixels
         )
 
 
 class LiveFrameHub:
-    """Keep only the newest frame and wake every waiting stream handler."""
 
     def __init__(self) -> None:
         self._cond = threading.Condition()
@@ -78,7 +74,6 @@ class LiveFrameHub:
     def publish(
         self, width: int, height: int, t_ms: int, pixels: bytes
     ) -> LiveFrame | None:
-        """Replace the latest frame. A closed hub silently drops it."""
         if width <= 0 or height <= 0:
             raise ValueError("frame dimensions must be positive")
         expected = width * height * 4
@@ -104,12 +99,6 @@ class LiveFrameHub:
     def wait_next(
         self, last_seq: int, timeout: float | None = None
     ) -> LiveFrame | None:
-        """Wait for a frame newer than ``last_seq``.
-
-        Returns the newest frame when it is already newer, returns ``None``
-        on timeout, and returns ``None`` once the hub is closed and no newer
-        frame is pending.
-        """
         deadline = None if timeout is None else time.monotonic() + timeout
         with self._cond:
             while True:
@@ -127,7 +116,6 @@ class LiveFrameHub:
                 self._cond.wait(remaining)
 
     def close(self) -> None:
-        """Wake every handler; later publishes are dropped."""
         with self._cond:
             self._closed = True
             self._cond.notify_all()

@@ -1,9 +1,3 @@
-"""Shared helpers for the web tests: fixture sessions and a live HTTP server.
-
-Every fixture session is a real ``sessions/<id>/`` directory that
-``Recording.open`` accepts, so the web layer is exercised through the same
-evidence files the engine and Runtime write.
-"""
 
 from __future__ import annotations
 
@@ -42,7 +36,6 @@ def make_web_session(
     status: str = "ok",
     app: str | None = None,
 ) -> Path:
-    """Write a minimal but complete recorded session below ``root``."""
     session = Path(root) / session_id
     frames_dir = session / "frames"
     frames_dir.mkdir(parents=True)
@@ -227,7 +220,6 @@ def make_web_session(
 
 
 class WebHarness:
-    """Run the real HTTP server on an ephemeral port against a temp root."""
 
     def __init__(
         self,

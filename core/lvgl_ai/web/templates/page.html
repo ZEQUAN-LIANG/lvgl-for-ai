@@ -50,7 +50,6 @@ button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 [hidden] { display: none !important; }
 
-/* ---- top toolbar ---- */
 .masthead {
   position: sticky;
   top: 0;
@@ -164,7 +163,6 @@ button:disabled { cursor: not-allowed; }
 }
 .notice strong { color: #ff8a8d; }
 
-/* ---- main layout ---- */
 .shell { max-width: 1500px; margin: 0 auto; padding: 14px 16px 24px; }
 .panel {
   background: var(--panel);
@@ -346,7 +344,6 @@ input[type="range"]::-moz-range-thumb {
 .muted { color: var(--muted); }
 .hint { margin: .35rem 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 
-/* ---- inspector ---- */
 .viewer-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .side-block {
   padding: 10px;
@@ -759,7 +756,6 @@ input[type="checkbox"]:focus-visible { outline: 1px solid var(--accent); outline
 }
 .note-crop:hover { border-color: var(--accent); }
 
-/* ---- timeline ---- */
 .timeline-block { padding: 0 14px 14px; }
 .table-wrap {
   overflow: auto;
@@ -805,13 +801,10 @@ tr.is-jump:hover td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
 .kind-snapshot { color: #c9d9a8; border-color: rgba(201, 217, 168, .3); }
 .kind-end { color: var(--red); border-color: rgba(229, 72, 77, .3); }
 
-/* ---- live mode ---- */
 #replay[data-has-frames="0"] .replay-only,
 #replay[data-live-state="starting"] .replay-only,
 #replay[data-live-state="running"] .replay-only { display: none !important; }
 #replay[data-has-frames="0"] .annotation-block { display: none !important; }
-/* Test/record mode is not an annotation state: keep the block visible so
- * the lock reason is explicit instead of the tools silently disappearing. */
 #replay[data-live-state="starting"] #annotation-form,
 #replay[data-live-state="starting"] #annotation-list,
 #replay[data-live-state="running"] #annotation-form,
@@ -828,7 +821,6 @@ tr.is-jump:hover td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
 
 {{APP_MANAGER_STYLE}}
 
-/* ---- footer ---- */
 .colophon {
   display: flex;
   flex-wrap: wrap;
@@ -915,9 +907,6 @@ const MODEL = {{MODEL_JSON}};
     return "/?session=" + encodeURIComponent(id);
   }
 
-  // Page tracking for the no-console launcher: the server exits when the last
-  // tracked page closes. The heartbeat also covers a crashed tab; the close
-  // beacon makes a normal tab close immediate.
   const PAGE_ID = (window.crypto && window.crypto.randomUUID)
     ? window.crypto.randomUUID()
     : "page-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
@@ -928,7 +917,7 @@ const MODEL = {{MODEL_JSON}};
       try {
         navigator.sendBeacon(path, new Blob([body], { type: "application/json" }));
         return;
-      } catch (error) { /* fall through to fetch */ }
+      } catch (error) { }
     }
     fetch(path, {
       method: "POST",
@@ -994,16 +983,12 @@ const MODEL = {{MODEL_JSON}};
   let wbVisible = false;
   let liveMode = false;
   let liveTestMode = false;
-  // Start/stop invalidates polls that were already in flight; a stale
-  // running=true response must not redraw the live view after a stop.
   let liveRequestToken = 0;
   let liveSessionId = null;
   let previousLiveSessionId = null;
   let liveRunning = false;
   let liveStarting = false;
   let liveSwitching = false;
-  // Raw preview state: the stream owns the canvas after the first frame;
-  // /api/live only supplies running/session/buttons and the frame total.
   let liveHasFrame = false;
   let liveFrameNo = null;
   let liveFrameTMs = 0;
@@ -1063,7 +1048,6 @@ const MODEL = {{MODEL_JSON}};
   }
 
   function activeFrame() {
-    // Recording is read-only: annotations belong to a finished replay session.
     return liveMode ? null : currentFrame();
   }
 
@@ -1283,7 +1267,6 @@ const MODEL = {{MODEL_JSON}};
     renderDiff();
   }
 
-  /* ---- annotation board ------------------------------------------------ */
 
   const SHAPE_TOOLS = { rect: 1, ellipse: 1, line: 1, arrow: 1, highlight: 1 };
 
@@ -1925,7 +1908,6 @@ const MODEL = {{MODEL_JSON}};
         }
         anchor.annotated = canvas.toDataURL("image/png");
       } catch (error) {
-        /* the note still saves with text and boxes when composition fails */
       }
     }
   }
@@ -2112,7 +2094,6 @@ const MODEL = {{MODEL_JSON}};
     }
   });
 
-  /* ---- whiteboard ------------------------------------------------------ */
 
   function initWhiteboard() {
     if (wbBoard || typeof fabric === "undefined") return;
@@ -2522,7 +2503,6 @@ const MODEL = {{MODEL_JSON}};
       }
       renderWbRefs();
     } catch (error) {
-      /* evidence stays empty; the page still works */
     }
   }
 
@@ -2730,7 +2710,6 @@ const MODEL = {{MODEL_JSON}};
     let sliderRaf = 0;
     let sliderTarget = 0;
     slider.addEventListener("input", function () {
-      // Coalesce pointer-speed input events into one frame per paint.
       sliderTarget = Number(slider.value) - 1;
       if (sliderRaf) return;
       sliderRaf = requestAnimationFrame(function () {
@@ -3161,8 +3140,6 @@ const MODEL = {{MODEL_JSON}};
   }
 
   function restorePlaybackView() {
-    // The raw preview overlays the replay frame; tear it down even when this
-    // page already has replay frames to show.
     resetLiveView();
     if (frames.length) {
       showFrame(frameIndex);
@@ -3342,8 +3319,6 @@ const MODEL = {{MODEL_JSON}};
       return;
     }
     if (!liveApp || liveRunning || liveStarting) return;
-    // A replay page (explicit or the newest session) opens with the annotation
-    // board ready. Only the empty page starts the app preview.
     if (frames.length) return;
     if (new URLSearchParams(window.location.search).has("session")) return;
     await previewSelectedApp();
@@ -3359,7 +3334,6 @@ const MODEL = {{MODEL_JSON}};
   }
 
   async function changeLive(method, path) {
-    // Discard polls issued before this transition...
     liveRequestToken += 1;
     const liveRecord = $("live-record");
     const liveTest = $("live-test");
@@ -3372,7 +3346,6 @@ const MODEL = {{MODEL_JSON}};
       if (liveStatus) liveStatus.textContent = "正在停止…";
     }
     const result = await liveCall(method, path);
-    // ...and polls that started while the transition was in flight.
     liveRequestToken += 1;
     if (!result.ok) {
       const message = result.data && result.data.error
@@ -3384,8 +3357,6 @@ const MODEL = {{MODEL_JSON}};
     }
     if (path === "/api/live/stop") {
       const stoppedId = result.data && result.data.session_id;
-      // A test session is discarded on stop; only a recording becomes a
-      // replay session worth opening.
       if (!liveTestMode && stoppedId) {
         const lastFrame = liveFrameNo === null ? "" : "&frame=" + liveFrameNo;
         window.location.href = sessionUrl(stoppedId) + lastFrame;
@@ -3412,8 +3383,6 @@ const MODEL = {{MODEL_JSON}};
     liveRequestToken += 1;
     try {
       if (liveRunning) {
-        // Stop directly instead of changeLive(): a recording stop normally
-        // redirects to the replay page, but an app switch must stay live.
         const stopped = await liveCall("POST", "/api/live/stop");
         if (!stopped.ok && stopped.status !== 409) {
           const message = stopped.data && stopped.data.error
@@ -3424,8 +3393,6 @@ const MODEL = {{MODEL_JSON}};
         }
       }
       lastLiveApp = app;
-      // Selecting an app means "show me this app now". Use test mode so the
-      // switch never starts an unwanted recording.
       await changeLive("POST", liveStartPath("test"));
     } finally {
       liveSwitching = false;
@@ -3454,8 +3421,6 @@ const MODEL = {{MODEL_JSON}};
 {{APP_MANAGER_BINDINGS_JS}}
 
   bootLive();
-  // Pixels arrive through /api/live/stream; this poll only synchronizes
-  // running/session/app state, HUD totals and the start/stop buttons.
   setInterval(refreshLive, 500);
 })();
 </script>

@@ -6,10 +6,12 @@ copied as-is; an app must already use APIs available in LVGL 9.4. Apps that use
 9.5/9.6-only APIs are rejected with a diagnostic instead of being rewritten.
 """
 
+
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Sequence
@@ -21,14 +23,15 @@ for _path in (CORE_ROOT, ADAPTER_DIR):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-import layout  # noqa: E402
-from lvgl_ai.apps import common, registry  # noqa: E402
-from asset_plan import AssetPlan, ExportError, plan_assets  # noqa: E402
+import layout
+from lvgl_ai.apps import common, registry
+from asset_plan import AssetPlan, ExportError, plan_assets
 
 ADAPTER_SCHEMA = "lvgl-ai-chip-adapter-v1"
 EXPORT_SCHEMA = "lvgl-ai-export-v1"
 SDK_INCLUDE = '#include "lvgl_ai_sdk.h"\n'
 TEXT_SUFFIXES = {".c", ".h"}
+EXCLUDED_SOURCE_DIRS = {"design", "covers_src"}
 INCOMPATIBLE_APIS = {
     "lv_obj_set_clickable": (
         "LVGL 9.6 API; use lv_obj_add_flag/lv_obj_remove_flag "
@@ -183,6 +186,14 @@ def _registered_symbol(root: Path, app: str) -> str:
     for name, symbol in registry.parse_app_entries(text):
         if name == app:
             return symbol
+    header = root / "user" / "app" / app / f"{app}.h"
+    try:
+        header_text = header.read_text(encoding="utf-8-sig")
+    except OSError:
+        header_text = ""
+    symbol = f"{app}_create"
+    if re.search(rf"\bvoid\s+{re.escape(symbol)}\s*\(", header_text):
+        return symbol
     raise ExportError(
         "app_not_registered",
         f'app "{app}" is not registered in {app_c}',
@@ -216,6 +227,8 @@ def _build_plan(
         if not path.is_file() or "__pycache__" in path.parts:
             continue
         if path.name.startswith("ccheck_tmp_") or path.suffix == ".dump":
+            continue
+        if EXCLUDED_SOURCE_DIRS & set(path.relative_to(source_dir).parts):
             continue
         relative = path.relative_to(source_dir).as_posix()
         label = f"user/app/{app}/{relative}"

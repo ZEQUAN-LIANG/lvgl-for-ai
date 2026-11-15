@@ -1,12 +1,9 @@
-"""URL builders shared by the HTML page, the API and live status."""
-
 from __future__ import annotations
 
 from urllib.parse import quote
 
 
 def page_url(host: str, port: int) -> str:
-    """URL of the viewer served on ``host:port``."""
     return f"http://{host}:{int(port)}/"
 
 
@@ -27,12 +24,5 @@ def whiteboards_url(session_id: str) -> str:
 
 
 def region_url(session_id: str, image: str) -> str:
-    """URL of one annotation crop; ``image`` is a ``regions/<file>.png`` path."""
     filename = str(image).rsplit("/", 1)[-1]
     return f"/regions/{session_id}/{filename}"
-
-
-def whiteboard_image_url(session_id: str, image: str) -> str:
-    """URL of one whiteboard PNG; ``image`` is a ``whiteboards/<file>.png`` path."""
-    filename = str(image).rsplit("/", 1)[-1]
-    return f"/whiteboards/{session_id}/{filename}"

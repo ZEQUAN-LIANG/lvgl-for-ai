@@ -1,8 +1,3 @@
-/**
- * @file coffee_page.c
- * The machine shell: ambient backdrop, top status bar, vertical navigation,
- * page host, standby layer and brightness overlay.
- */
 
 #include "coffee_ui.h"
 
@@ -354,4 +349,4 @@ void coffee_create(void)
     coffee_log("create drinks=%d", COFFEE_DRINK_COUNT);
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

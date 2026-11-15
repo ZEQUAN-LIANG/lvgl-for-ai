@@ -43,9 +43,40 @@ if(NOT EXISTS "${LVGL_AI_LIBPNG_SRC}/png.h"
     message(FATAL_ERROR "libpng source not found at ${LVGL_AI_LIBPNG_SRC}; run: python -I core/tools/fetch_png.py --repo-root .")
 endif()
 
+# LV_USE_FREETYPE is on in core/engine/lv_conf.h. Windows uses the vendored
+# FreeType 2.13.2 headers and MinGW import library; the DLL is the same one
+# the asset converter ships, and is copied next to lvgl_engine.exe because
+# Windows resolves it from the executable directory.
+if(WIN32)
+    set(LVGL_AI_FREETYPE_INCLUDE_DIR
+        "${CMAKE_CURRENT_SOURCE_DIR}/freetype/include" CACHE PATH
+        "FreeType headers for the host engine")
+    set(LVGL_AI_FREETYPE_LIBRARY
+        "${CMAKE_CURRENT_SOURCE_DIR}/freetype/lib/libfreetype.dll.a" CACHE FILEPATH
+        "FreeType import library for the host engine")
+    if(NOT DEFINED LVGL_AI_FREETYPE_DLL OR LVGL_AI_FREETYPE_DLL STREQUAL "")
+        set(LVGL_AI_FREETYPE_DLL
+            "${CMAKE_CURRENT_SOURCE_DIR}/../lvgl_ai/assets/vendor/freetype/libfreetype.dll"
+            CACHE FILEPATH "FreeType runtime DLL")
+    endif()
+    file(TO_CMAKE_PATH "${LVGL_AI_FREETYPE_DLL}" LVGL_AI_FREETYPE_DLL)
+    if(NOT EXISTS "${LVGL_AI_FREETYPE_INCLUDE_DIR}/ft2build.h")
+        message(FATAL_ERROR "FreeType headers not found at ${LVGL_AI_FREETYPE_INCLUDE_DIR}")
+    endif()
+    if(NOT EXISTS "${LVGL_AI_FREETYPE_LIBRARY}")
+        message(FATAL_ERROR "FreeType import library not found at ${LVGL_AI_FREETYPE_LIBRARY}")
+    endif()
+    if(NOT EXISTS "${LVGL_AI_FREETYPE_DLL}")
+        message(FATAL_ERROR "FreeType runtime DLL not found at ${LVGL_AI_FREETYPE_DLL}")
+    endif()
+endif()
+
 message(STATUS "lvgl_engine: LVGL ${LVGL_AI_LVGL_VERSION} from ${LVGL_AI_LVGL_SRC}")
 message(STATUS "lvgl_engine: zlib from ${LVGL_AI_ZLIB_SRC}")
 message(STATUS "lvgl_engine: libpng from ${LVGL_AI_LIBPNG_SRC}")
+if(WIN32)
+    message(STATUS "lvgl_engine: FreeType from ${LVGL_AI_FREETYPE_LIBRARY}")
+endif()
 
 # Host SDK export maps the build tree to a relative prefix so __FILE__ and
 # debug information never embed the build machine's absolute paths.
@@ -108,6 +139,16 @@ else()
 endif()
 
 add_subdirectory(${LVGL_AI_LVGL_SRC} ${CMAKE_CURRENT_BINARY_DIR}/lvgl)
+
+# LVGL's FreeType module (enabled by lv_conf.h) compiles against the vendored
+# headers and needs the import library when the engine is linked.
+if(WIN32)
+    target_include_directories(lvgl PRIVATE "${LVGL_AI_FREETYPE_INCLUDE_DIR}")
+    target_link_libraries(lvgl PUBLIC "${LVGL_AI_FREETYPE_LIBRARY}")
+else()
+    find_package(Freetype REQUIRED)
+    target_link_libraries(lvgl PUBLIC Freetype::Freetype)
+endif()
 
 # Third-party PNG encoder, built statically from the fetched sources.
 add_library(lvgl_ai_zlib STATIC
@@ -194,6 +235,9 @@ target_include_directories(user_app PRIVATE
     ${LVGL_AI_USER_DIR}
     ${LVGL_AI_USER_APP_DIR}
 )
+if(WIN32)
+    target_include_directories(user_app PRIVATE "${LVGL_AI_FREETYPE_INCLUDE_DIR}")
+endif()
 target_compile_options(user_app PRIVATE -Wall -Wextra)
 
 # Engine sources only see adapter.h, never version LVGL headers. The OBJECT
@@ -233,6 +277,16 @@ endif()
 set_target_properties(lvgl_engine PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+if(WIN32)
+    add_custom_command(TARGET lvgl_engine POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${LVGL_AI_FREETYPE_DLL}"
+            "$<TARGET_FILE_DIR:lvgl_engine>/libfreetype.dll"
+        COMMENT "Copying libfreetype.dll next to lvgl_engine.exe"
+        VERBATIM
+    )
+endif()
 
 # Host SDK export: a static archive over the same engine objects, plus a
 # convenience target that builds every library the SDK manifest lists.

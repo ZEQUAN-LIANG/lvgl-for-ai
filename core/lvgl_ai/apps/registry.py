@@ -38,7 +38,6 @@ def parse_app_entries(text: str) -> list[tuple[str, str]]:
 
 
 def find_include(text: str, name: str) -> str | None:
-    """Return the app.c include line for *name*, if one exists."""
     for line in _normalized_lines(text):
         parsed = INCLUDE_RE.match(line)
         if parsed and parsed.group(1).split("/", 1)[0] == name:
@@ -283,11 +282,6 @@ def _verify_unregistered(
 def _verify_first_entry(
     entries: list[tuple[str, str]], first_before: str | None
 ) -> None:
-    """The first ``apps[]`` entry is recorded before and compared after.
-
-    An empty table has no first entry to preserve, so registering the first
-    app is allowed; otherwise the recorded name must still come first.
-    """
     if first_before is None:
         return
     if not entries or entries[0][0] != first_before:

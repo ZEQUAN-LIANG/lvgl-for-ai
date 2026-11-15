@@ -1,8 +1,3 @@
-"""Session evidence summary and report tool.
-
-The fixtures build finished ``sessions/<id>/`` directories directly; no engine
-and no web server is ever started.
-"""
 
 from __future__ import annotations
 

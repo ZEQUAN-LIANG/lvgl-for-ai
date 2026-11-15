@@ -34,12 +34,16 @@ import re
 from typing import Any, Iterable
 
 from .errors import ScenarioError
-# Re-exported: callers import the whole input vocabulary from this module.
 from .keys import (
     ASCII_PRINTABLE_MAX,
     ASCII_PRINTABLE_MIN,
     char_key,
     resolve_key,
+)
+from .session_schema import (
+    MAX_DISPLAY_DIMENSION,
+    display_problem as _shared_display_problem,
+    dimension_problem as _shared_dimension_problem,
 )
 
 POINTER_ACTIONS = ("down", "move", "up")
@@ -55,8 +59,6 @@ TOKEN_PATTERN = "[A-Za-z0-9_-]+"
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{1,64}\Z")
 INT16_MIN = -32768
 INT16_MAX = 32767
-MAX_DISPLAY_DIMENSION = 4096
-
 _COMMON_FIELDS = {"at_ms", "device", "action"}
 _DEVICE_FIELDS = {
     "pointer": _COMMON_FIELDS | {"x", "y"},
@@ -65,16 +67,11 @@ _DEVICE_FIELDS = {
 }
 
 
-# ---- vocabulary checks ------------------------------------------------
-
-
 def is_token(value: Any) -> bool:
-    """True when ``value`` matches the shared token syntax and length cap."""
     return isinstance(value, str) and _TOKEN_RE.fullmatch(value) is not None
 
 
 def token_problem(value: Any, name: str) -> str | None:
-    """Return the shared token diagnostic, or ``None`` when it is valid."""
     if is_token(value):
         return None
     return f"{name} must match {TOKEN_PATTERN}"
@@ -87,7 +84,6 @@ def integer_problem(
     minimum: int | None = None,
     maximum: int | None = None,
 ) -> str | None:
-    """Return the shared integer diagnostic, or ``None`` when it is valid."""
     if isinstance(value, bool) or not isinstance(value, int):
         return f"{name} must be an integer"
     if minimum is not None and value < minimum:
@@ -98,30 +94,21 @@ def integer_problem(
 
 
 def dimension_problem(value: Any, name: str) -> str | None:
-    """Return the display-dimension diagnostic, or ``None`` when valid."""
-    return integer_problem(
-        value, name, minimum=1, maximum=MAX_DISPLAY_DIMENSION
+    return _shared_dimension_problem(
+        value, name, maximum=MAX_DISPLAY_DIMENSION
     )
 
 
 def display_problem(value: Any) -> str | None:
-    """Return the scenario ``display`` object diagnostic, or ``None``."""
-    if not isinstance(value, dict):
-        return "display must be an object with width and height"
-    unknown = sorted(set(value) - {"width", "height"})
-    if unknown:
-        return f"display has unexpected field(s) {', '.join(unknown)}"
-    for name in ("width", "height"):
-        if name not in value:
-            return f"display.{name} is required"
-        problem = dimension_problem(value[name], f"display.{name}")
-        if problem is not None:
-            return problem
-    return None
+    return _shared_display_problem(
+        value,
+        label="display",
+        maximum=MAX_DISPLAY_DIMENSION,
+        reject_unknown=True,
+    )
 
 
 def text_problem(value: Any) -> str | None:
-    """Return the ``text`` step diagnostic, or ``None`` when valid."""
     if not isinstance(value, str):
         return "value must be a string"
     if not value:
@@ -136,7 +123,6 @@ def text_problem(value: Any) -> str | None:
 
 
 def point_problem(value: Any, name: str) -> str | None:
-    """Return the shared ``[x, y]`` diagnostic, or ``None`` when it is valid."""
     valid = (
         isinstance(value, list)
         and len(value) == 2
@@ -154,7 +140,6 @@ def point_problem(value: Any, name: str) -> str | None:
 def step_action_problem(
     device: str, action: Any, *, quoted: bool = False
 ) -> str | None:
-    """Diagnostic for a scenario/input-event action in dotted naming."""
     actions = DEVICE_ACTIONS[device]
     if action in actions:
         return None
@@ -164,7 +149,6 @@ def step_action_problem(
 
 
 def runtime_action_problem(device: str, action: Any) -> str | None:
-    """Diagnostic for a ``Runtime`` method action in plain naming."""
     actions = DEVICE_ACTIONS[device]
     if action in actions:
         return None
@@ -177,11 +161,7 @@ def _or_list(actions: tuple[str, ...]) -> str:
     return ", ".join(actions[:-1]) + " or " + actions[-1]
 
 
-# ---- Runtime-facing helpers -------------------------------------------
-
-
 def require_action(device: str, action: Any) -> str:
-    """Validate a Runtime action, raising ``ValueError`` with today's text."""
     problem = runtime_action_problem(device, action)
     if problem is not None:
         raise ValueError(problem)
@@ -215,7 +195,6 @@ def require_non_negative_int(value: Any, name: str) -> int:
 def require_display_pair(
     width: Any, height: Any
 ) -> tuple[int, int] | None:
-    """Validate Runtime width/height; ``None`` means the engine default."""
     if width is None and height is None:
         return None
     if width is None or height is None:
@@ -228,7 +207,6 @@ def require_display_pair(
 
 
 def require_int16(value: Any, name: str) -> int:
-    """Validate the encoder range; Runtime keeps its ``within`` wording."""
     problem = integer_problem(value, name)
     if problem is not None:
         raise ValueError(problem)
@@ -239,15 +217,7 @@ def require_int16(value: Any, name: str) -> int:
     return value
 
 
-# ---- lvgl-ai-input-v1 --------------------------------------------------
-
-
 def normalize_input_events(events: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Validate and stably sort a ``lvgl-ai-input-v1`` list.
-
-    Raises :class:`ScenarioError` with ``step`` set to the offending index.
-    ``at_ms`` is an offset relative to the start of the input call.
-    """
     if isinstance(events, (str, bytes)) or not isinstance(events, Iterable):
         raise ScenarioError("input events must be a list of objects")
 

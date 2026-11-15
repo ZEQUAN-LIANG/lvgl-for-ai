@@ -1,7 +1,7 @@
 # zombie_cannon
 
-`zombie-cannon.html` 的 LVGL 9.6 独立预览：390x460 RGB565 canvas，用来和 HTML 版逐帧
-核对标题、战斗、升级卡与结算画面。
+`user/app/sift_watch/design/zombie-cannon.html` 的 LVGL 9.6 独立预览：390x460 RGB565
+canvas，用来和 HTML 版逐帧核对标题、战斗、升级卡与结算画面。
 
 游戏实现不在本目录，而在 `user/app/sift_watch/game/`。本目录只提供 390x460 的
 `zombie_cannon_create()` 外壳；同一份 `zc_game.c` 也被 `sift_watch` 的 ZOMBIE 应用使用。

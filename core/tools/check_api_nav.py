@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Check the per-version LVGL API navigation documents.
 
 For each ``api-nav/<version>.md``:
@@ -30,9 +29,9 @@ TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
-from lvgl_ai import paths  # noqa: E402
+from lvgl_ai import paths, versions
 
-VERSIONS = ("9.6", "9.5", "9.4", "9.1", "8.4", "8.3")
+VERSIONS = versions.supported()
 
 SECTIONS = (
     "版本与源码路径",
@@ -52,8 +51,6 @@ SECTIONS = (
 SHIMS = {"lv_screen_active", "lv_image_create", "lv_image_set_src"}
 SHIM_HEADER = "user/app/lvgl_compat.h"
 
-# A missing symbol is accepted only when the line says it is absent, old, or
-# belongs to another version. The exception is printed for the ticket log.
 DIFF_MARKER = re.compile(
     r"(无|没有|不可用|不存在|未提供|仅有|只有|仅在|新增|才|不同|差异|改名|"
     r"旧|legacy|shim|9\.x|8\.x|9\.[0-9]|8\.[0-9])"

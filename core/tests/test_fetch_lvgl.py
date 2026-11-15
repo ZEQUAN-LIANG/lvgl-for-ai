@@ -1,9 +1,3 @@
-"""Unit tests for fetch_lvgl.py patch discovery and application.
-
-These tests do not download anything. They exercise the patch ordering rules,
-the series file validation, `git apply` on a plain directory, and the source
-stamp written next to the installed tree.
-"""
 
 from __future__ import annotations
 
@@ -21,7 +15,7 @@ for path in (TOOL_ROOT, TOOLS_DIR):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-import fetch_lvgl  # noqa: E402
+import fetch_lvgl
 
 PATCH = """\
 diff --git a/src/foo.c b/src/foo.c
@@ -31,6 +25,16 @@ diff --git a/src/foo.c b/src/foo.c
 -old
 +new
 """
+
+
+class DownloadValidationTest(unittest.TestCase):
+    def test_gzip_magic_is_required(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            path = Path(raw) / "archive.tar.gz"
+            path.write_bytes(b"\x1f\x8bnot-really")
+            self.assertTrue(fetch_lvgl._is_gzip(path))
+            path.write_bytes(b"<!DOCTYPE html>")
+            self.assertFalse(fetch_lvgl._is_gzip(path))
 
 
 class PatchDiscoveryTest(unittest.TestCase):

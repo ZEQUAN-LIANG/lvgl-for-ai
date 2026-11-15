@@ -20,7 +20,6 @@ static float rnd(rng_t * r)
     return (float)(t ^ (t >> 14)) / 4294967296.0f;
 }
 
-/* ------------------------------------------------------------ sprites */
 
 #include "zc_sprites_data.h"
 
@@ -52,7 +51,6 @@ void zc_art_sprite_draw(int type, int frame, int x, int y, int mode, uint8_t alp
     }
 }
 
-/* ----------------------------------------------------------- backdrop */
 
 static void bd_dead_tree(rng_t * r, int baseX, int baseY)
 {
@@ -376,7 +374,6 @@ void zc_art_backdrop_draw(void)
     draw_backdrop();
 }
 
-/* --------------------------------------------------------------- fog */
 
 typedef struct {
     int16_t x;
@@ -457,7 +454,6 @@ void zc_art_fog_draw(float t)
     draw_fog_layer(fog_b, fog_b_count, x2, 144 + zc.oy, 66);
 }
 
-/* ------------------------------------------------------------- motes */
 
 typedef struct {
     float x;
@@ -514,7 +510,6 @@ void zc_art_motes_draw(float t)
     }
 }
 
-/* -------------------------------------------------------------- base */
 
 static void art_r(int x, int y, int w, int h, uint16_t c)
 {

@@ -1,9 +1,3 @@
-"""Scenario schema, command expansion, and the settings scenario on real LVGL.
-
-Unit tests use ``FakeRuntime`` and never spawn a process. The integration test
-plays ``user/scenarios/settings.json`` against the real engine; the demo
-button covers x=32..192, y=300..348, so its center is (112, 324).
-"""
 
 from __future__ import annotations
 
@@ -212,7 +206,6 @@ class ScenarioExpansionTest(unittest.TestCase):
             play_scenario(self.runtime, steps)
             from_list = list(self.runtime.commands)
         self.assertEqual(from_path, from_list)
-        # click_at: 3 commands; wait: 1; drag: down + 2 moves + up + snapshot.
         self.assertEqual(len(from_path), 3 + 1 + 5)
 
     def test_play_scenario_does_not_manage_the_runtime_lifecycle(self) -> None:
@@ -428,6 +421,24 @@ class ScenarioFileTest(unittest.TestCase):
             load_scenario(path)
         self.assertIn("app", str(caught.exception))
 
+    def test_lvgl_is_preserved_in_the_normalized_document(self) -> None:
+        path = scenario_file(
+            self.root, [{"type": "wait", "ms": 16}], lvgl="9.4"
+        )
+        self.assertEqual(load_scenario(path)["lvgl"], "9.4")
+
+    def test_invalid_lvgl_is_rejected(self) -> None:
+        for value in (9.4, "bad version", ""):
+            with self.subTest(value=value):
+                path = scenario_file(
+                    self.root,
+                    [{"type": "wait", "ms": 16}],
+                    lvgl=value,
+                )
+                with self.assertRaises(ScenarioError) as caught:
+                    load_scenario(path)
+                self.assertIn("lvgl", str(caught.exception))
+
     def test_display_is_preserved_in_the_normalized_document(self) -> None:
         path = scenario_file(
             self.root,
@@ -466,7 +477,7 @@ class ScenarioFileTest(unittest.TestCase):
                     {"width": width, "height": height},
                 )
 
-    def test_invalid_display_is_rejected(self) -> None:
+    def test_invalid_scenario_display_is_rejected(self) -> None:
         cases = [
             ("640x480", "display must be an object"),
             ({"width": 640}, "display.height is required"),

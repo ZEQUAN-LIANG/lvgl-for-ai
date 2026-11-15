@@ -27,11 +27,6 @@ static void session_remember(session_t * session, const uint8_t * frame)
     session->has_previous = true;
 }
 
-/**
- * Show the refreshed framebuffer, then write at most one retained frame.
- * Changed-only compares first; an identical frame writes no PNG, timeline
- * row, diff row or raw preview and keeps the previous frame number.
- */
 static void session_record_frame(session_t * session)
 {
     session_present(session);
@@ -85,10 +80,6 @@ void session_init(session_t * session, const session_config_t * config)
     session->present = config->present;
     session->present_user = config->present_user;
 
-    /* The changed-only buffer is allocated before the evidence writers are
-     * opened and uses the adapter's actual display size, so a failed
-     * allocation keeps the previous stderr order and the comparison always
-     * matches the framebuffer dimensions. */
     const adapter_info_t * info = adapter_info(config->adapter);
     if(config->record_changed_only && (config->record || config->live) &&
        info != NULL && info->width > 0 && info->height > 0) {
@@ -245,7 +236,6 @@ int session_snapshot(session_t * session,
     if(relative != NULL && relative_size > 0) relative[0] = '\0';
     if(session == NULL || label == NULL) return -1;
 
-    /* Render pending changes so the snapshot reflects the current state. */
     adapter_refresh(session->adapter);
     session_present(session);
 
@@ -310,9 +300,4 @@ uint32_t session_t_ms(const session_t * session)
 bool session_truncated(const session_t * session)
 {
     return session != NULL && capture_truncated(&session->capture);
-}
-
-session_error_t session_error(const session_t * session)
-{
-    return session == NULL ? SESSION_ERROR_NONE : session->error;
 }

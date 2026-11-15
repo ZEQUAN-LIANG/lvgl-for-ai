@@ -8,8 +8,8 @@
 
 typedef struct {
     uint8_t active;
-    uint8_t wave;       /* 0 square, 1 triangle, 2 saw, 3 sine, 4 noise */
-    uint8_t noise_mode; /* 0 white, 1 low-pass, 2 high-pass */
+    uint8_t wave;
+    uint8_t noise_mode;
     float phase;
     float freq0;
     float freq1;

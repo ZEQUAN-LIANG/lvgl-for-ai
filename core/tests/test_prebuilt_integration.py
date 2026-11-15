@@ -1,9 +1,3 @@
-"""Real prebuilt build: missing LVGL source, gcc against sdk/<version>.
-
-This is the opt-in integration half of the prebuilt seam.  It copies
-``user/app`` into a temporary directory so ``--no-build`` compatibility with
-the workspace build directory is not affected.
-"""
 
 from __future__ import annotations
 

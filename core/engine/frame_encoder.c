@@ -498,14 +498,3 @@ bool frame_encoder_failed(frame_encoder_t * encoder)
     encoder_unlock(encoder);
     return failed;
 }
-
-long frame_encoder_pending(frame_encoder_t * encoder)
-{
-    if(encoder == NULL) {
-        return 0;
-    }
-    encoder_lock(encoder);
-    long pending = encoder->pending_jobs;
-    encoder_unlock(encoder);
-    return pending;
-}

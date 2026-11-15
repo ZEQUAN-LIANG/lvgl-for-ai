@@ -20,7 +20,7 @@ RGB565 `lv_canvas`。
 
 ## ZOMBIE 无尽尸潮
 
-`game/` 是 `zombie-cannon.html` 的 LVGL/RGB565 移植，直接复用 `sift_watch` 的
+`game/` 是 `design/zombie-cannon.html` 的 LVGL/RGB565 移植，直接复用 `sift_watch` 的
 390x450 canvas，不创建第二套控件树。入口是应用抽屉里的 `ZOMBIE` 磁贴；页面保留
 44 px 圆角安全区，HUD、暂停/静音按钮和弹窗都不会落进面板切角。
 
@@ -80,7 +80,8 @@ python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch.json
 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch_zombie.json
 ```
 
-390×450 像素设计预览在 `user/app/sift_watch/watch-app.html`，用浏览器直接打开。
+390×450 像素设计预览在 `user/app/sift_watch/design/watch-app.html`，用浏览器直接打开；
+`design/` 只放浏览器原型，不参与编译。
 
 ### 沙漏伪 3D（PSEUDO3D）
 

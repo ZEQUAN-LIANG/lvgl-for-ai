@@ -1,8 +1,3 @@
-/**
- * @file xhs_home.c
- * The feed page with 关注 / 发现 / 附近 tabs, the note card layouts and the
- * note detail overlay.
- */
 
 #include "xhs_ui.h"
 
@@ -71,9 +66,6 @@ static lv_obj_t * detail_collect_label;
 static int active_tab = 1;
 static int active_category = 0;
 
-/* ------------------------------------------------------------------------- */
-/* Feed construction                                                         */
-/* ------------------------------------------------------------------------- */
 
 static void xhs_reset_note_widgets(void)
 {
@@ -330,9 +322,6 @@ static void xhs_build_feed(void)
     }
 }
 
-/* ------------------------------------------------------------------------- */
-/* Top bar, tabs and categories                                              */
-/* ------------------------------------------------------------------------- */
 
 static void xhs_tab_event_cb(lv_event_t * event)
 {
@@ -388,8 +377,6 @@ static void xhs_category_apply(int index)
     if(index < 0 || index >= XHS_CATEGORY_COUNT) return;
     active_category = index;
     if(index >= 6) {
-        /* Keep the first five chips and show the picked extra channel in
-         * the last slot, so the top row always names the active category. */
         for(int i = 0; i < 5; i++) visible_categories[i] = i;
         visible_categories[5] = index;
     }
@@ -436,9 +423,6 @@ static void xhs_more_event_cb(lv_event_t * event)
     printf("[xhs] categories more clicked\n");
 }
 
-/* ------------------------------------------------------------------------- */
-/* Search overlay                                                            */
-/* ------------------------------------------------------------------------- */
 
 typedef struct {
     const char * word;
@@ -597,9 +581,6 @@ static void xhs_search_pick_cb(lv_event_t * event)
     printf("[xhs] search pick %s\n", text);
 }
 
-/* ------------------------------------------------------------------------- */
-/* Custom phone-style keyboard                                               */
-/* ------------------------------------------------------------------------- */
 
 static void xhs_search_relabel(void)
 {
@@ -697,9 +678,6 @@ static void xhs_search_keyboard_build(lv_obj_t * page)
         int y = 8 + row * 38;
         for(int i = 0; i < count; i++) {
             char lower[2] = { letters[i], '\0' };
-            /* The label copies its text, but the event's user_data must stay
-             * valid for the whole keyboard lifetime: point it at the static
-             * row string instead of the stack buffer. */
             lv_obj_t * key = xhs_search_key(search_keyboard, lower,
                                             letters + i, x + i * 29, y, 27, 32,
                                             XHS_WHITE, XHS_TEXT);
@@ -736,8 +714,6 @@ static void xhs_search_build(lv_obj_t * page)
     lv_obj_set_style_bg_opa(field, LV_OPA_COVER, 0);
     xhs_clickable(field, "search_field");
     lv_obj_add_event_cb(field, xhs_search_field_cb, LV_EVENT_CLICKED, NULL);
-    /* The 20x20 icon has to be aligned rather than positioned by hand: its
-     * extra transparent margin made it sit 4 px below the placeholder. */
     lv_obj_t * field_icon = xhs_image(field, XHS_ICON_SEARCH, 0, 0);
     lv_obj_align(field_icon, LV_ALIGN_LEFT_MID, 9, 0);
     search_textarea = lv_textarea_create(field);
@@ -942,9 +918,6 @@ lv_obj_t * xhs_home_create(lv_obj_t * parent)
     return home_page;
 }
 
-/* ------------------------------------------------------------------------- */
-/* Note detail overlay                                                       */
-/* ------------------------------------------------------------------------- */
 
 static void xhs_detail_like_cb(lv_event_t * event)
 {
@@ -1015,7 +988,6 @@ static void xhs_detail_build(lv_obj_t * page, int index)
     lv_obj_clean(page);
     xhs_note_t * note = &xhs_notes[index];
 
-    /* Top bar. */
     lv_obj_t * back = xhs_image(page, XHS_ICON_BACK, 12, 13);
     xhs_clickable(back, "detail_back");
     lv_obj_set_ext_click_area(back, 8);
@@ -1037,7 +1009,6 @@ static void xhs_detail_build(lv_obj_t * page, int index)
     lv_obj_set_style_bg_color(top_line, lv_color_hex(XHS_LINE), 0);
     lv_obj_set_style_bg_opa(top_line, LV_OPA_COVER, 0);
 
-    /* Scrollable article. */
     lv_obj_t * content = xhs_scroll(page, 0, 44, XHS_SCREEN_W, 452);
     lv_obj_set_name(content, "detail_content");
 
@@ -1108,7 +1079,6 @@ static void xhs_detail_build(lv_obj_t * page, int index)
 
     xhs_box(content, 0, row_y + 8, 1, 1);
 
-    /* Bottom action bar. */
     lv_obj_t * bar = xhs_box(page, 0, 496, XHS_SCREEN_W, 44);
     lv_obj_set_style_bg_color(bar, lv_color_hex(XHS_WHITE), 0);
     lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, 0);
@@ -1166,4 +1136,4 @@ void xhs_note_open(int index)
     printf("[xhs] note open index=%d\n", index);
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

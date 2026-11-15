@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Unified entry for the distributable skill package.
 
 ``bin/lvgl.cmd`` calls this file from any working directory.  It only maps a
@@ -7,6 +6,7 @@ subcommand to the existing entry point; there is no second CLI:
 - ``run``    -> ``core/cli.py`` (build and play a scenario)
 - ``report`` -> ``core/session_report.py`` (read finished evidence)
 - ``serve``  -> ``core/web.py`` (viewer and live bridge)
+- ``assets`` -> ``core/assets.py`` (fonts/images to LVGL C arrays)
 """
 
 from __future__ import annotations
@@ -18,10 +18,13 @@ TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
+from lvgl_ai import paths
+
 COMMANDS = {
     "run": ("cli", "build and play a scenario, then print the session summary"),
     "report": ("session_report", "read a finished session's evidence"),
     "serve": ("web", "serve the viewer and live bridge on 127.0.0.1:8765"),
+    "assets": ("assets", "generate LVGL C arrays from fonts and images"),
 }
 
 
@@ -38,7 +41,17 @@ def _usage() -> str:
     lines.append("  lvgl run --scenario user/scenarios/settings.json --json")
     lines.append("  lvgl report --latest --log-tail 5")
     lines.append("  lvgl serve --port 8765")
+    lines.append("  lvgl assets font --app myapp --font C:\\Windows\\Fonts\\Deng.ttf --size 16")
+    lines.append("  lvgl assets image --app myapp --input logo.png --cf ARGB8888")
+    lines.append("  lvgl assets doctor --json")
     return "\n".join(lines)
+
+
+def _packaged_bundle() -> bool:
+    return (
+        (paths.REPO_ROOT / "SKILL.md").is_file()
+        and paths.metadata_file("VERSION.json").is_file()
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -55,6 +68,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[lvgl] unknown command: {command}", file=sys.stderr)
         print(_usage(), file=sys.stderr)
         return 2
+    if command == "run" and _packaged_bundle():
+        build_flags = {"--build", "--no-build", "--prebuilt", "--source"}
+        if not any(arg in build_flags for arg in args):
+            args.append("--no-build")
     module_name = entry[0]
     module = __import__(module_name)
     return int(module.main(args))

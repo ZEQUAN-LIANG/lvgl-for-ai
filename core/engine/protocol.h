@@ -44,4 +44,4 @@ void protocol_reply_error(FILE * out, long seq, const char * code,
 }
 #endif
 
-#endif /* PROTOCOL_H */
+#endif

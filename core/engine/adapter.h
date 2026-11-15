@@ -1,14 +1,3 @@
-/**
- * @file adapter.h
- * Narrow interface between the engine and the selected LVGL version.
- *
- * The engine, protocol, capture and main files include only this header.
- * adapter_common.c owns the version-independent mechanics (input state
- * machines, hit reply buffers, framebuffer conversion, file IO, lifecycle);
- * display/indev creation, flush handling, hit testing and PNG codecs live in
- * adapter_<version>.c.
- */
-
 #ifndef ADAPTER_H
 #define ADAPTER_H
 
@@ -57,15 +46,12 @@ adapter_t * adapter_create(uint32_t width,
                                    uint32_t height,
                                    bool real_input);
 
-/** Tear down the display, indev and LVGL. */
 void adapter_destroy(adapter_t * adapter);
 
 const adapter_info_t * adapter_info(const adapter_t * adapter);
 
-/** Run one full refresh and wait for the flush callback. */
 void adapter_refresh(adapter_t * adapter);
 
-/** True when the latest adapter_refresh() ran the display flush callback. */
 bool adapter_last_refresh_painted(const adapter_t * adapter);
 
 /**
@@ -78,7 +64,6 @@ int adapter_pointer(adapter_t * adapter,
                         int32_t x,
                         int32_t y);
 
-/** Result of the most recent adapter_pointer() call. */
 const pointer_reply_t * adapter_last_pointer(const adapter_t * adapter);
 
 /**
@@ -92,7 +77,6 @@ int adapter_real_pointer(adapter_t * adapter,
                              int32_t x,
                              int32_t y);
 
-/** Result of the most recent adapter_real_pointer() call. */
 const pointer_reply_t * adapter_last_real_pointer(
     const adapter_t * adapter);
 
@@ -122,16 +106,13 @@ int adapter_key(adapter_t * adapter,
  */
 int adapter_encoder(adapter_t * adapter, int32_t diff);
 
-/** Advance virtual time: lv_tick_inc(ms). */
 void adapter_tick_inc(adapter_t * adapter, uint32_t ms);
 
-/** Run lv_timer_handler() once. */
 void adapter_timer_handler(adapter_t * adapter);
 
 /** Full framebuffer, XRGB8888, row-major, width * height * 4 bytes. */
 const uint8_t * adapter_framebuffer(const adapter_t * adapter);
 
-/** Encode the framebuffer as a PNG. Returns 0 on success. */
 int adapter_save_png(const adapter_t * adapter, const char * path);
 
 /**
@@ -151,11 +132,10 @@ int adapter_load_png(const char * path,
                          uint32_t * width,
                          uint32_t * height);
 
-/** Release pixels returned by adapter_load_png(). */
 void adapter_free_pixels(uint8_t * pixels);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ADAPTER_H */
+#endif

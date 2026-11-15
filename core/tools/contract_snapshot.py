@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Record and compare the external behavior contract of the LVGL AI tools.
 
 The snapshot is behavior-equivalence evidence for refactors.  The historical
@@ -33,6 +32,7 @@ fake engine.  Real C-engine semantics stay covered by the full test suite; the
 snapshot freezes the Python-visible command/reply and evidence contract.
 """
 
+
 from __future__ import annotations
 
 import argparse
@@ -64,19 +64,18 @@ TOOL_ROOT = Path(__file__).resolve().parent.parent
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
 
-from lvgl_ai import Recording, Runtime, play_scenario  # noqa: E402
-from lvgl_ai import paths  # noqa: E402
+from lvgl_ai import Recording, Runtime, play_scenario
+from lvgl_ai import paths
 
 SNAPSHOT_SCHEMA = "lvgl-ai-contract-snapshot-v1"
 DEFAULT_SNAPSHOT_PATH = Path(__file__).resolve().with_name(
     "contract_snapshot.json"
 )
 FIXTURE_SESSION_ID = "20260102-030405-abcd"
+FIXTURE_BROKEN_SESSION_ID = "20260102-030406-beef"
 FIXTURE_APP = "alpha"
 REQUEST_HEADER = "X-LVGL-AI-Request"
 
-# Environment variables read by the embedded fake engine.  They only carry
-# probe configuration; the engine itself never appears in the snapshot.
 ENGINE_ARGV_LOG = "CONTRACT_SNAPSHOT_ARGV_LOG"
 ENGINE_COMMAND_LOG = "CONTRACT_SNAPSHOT_COMMAND_LOG"
 ENGINE_REPLY_LOG = "CONTRACT_SNAPSHOT_REPLY_LOG"
@@ -391,8 +390,6 @@ if __name__ == "__main__":
 '''
 
 
-# ---------------------------------------------------------------------------
-# canonical JSON / shapes
 
 
 def _canonical_json(value: Any, *, indent: int | None = 2) -> str:
@@ -402,7 +399,6 @@ def _canonical_json(value: Any, *, indent: int | None = 2) -> str:
 
 
 def _shape(value: Any) -> Any:
-    """Return a deterministic type/key shape without any values."""
     if value is None:
         return "null"
     if isinstance(value, bool):
@@ -424,14 +420,6 @@ def _shape(value: Any) -> Any:
     return {"unknown": type(value).__name__}
 
 
-def _json_lines(path: Path) -> list[Any]:
-    rows: list[Any] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.strip():
-            rows.append(json.loads(line))
-    return rows
-
-
 def snapshot_bytes(snapshot: dict[str, Any]) -> bytes:
     return (_canonical_json(snapshot) + "\n").encode("utf-8")
 
@@ -451,8 +439,6 @@ def write_snapshot(path: str | Path, snapshot: dict[str, Any]) -> None:
     target.write_bytes(snapshot_bytes(snapshot))
 
 
-# ---------------------------------------------------------------------------
-# comparison
 
 
 def _same_json(left: Any, right: Any) -> bool:
@@ -477,7 +463,6 @@ def _short(value: Any) -> str:
 def compare_snapshots(
     expected: Any, actual: Any, path: str = ""
 ) -> list[dict[str, Any]]:
-    """Return ordered structural differences between two JSON values."""
     if _same_json(expected, actual):
         return []
     if isinstance(expected, dict) and isinstance(actual, dict):
@@ -558,8 +543,6 @@ def render_diff_report(
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# temporary workspace helpers
 
 
 @contextlib.contextmanager
@@ -700,8 +683,6 @@ def _argv(result: _RunResult) -> list[str]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-# ---------------------------------------------------------------------------
-# protocol
 
 
 def _protocol_section(workspace: Path, engine: Path) -> dict[str, Any]:
@@ -911,8 +892,6 @@ def _normalize_engine_args(args: list[str]) -> list[str]:
     return normalized
 
 
-# ---------------------------------------------------------------------------
-# session
 
 
 def _write_annotations(session_dir: Path) -> None:
@@ -939,7 +918,6 @@ def _session_section(
 ) -> tuple[dict[str, Any], Path | None]:
     sessions = workspace / "session-sessions"
 
-    # A plain recording: only the files the engine and Runtime normally write.
     plain = _capture_run(
         workspace,
         engine,
@@ -952,8 +930,6 @@ def _session_section(
     if plain_dir is None:
         raise RuntimeError("the scripted engine did not create a session")
 
-    # A complete session: reference diffs, an annotation document and a
-    # snapshot exercise every optional artifact the manifest can list.
     reference = workspace / "session-reference.png"
     reference.write_bytes(_png_bytes(2, 2, (1, 2, 3)))
     live_state: dict[str, bool] = {}
@@ -1173,8 +1149,6 @@ def _png_bytes(width: int, height: int, rgb: tuple[int, int, int]) -> bytes:
     )
 
 
-# ---------------------------------------------------------------------------
-# HTTP fixture
 
 
 def _write_repo(root: Path) -> None:
@@ -1412,7 +1386,6 @@ def _png_rgb(path: Path, rgb: tuple[int, int, int]) -> None:
 
 
 class _LiveStub:
-    """Minimal Runtime surface for the live HTTP endpoints."""
 
     def __init__(self, session_dir: Path) -> None:
         self.is_running = False
@@ -1671,8 +1644,6 @@ def _http_section(workspace: Path) -> dict[str, Any]:
             headers={"Content-Type": "application/json"},
         )
         probe("annotations_after", "GET", f"{session_path}/annotations")
-        # Wrong-method probes: every route's allowed method is recorded by a
-        # successful call above; these freeze the 405/501 response instead.
         probe("method_post_live", "POST", "/api/live")
         probe("method_get_start", "GET", "/api/live/start")
         probe("method_post_stream", "POST", "/api/live/stream")
@@ -1915,8 +1886,6 @@ def _stream_probe(host: str, port: int) -> dict[str, Any]:
     return entry
 
 
-# ---------------------------------------------------------------------------
-# CLI
 
 
 def _load_module(name: str, path: Path) -> Any:
@@ -2027,7 +1996,6 @@ def _json_contract(result: subprocess.CompletedProcess[str]) -> dict[str, Any]:
 
 
 class _FakeRuntime:
-    """Scripted Runtime surface used by the CLI contract probes."""
 
     def __init__(self, **kwargs: Any) -> None:
         self.session_id: str | None = "stub-session"
@@ -2105,9 +2073,6 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
 
     sessions_root = workspace / "cli-sessions"
     missing_lvgl = workspace / "missing-lvgl-src"
-    # Force the source path: without --source, auto selection may use an
-    # exported sdk/<version> and the probe would no longer capture the
-    # missing-LVGL-source build error.
     build_error = _run_python(
         TOOL_ROOT / "cli.py",
         ["--json", "--lvgl", "9.6", "--source"],
@@ -2194,8 +2159,6 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# page
 
 
 class _DomParser(HTMLParser):
@@ -2299,17 +2262,11 @@ def _page_server(
 
 
 def _page_section(workspace: Path) -> dict[str, Any]:
-    """Render the page through the real HTTP route, not internal modules.
-
-    The three variants are produced from real fixture sessions, so the page
-    contract survives template/module refactors as long as the rendered DOM
-    stays the same.
-    """
     repo = workspace / "page-repo"
     _write_repo(repo)
     sessions = workspace / "page-sessions"
     _write_http_session(sessions)
-    broken = sessions / "broken-session"
+    broken = sessions / FIXTURE_BROKEN_SESSION_ID
     broken.mkdir()
     (broken / "manifest.json").write_text(
         '{"schema": "not-a-session"}\n', encoding="utf-8"
@@ -2326,7 +2283,9 @@ def _page_section(workspace: Path) -> dict[str, Any]:
         replay_status, replay_html = fetch(
             base, f"/?session={FIXTURE_SESSION_ID}"
         )
-        error_status, error_html = fetch(base, "/?session=broken-session")
+        error_status, error_html = fetch(
+            base, f"/?session={FIXTURE_BROKEN_SESSION_ID}"
+        )
     with _page_server(empty_sessions, repo) as base:
         empty_status, empty_html = fetch(base, "/")
 
@@ -2343,8 +2302,6 @@ def _page_section(workspace: Path) -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# Python interface
 
 
 def _signature(fn: Any) -> list[dict[str, Any]] | None:
@@ -2367,11 +2324,6 @@ def _signature(fn: Any) -> list[dict[str, Any]] | None:
 
 
 def _project_member_names(cls: type) -> list[str]:
-    """Public members declared by the class or its project base classes.
-
-    Inherited ``Exception``/``object`` helpers differ between Python versions
-    (for example ``add_note``), so they are deliberately excluded.
-    """
     names: set[str] = set()
     for base in cls.__mro__:
         module = getattr(base, "__module__", "") or ""
@@ -2449,18 +2401,9 @@ def _python_section() -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# entry points
 
 
 def record_snapshot() -> dict[str, Any]:
-    """Record the six contract sections into a fresh temporary workspace.
-
-    Ready/reply omission probes intentionally make ``Runtime.start()`` fail on
-    validated fields.  Those paths leave the pre-existing engine pipes to the
-    garbage collector, so ResourceWarning is silenced while recording; it is
-    noise from the probe design, not part of the contract.
-    """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", ResourceWarning)
         with _workspace() as (workspace, engine):

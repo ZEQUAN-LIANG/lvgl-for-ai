@@ -19,8 +19,6 @@ import webbrowser
 from .webapp import DEFAULT_HOST, DEFAULT_PORT
 from .urls import page_url
 
-# Connection refused is immediate on this machine; the timeout only bounds the
-# check when the address is unreachable (for example a firewall drops the SYN).
 CONNECT_TIMEOUT_S = 0.25
 
 
@@ -29,7 +27,6 @@ def port_is_open(
     port: int = DEFAULT_PORT,
     timeout: float = CONNECT_TIMEOUT_S,
 ) -> bool:
-    """True when something accepts TCP connections on ``host:port``."""
     try:
         with socket.create_connection((host, int(port)), timeout=timeout):
             return True
@@ -42,13 +39,6 @@ def reuse_running_viewer(
     port: int = DEFAULT_PORT,
     timeout: float = CONNECT_TIMEOUT_S,
 ) -> bool:
-    """Open the page of a running viewer and report whether one was reused.
-
-    A closed port returns False without opening anything, which is the signal
-    to start the server; the server opens the page itself after binding. A
-    browser failure propagates so ``web.pyw`` can show its error dialog
-    instead of exiting silently.
-    """
     if not port_is_open(host, port, timeout):
         return False
     if not webbrowser.open(page_url(host, port)):

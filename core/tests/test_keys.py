@@ -1,9 +1,3 @@
-"""LVGL 9.6 key-name mapping and ``ScenarioError`` for unknown keys.
-
-The table in ``lvgl_ai.control.keys`` is checked against the real 9.6
-header so a copied value cannot drift from the source. The header is
-``lvgl-src/9.6/include/lvgl/core/lv_group.h`` (``lv_key_t``).
-"""
 
 from __future__ import annotations
 

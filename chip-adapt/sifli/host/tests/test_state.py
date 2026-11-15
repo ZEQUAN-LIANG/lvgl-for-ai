@@ -10,7 +10,7 @@ HOST_DIR = Path(__file__).resolve().parents[1]
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
-from state import StateStore, suggest  # noqa: E402
+from state import StateStore, suggest
 
 
 class StateSuggestTest(unittest.TestCase):

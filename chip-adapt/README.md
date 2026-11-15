@@ -12,7 +12,7 @@ SiFli-SDK 工程，并提供串口、构建和烧录入口。
 | 外部大件 | `chip-adapt/vendor/` | 否（仅 README） | 否 | 按 `vendor/README.md` 下载 |
 | 上位机运行时依赖 | `chip-adapt/sifli/host/vendor/`、`host/web/vendor/` | 否 | 否 | `bootstrap.ps1` |
 | 生成物 | `chip-adapt/exports/`、`host/.cache/`、`host/logs/` | 否 | 否 | `export.py` / host 运行 |
-| 双击启动器 | `LVGL-AI-Viewer.exe`、`chip-adapt/sifli/tools/SiFli-Host.exe` | 是 | 否 | `core/tools/launchers/build.py` |
+| 双击启动器 | `bin/LVGL-AI-Viewer.exe`、`chip-adapt/sifli/tools/SiFli-Host.exe` | 否（构建生成） | 否 | `core/tools/launchers/build.py` |
 | 系统级工具 | `%USERPROFILE%\.sifli` 或 `SIFLI_SDK_TOOLS_PATH` | 否 | 否 | SDK `install.ps1` |
 
 - `chip-adapt/docs/sifli.html`：SDK 图形能力知识索引，不是操作手册。

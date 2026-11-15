@@ -1,11 +1,3 @@
-"""Warm/cold launch decisions for the zero-console web viewer.
-
-``LVGL-AI-Viewer.exe`` only starts ``web.pyw`` hidden; the port probe, the page URL
-and the choice between reusing a running viewer and starting the server live in
-Python. These tests cover that decision without a real browser, a spawned
-process or any Windows-only API: the probe is exercised against real sockets
-and the launcher seam is replaced where a process would start.
-"""
 
 from __future__ import annotations
 
@@ -20,9 +12,9 @@ from unittest import mock
 TOOL_ROOT = Path(__file__).resolve().parent.parent
 PYW_LAUNCHER = TOOL_ROOT / "web.pyw"
 
-from lvgl_ai.web import DEFAULT_HOST, DEFAULT_PORT, create_server  # noqa: E402
-from lvgl_ai.web import launcher  # noqa: E402
-from lvgl_ai.web.urls import page_url  # noqa: E402
+from lvgl_ai.web import DEFAULT_HOST, DEFAULT_PORT, create_server
+from lvgl_ai.web import launcher
+from lvgl_ai.web.urls import page_url
 
 
 def _free_port() -> int:
@@ -138,7 +130,9 @@ class WebPywDecisionTest(unittest.TestCase):
         ) as start_server:
             self.assertEqual(self.module._run(), 0)
         open_page.assert_not_called()
-        start_server.assert_called_once_with(["--open", "--exit-on-close"])
+        start_server.assert_called_once_with(
+            ["--open", "--exit-on-close", "--no-build"]
+        )
 
     def test_a_browser_error_shows_the_launcher_error(self) -> None:
         with mock.patch.object(sys, "argv", [str(PYW_LAUNCHER)]), mock.patch.object(
@@ -179,7 +173,7 @@ class WebPywDecisionTest(unittest.TestCase):
                 probe.assert_not_called()
                 open_page.assert_not_called()
                 start_server.assert_called_once_with(
-                    ["--open", "--exit-on-close", *flags]
+                    ["--open", "--exit-on-close", "--no-build", *flags]
                 )
 
 

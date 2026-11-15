@@ -6,6 +6,7 @@ A scenario file is a JSON object with the ``lvgl-ai-scenario-v1`` schema::
       "schema": "lvgl-ai-scenario-v1",
       "name": "settings",
       "app": "coffee",
+      "lvgl": "9.6",
       "display": {"width": 800, "height": 600},
       "steps": [
         {"type": "click_at", "x": 112, "y": 324},
@@ -20,6 +21,12 @@ A scenario file is a JSON object with the ``lvgl-ai-scenario-v1`` schema::
 ``[A-Za-z0-9_-]+``). The CLI forwards it as ``LVGL_AI_DEMO`` before starting the
 engine and the session manifest records it; omit it to use the user code
 default.
+
+``lvgl`` is optional and selects the LVGL version (matching
+``[0-9A-Za-z._-]+``, for example ``9.4``). The CLI uses it only when
+``--lvgl`` is omitted; an explicit flag wins. The value is not validated
+against the installed trees here, so ``install_version.py`` may prepare a
+version that is not downloaded yet.
 
 ``display`` is optional and declares the LVGL screen size. ``width`` and
 ``height`` are integers in ``1..4096``; omit the object to use the engine
@@ -75,6 +82,7 @@ last step cannot leave a half-played gesture.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -113,7 +121,8 @@ DEFAULT_DRAG_INTERVAL_MS = 0
 MAX_DRAG_STEPS = 1000
 DRAG_SNAPSHOT_LABEL = "drag_end"
 
-_FILE_FIELDS = {"schema", "name", "app", "display", "steps"}
+_FILE_FIELDS = {"schema", "name", "app", "lvgl", "display", "steps"}
+_VERSION_PATTERN = re.compile(r"[0-9A-Za-z._-]+")
 _STEP_FIELDS = {
     "click_at": {"type", "x", "y", "hold_ms"},
     "drag": {"type", "from", "to", "steps", "interval_ms"},
@@ -129,13 +138,6 @@ _STEP_FIELDS = {
 
 
 def load_scenario(path: str | Path) -> dict[str, Any]:
-    """Read and validate a scenario file, returning the normalized document.
-
-    Defaults are applied (``hold_ms``, ``steps``, ``interval_ms``) so callers
-    can see the exact commands a ``play_scenario`` call will send. Raises
-    :class:`ScenarioError` when the file is missing, is not JSON, or does not
-    match the schema.
-    """
     scenario_path = Path(path)
     try:
         text = scenario_path.read_text(encoding="utf-8")
@@ -170,6 +172,13 @@ def load_scenario(path: str | Path) -> dict[str, Any]:
         raise ScenarioError(
             f"scenario {scenario_path}: app must match {TOKEN_PATTERN}"
         )
+    lvgl = data.get("lvgl")
+    if lvgl is not None and (
+        not isinstance(lvgl, str) or not _VERSION_PATTERN.fullmatch(lvgl)
+    ):
+        raise ScenarioError(
+            f"scenario {scenario_path}: lvgl must match [0-9A-Za-z._-]+"
+        )
     display = data.get("display")
     if display is not None:
         problem = display_problem(display)
@@ -183,6 +192,8 @@ def load_scenario(path: str | Path) -> dict[str, Any]:
         document["name"] = name
     if app is not None:
         document["app"] = app
+    if lvgl is not None:
+        document["lvgl"] = lvgl
     if display is not None:
         document["display"] = {
             "width": display["width"],
@@ -198,18 +209,6 @@ def scenario_index(
     scenarios_dir: str | Path | None = None,
     include_symlinks: bool = False,
 ) -> list[dict[str, Any]]:
-    """Return one entry per ``*.json`` scenario file, sorted by filename.
-
-    ``root`` is the base for the relative ``path`` field; the scanned directory
-    defaults to ``root/user/scenarios`` and can be overridden with
-    ``scenarios_dir`` (the web app manager keeps its scenarios outside the
-    repository root). Invalid scenarios keep their error text and do not block
-    the other entries.
-
-    Symlinked scenario files are skipped by default (the app views and trash
-    must not follow links). The web app picker and its display lookup pass
-    ``include_symlinks=True`` to keep following them.
-    """
     root_path = Path(root).expanduser().resolve()
     directory = (
         Path(scenarios_dir).expanduser().resolve()
@@ -255,7 +254,6 @@ def _relative(path: Path, root: Path) -> str:
 
 
 def normalize_steps(steps: Any) -> list[dict[str, Any]]:
-    """Validate a list of steps and apply per-type defaults."""
     if not isinstance(steps, list):
         raise ScenarioError("scenario.steps must be a list")
     if not steps:
@@ -264,12 +262,6 @@ def normalize_steps(steps: Any) -> list[dict[str, Any]]:
 
 
 def play_scenario(rt: Any, path_or_steps: str | Path | Sequence[dict]) -> list[dict]:
-    """Execute a scenario against a started Runtime (or a test double).
-
-    ``path_or_steps`` is either a path to a ``lvgl-ai-scenario-v1`` file or the
-    step list itself. The whole script is validated before any command is
-    sent. Returns the replies of every Runtime command in execution order.
-    """
     try:
         steps = _steps_from(path_or_steps)
         replies: list[dict] = []
@@ -277,8 +269,6 @@ def play_scenario(rt: Any, path_or_steps: str | Path | Sequence[dict]) -> list[d
             replies.extend(_play_step(rt, step))
         return replies
     except ScenarioError as exc:
-        # A caller-owned loop (the CLI) relies on Runtime.stop() writing the
-        # manifest; remember the failure so it lands as harness_error.
         record = getattr(rt, "record_error", None)
         if record is not None:
             record(exc)
@@ -343,7 +333,6 @@ def _play_step(rt: Any, step: dict[str, Any]) -> list[dict]:
 def _interpolate(
     start: Sequence[int], end: Sequence[int], count: int
 ) -> list[tuple[int, int]]:
-    """``count`` points from just after ``start`` through exactly ``end``."""
     dx = end[0] - start[0]
     dy = end[1] - start[1]
     return [

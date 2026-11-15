@@ -1,4 +1,3 @@
-"""Tests for the app domain: registry, scaffold, trash, restore and listing."""
 
 from __future__ import annotations
 

@@ -1,8 +1,3 @@
-/**
- * @file coffee_favorites.c
- * Per-profile favorites. The grid is rebuilt on every refresh so profile
- * switches and new favorites are visible immediately.
- */
 
 #include "coffee_ui.h"
 
@@ -151,4 +146,4 @@ lv_obj_t * coffee_favorites_create(lv_obj_t * parent)
     return page;
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

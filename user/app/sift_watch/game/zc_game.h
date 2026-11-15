@@ -8,18 +8,6 @@
 extern "C" {
 #endif
 
-/* Graveyard Shift: the LVGL/RGB565 port of zombie-cannon.html.
- *
- * The game owns no LVGL objects and never allocates.  The caller supplies a
- * 16-bit framebuffer and (optionally) a second buffer for the static
- * backdrop.  Rendering is direct pixel work so the same code can run in the
- * headless LVGL host, as a standalone canvas widget, or inside sift_watch's
- * existing 390x450 canvas.
- *
- * Audio, haptics, RNG and high-score persistence are hooks.  A board without
- * a speaker simply leaves sfx == NULL; the game keeps running.  The hook
- * signatures are the stable platform seam, not a second UI layer.
- */
 
 #define ZC_MAX_W 390
 #define ZC_MAX_H 460
@@ -71,12 +59,7 @@ typedef struct zc_hooks {
 typedef struct {
     int width;
     int height;
-    /* Extra inset for the round-corner watch panel.  The HTML design uses 0;
-     * sift_watch passes 44 so HUD and field controls stay inside the glass. */
     int safe_inset;
-    /* true when the game is launched from sift_watch's app drawer.  The title
-     * screen then exposes a back chevron and the end screen's secondary
-     * button leaves the game instead of going to the local title. */
     bool embedded;
     bool show_scanlines;
     const zc_hooks_t * hooks;
@@ -89,7 +72,6 @@ typedef enum {
     ZC_POINTER_CANCEL
 } zc_pointer_action_t;
 
-/* Modes are exposed for printf evidence and for the host's back-key policy. */
 enum {
     ZC_MODE_TITLE = 0,
     ZC_MODE_PLAYING,
@@ -102,8 +84,6 @@ enum {
 bool zc_create(uint16_t * fb, uint16_t * backdrop, const zc_config_t * cfg);
 void zc_destroy(void);
 
-/* Reset to the title screen and arm the demo.  Call when the watch enters the
- * game page; zc_leave lets the host stop forwarding input. */
 void zc_enter(void);
 void zc_leave(void);
 
@@ -111,8 +91,6 @@ void zc_tick(uint32_t now_ms, uint32_t elapsed_ms);
 void zc_render(void);
 
 void zc_pointer(zc_pointer_action_t action, int x, int y);
-/* Returns true when the key was consumed.  ESC/HOME opens the pause sheet
- * while playing, and leaves the game from the title or pause exit button. */
 bool zc_key(uint32_t key);
 
 bool zc_wants_exit(void);
@@ -131,4 +109,4 @@ int32_t zc_best_score(void);
 }
 #endif
 
-#endif /* ZC_GAME_H */
+#endif

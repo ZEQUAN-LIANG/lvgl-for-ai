@@ -1,18 +1,3 @@
-"""LVGL version matrix: 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3.
-
-Each supported version builds its own ``lvgl_engine`` and runs the same
-``user/scenarios/settings.json``. The comparison is deliberately about tool
-semantics, not pixels:
-
-* input rows after ``hit`` / ``hit_class`` (9.1 has no object-name API, 8.x
-  has no object names at all and no class-name metadata), timeline row types
-  and the session file set must match;
-* ``ready.lvgl`` and ``ready.lvgl_src`` must name the tree that was built;
-* only ``adapter_9x.c`` / ``adapter_8x.c`` may include LVGL headers.
-
-The version-matrix tests use temporary session roots and never touch the real
-``sessions/`` directory.
-"""
 
 from __future__ import annotations
 
@@ -108,7 +93,6 @@ class MultiVersionMatrixTest(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls._tmp = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls._tmp.cleanup)
-        # Force the stock lvgl-src/<version> layout for the matrix.
         cls._env = mock.patch.dict(os.environ, {"LVGL_AI_LVGL_SRC": ""})
         cls._env.start()
         cls.addClassCleanup(cls._env.stop)
@@ -254,9 +238,6 @@ class MultiVersionMatrixTest(unittest.TestCase):
                         rt.stop()
 
     def test_lvgl_src_override_is_reported_by_the_engine(self) -> None:
-        # The version label only names the build directory; LVGL_AI_LVGL_SRC picks
-        # the actual tree. A 9.4 tree under a 9.5-override build and an 8.4
-        # tree under an 8.3-override build prove both.
         cases = (("9.5-override", "9.4"), ("8.3-override", "8.4"))
         with tempfile.TemporaryDirectory() as tmp:
             for label, tree in cases:
@@ -273,7 +254,7 @@ class MultiVersionMatrixTest(unittest.TestCase):
                     )
                     rt.start()
                     try:
-                        self.assertEqual(rt.lvgl_src, override)
+                        self.assertEqual(rt._store.lvgl_src, override)
                         self.assertEqual(
                             rt.build_dir, paths.build_dir_for(label)
                         )
@@ -289,11 +270,6 @@ class MultiVersionMatrixTest(unittest.TestCase):
 
 
 class EightXInputSemanticsTest(unittest.TestCase):
-    """8.x keypad/encoder delivery uses the legacy read-timer entry point.
-
-    The settings scenario only exercises the pointer; these checks keep the
-    key and encoder semantics of tickets 07/08 on the 8.x adapters.
-    """
 
     def test_8x_keypad_and_encoder_are_delivered(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

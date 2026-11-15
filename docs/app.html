@@ -4,95 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>应用变体 · 索引指针</title>
-<style>
-  :root {
-    --bg: #f7f7f5;
-    --fg: #1f2328;
-    --muted: #656d76;
-    --line: #d8dee4;
-    --accent: #0969da;
-    --code-bg: #eef0f3;
-    --warn-bg: #fff8e1;
-    --warn-line: #e3b341;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #14171c;
-      --fg: #e6e8eb;
-      --muted: #9aa3ad;
-      --line: #2c313a;
-      --accent: #58a6ff;
-      --code-bg: #1d2229;
-      --warn-bg: #2a2416;
-      --warn-line: #8d6e1f;
-    }
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--fg);
-    font: 15px/1.65 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
-  }
-  nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .35rem 1.1rem;
-    padding: .85rem 1.25rem;
-    border-bottom: 1px solid var(--line);
-    font-size: 13px;
-  }
-  nav a { color: var(--muted); text-decoration: none; }
-  nav a:hover { color: var(--accent); }
-  nav a[aria-current="page"] { color: var(--fg); font-weight: 600; }
-  header, main, footer { max-width: 980px; margin: 0 auto; padding: 0 1.5rem; }
-  header { padding-top: 2rem; }
-  h1 { margin: 0 0 .35rem; font-size: 1.7rem; letter-spacing: -.01em; }
-  .lede { margin: 0 0 .4rem; color: var(--muted); max-width: 62ch; }
-  .scope { margin: 0 0 1.6rem; color: var(--muted); font-size: 13px; }
-  h2 {
-    margin: 2.1rem 0 .7rem;
-    padding-left: .55rem;
-    border-left: 3px solid var(--accent);
-    font-size: 1.12rem;
-  }
-  p { margin: .55rem 0; }
-  code {
-    padding: .08em .34em;
-    border-radius: 4px;
-    background: var(--code-bg);
-    font-family: "Cascadia Mono", Consolas, "SFMono-Regular", monospace;
-    font-size: .92em;
-  }
-  .ptr {
-    color: var(--muted);
-    font-family: "Cascadia Mono", Consolas, monospace;
-    font-size: 12px;
-  }
-  a { color: var(--accent); }
-  ul, ol { margin: .5rem 0; padding-left: 1.35rem; }
-  li { margin: .3rem 0; }
-  .note {
-    margin: 1rem 0;
-    padding: .7rem .9rem;
-    border: 1px solid var(--warn-line);
-    border-radius: 8px;
-    background: var(--warn-bg);
-    font-size: 13.5px;
-  }
-  .note strong { margin-right: .35rem; }
-  footer {
-    margin-top: 2.4rem;
-    padding-top: 1rem;
-    padding-bottom: 2rem;
-    border-top: 1px solid var(--line);
-    color: var(--muted);
-    font-size: 12.5px;
-  }
-</style>
+<link rel="stylesheet" href="assets/docs.css">
 </head>
 <body>
 <nav>
+  <a href="index.html">项目介绍 (EN)</a>
   <a href="app.html" aria-current="page">应用变体</a>
   <a href="scenario-server.html">场景与服务端常量</a>
   <a href="../CONTEXT.md">CONTEXT.md</a>
@@ -170,7 +86,6 @@
 
   <h2>2. 硬约束</h2>
   <ul>
-    <li>用户只写 <code>user/app/**/*.c</code> 与 <code>user/scenarios/</code>；应用资源头放在各自的 <code>user/app/&lt;name&gt;/</code>，没有公共资源目录；不写 <code>main</code>、不注册控件、不碰构建。</li>
     <li>工具层不写死应用名；应用列表只来自 <code>apps[]</code> 表与场景的 <code>app</code> 字段，本页不维护副本。</li>
     <li>没有对象树、<code>inspect</code>、<code>set</code>、<code>param</code>；精确状态只能用用户 C 代码 <code>printf</code> 到 <code>engine.log</code>。</li>
     <li>改过 <code>user/app/*.c</code> 后必须走源码构建，不要用 <code>--no-build</code> 跑旧二进制。</li>

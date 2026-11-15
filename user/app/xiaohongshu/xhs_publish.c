@@ -1,8 +1,3 @@
-/**
- * @file xhs_publish.c
- * The + publish overlay: mode tabs, a mock image picker, draft fields, options
- * and a success screen with a 完成 button.
- */
 
 #include "xhs_ui.h"
 
@@ -296,4 +291,4 @@ void xhs_publish_open(void)
     printf("[xhs] publish open\n");
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

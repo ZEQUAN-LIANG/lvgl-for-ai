@@ -214,7 +214,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR command_line, i
             use_pyw = 1;
         } else {
             show_error(
-                L"pythonw.exe was not found in PATH.\n"
+                L"pythonw.exe was not found on PATH.\n"
                 L"Install Python 3.9+ and add its install directory to PATH.");
             return 1;
         }

@@ -1,5 +1,3 @@
-"""Decode PNG data URLs uploaded by the viewer (whiteboards and annotated frames)."""
-
 from __future__ import annotations
 
 import base64
@@ -13,7 +11,7 @@ MAX_IMAGE_DIMENSION = 4096
 
 
 class PngDataError(ValueError):
-    """The uploaded value is not a bounded PNG data URL."""
+    pass
 
 
 def decode_png_data_url(value: Any) -> bytes:

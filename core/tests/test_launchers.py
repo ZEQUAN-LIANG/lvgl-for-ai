@@ -1,4 +1,3 @@
-"""Static checks for the Windows double-click launchers."""
 
 from __future__ import annotations
 
@@ -28,26 +27,43 @@ class LauncherConfigTest(unittest.TestCase):
         cls.build = load_build()
         cls.entries = {entry["name"]: entry for entry in cls.build.LAUNCHERS}
 
-    def test_viewer_launcher_lives_at_the_repository_root(self) -> None:
+    def test_viewer_launcher_lives_in_bin(self) -> None:
         entry = self.entries["lvgl-ai-viewer"]
-        self.assertEqual(entry["target"], r"core\web.pyw")
-        self.assertEqual(entry["cwd"], ".")
+        self.assertEqual(entry["target"], r"..\core\web.pyw")
+        self.assertEqual(entry["cwd"], r"..")
         self.assertEqual(entry["args"], ())
-        self.assertEqual(entry["output"], REPO_ROOT / "LVGL-AI-Viewer.exe")
+        self.assertNotIn("python", entry)
+        self.assertEqual(entry["output"], REPO_ROOT / "bin" / "LVGL-AI-Viewer.exe")
 
     def test_host_launcher_lives_in_the_sifli_tools_directory(self) -> None:
         entry = self.entries["sifli-host"]
         self.assertEqual(entry["target"], r"..\host\server.py")
         self.assertEqual(entry["cwd"], r"..\host")
         self.assertEqual(entry["args"], ("--open",))
+        self.assertNotIn("python", entry)
         self.assertEqual(
             entry["output"], REPO_ROOT / "chip-adapt" / "sifli" / "tools" / "SiFli-Host.exe"
         )
+
+    def test_launchers_use_python_from_path(self) -> None:
+        source = (LAUNCHERS_DIR / "launcher.c").read_text(encoding="utf-8")
+        self.assertIn('find_in_path(L"pythonw.exe"', source)
+        self.assertIn('find_in_path(L"pyw.exe"', source)
+        for retired in (
+            "LAUNCHER_PYTHON",
+            "runtime\\python",
+            "package runtime",
+        ):
+            self.assertNotIn(retired, source)
 
     def test_launchers_do_not_embed_viewer_logic(self) -> None:
         source = (LAUNCHERS_DIR / "launcher.c").read_text(encoding="utf-8")
         for retired in ("http://", "--manage", "?manage=1", "cmd.exe", "netstat"):
             self.assertNotIn(retired, source)
+
+    def test_viewer_defaults_to_no_build(self) -> None:
+        source = (TOOL_ROOT / "web.pyw").read_text(encoding="utf-8")
+        self.assertIn('"--no-build"', source)
 
     def test_build_uses_a_gui_subsystem_and_resource_files(self) -> None:
         source = (LAUNCHERS_DIR / "build.py").read_text(encoding="utf-8")

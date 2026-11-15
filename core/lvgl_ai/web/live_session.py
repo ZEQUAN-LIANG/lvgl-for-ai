@@ -20,7 +20,7 @@ from typing import Any, Callable
 
 from ..control.errors import ScenarioError, dump_error
 from ..control.recording import Recording
-from ..control.runtime import Runtime, RuntimeLike, RuntimeOptions
+from ..control.runtime import Runtime, RuntimeLike
 from ..control.session_schema import PREVIEW_FILE
 from .transport import LiveFrame, LiveFrameHub
 from .urls import frame_url
@@ -34,14 +34,10 @@ LIVE_KINDS = ("record", "test")
 # One virtual frame per browser input event. LVGL only reads indevs and draws
 # inside a tick, so the live session must advance time after forwarding input.
 LIVE_INPUT_STEP_MS = 16
-# Both modes advance one 33 ms frame (about 30 fps). Recording hands PNG
-# encoding to the engine's worker pool, so its ticker can share the test
-# preview's cadence.
 LIVE_TEST_TICK_MS = 33
 LIVE_TEST_INTERVAL_S = 0.033
 LIVE_TICK_MS = 33
 LIVE_TICK_INTERVAL_S = 0.033
-# kind -> (virtual ms per tick, wall-clock seconds between ticks)
 TICK_PROFILE = {
     "test": (LIVE_TEST_TICK_MS, LIVE_TEST_INTERVAL_S),
     "record": (LIVE_TICK_MS, LIVE_TICK_INTERVAL_S),
@@ -49,7 +45,6 @@ TICK_PROFILE = {
 
 
 class LiveError(Exception):
-    """A live-session domain error; the HTTP adapter maps ``code``."""
 
     def __init__(
         self,
@@ -65,7 +60,6 @@ class LiveError(Exception):
 
 
 def validate_live_kind(kind: str) -> None:
-    """Reject an unknown mode before any lock, ticker or runtime is touched."""
     if kind not in LIVE_KINDS:
         raise LiveError(
             "invalid_live_mode", f"unknown live mode: {kind}"
@@ -73,7 +67,6 @@ def validate_live_kind(kind: str) -> None:
 
 
 def empty_live_status() -> dict[str, Any]:
-    """The live status shape before any session exists."""
     return {
         "running": False,
         "pid": None,
@@ -114,7 +107,6 @@ class LiveStream:
 
 
 class LiveSession:
-    """Own exactly one live Runtime and everything around its lifetime."""
 
     def __init__(
         self,
@@ -140,26 +132,18 @@ class LiveSession:
         self._test_root: Path | None = None
         self._last_error: dict[str, Any] | None = None
 
-    # ---- state ---------------------------------------------------------
-
     @property
     def state(self) -> str:
-        """A lock-free snapshot for tests; callers that need ordering block."""
         return self._state
 
     def is_starting(self) -> bool:
-        """``True`` while ``start()`` has not finished; never blocks."""
         return self._state == STARTING
 
     def is_active(self) -> bool:
-        """Whether a session is starting or its Runtime is still running."""
         with self._lock:
             return self._is_active_locked()
 
     def _is_active_locked(self) -> bool:
-        # Startup is active before a runtime exists; after that the runtime's
-        # own flag is authoritative (it stays True if a later start step
-        # fails, exactly like the old bridge-based check).
         if self._state == STARTING:
             return True
         return self._runtime is not None and bool(self._runtime.is_running)
@@ -183,21 +167,16 @@ class LiveSession:
         return requested or self._app
 
     def forget_app(self, name: Any) -> None:
-        """Drop a deleted app from the picker unless a session still owns it."""
         with self._lock:
             if self._app == name and not self._is_active_locked():
                 self._app = None
 
-    # ---- lifecycle -----------------------------------------------------
-
     def _default_runtime(self) -> RuntimeLike:
         sessions_root = self.sessions_root
         if self._test:
-            # A test session is a recording with record=False: the engine
-            # keeps only the overwritten live.rgba preview, and the private
-            # root is discarded on stop so no replay session is left behind.
-            # Keep it under the sessions root: the engine already has write
-            # access there, while %TEMP% may be blocked for child processes.
+            # Keep the test root under the sessions root: the engine already
+            # has write access there, while %TEMP% may be blocked for child
+            # processes.
             self.sessions_root.mkdir(parents=True, exist_ok=True)
             self._test_root = Path(
                 tempfile.mkdtemp(
@@ -208,7 +187,7 @@ class LiveSession:
         display: dict[str, int] = {}
         if self._display is not None:
             display["width"], display["height"] = self._display
-        options = RuntimeOptions(
+        return Runtime(
             lvgl=self.lvgl,
             app=self._app,
             build=self.build,
@@ -219,7 +198,6 @@ class LiveSession:
             sessions_root=sessions_root,
             **display,
         )
-        return Runtime(**options.as_kwargs())
 
     def start(
         self,
@@ -229,18 +207,15 @@ class LiveSession:
         display: tuple[int, int] | None = None,
     ) -> dict[str, Any]:
         validate_live_kind(kind)
-        self._stop_ticker()
         with self._lock:
             if self._is_active_locked():
                 raise LiveError(
                     "live_running", "a live session is already running"
                 )
+            self._stop_ticker()
             self._state = STARTING
             runtime: RuntimeLike | None = None
             try:
-                # An engine may have exited on its own (crash) or a previous
-                # start may have failed. Let Runtime finish that session's
-                # manifest before replacing it.
                 if self._runtime is not None and not self._runtime.is_running:
                     self._retire_locked()
                 self._test = kind == "test"
@@ -250,9 +225,6 @@ class LiveSession:
                 runtime = self._runtime_factory()
                 self._runtime = runtime
                 runtime.start()
-                # The engine writes the startup frame before announcing ready;
-                # publish it so a stream connected before the first changed
-                # tick still has something to draw.
                 self._publish_locked(runtime, self._hub)
                 self._start_ticker_locked()
                 self._last_error = None
@@ -277,7 +249,6 @@ class LiveSession:
         return self.status()
 
     def stop(self) -> dict[str, Any]:
-        self._stop_ticker()
         with self._lock:
             runtime = self._runtime
             if runtime is None:
@@ -286,15 +257,12 @@ class LiveSession:
                 raise LiveError(
                     "live_starting", "the live session is still starting"
                 )
+            self._stop_ticker()
             self._state = STOPPING
-            # Wake stream handlers before the runtime stops; a test session's
-            # private root is deleted after this and handlers only hold bytes.
             hub = self._hub
             self._hub = None
             if hub is not None:
                 hub.close()
-            # Runtime.stop() is idempotent and also writes the final manifest
-            # when the engine exited between two requests.
             try:
                 runtime.stop()
             except Exception as exc:  # noqa: BLE001 - keep the HTTP layer alive
@@ -305,16 +273,12 @@ class LiveSession:
                     detail={"error": dump_error(exc)},
                 ) from exc
             if self._test:
-                # A test session leaves no replay evidence: drop its private
-                # root and reset the runtime so /api/live reports the empty
-                # state instead of a session id.
                 self._discard_test_root()
                 self._runtime = None
             self._state = IDLE
         return self.status()
 
     def _retire_locked(self) -> None:
-        """Finish a non-running Runtime and discard a test session root."""
         runtime = self._runtime
         if runtime is None:
             return
@@ -332,8 +296,6 @@ class LiveSession:
         self._test_root = None
         if root is not None:
             shutil.rmtree(root, ignore_errors=True)
-
-    # ---- status --------------------------------------------------------
 
     def status(self) -> dict[str, Any]:
         with self._lock:
@@ -380,11 +342,8 @@ class LiveSession:
             payload["error"] = manifest["error"]
             payload["mode"] = manifest.get("mode", payload["mode"])
         except (FileNotFoundError, ValueError, OSError):
-            # The manifest is written after the engine announces ready; while
-            # the session is still starting there may be nothing to read yet.
             pass
 
-        # Changed-only recording counts retained frames, not wall-clock ticks.
         payload["frame_count"] = frame_total
         if latest is not None:
             filename = latest["file"].rsplit("/", 1)[-1]
@@ -395,20 +354,13 @@ class LiveSession:
                 "t_ms": latest["t_ms"],
             }
         else:
-            # No frame history (test mode, or a recording before its first
-            # frame): the engine-reported change counter is still useful to
-            # the page HUD. Test-mode pixels arrive through /api/live/stream,
-            # not a latest_frame URL.
             count = runtime.frame_count
             if isinstance(count, bool) or not isinstance(count, int) or count < 0:
                 count = 0
             payload["frame_count"] = count
         return payload
 
-    # ---- raw preview stream -------------------------------------------
-
     def open_stream(self) -> LiveStream:
-        """Bind a stream reader to the current running session or raise."""
         with self._lock:
             runtime = self._runtime
             hub = self._hub
@@ -419,14 +371,12 @@ class LiveSession:
     def wait_frame(
         self, after_seq: int, timeout: float | None = None
     ) -> LiveFrame | None:
-        """Wait on the current session's hub (callers that stream use a handle)."""
         return self.open_stream().wait_frame(after_seq, timeout)
 
     @staticmethod
     def _read_live_frame(
         runtime: RuntimeLike,
     ) -> tuple[int, int, int, bytes] | None:
-        """Read the newest ``live.rgba`` plus dimensions and virtual time."""
         session_dir = runtime.session_dir
         if session_dir is None:
             return None
@@ -445,7 +395,6 @@ class LiveSession:
     def _publish_locked(
         self, runtime: RuntimeLike, hub: LiveFrameHub
     ) -> LiveFrame | None:
-        """Publish the current raw frame; return the hub frame or ``None``."""
         frame = self._read_live_frame(runtime)
         if frame is None:
             return None
@@ -535,6 +484,13 @@ class LiveSession:
         thread.start()
 
     def _stop_ticker(self) -> None:
+        """Stop and join the ticker; safe to call while holding ``_lock``.
+
+        The ticker's tick section uses the same lock, so a caller holding it
+        cannot race a tick. A ticker waiting for the lock exits as soon as
+        the event is set after it acquires the lock; ``join`` is capped at
+        one second.
+        """
         stop = self._ticker_stop
         thread = self._ticker
         self._ticker_stop = None
@@ -548,8 +504,6 @@ class LiveSession:
         ):
             thread.join(timeout=1.0)
 
-    # ---- input ---------------------------------------------------------
-
     def _running_runtime(self) -> RuntimeLike:
         runtime = self._runtime
         if runtime is None or not runtime.is_running:
@@ -557,11 +511,6 @@ class LiveSession:
         return runtime
 
     def pointer(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Forward a pointer action to the live Runtime.
-
-        Recording runs headless in this process; the browser is the input
-        surface. Coordinates are display pixels, the same space as the frames.
-        """
         action = payload.get("action")
         if action not in ("down", "move", "up"):
             raise LiveError(
@@ -573,10 +522,6 @@ class LiveSession:
             runtime = self._running_runtime()
             try:
                 reply = runtime.pointer(action, x, y)
-                # Pointer state alone does not render. Down/up still advance
-                # one 16 ms frame so a click is processed even when it lands
-                # between ticker ticks; drag moves are coalesced and left to
-                # the ticker, otherwise every mousemove would render a frame.
                 if action != "move":
                     runtime.wait(ms=LIVE_INPUT_STEP_MS)
             except Exception as exc:  # noqa: BLE001 - keep the HTTP layer alive
@@ -584,7 +529,6 @@ class LiveSession:
         return {"reply": reply}
 
     def key(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Forward a keypad press/release to the live Runtime."""
         action = payload.get("action")
         if action not in ("press", "release"):
             raise LiveError(
@@ -616,7 +560,6 @@ def _positive_int(value: Any) -> bool:
 
 
 def _display_size(ready: Any) -> tuple[int, int] | None:
-    """The ready display size, or ``None`` when it is missing or invalid."""
     display = (ready or {}).get("display") or {}
     width = display.get("width")
     height = display.get("height")

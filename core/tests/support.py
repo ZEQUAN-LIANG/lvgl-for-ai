@@ -1,8 +1,3 @@
-"""Shared test helpers.
-
-The PNG reader is stdlib-only: tests run under ``python -I`` where the user
-site-packages (Pillow) is not on ``sys.path``.
-"""
 
 from __future__ import annotations
 
@@ -47,7 +42,6 @@ class RetryingTemporaryDirectory(tempfile.TemporaryDirectory):
 
 
 def install_retrying_tempdir() -> None:
-    """Route ``tempfile.TemporaryDirectory`` through the retrying subclass."""
     tempfile.TemporaryDirectory = RetryingTemporaryDirectory
 
 
@@ -55,12 +49,6 @@ install_retrying_tempdir()
 
 
 def ensure_host_sdk(version: str = "9.6") -> Path:
-    """Export ``sdk/<version>`` if it is missing; fail instead of skipping.
-
-    The full suite already requires LVGL source and GCC for the real-engine
-    integration tests, so the prebuilt/release integration tests make their
-    SDK prerequisite explicit rather than silently skipping.
-    """
     from lvgl_ai import paths
 
     manifest = paths.sdk_dir_for(version) / "manifest.json"
@@ -87,7 +75,6 @@ def ensure_host_sdk(version: str = "9.6") -> Path:
 
 
 def read_ndjson(path: str | Path) -> list[dict]:
-    """Read an NDJSON file into a list of objects, skipping blank lines."""
     rows = []
     for line in Path(path).read_text(encoding="utf-8").splitlines():
         if line.strip():
@@ -96,7 +83,6 @@ def read_ndjson(path: str | Path) -> list[dict]:
 
 
 def read_png_rgb(path: str | Path) -> tuple[int, int, list[tuple[int, int, int]]]:
-    """Decode an 8-bit RGB/RGBA PNG into (width, height, [(r, g, b), ...])."""
     data = Path(path).read_bytes()
     if not data.startswith(PNG_SIGNATURE):
         raise ValueError(f"{path} is not a PNG")
@@ -110,7 +96,7 @@ def read_png_rgb(path: str | Path) -> tuple[int, int, list[tuple[int, int, int]]
         chunk_type = data[pos : pos + 4]
         pos += 4
         chunk = data[pos : pos + length]
-        pos += length + 4  # skip CRC
+        pos += length + 4
         if chunk_type == b"IHDR":
             width, height, bit_depth, color_type = struct.unpack(">IIBB", chunk[:10])
         elif chunk_type == b"IDAT":
@@ -191,12 +177,11 @@ def write_png_rgb(
     height: int,
     pixels: list[tuple[int, int, int]],
 ) -> None:
-    """Write an 8-bit RGB PNG with no filtering (test fixture helper)."""
     if len(pixels) != width * height:
         raise ValueError("pixel count does not match width * height")
     raw = bytearray()
     for y in range(height):
-        raw.append(0)  # filter type: none
+        raw.append(0)
         for x in range(width):
             raw.extend(pixels[y * width + x])
     data = bytearray(PNG_SIGNATURE)

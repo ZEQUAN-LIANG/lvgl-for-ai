@@ -1,17 +1,3 @@
-"""C seam test for ``engine/frame_analysis``.
-
-``frame_analysis_compare`` must keep the two definitions the engine relies on
-in one traversal:
-
-* changed-only recording skips a frame when every RGB channel is identical
-  (alpha is not evidence and is ignored);
-* frame diffs count a pixel when any RGB channel differs by more than the
-  threshold, and report the union bbox plus the frame-wide maximum delta.
-
-The test compiles the real module with the system compiler and checks both
-the documented boundaries and equivalence with the two separate passes the
-engine used before the refactor.
-"""
 
 from __future__ import annotations
 

@@ -62,4 +62,4 @@ void frame_analysis_compare(const uint8_t * previous,
 }
 #endif
 
-#endif /* FRAME_ANALYSIS_H */
+#endif

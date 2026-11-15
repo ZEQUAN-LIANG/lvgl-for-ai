@@ -1,48 +1,69 @@
 ---
-name: lvgl-ai
+name: lvgl-verify-loop
 description: Write and verify LVGL user apps with a real headless runtime, scenario replay, session evidence and a prebuilt host SDK. Use when building, previewing, debugging or verifying LVGL C interfaces, or when exporting LVGL apps to a device SDK.
 ---
 
-# LVGL AI
+# LVGL Verify Loop
 
 本 skill 把 LVGL 用户应用从「改代码」带到「跑场景、读证据」：真实 headless LVGL
 宿主、虚拟 pointer/keypad/encoder、虚拟时间、帧与 timeline、会话回放。工具只提供
 环境、输入和证据，**不判定画面**。
 
+![intro demo](docs/intro-demo.gif)
+
 ## 环境与入口
 
-本包自带宿主 SDK（`sdk/`）和预编译 engine，但**不内置 Python**；请使用系统
-Python 3.9+。所有命令从包根执行，统一使用 `python -I`。
+本包自带宿主 SDK（`sdk/`）、预编译 engine 和统一入口 `bin\lvgl.cmd`。宿主机必须提供
+Python 3.9+（`python` 在 PATH；双击启动器使用 `pythonw` 或 `pyw`）。所有命令从包根执行。
 
 | 入口 | 用途 |
 | --- | --- |
-| `bin\lvgl.cmd run ...` | 构建 `user/app` 并播放场景 |
+| `bin\lvgl.cmd run ...` | 运行场景；包内裸 `run` 复用预编译 engine，改过 C 后加 `--build` |
 | `bin\lvgl.cmd report ...` | 只读已有会话证据 |
 | `bin\lvgl.cmd serve ...` | 打开网页端（固定 `127.0.0.1:8765`） |
+| `bin\lvgl.cmd assets ...` | 字体/图片转 LVGL C 数组（不启动 engine） |
+| `bin\LVGL-AI-Viewer.exe` | Windows 双击打开网页端（使用 PATH 上的 Python） |
 
-也可以直接调用：
+需要直接调用解释器时：
 
 ```bat
-python -I core\cli.py --scenario user\scenarios\settings.json --json
+python -I core\cli.py --scenario user\scenarios\intro.json --json
 python -I core\session_report.py --latest --log-tail 5
-python -I core\web.py
 ```
+
+修改 `user/app/**/*.c` 并重新构建时，需要系统 GCC（MinGW-w64 64-bit，版本与
+`sdk/*/manifest.json` 一致；当前为 15.2.0）。CMake / Ninja 只在从 LVGL 源码构建时需要；
+发布包不带 LVGL 源码，默认走预编译 SDK。发布包不内置 Python、GCC 或 CMake。
 
 ## 目录
 
 ```
-core/     工具层：cli.py、web.py、session_report.py、lvgl_ai/、engine/、tools/
-user/     唯一源码真源：app/**/*.c 与 scenarios/*.json
-sdk/      预编译宿主 SDK：静态库、公共头、lv_conf.h、manifest.json
-build/    预编译 engine 与按目录隔离的构建缓存
-bin/      统一入口包装脚本
+SKILL.md         根目录唯一文件：skill 入口与工作流
+core/            工具层：cli.py、assets.py、web.py、session_report.py、lvgl_ai/、engine/、tools/
+user/app/        唯一源码真源：应用变体 C 代码与资源头
+user/scenarios/  场景 JSON
+sdk/             宿主编译 SDK：sdk/<version>/；共享头与库在 sdk/common/
+build/           预编译 engine：build/lvgl_<token>/lvgl_engine.exe
+bin/             入口：lvgl.cmd、sifli.cmd、LVGL-AI-Viewer.exe
+docs/            演示图与补充说明：intro-demo.gif、SIFLI.md
+meta/            包元数据：VERSION.json、versions.json
+licenses/        本包许可证与第三方许可证
 ```
 
+多版本包把各 SDK 中完全相同的 FreeType DLL、导入库和公共头文件统一放在
+`sdk/common/`，每个 `sdk/<version>/manifest.json` 通过 `shared_root` 与
+`shared_*` 字段引用；`build/` 下不再复制 DLL。
+
+`core/lvgl_ai/assets/vendor/` 随包内置 freetype-py（含 FreeType DLL）与 pypng；
+资源转换不需要 Node.js、`pip install` 或联网。
+
 `user/app/**/*.c` 是唯一源码真源；`core/`、`sdk/` 和 `build/` 不存放用户业务代码。
+`intro/` 是默认介绍页与默认模板；其他应用同样在 `user/app/app.c` 的 `apps[]` 登记，
+`user/scenarios/intro.json` 是 intro 的录制演示。
 
 ## 宿主工作流
 
-1. 写或改 `user/app/**/*.c`，入口固定为 `void app_create(void)`；新应用在
+1. 写或改 `user/app/**/*.c`；每个变体暴露 `void <name>_create(void)`，并在
    `user/app/app.c` 的 `apps[]` 表登记一行。
 2. 跑场景：
 
@@ -50,11 +71,13 @@ bin/      统一入口包装脚本
    bin\lvgl.cmd run --scenario user\scenarios\<name>.json --json
    ```
 
+   发布包里裸 `run` 复用预编译 engine；改过 C 后用 `--build` 重新编译（需要 GCC）。
 3. 读会话证据，按需改 C 代码，再跑同一场景。
 
 构建方式由工具自动选择：`lvgl-src/<version>` 存在时走源码构建（需要 CMake、
-Ninja、GCC）；源码缺失时走 `sdk/<version>` 的预编译构建（只需要 GCC）。显式
-覆盖：
+Ninja、GCC）；源码缺失时走 `sdk/<version>` 的预编译构建（只需要 GCC）。发布包
+没有 `lvgl-src/`，所以 `--build` 默认只重新编译用户 C；`--source` 需要自行准备
+LVGL 源码和 CMake/Ninja。显式覆盖：
 
 ```bat
 bin\lvgl.cmd run --prebuilt --scenario ... --json
@@ -63,6 +86,28 @@ bin\lvgl.cmd run --source   --scenario ... --json
 
 实际选择写在会话的 `build.log` 第一行（`# build mode: prebuilt` 等）。已有
 engine 时 `--no-build` 直接运行，不需要编译器。
+
+## 资源转换
+
+字体和图片用内置转换器生成 C 数组，不需要 Node.js、`pip install` 或联网：
+
+```bat
+bin\lvgl.cmd assets font --app <app> --font C:\Windows\Fonts\Deng.ttf ^
+  --size 16 --bpp 4 --scan-app --name <app>_font_16
+
+bin\lvgl.cmd assets image --app <app> --input user\app\<app>\logo.png --cf ARGB8888
+```
+
+- 默认输出 `user/app/<app>/<name>.h`，并更新 `assets.json`（源文件 SHA256、
+  字号/bpp/字符集、颜色格式）。
+- 字体头带 `LVGL_VERSION_MAJOR/MINOR` 版本门，同一份头可用于 8.3–9.6。
+  `--bpp 8` 只用于 8.x 或 9.3+；目标 9.1/9.2 用 `--bpp 4`。
+- 图片头按目标 major 生成：9.x 头在 9.1–9.6 通用；8.x 用 `--lvgl 8.4` 单独生成。
+- `--scan-app` 从应用 `.c/.h` 字符串字面量收集字形；动态文本用 `--text-file` 或
+  `--text`，中文优先用 `--text-file`。
+- host engine 默认 `LV_USE_FREETYPE=1`；运行时 TTF 加载只用于 host 预览，
+  设备资源不要依赖宿主绝对路径。
+- 生成的 `*.h` 和 `assets.json` 提交到项目。
 
 ## 证据读取顺序
 
@@ -77,30 +122,69 @@ engine 时 `--no-build` 直接运行，不需要编译器。
 4. 读 `annotations.json` / `whiteboards.json` 的文字与 bbox，再按需打开
    `frames/`、`snapshots/` 或 `regions/` 里的 PNG。
 
-`record=False` 不写 frames/timeline/frame_diffs；`--no-build` 不重新编译。
-`status=ok` 只表示会话正常结束，不表示界面满足验收标准。
+会话目录还包含 `engine.log`。退出码：`0` 正常结束；`1` build / link / crash；
+`2` harness、scenario、协议或环境错误。`record=False` 不写 frames/timeline/
+frame_diffs；`--no-build` 不重新编译。`status=ok` 只表示会话正常结束，不表示界面
+满足验收标准。精确状态只能用应用 C 代码 `printf` 到 `engine.log`。
 
 ## 版本策略
 
 - 宿主默认 LVGL **9.6**，用于日常预览与取证。
-- 设备应用按 LVGL **9.4** 基线编写，使用 `LVGL_VERSION_MINOR >= 4` 版本门；
-  设备对齐用 `--lvgl 9.4`（需要 `sdk/9.4` 或 `lvgl-src/9.4`）。
+- `intro` 应用按 **9.4+** 版本门编写；9.1 / 8.x 只显示内置 harness。
+- 设备应用按 LVGL **9.4** 基线编写；设备对齐用 `--lvgl 9.4`。
 - 导出只做兼容性检查并拒绝 9.5/9.6-only API，不自动改写源码。
+
+## 版本
+
+默认只发布两个完整包，里面都带齐六个版本：
+
+- `lvgl-verify-loop-<version>-full-win64.zip`：core、intro、viewer，以及
+  9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3 的 SDK 与 engine。
+- `lvgl-verify-loop-<version>-full-sifli-win64.zip`：上面的完整包再加上自研 SiFli
+  导出/上位机层和 `sift_watch` 源码/示例。
+
+不需要安装其他 LVGL 版本，也没有版本下载步骤：
+
+```bat
+bin\lvgl.cmd run --lvgl 9.4 --scenario user\scenarios\intro.json --json
+```
+
+9.1 / 8.x 的 engine 内置 legacy harness，不依赖 `intro` 应用变体；包内不提供
+额外的 legacy 场景文件，取证仍用同一套会话证据格式。
+
+`meta/versions.json` 只记录版本与 `bundled` 状态。场景可选 `"lvgl": "9.4"`；优先级是
+`--lvgl` > 场景 `lvgl` > `LVGL_AI_LVGL_VERSION` > 默认 9.6。`install_version.py`
+仍可用于自定义源码安装，但默认包不需要它。两个包都不带 Python、GCC、CMake 或
+LVGL 源码；宿主机依赖见下。
 
 ## SiFli 工作流
 
-设备链路沿用 `chip-adapt/sifli/` 适配层，共享源码仍是 `user/app/`：
+SiFli 只在 `full-sifli` 包里，默认 demo 是 `sift_watch`：
 
 ```bat
-python -I chip-adapt\sifli\export.py <app> --dry-run --force
-python -I chip-adapt\sifli\host\cli.py build --app <app> --actor ai --json
-python -I chip-adapt\sifli\host\cli.py flash --app <app> --actor ai --json
+bin\sifli.cmd
+python -I chip-adapt\sifli\export.py sift_watch --dry-run --force
+python -I chip-adapt\sifli\host\cli.py build --app sift_watch --actor ai --json
+python -I chip-adapt\sifli\host\cli.py flash --app sift_watch --actor ai --json
 ```
 
-导出按 LVGL 9.4 基线复制应用源码，只做 9.5/9.6-only API 兼容性检查；构建/烧录
-需要 SiFli SDK、ARM 工具链和 sftool。没有开发板时，只能停在宿主验证和导出
-dry-run，不得声称设备已验证。本发布包为 host-only，不包含 `chip-adapt/`、SiFli
-SDK 和串口/烧录上位机；上述命令适用于带适配层的完整工作区。
+需要 Python 3.9+ 在 PATH；包内不带 Python 运行时。
+
+包含自研 `chip-adapt/sifli/`、`SiFli-Host.exe`、pyserial/xterm、
+`user/app/sift_watch/` 和导出示例，说明见 `docs/SIFLI.md`；**不包含** SiFli SDK、
+ARM 工具链、sftool、驱动或固件。构建/烧录前按 `chip-adapt/vendor/README.md` 安装官方依赖；没有开发板时
+只能停在导出 dry-run 或 fake serial 测试，不得声称设备已验证。
+
+## 宿主机依赖
+
+- **Python 3.9+**：运行所有命令的前提；`python` 必须在 PATH，双击启动器使用
+  `pythonw` 或 `pyw`。发布包不内置 Python。
+- **GCC**（MinGW-w64 64-bit，15.2.0）：只在改过 `user/app/**/*.c` 后 `--build`
+  重新编译时需要；版本必须与 `sdk/*/manifest.json` 一致。
+- **CMake 3.20+、Ninja**：只在从 LVGL 源码构建时需要；发布包默认不使用。
+
+没有 Python 不能运行；没有 GCC 只能运行已有 engine，不能重新编译用户 C；没有
+CMake/Ninja 不能从 LVGL 源码构建。
 
 ## 硬规则
 
@@ -110,6 +194,7 @@ SDK 和串口/烧录上位机；上述命令适用于带适配层的完整工作
   timeline、frames/snapshots。
 - **没有对象树、`inspect`、属性读取或 `set`**；精确状态只能由用户 C 代码
   `printf` 到 `engine.log`，再做证据读取。
-- 改过 `user/app/*.c` 后必须重新构建；`--no-build` 只用于运行当前 engine。
+- 改过 `user/app/*.c` 后必须用 `--build` 重新构建（需要 GCC）；`--no-build` 只用于
+  运行当前 engine。
 - 不写第二套协议客户端；只用 `Runtime` / `Recording` / `summarize_session`。
 - 路径含空格或中文时，命令中的路径要用引号包住。

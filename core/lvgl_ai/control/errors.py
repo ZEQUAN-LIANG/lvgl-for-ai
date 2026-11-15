@@ -1,9 +1,3 @@
-"""Typed errors for the Python control layer.
-
-The tool distinguishes failure layers so the AI knows what to fix: build,
-link, engine crash, protocol, scenario script, or a missing engine binary.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -212,8 +206,6 @@ class ErrorMapping:
     detail: Callable[[Any], dict[str, Any]] | None = None
 
 
-# Priority order: the first ``isinstance`` match decides code, status and exit
-# code, and every matching row contributes its detail fields in this order.
 ERROR_MAPPINGS: tuple[ErrorMapping, ...] = (
     ErrorMapping(
         BuildError, "build_error", "build_error", EXIT_FAILURE, _build_detail
@@ -247,21 +239,16 @@ ERROR_MAPPINGS: tuple[ErrorMapping, ...] = (
     ),
 )
 
-# Anything outside the typed layers is a harness error: the tool could not
-# run the session, but the UI correctness is still unknown.
 UNMAPPED_ERROR_MAPPING = ErrorMapping(
     BaseException, "harness_error", "harness_error", EXIT_HARNESS
 )
 
-# The manifest status only describes what the tool did, never whether the UI
-# is correct: ok / build_error / link_error / crash / harness_error.
 SESSION_STATUSES = frozenset(
     {"ok"} | {mapping.status for mapping in ERROR_MAPPINGS}
 )
 
 
 def error_mapping(error: BaseException) -> ErrorMapping:
-    """Return the first table row matching ``error``, or the fallback row."""
     for mapping in ERROR_MAPPINGS:
         if isinstance(error, mapping.error_type):
             return mapping
@@ -269,22 +256,18 @@ def error_mapping(error: BaseException) -> ErrorMapping:
 
 
 def error_code_for(error: BaseException) -> str:
-    """Map an exception to the ``manifest.error.code`` vocabulary."""
     return error_mapping(error).code
 
 
 def status_for_error(error: BaseException) -> str:
-    """Map an exception to the manifest ``status`` vocabulary."""
     return error_mapping(error).status
 
 
 def exit_code_for(error: BaseException) -> int:
-    """Map an exception to the CLI exit code (0 stays reserved for success)."""
     return error_mapping(error).exit_code
 
 
 def dump_error(error: BaseException | None) -> dict[str, Any] | None:
-    """Serialize an error into the manifest ``error`` shape."""
     if error is None:
         return None
     detail: dict[str, Any] = {}

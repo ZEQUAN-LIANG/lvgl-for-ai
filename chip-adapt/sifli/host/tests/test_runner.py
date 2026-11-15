@@ -11,9 +11,9 @@ HOST_DIR = Path(__file__).resolve().parents[1]
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
-import runner  # noqa: E402
-from build_flash import BuildFlashError  # noqa: E402
-from jobs import Job  # noqa: E402
+import runner
+from build_flash import BuildFlashError
+from jobs import Job
 
 
 class FakeBroker:

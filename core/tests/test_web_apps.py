@@ -1,4 +1,3 @@
-"""HTTP tests for the app manager: list, tree, create, trash, restore, purge."""
 
 from __future__ import annotations
 
@@ -241,9 +240,6 @@ class WebAppsTest(unittest.TestCase):
         status, headers, html = self.harness.html("/")
         self.assertEqual(status, 200)
         self.assertEqual(html.count("<dialog"), 1)
-        # The app manager partials stay inline: one style and one script
-        # element, so the existing CSP and browser loading behaviour are
-        # unchanged.
         self.assertEqual(html.count("<style>"), 1)
         self.assertEqual(html.count("<script>"), 1)
         policy = headers.get("Content-Security-Policy", "")

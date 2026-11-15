@@ -48,6 +48,10 @@ def _b64(data: bytes) -> str:
     return base64.b64encode(data).decode("ascii")
 
 
+MATCH_WINDOW_MAX = 256 * 1024
+MATCH_OVERLAP_BYTES = 128 * 1024
+
+
 class SerialBroker:
     def __init__(
         self,
@@ -89,8 +93,6 @@ class SerialBroker:
         )
 
         self._log: SerialLog | None = None
-
-    # -- state ---------------------------------------------------------
 
     @property
     def is_open(self) -> bool:
@@ -136,8 +138,6 @@ class SerialBroker:
                     )
                 ),
             }
-
-    # -- lifecycle -----------------------------------------------------
 
     def open(
         self,
@@ -226,12 +226,6 @@ class SerialBroker:
                 return self.status()
 
     def _release(self) -> dict[str, Any]:
-        """Close the port without arming auto-reconnect.
-
-        Used while an official flashing tool owns the port; ``open()`` (or a
-        flash job's reconnect step) resumes the wanted state later.
-        """
-
         with self._lifecycle:
             with self._lock:
                 was_open = self.is_open
@@ -242,8 +236,6 @@ class SerialBroker:
             return {"was_open": was_open, "port": port, "baud": baud}
 
     def detach_for_flash(self) -> dict[str, Any]:
-        """Release the port while an official flashing tool owns it."""
-
         return self._release()
 
     def reattach(self) -> dict[str, Any]:
@@ -318,8 +310,6 @@ class SerialBroker:
             with self._lock:
                 if self._reconnect_thread is current:
                     self._reconnect_thread = None
-
-    # -- data path -----------------------------------------------------
 
     def _reader_loop(self) -> None:
         current = threading.current_thread()
@@ -457,9 +447,8 @@ class SerialBroker:
             text = chunk["text"]
             if text:
                 window += text
-                # Keep enough tail for a pattern that spans two reads.
-                if len(window) > 256 * 1024:
-                    window = window[-128 * 1024 :]
+                if len(window) > MATCH_WINDOW_MAX:
+                    window = window[-MATCH_OVERLAP_BYTES:]
             cursor = chunk["next"]
             match = compiled.search(window)
             if match:

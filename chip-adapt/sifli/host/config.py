@@ -21,7 +21,7 @@ REPO_ROOT = CHIP_ADAPT_DIR.parent
 if str(SIFLI_DIR) not in sys.path:
     sys.path.insert(0, str(SIFLI_DIR))
 
-import layout  # noqa: E402
+import layout
 
 VENDOR_DIR = layout.VENDOR_DIR
 
@@ -67,7 +67,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     ),
     "exports_root": str(layout.EXPORTS_DIR),
     "project_dir": "",
-    "app": "",
+    "app": "sift_watch",
     "build_command": [],
     "build_timeout_sec": 1_800,
     "flash_timeout_sec": 300,
@@ -108,12 +108,6 @@ def _resolve_path(value: Any) -> str:
 
 
 def load_config(path: str | Path | None = None) -> dict[str, Any]:
-    """Load ``host/config.json`` and merge it over the defaults.
-
-    Relative paths in the JSON file are resolved against the repository root,
-    so a config can say ``"project_dir": "chip-adapt/exports/sift_watch/project"``.
-    """
-
     config_path = Path(path) if path else CONFIG_PATH
     loaded: dict[str, Any] = {}
     if config_path.is_file():
@@ -126,8 +120,6 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
 
     config = _deep_merge(DEFAULT_CONFIG, loaded)
 
-    # Environment overrides are useful for tests and for launching more than
-    # one broker without editing config.json.
     env_map = {
         "host": "SIFLI_HOST_BIND",
         "port": "SIFLI_HOST_PORT",

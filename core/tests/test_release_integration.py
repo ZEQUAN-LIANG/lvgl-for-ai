@@ -1,8 +1,3 @@
-"""Black-box release artifact test: build the zip, unpack it, run it.
-
-This is the artifact seam.  It does not import release.py or inspect its
-internals; it executes the public script and treats the zip as a product.
-"""
 
 from __future__ import annotations
 
@@ -130,14 +125,37 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
             )
             summary = json_line(result)
-            # The release directory itself is a usable skill directory.
-            published = out_dir / "lvgl-ai-new"
+            published = out_dir / "lvgl-verify-loop"
             self.assertEqual(Path(summary["package"]), published)
             self.assertTrue((published / "SKILL.md").is_file())
-            self.assertTrue((published / "CONTEXT.md").is_file())
+            self.assertEqual(
+                [path.name for path in published.iterdir() if path.is_file()],
+                ["SKILL.md"],
+            )
+            self.assertFalse((published / "CONTEXT.md").exists())
+            self.assertTrue((published / "bin" / "LVGL-AI-Viewer.exe").is_file())
+            self.assertTrue((published / "docs" / "intro-demo.gif").is_file())
+            self.assertTrue((published / "meta" / "versions.json").is_file())
+            self.assertTrue((published / "meta" / "VERSION.json").is_file())
+            self.assertTrue((published / "licenses" / "LICENSE").is_file())
             self.assertTrue((published / "core" / "cli.py").is_file())
             self.assertTrue(
                 (published / "build" / "lvgl_9_6" / "lvgl_engine.exe").is_file()
+            )
+            self.assertTrue(
+                (published / "user" / "app" / "intro" / "intro.c").is_file()
+            )
+            self.assertFalse((published / "user" / "app" / "coffee").exists())
+            self.assertFalse((published / "user" / "app" / "template").exists())
+            self.assertFalse((published / "user" / "app" / "demo").exists())
+            self.assertTrue(
+                (published / "user" / "scenarios" / "intro.json").is_file()
+            )
+            self.assertFalse(
+                (published / "user" / "scenarios" / "coffee.json").exists()
+            )
+            self.assertFalse(
+                (published / "user" / "scenarios" / "settings.json").exists()
             )
             zip_path = Path(summary["zip"])
             self.assertTrue(zip_path.is_file())
@@ -153,12 +171,38 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
 
             with zipfile.ZipFile(zip_path) as archive:
                 names = archive.namelist()
+                tools_readme = archive.read(
+                    "lvgl-verify-loop/core/tools/README.md"
+                ).decode("utf-8")
+            self.assertIn("install_version.py", tools_readme)
+            self.assertNotIn("release_all.py", tools_readme)
+            self.assertNotIn("sync_github.py", tools_readme)
             for forbidden in (
                 "lvgl-src/",
                 "third_party/",
                 "/sessions/",
                 "core/tests/",
+                "core/tools/upload_release.py",
                 "chip-adapt/",
+                "user/app/coffee/",
+                "user/app/xiaohongshu/",
+                "user/app/template/",
+                "user/app/demo/",
+                "user/scenarios/coffee.json",
+                "user/scenarios/template.json",
+                "user/scenarios/settings.json",
+                "runtime/",
+                "smoke/",
+                "licenses/Python-3.11.txt",
+                "core/tools/release.py",
+                "core/tools/release_all.py",
+                "core/tools/release_app.c",
+                "core/tools/release_tools_README.md",
+                "core/tools/sync_github.py",
+                "core/tools/contract_snapshot.py",
+                "core/tools/contract_snapshot.json",
+                "core/tools/check_api_nav.py",
+                "core/tools/check_version_boundaries.py",
                 "__pycache__/",
                 "/.git/",
             ):
@@ -167,13 +211,31 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                     forbidden,
                 )
             required = (
-                "lvgl-ai-new/SKILL.md",
-                "lvgl-ai-new/CONTEXT.md",
-                "lvgl-ai-new/VERSION.json",
-                "lvgl-ai-new/bin/lvgl.cmd",
-                "lvgl-ai-new/core/cli.py",
-                "lvgl-ai-new/sdk/9.6/manifest.json",
-                "lvgl-ai-new/build/lvgl_9_6/lvgl_engine.exe",
+                "lvgl-verify-loop/SKILL.md",
+                "lvgl-verify-loop/meta/VERSION.json",
+                "lvgl-verify-loop/meta/versions.json",
+                "lvgl-verify-loop/licenses/LICENSE",
+                "lvgl-verify-loop/bin/LVGL-AI-Viewer.exe",
+                "lvgl-verify-loop/bin/lvgl.cmd",
+                "lvgl-verify-loop/core/cli.py",
+                "lvgl-verify-loop/core/assets.py",
+                "lvgl-verify-loop/core/lvgl_ai/assets/__init__.py",
+                "lvgl-verify-loop/core/lvgl_ai/assets/vendor/freetype/libfreetype.dll",
+                "lvgl-verify-loop/core/lvgl_ai/assets/vendor/png.py",
+                "lvgl-verify-loop/core/engine/freetype/include/ft2build.h",
+                "lvgl-verify-loop/core/engine/freetype/lib/libfreetype.dll.a",
+                "lvgl-verify-loop/licenses/freetype-py.txt",
+                "lvgl-verify-loop/licenses/FreeType.txt",
+                "lvgl-verify-loop/licenses/pypng.txt",
+                "lvgl-verify-loop/licenses/lv_font_conv-MIT.txt",
+                "lvgl-verify-loop/sdk/9.6/manifest.json",
+                "lvgl-verify-loop/sdk/9.6/lib/libfreetype.dll",
+                "lvgl-verify-loop/sdk/9.6/lib/libfreetype.dll.a",
+                "lvgl-verify-loop/build/lvgl_9_6/lvgl_engine.exe",
+                "lvgl-verify-loop/build/lvgl_9_6/libfreetype.dll",
+                "lvgl-verify-loop/docs/intro-demo.gif",
+                "lvgl-verify-loop/user/app/intro/intro.c",
+                "lvgl-verify-loop/user/scenarios/intro.json",
             )
             for name in required:
                 self.assertIn(name, names)
@@ -181,11 +243,10 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             package = root / "unpacked"
             with zipfile.ZipFile(zip_path) as archive:
                 archive.extractall(package)
-            pkg = package / "lvgl-ai-new"
+            pkg = package / "lvgl-verify-loop"
 
-            # The manifest describes the files that are actually in the zip.
             manifest_names = {
-                f"lvgl-ai-new/{relative}"
+                f"lvgl-verify-loop/{relative}"
                 for relative in release_manifest["files"]
             }
             self.assertEqual(manifest_names, set(names))
@@ -197,7 +258,6 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 sha256_file(pkg / "sdk" / "9.6" / "manifest.json"),
             )
 
-            # No development absolute path survives in text or binaries.
             needles = {
                 str(REPO_ROOT.resolve()).encode("utf-8"),
                 str(REPO_ROOT.resolve()).replace("\\", "/").encode("utf-8"),
@@ -229,10 +289,12 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             ):
                 self.assertIn(heading, skill)
             version = json.loads(
-                (pkg / "VERSION.json").read_text(encoding="utf-8")
+                (pkg / "meta" / "VERSION.json").read_text(encoding="utf-8")
             )
             self.assertEqual(version["schema"], "lvgl-ai-version-v1")
             self.assertEqual(version["lvgl"]["host_sdk"], ["9.6"])
+            self.assertNotIn("python", version)
+            self.assertNotIn("python", release_manifest)
             self.assertEqual(
                 version["git_commit"], release_manifest["git_commit"]
             )
@@ -250,7 +312,7 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             wrapper = [os.environ.get("COMSPEC", "cmd.exe"), "/c",
                        str(pkg / "bin" / "lvgl.cmd"), "run",
                        "--no-build",
-                       "--scenario", str(pkg / "user" / "scenarios" / "settings.json"),
+                       "--scenario", str(pkg / "user" / "scenarios" / "intro.json"),
                        "--json"]
             run = subprocess.run(
                 wrapper,
@@ -273,14 +335,12 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             self.assertTrue((session / "manifest.json").is_file())
             self.assertTrue(any((session / "frames").glob("*.png")))
 
-            # The same unzipped package must also build user/app without
-            # LVGL source or CMake.
             build_run = subprocess.run(
                 [
                     os.environ.get("COMSPEC", "cmd.exe"), "/c",
                     str(pkg / "bin" / "lvgl.cmd"), "run",
                     "--prebuilt",
-                    "--scenario", str(pkg / "user" / "scenarios" / "settings.json"),
+                    "--scenario", str(pkg / "user" / "scenarios" / "intro.json"),
                     "--json",
                 ],
                 cwd=str(work),

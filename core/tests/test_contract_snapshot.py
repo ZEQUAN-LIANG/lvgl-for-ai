@@ -1,9 +1,3 @@
-"""Contract snapshot tool: six sections, determinism, comparison, committed snapshot.
-
-The recorder drives the Python control layer with a scripted engine and a
-temporary HTTP server; these tests only assert the snapshot's shape and the
-comparison exit codes.  They do not judge the UI.
-"""
 
 from __future__ import annotations
 
@@ -48,7 +42,6 @@ class ContractSnapshotTest(unittest.TestCase):
         }
         return probes[name]
 
-    # ---- structure -----------------------------------------------------
 
     def test_snapshot_has_the_six_contract_sections(self) -> None:
         self.assertEqual(self.snapshot["schema"], cs.SNAPSHOT_SCHEMA)
@@ -422,7 +415,6 @@ class ContractSnapshotTest(unittest.TestCase):
         ):
             self.assertIn(name, apps)
 
-    # ---- reproducibility ----------------------------------------------
 
     def test_snapshot_is_deterministic(self) -> None:
         second = cs.record_snapshot()
@@ -453,7 +445,6 @@ class ContractSnapshotTest(unittest.TestCase):
             cs.render_diff_report(differences),
         )
 
-    # ---- comparison ----------------------------------------------------
 
     def test_compare_reports_no_difference_for_identical_values(self) -> None:
         self.assertEqual(
@@ -496,7 +487,6 @@ class ContractSnapshotTest(unittest.TestCase):
             any(item["kind"] == "unexpected" for item in differences)
         )
 
-    # ---- commands ------------------------------------------------------
 
     def test_record_and_compare_commands(self) -> None:
         recorded_path = self.root / "recorded.json"

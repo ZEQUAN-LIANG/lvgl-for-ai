@@ -1,9 +1,3 @@
-"""Serve the web UI, start live over HTTP, then deliver a real SIGINT.
-
-Used by ``test_web_live`` to prove that Ctrl+C on ``web.py`` stops the live
-Runtime through the documented quit -> wait -> terminate path, leaving a
-finished manifest behind.
-"""
 
 from __future__ import annotations
 
@@ -25,7 +19,7 @@ for path in (TOOL_ROOT, TESTS_DIR):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-import web  # noqa: E402
+import web
 
 
 def free_port() -> int:
@@ -69,8 +63,6 @@ def main(argv: list[str]) -> int:
         else:
             outcome["error"] = "server did not start"
             return
-        # Starting live may rebuild user/app; do not reuse the 5 s status
-        # timeout or the watcher aborts before SIGINT is delivered.
         status, body = request("POST", base + "/api/live/start", timeout=120.0)
         if status != 200:
             outcome["error"] = f"live start returned {status}: {body!r}"

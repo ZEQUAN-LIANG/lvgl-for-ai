@@ -11,16 +11,22 @@
 - `lvgl_ai/`：Python 控制层。`Runtime`（一个实例 = 一个 LVGL 进程 = 一次会话）、`Recording`（只读证据视图，annotations 可写）、`play_scenario`、`apps/`（应用管理 package：common / policy / registry / scaffold / trash / views）、错误类型、`web/`（HTTP/UI 适配）。
 - `engine/`：C engine，负责协议、虚拟 indev、录帧、时间轴、窗口。
 - `cli.py`：命令行入口。
+- `assets.py`：字体/图片转 LVGL C 数组入口，不启动 engine 或网页。
 - `session_report.py`：会话证据摘要入口，不启动 engine 或网页。
 - `web.py`：网页端入口。
+- `lvgl_ai/assets/`：资源转换实现与随包 vendored FreeType/pypng（`vendor/`）。
 - `tests/`：`python -I` 测试套件。
 - `api-nav/`：每个 LVGL 版本一份 API 导航。
 - `tools/fetch_lvgl.py`：下载官方 LVGL、校验版本并应用本地 patch。
 - `tools/fetch_png.py`：下载 pin 的 zlib / libpng 源码到 `third_party/`，供 engine 编码 PNG。
 - `tools/new_app.py`：生成应用变体的源文件与场景，并注册到 `user/app/app.c`。
 - `tools/export_sdk.py`：从 `lvgl-src/<version>` 导出宿主预编译 SDK 到 `sdk/<version>`。
-- `tools/release.py`：生成可分发的 skill zip、`.sha256` 与 release manifest。
-- `tools/lvgl.py`：统一入口，分发 `run` / `report` / `serve`。
+- `tools/install_version.py`：安装其他 LVGL 版本（源码或自定义版本包），读取
+  `meta/versions.json`（开发仓库与发布包同一位置）。
+- `tools/release.py`：生成单个可分发 skill zip、`.sha256` 与 release manifest。
+- `tools/release_all.py`：构建默认的两个完整包：`full` 与 `full-sifli`。
+- `tools/sync_github.py`：把 Gitee（`origin`）的分支与标签强制镜像到 GitHub（`github`）。
+- `tools/lvgl.py`：统一入口，分发 `run` / `report` / `serve` / `assets`。
 - `tools/contract_snapshot.py`：记录/对比六类外部契约快照，用于重构行为冻结；用法见
   [CONTRACT_SNAPSHOT.md](CONTRACT_SNAPSHOT.md)。
 
@@ -36,6 +42,7 @@
 | `build/` | engine 构建产物（Git 忽略） |
 | `sdk/` | 预编译宿主 SDK（Git 忽略；由 `export_sdk.py` 生成） |
 | `release/` | 解包后的 skill 目录、发布 zip、sha256 与 release manifest（Git 忽略） |
+| `meta/` | 包元数据：`versions.json`；发布包还含 `VERSION.json` |
 | `bin/` | `lvgl.cmd` 统一入口包装脚本 |
 | `sessions/` | 会话证据（Git 忽略） |
 | `docs/` | 应用变体与场景/服务端常量的索引指针页；SiFli 能力索引见 `chip-adapt/docs/sifli.html` |
@@ -45,10 +52,24 @@
 
 ## 环境准备
 
-需要 Python 3.9+（仅标准库）、CMake 3.20+、Ninja、GCC（Windows 为 MinGW-w64）和 curl；
-ccache 可选，git 用于拉取 `third_party/` 的 PNG 编码器源码以及应用 `patches/`。
-只用预编译宿主 SDK 时，运行时只需要 Python 与 GCC；CMake、Ninja、LVGL 源码和
-`third_party/` 都不是必需项。
+发布包不自带 Python；宿主机必须提供 Python 3.9+ 并在 PATH 上（工具层只使用标准库）。
+`bin\lvgl.cmd` 使用 PATH 上的 `python`（缺失时回退 `py -3`），`bin\LVGL-AI-Viewer.exe`
+使用 `pythonw`（缺失时回退 `pyw`）。解压后运行仍然不需要 CMake；改
+`user/app/**/*.c` 后重新编译需要 GCC 15.2.0（与随包 SDK 的 manifest 一致）。
+
+运行预编译 engine 不需要 GCC、CMake、Ninja、LVGL 源码或 `third_party/`。只有重新
+编译 `user/app/**/*.c` 时需要 GCC（Windows 为 MinGW-w64 64 位，15.2.0，与 SDK
+manifest 一致）；源码构建模式还需要 CMake 3.20+、Ninja 和 curl。ccache 可选，git 用于拉取 `third_party/` 的 PNG 编码器
+源码以及应用 `patches/`。
+
+资源转换器额外使用随包内置的 freetype-py（含 FreeType DLL）与 pypng，位于
+`core/lvgl_ai/assets/vendor/`；不需要 `pip install`、Node.js 或联网。生成好的 C 数组
+是普通 LVGL 资源，构建和运行时不再需要转换器。
+
+host engine 默认开启 `LV_USE_FREETYPE=1`，8.3–9.6 都链接随包 FreeType 2.13.2：
+`core/engine/freetype/include` 是头文件，`lib/libfreetype.dll.a` 是导入库，
+`libfreetype.dll` 在构建后复制到 engine 旁边。预编译 SDK 同样携带头文件、导入库
+和 DLL，预编译链接会自动把 DLL 放到 engine 目录。
 
 ### Windows：MSYS2 UCRT64
 
@@ -111,10 +132,11 @@ python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json
 python -I core/web.py --open
 ```
 
-国内网络访问 `codeload.github.com` 不稳定时，第 2 步改用 Gitee 镜像：
+默认的 `--source auto` 会先试 GitHub codeload，再试 Gitee 镜像；Gitee 的 LVGL
+镜像当前可能返回 HTML/400，下载失败时请使用默认值或预编译版本包：
 
 ```bash
-python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --source gitee
+python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --source auto
 ```
 
 说明：
@@ -124,7 +146,7 @@ python -I core/tools/fetch_lvgl.py --version 9.6 --repo-root . --source gitee
 - 首次构建会编译整个 LVGL，通常需要数分钟；工具对 configure / build 每个阶段设置 600 秒硬超时。
 - CLI 成功退出码为 `0`，stdout 最后一行是会话目录；会话 `manifest.json` 的 `status` 应为 `ok`。
 - 网页端默认地址 `http://127.0.0.1:8765/`；端口冲突时用 `--port 0` 或 `--port 8766`，Ctrl+C 停止。
-- Windows 无控制台启动可双击仓库根的 `LVGL-AI-Viewer.exe`（需要 `pythonw.exe` 或 `pyw.exe` 在 PATH 中；用 `python -I core/tools/launchers/build.py` 重新生成）。
+- Windows 无控制台启动可双击 `bin/LVGL-AI-Viewer.exe`（需要 `pythonw.exe` 或 `pyw.exe` 在 PATH 中；该 exe 不随 Git 提交，用 `python -I core/tools/launchers/build.py` 生成）。
 
 ## 准备 LVGL 源码
 
@@ -155,9 +177,10 @@ python -I core/tools/fetch_png.py --repo-root .
 ## 预编译宿主 SDK
 
 没有 LVGL 源码时，用预编译宿主 SDK 直接编译 `user/app`。SDK 包含五份静态库
-（engine / adapter / LVGL / libpng / zlib）、公共头、`lv_conf.h` 和
-`manifest.json`（`lvgl-ai-host-sdk-v1`，记录编译器版本、defines、include 顺序、
-链接顺序与每份库的 sha256）：
+（engine / adapter / LVGL / libpng / zlib）、FreeType 导入库、公共头、FreeType
+头文件、`lv_conf.h`、运行时 `libfreetype.dll` 和 `manifest.json`
+（`lvgl-ai-host-sdk-v1`，记录编译器版本、defines、include 顺序、链接顺序、
+运行时 DLL 与每份库的 sha256）：
 
 ```bash
 # 从 lvgl-src/<version> 导出；默认输出 sdk/<version>
@@ -191,6 +214,24 @@ python -I core/cli.py --lvgl 9.6 --prebuilt --scenario user/scenarios/settings.j
 python -I core/cli.py --lvgl 9.6 --source   --scenario user/scenarios/settings.json --json
 ```
 
+## 安装其他 LVGL 版本
+
+开发仓库默认只导出 `sdk/9.6`；发布包带齐六个版本。`meta/versions.json` 列出支持的
+版本与是否支持 `intro`；需要自定义安装时：
+
+```bash
+python -I core/tools/install_version.py --list
+python -I core/tools/install_version.py --lvgl 9.4 --source auto
+python -I core/tools/install_version.py --lvgl 9.4 --no-build
+python -I core/tools/install_version.py --lvgl 9.4 --mode pack --pack version-pack.zip
+```
+
+源码模式封装 `fetch_lvgl.py`、`fetch_png.py` 与 `export_sdk.py`，然后按 `meta/versions.json`
+的 `sdk` 标记选择预编译或 CMake 源码构建 engine。pack 模式只解包
+`sdk/<version>` 与 `build/lvgl_<token>`，不需要 CMake/Ninja；修改用户 C 代码仍需
+GCC 15.2.0（与 SDK manifest 一致）。
+场景可选 `"lvgl": "9.4"`，优先级是 `--lvgl` > 场景 `lvgl` > `LVGL_AI_LVGL_VERSION` > 9.6。
+
 ## 统一入口
 
 `core/tools/lvgl.py` 把 `run` / `report` / `serve` 映射到现有入口；包内
@@ -200,22 +241,45 @@ python -I core/cli.py --lvgl 9.6 --source   --scenario user/scenarios/settings.j
 python -I core/tools/lvgl.py run --scenario user/scenarios/settings.json --json
 python -I core/tools/lvgl.py report --latest --log-tail 5
 python -I core/tools/lvgl.py serve
+python -I core/tools/lvgl.py assets font --app coffee --font C:\Windows\Fonts\Deng.ttf --size 16
+python -I core/tools/lvgl.py assets image --app coffee --input logo.png --cf ARGB8888
+python -I core/tools/lvgl.py assets doctor --json
 ```
+
+字体 `--bpp 8` 只适用于 8.x 或 9.3+；9.1/9.2 的明文位图路径没有 8 bpp 分支，
+工具会拒绝生成，建议改用 `--bpp 4`。
 
 ## 发布包
 
-`core/tools/release.py` 产出可分发 skill zip、`.sha256` 和 release manifest：
+默认发布两个完整包（都带六个版本）：
+
+```bash
+python -I core/tools/release_all.py --out release --json
+```
+
+发布脚本按 engine 输入摘要复用 `build/release/lvgl_<token>/` 下的预编译 engine：
+engine / 用户应用源码、宿主 SDK manifest 或 GCC 版本未变时不再重编，只重新打包；
+`--force-build` 强制重建。Windows 双击启动器同样只在其源码摘要变化时重建。
+
+也可以只用 `release.py` 打单版本包（产出 skill zip、`.sha256` 和 release manifest）：
 
 ```bash
 # 默认 9.6；缺少 SDK 时自动导出；产物在 release/
 python -I core/tools/release.py --out release --json
 ```
 
-`release/` 目录同时保留解包后的 skill 目录 `release/lvgl-ai-new/`（含 `SKILL.md`、
-`CONTEXT.md`、`core/`、`user/`、`sdk/`、`bin/`、`VERSION.json`），以及同名 zip、
-`.sha256` 和 release manifest；可以直接在 `release/lvgl-ai-new/` 里运行，不必先解压。
-包内包含 `core/`、`user/`、`sdk/<version>/`、预编译 engine、`bin/lvgl.cmd`、
-`SKILL.md`、`CONTEXT.md`、`VERSION.json` 与 `licenses/`。LVGL 源码、`third_party/`、
+单版本 `release.py` 还会在 `release/` 保留解包后的 skill 目录
+`release/lvgl-verify-loop/`：根目录只有
+`SKILL.md`，其余内容在 `core/`、`user/`、`sdk/`、`build/`、`bin/`、`docs/`、
+`meta/` 与 `licenses/` 下。该目录与同名 zip、`.sha256`、release
+manifest 并列，可以直接在 `release/lvgl-verify-loop/` 里运行，不必先解压。
+
+发布包只带 `user/app/intro/` 一个应用（默认介绍页与模板），其他示例应用留在开发
+仓库。包内包含 `core/`、`user/`、`sdk/<version>/`、预编译 engine、`bin/lvgl.cmd`、
+`bin/LVGL-AI-Viewer.exe`、`docs/intro-demo.gif`、`meta/VERSION.json`、
+`meta/versions.json` 与 `licenses/`。多版本包把各 SDK 中完全相同的 FreeType DLL、
+导入库和公共头文件收到 `sdk/common/`，`build/` 下不再重复放置 DLL。
+LVGL 源码、`third_party/`、
 `sessions/`、测试目录、`chip-adapt/vendor`、`chip-adapt/exports`、构建中间物和开发机
 绝对路径不会进包（二进制里的 `__FILE__` 与调试信息也会被检查）；打包前会在暂存目录
 从无关工作目录运行 `--no-build`、预编译构建、统一入口和网页端 smoke。`--skip-smoke`
@@ -232,14 +296,14 @@ python -I core/web.py
 Windows 无控制台入口：
 
 ```text
-双击仓库根的 LVGL-AI-Viewer.exe
+双击 bin\LVGL-AI-Viewer.exe
 或：双击 core/web.pyw
 或：pythonw -I core/web.pyw
 ```
 
-`web.pyw` 自动打开浏览器，并默认启用 `--exit-on-close`：最后一个网页关闭约 0.5 秒后停止服务并收尾 engine。不带参数启动（双击 `web.pyw`、`LVGL-AI-Viewer.exe` 或经 `pythonw`）时，如果默认地址上已有服务在监听，它只打开页面并退出（暖启动），不会重复启动 server；带参数时保持普通启动路径。控制台入口需要显式加 `--exit-on-close` 才有相同行为。
+`web.pyw` 自动打开浏览器，并默认启用 `--exit-on-close`：最后一个网页关闭约 0.5 秒后停止服务并收尾 engine。不带参数启动（双击 `web.pyw`、`bin/LVGL-AI-Viewer.exe` 或经 `pythonw`）时，如果默认地址上已有服务在监听，它只打开页面并退出（暖启动），不会重复启动 server；带参数时保持普通启动路径。控制台入口需要显式加 `--exit-on-close` 才有相同行为。
 
-仓库根的 `LVGL-AI-Viewer.exe` 是带图标的完全无黑框启动入口：双击即可，只负责在 PATH 中找到 `pythonw.exe`（找不到时回退 `pyw.exe`）并启动 `core/web.pyw`；端口探测与打开的 URL 都在 Python 里。启动器源码、图标与构建脚本在 `core/tools/launchers/`，用 `python -I core/tools/launchers/build.py` 重新生成（需要 MinGW gcc 与 windres）。旧的 `.vbs` / `.cmd` 入口已移除。
+`bin/LVGL-AI-Viewer.exe` 是带图标的完全无黑框启动入口：双击即可，只负责在 PATH 中找到 `pythonw.exe`（找不到时回退 `pyw.exe`）并启动 `core/web.pyw`；端口探测与打开的 URL 都在 Python 里。启动器源码、图标与构建脚本在 `core/tools/launchers/`，用 `python -I core/tools/launchers/build.py` 重新生成（需要 MinGW gcc 与 windres）。旧的 `.vbs` / `.cmd` 入口已移除。
 
 默认固定端口 `8765`，地址：
 
@@ -284,7 +348,7 @@ python -I core/web.py --app myapp --open
 ## 应用管理台
 
 网页端顶部的「应用管理」按钮打开管理对话框；需要启动时直接打开时，用
-`python -I core/web.py --manage --open`。双击仓库根 `LVGL-AI-Viewer.exe` 仍打开普通页面。
+`python -I core/web.py --manage --open`。双击 `bin/LVGL-AI-Viewer.exe` 仍打开普通页面。
 管理台可以：
 
 - 选择/预览/测试/录制应用（复用顶部现有控件）；
@@ -401,6 +465,18 @@ print(recording.manifest["app"], recording.manifest["frame_count"])
 
 `LVGL_AI_LVGL_VERSION` 选择 `lvgl-src/<version>`，支持 `9.6` / `9.5` / `9.4` / `9.1` / `8.4` / `8.3`；`LVGL_AI_LVGL_SRC` 可覆盖源码路径。`LVGL_AI_USER_APP_DIR` 可指向导出的应用目录（例如 `chip-adapt/exports/<app>/src/app`），用于运行时验证；非默认目录的构建输出在 `build/lvgl_<token>_export_<label>_<hash>`，与 `user/app` 的 `build/lvgl_<token>` 隔离。构建前会获取该目录的跨进程锁，并等待或终止 PID 文件记录的残留 engine。跨版本比较事件语义，不比较像素。
 
+## Upgrading LVGL（升级检查清单）
+
+升级 `lvgl-src/<version>` 或新增受支持版本前，先复核这些非公开依赖；它们不在 LVGL 的公开 API 契约内，升级时可能静默改变语义：
+
+1. **命中测试**：`core/engine/adapter_9x.c:113` 的 `hit_test` 使用 `lv_indev_search_obj`，这是 LVGL 内部辅助函数。9.4 起 `lv_obj_class_t::name` 移入私有头，`adapter_9x.c:17-20` 按 `LVGL_VERSION_MINOR >= 4` 包含 `src/core/lv_obj_class_private.h`；升级要确认该头仍存在、`name` 字段路径未变，否则 `hit` 会退化为空。
+2. **lodepng 返回类型**：`core/engine/adapter_9x.c:339-352` 假设 `lodepng_decode32` 写出的指针实际是 `lv_draw_buf_t *`，这是 LVGL 的封装行为，不是公开契约。升级要确认 `decoded->data`、`decoded->header.stride` 与 RGBA 布局仍成立，否则参考图 diff 会读错内存。
+3. **版本分支与 indev 注册**：`adapter_9x.c` 使用 `lv_indev_create` / `lv_indev_set_read_cb`，`adapter_8x.c` 使用 `lv_indev_drv_init` / `lv_indev_drv_register`；9.2+ 才有对象名。`lv_conf.h`、display/layer API 与 flush 回调签名也分别落在两个 adapter 分支里，不要只改一个。
+4. **支持矩阵**：9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3。升级后跑 `test_multiversion` 与各版本场景（`meta/versions.json` + `tools/install_version.py`）；跨版本只比较事件语义与 session 文件集合，不比较像素。
+5. **边界检查**：`python -I core/tools/check_version_boundaries.py` 与 `python -I core/tools/check_api_nav.py` 必须通过；`core/api-nav/<version>.md` 跟随公开 API 变化更新。
+
+新增版本时同步 `meta/versions.json`、`api-nav/` 与 `patches/<version>/`（如需 patch）；不要直接修改已安装的 `lvgl-src/<version>/`。
+
 ## 测试
 
 ```bash
@@ -422,7 +498,7 @@ python -I core/tools/contract_snapshot.py compare
 | `CMake 3.20 or higher is required` | CMake 版本过低 | 升级 CMake |
 | `engine binary not found: ...` | 使用了 `--no-build`，但 `build/` 中没有 engine | 去掉 `--no-build` 先构建 |
 | `configure timed out after 600s` / `build timed out after 600s` | 单阶段超过 600 秒 | 关闭负载或杀毒扫描后重跑；已完成的阶段会保留，可增量构建 |
-| `all download URLs failed:` | 网络、DNS 或代理问题 | 加 `--source gitee`；检查 `curl` 与代理环境变量 |
+| `all download URLs failed:` | 网络、DNS 或代理问题 | 默认 `--source auto` 会试 codeload 与 Gitee 镜像；Gitee 不可用时改用 `--source codeload` 或版本包，并检查 `curl` 与代理环境变量 |
 | `version header mismatch:` | 镜像 tag 漂移 | 删除 `.scratch/tmp/archives` 后重下，或加 `--force` |
 | `[web] cannot listen on 127.0.0.1:8765:` | 端口被占用 | 用 `--port 0` 或换一个端口 |
 | `cannot read scenario ...` | 场景路径写错 | 检查 `user/scenarios/` 下的文件名 |

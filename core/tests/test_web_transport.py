@@ -1,4 +1,3 @@
-"""Raw live preview frames: wire format, hub behavior and the HTTP stream."""
 
 from __future__ import annotations
 
@@ -72,15 +71,12 @@ class LiveFrameHubTest(unittest.TestCase):
     def test_rejects_a_frame_larger_than_the_page_declared_limit(self) -> None:
         config = page_config()
         self.assertEqual(config["maxFrameBytes"], MAX_FRAME_BYTES)
-        # One pixel wide and one row over the limit; no pixel buffer is
-        # allocated because the size check must reject first.
         too_tall = config["maxFrameBytes"] // config["pixelStride"] + 1
         with self.assertRaises(ValueError):
             LiveFrameHub().publish(1, too_tall, 0, b"")
 
 
 class _StreamRuntime(FakeRuntime):
-    """Writes one raw frame at startup so the stream can seed itself."""
 
     def __init__(self, session_dir: Path, width: int = 2, height: int = 1):
         super().__init__(record=False)

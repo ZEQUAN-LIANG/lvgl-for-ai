@@ -1,9 +1,3 @@
-"""Recording: read one session's evidence without starting the engine.
-
-The fixtures below build the minimal session described in SPEC
-``### Testing Decisions / Seams``: manifest + timeline + one PNG +
-frame_diffs + annotations + engine.log (plus build.log).
-"""
 
 from __future__ import annotations
 
@@ -221,7 +215,6 @@ class RecordingViewsTest(unittest.TestCase):
     def test_frame_views_read_the_full_timeline(self) -> None:
         session = make_session(self.root)
         write_png_rgb(session / "frames/000002.png", 1, 1, [(1, 1, 1)])
-        # The first frame row must come from the head of a large timeline.
         head = {
             "schema": "lvgl-ai-timeline-v1",
             "type": "frame",

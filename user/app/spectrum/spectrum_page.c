@@ -1,8 +1,3 @@
-/**
- * @file spectrum_page.c
- * ORBITAL chrome: top status bar, queue/telemetry panels, transport and the
- * timer that feeds the synthetic audio model into the canvas HUD.
- */
 
 #include "spectrum.h"
 
@@ -96,7 +91,6 @@ static lv_obj_t * vol_knob;
 static uint32_t last_tick;
 static float ui_clock;
 
-/* ------------------------------------------------------------- helpers */
 
 static lv_obj_t * make_panel(lv_obj_t * parent, int x, int y, int w, int h)
 {
@@ -180,7 +174,6 @@ static void refresh_like_button(void)
                       15, spectrum_state.like ? pal->c : SP_DIM);
 }
 
-/* -------------------------------------------------------------- events */
 
 static void mode_event_cb(lv_event_t * event)
 {
@@ -275,7 +268,6 @@ static void volume_event_cb(lv_event_t * event)
     refresh_volume();
 }
 
-/* ------------------------------------------------------------- refresh */
 
 void spectrum_page_refresh_track(void)
 {
@@ -488,7 +480,6 @@ void spectrum_page_refresh_meters(void)
     }
 }
 
-/* --------------------------------------------------------------- timer */
 
 static void tick_cb(lv_timer_t * timer)
 {
@@ -524,7 +515,6 @@ static void tick_cb(lv_timer_t * timer)
     }
 }
 
-/* ---------------------------------------------------------------- page */
 
 static void build_topbar(lv_obj_t * screen)
 {
@@ -859,8 +849,6 @@ void spectrum_create(void)
     lv_obj_set_scrollable(screen, false);
     lv_obj_set_scrollbar_mode(screen, LV_SCROLLBAR_MODE_OFF);
 
-    /* The HUD canvas is now full-screen, so it must exist before the panels
-     * and bars that sit above it. */
     build_center(screen);
     build_topbar(screen);
     build_left_panel(screen);
@@ -879,4 +867,4 @@ void spectrum_create(void)
     lv_timer_create(tick_cb, 16, NULL);
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

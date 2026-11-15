@@ -56,26 +56,11 @@ ToolsCheck = Callable[[], Sequence[str]]
 
 @dataclass(frozen=True)
 class BuildOutcome:
-    """The engine to launch and the ``build.log`` text for one session."""
-
     engine_path: Path
     log_text: str
 
 
 class BuildPlan:
-    """One version's build: preflight -> configure if stale -> build -> engine.
-
-    ``lvgl_src``, ``build_dir``, ``engine_dir`` and the user directories are
-    resolved once from :mod:`lvgl_ai.paths` unless the caller passes explicit
-    paths. ``build_mode`` is ``auto`` (source when ``lvgl-src`` exists,
-    otherwise ``prebuilt`` when ``sdk/<version>`` exists), ``source`` or
-    ``prebuilt``. ``configure`` / ``build`` replace the generated commands for
-    embedding and tests; an explicit build command also skips the source-build
-    preflight. ``engine_path`` is the test/embedding override and is never
-    replaced by the build output. ``runner`` and ``missing_tools`` are seams
-    for scripted tests.
-    """
-
     def __init__(
         self,
         version: str,
@@ -182,30 +167,17 @@ class BuildPlan:
             return "source"
         if self.sdk_dir.is_dir():
             return "prebuilt"
-        # Neither exists: keep the source preflight so the error names both
-        # recovery paths (LVGL source and --prebuilt).
         return "source"
-
-    # ---- paths ---------------------------------------------------------
 
     @property
     def built_engine_path(self) -> Path:
-        """Where a source build writes the engine."""
         return self.build_dir / paths.engine_filename()
 
     @property
     def cache_path(self) -> Path:
         return self.build_dir / "CMakeCache.txt"
 
-    # ---- preflight and cache -------------------------------------------
-
     def preflight(self) -> None:
-        """Fail fast with an actionable error before spawning a build.
-
-        A caller-supplied build command is an embedding/test toolchain, so the
-        default prerequisite check does not apply to it. Prebuilt builds
-        validate the SDK manifest and the compiler instead of CMake inputs.
-        """
         if self._build_explicit:
             return
         if self.mode == "prebuilt":
@@ -240,7 +212,6 @@ class BuildPlan:
             raise BuildError(message, command=list(self.configure_command))
 
     def needs_configure(self) -> bool:
-        """True when the CMake cache is missing, incomplete or stale."""
         return cache_needs_configure(
             self.build_dir,
             lvgl_src=self.lvgl_src,
@@ -251,23 +222,13 @@ class BuildPlan:
             libpng_src=self.libpng_src,
         )
 
-    # ---- configure and build -------------------------------------------
-
     def configure(self) -> str:
-        """Run CMake configure and return its phase log."""
         return self._run_command(self.configure_command, "configure")
 
     def build(self) -> str:
-        """Run the engine build and return its phase log."""
         return self._run_command(self.build_command, "build")
 
     def execute(self, *, build: bool) -> BuildOutcome:
-        """Run the plan for one session and resolve the engine to launch.
-
-        ``build=False`` skips preflight/configure/build and only resolves the
-        source-build engine. Failures keep the successful phase logs in
-        ``log_text``.
-        """
         if build and self.mode == "prebuilt" and not self._build_explicit:
             log_text = self._run_prebuilt()
         else:
@@ -280,20 +241,12 @@ class BuildPlan:
             )
         return BuildOutcome(engine_path=engine_path, log_text=log_text)
 
-    # ---- engine resolution ---------------------------------------------
-
     def resolve_engine(self) -> Path:
-        """Return the explicit engine override or the source-build output."""
         if not self._engine_explicit:
             self.engine_path = self.built_engine_path
         return self.engine_path
 
     def missing_engine_error(self) -> EngineNotFound | None:
-        """The typed missing-engine error, or ``None`` when it exists.
-
-        The error carries the exact configure/build commands so the caller can
-        recover from a missing ``--no-build`` engine.
-        """
         self.resolve_engine()
         if self.engine_path.is_file():
             return None
@@ -302,8 +255,6 @@ class BuildPlan:
             configure_command=self.configure_command,
             build_command=self.build_command,
         )
-
-    # ---- internals -----------------------------------------------------
 
     def _run_build(self) -> str:
         self.preflight()
@@ -332,8 +283,6 @@ class BuildPlan:
                     )
                 parts.append(self.build())
             except (BuildError, LinkError) as exc:
-                # Keep the successful phases in build.log; the failing phase's
-                # output is already in exc.log_text.
                 exc.log_text = "\n".join([*parts, exc.log_text or ""])
                 raise
         return "\n".join(parts)
@@ -382,6 +331,7 @@ class BuildPlan:
                         continue
                     parts.append(self._run_command(step.command, "compile"))
                 parts.append(self._run_command(plan.link_command, "link"))
+                plan.install_runtime_dlls()
             except (BuildError, LinkError) as exc:
                 exc.log_text = "\n".join([*parts, exc.log_text or ""])
                 raise

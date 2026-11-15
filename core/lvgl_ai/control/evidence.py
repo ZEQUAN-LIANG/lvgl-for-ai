@@ -19,13 +19,8 @@ import re
 from pathlib import Path
 from typing import Any
 
-from .recording import (
-    Recording,
-    manifest_is_recorded,
-    snapshot_label,
-    tail_lines,
-)
-from .session_schema import FRAME_DIFFS_FILE, TIMELINE_FILE
+from . import session_schema
+from .recording import Recording, snapshot_label, tail_lines
 
 _APP_LINE = re.compile(r"^\[app\]\s+app=(\S+)")
 
@@ -85,9 +80,13 @@ def summarize_session(
     manifest = recording.manifest
     log_text = recording.log()
 
-    timeline_available = (session_dir / TIMELINE_FILE).is_file()
+    timeline_available = (
+        session_dir / session_schema.TIMELINE_FILE
+    ).is_file()
     timeline = recording.timeline() if timeline_available else []
-    diffs_available = (session_dir / FRAME_DIFFS_FILE).is_file()
+    diffs_available = (
+        session_dir / session_schema.FRAME_DIFFS_FILE
+    ).is_file()
     frame_diffs = recording.frame_diffs() if diffs_available else []
 
     values = {
@@ -108,7 +107,7 @@ def summarize_session(
         "inputs": [dict(row) for row in timeline if row["type"] == "input"],
         "frame_diffs": [dict(row) for row in frame_diffs],
         "log_tail": tail_lines(log_text, log_tail_lines),
-        "recorded": manifest_is_recorded(manifest),
+        "recorded": session_schema.session_is_recorded(manifest, session_dir),
         "error": manifest.get("error"),
     }
     return {field: values[field] for field in SUMMARY_FIELDS}
@@ -123,7 +122,6 @@ def _read_json_object(path: Path) -> dict[str, Any] | None:
 
 
 def _abs_image(session_dir: Path, relative: Any) -> str | None:
-    """Absolute path of one evidence image, or None when it escapes the session."""
     if not isinstance(relative, str) or not relative:
         return None
     try:
@@ -169,8 +167,7 @@ def _region_boxes(regions: Any, frame_no: Any) -> list[dict[str, Any]]:
 
 
 def _frame_images(session_dir: Path, frames: list[Any]) -> list[str]:
-    """Whole-frame PNG paths; an agent crops the boxes itself."""
-    directory = session_dir / "frames"
+    directory = session_dir / session_schema.FRAMES_DIR
     if not directory.is_dir():
         return []
     by_number: dict[int, str] = {}
@@ -185,8 +182,7 @@ def _frame_images(session_dir: Path, frames: list[Any]) -> list[str]:
 
 
 def _annotations_summary(session_dir: Path) -> dict[str, Any]:
-    """Notes as an index an agent can read before opening the crop PNGs."""
-    path = session_dir / "annotations.json"
+    path = session_dir / session_schema.ANNOTATIONS_FILE
     if not path.is_file():
         return {"count": 0, "notes": []}
     data = _read_json_object(path)
@@ -246,8 +242,7 @@ def _annotations_summary(session_dir: Path) -> dict[str, Any]:
 
 
 def _whiteboards_summary(session_dir: Path) -> dict[str, Any]:
-    """Whiteboards with the text and labels an agent can execute against."""
-    path = session_dir / "whiteboards.json"
+    path = session_dir / session_schema.WHITEBOARDS_FILE
     if not path.is_file():
         return {"count": 0, "pending": 0, "items": []}
     data = _read_json_object(path)
@@ -278,7 +273,6 @@ def _whiteboards_summary(session_dir: Path) -> dict[str, Any]:
 
 
 def _effective_app(log_text: str) -> str | None:
-    """The last ``[app] app=NAME`` line, or ``None`` when the log has none."""
     found: str | None = None
     for line in log_text.splitlines():
         match = _APP_LINE.match(line)
@@ -292,7 +286,6 @@ def _snapshots(
     timeline: list[dict[str, Any]],
     files: list[Path],
 ) -> list[dict[str, Any]]:
-    """Snapshot label plus absolute path, from timeline rows and stray PNGs."""
     snapshots: list[dict[str, Any]] = []
     referenced: set[Path] = set()
     for row in timeline:

@@ -1,9 +1,3 @@
-/**
- * @file coffee_ui.c
- * Model, generated assets and the small view vocabulary shared by the
- * AURELIA C9 pages. Only this translation unit includes the generated asset
- * headers, so fonts and images exist exactly once.
- */
 
 #include "coffee_ui.h"
 
@@ -15,9 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/* ------------------------------------------------------------------------- */
-/* Model                                                                      */
-/* ------------------------------------------------------------------------- */
 
 coffee_state_t coffee_state = {
     .water_ml = 2050,
@@ -242,9 +233,6 @@ void coffee_log(const char * format, ...)
     va_end(args);
 }
 
-/* ------------------------------------------------------------------------- */
-/* Generated assets                                                           */
-/* ------------------------------------------------------------------------- */
 
 const lv_font_t * coffee_font(coffee_font_id_t id)
 {
@@ -388,9 +376,6 @@ const lv_image_dsc_t * coffee_art(coffee_art_id_t id)
     }
 }
 
-/* ------------------------------------------------------------------------- */
-/* View vocabulary                                                            */
-/* ------------------------------------------------------------------------- */
 
 lv_obj_t * coffee_box(lv_obj_t * parent, int x, int y, int w, int h)
 {
@@ -588,9 +573,6 @@ void coffee_hide(lv_obj_t * obj, bool hidden)
     if(obj != NULL) lv_obj_set_hidden(obj, hidden);
 }
 
-/* ------------------------------------------------------------------------- */
-/* Toast, dim overlay and modal shell                                         */
-/* ------------------------------------------------------------------------- */
 
 static lv_obj_t * toast_box;
 static lv_obj_t * toast_label;
@@ -703,4 +685,4 @@ void coffee_refresh_all(void)
     coffee_settings_refresh();
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

@@ -1,4 +1,3 @@
-"""HTTP/UI adapter for live sessions and recorded evidence."""
 
 from .live_session import LiveError, LiveSession
 from .webapp import (

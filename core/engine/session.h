@@ -30,18 +30,13 @@
 extern "C" {
 #endif
 
-/** Evidence write failure recorded for later reporting; the first one wins. */
 typedef enum {
     SESSION_ERROR_NONE = 0,
-    /** frames/, timeline.ndjson or a diff file could not be prepared. */
     SESSION_ERROR_EVIDENCE_INIT,
-    /** A retained frame PNG or the live-only preview could not be written. */
     SESSION_ERROR_CAPTURE,
-    /** A snapshot PNG could not be written. */
     SESSION_ERROR_SNAPSHOT
 } session_error_t;
 
-/** Runs between wait steps so window mode can stay responsive. */
 typedef bool (*session_service_fn)(void * user);
 
 typedef struct {
@@ -56,11 +51,9 @@ typedef struct {
     uint64_t encode_budget_bytes;
     long max_frames;
     int diff_threshold;
-    /** Borrowed XRGB8888 reference pixels; NULL when no reference was given. */
     const uint8_t * reference;
     uint32_t reference_width;
     uint32_t reference_height;
-    /** Optional window present hook, invoked after a refresh. */
     void (*present)(void * user);
     void * present_user;
 } session_config_t;
@@ -78,7 +71,6 @@ typedef struct {
     uint32_t width;
     uint32_t height;
     int diff_threshold;
-    /** True when the changed-only comparison buffer is active. */
     bool changed_only;
     bool has_previous;
     uint8_t * previous;
@@ -137,13 +129,10 @@ int session_snapshot(session_t * session,
                      char * relative,
                      size_t relative_size);
 
-/** Wait until the background encoder has published every queued frame. */
 void session_drain_encoding(session_t * session);
 
-/** True when the background encoder failed. */
 bool session_encoder_failed(session_t * session);
 
-/** Write the timeline end row once; safe to call more than once. */
 void session_end(session_t * session);
 
 void session_close(session_t * session);
@@ -152,11 +141,8 @@ long session_frame_count(const session_t * session);
 uint32_t session_t_ms(const session_t * session);
 bool session_truncated(const session_t * session);
 
-/** First evidence write error of this session, or SESSION_ERROR_NONE. */
-session_error_t session_error(const session_t * session);
-
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* SESSION_H */
+#endif

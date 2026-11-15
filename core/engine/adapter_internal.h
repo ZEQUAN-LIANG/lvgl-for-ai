@@ -75,7 +75,6 @@ typedef enum {
     ADAPTER_INDEV_REAL_KEYPAD,
 } adapter_indev_kind_t;
 
-/** Size of the version-specific ``struct adapter``. */
 size_t adapter_prim_state_size(void);
 
 /**
@@ -95,7 +94,6 @@ int adapter_prim_init(adapter_t * adapter,
  */
 void adapter_prim_deinit(adapter_t * adapter);
 
-/** Let LVGL read and process one event from the given indev. */
 void adapter_prim_read(adapter_t * adapter, adapter_indev_kind_t kind);
 
 /**
@@ -111,13 +109,10 @@ void adapter_prim_hit(adapter_t * adapter,
                       char * hit_class,
                       size_t hit_class_size);
 
-/** Run one full refresh (``lv_refr_now``). */
 void adapter_prim_refresh(adapter_t * adapter);
 
-/** Advance virtual time (``lv_tick_inc``). */
 void adapter_prim_tick_inc(uint32_t ms);
 
-/** Run ``lv_timer_handler`` once. */
 void adapter_prim_timer_handler(void);
 
 /**
@@ -132,4 +127,4 @@ int adapter_prim_png_decode(const unsigned char * data,
                             uint32_t * width,
                             uint32_t * height);
 
-#endif /* ADAPTER_INTERNAL_H */
+#endif

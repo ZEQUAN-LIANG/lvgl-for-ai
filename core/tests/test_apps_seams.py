@@ -1,9 +1,3 @@
-"""Private seam tests for the apps package: registry, scaffold, trash, views.
-
-Public behavior is covered by ``test_apps.py`` and ``test_web_apps.py``; this
-module reaches into the internal seams to cover branches that the lifecycle
-API only hits indirectly.
-"""
 
 from __future__ import annotations
 
@@ -211,13 +205,10 @@ class PolicySeamTest(_TempRepo):
             + 'static const char * alias = "latte";\n',
             encoding="utf-8",
         )
-        # Deletion policy names are always reserved, even with no target.
         self.assertTrue(policy.is_reserved_create_name(self.root, "coffee"))
         self.assertTrue(policy.is_reserved_create_name(self.root, "xhs"))
-        # Derived identities with an existing target keep app_exists/--force.
         self.assertFalse(policy.is_reserved_create_name(self.root, "gamma"))
         self.assertFalse(policy.is_reserved_create_name(self.root, "promo"))
-        # A literal-only alias has no other target, so it is reserved.
         self.assertTrue(policy.is_reserved_create_name(self.root, "latte"))
 
     def test_scenario_declared_names_keep_the_existing_create_path(self) -> None:
@@ -233,6 +224,28 @@ class PolicySeamTest(_TempRepo):
         )
         self.assertIn("promo", policy._reserved_state(self.root)[0])
         self.assertFalse(policy.is_reserved_create_name(self.root, "promo"))
+
+
+class PolicyScopeDocumentationTest(unittest.TestCase):
+    def test_module_docstring_marks_the_console_only_policy(self) -> None:
+        doc = policy.__doc__ or ""
+        self.assertIn("management-console", doc)
+        self.assertIn("not the build layer's app discovery", doc)
+        self.assertIn("PROTECTED_APPS", doc)
+        self.assertIn("PROTECTED_SCENARIOS", doc)
+
+    def test_protected_scenarios_exist_in_the_development_repo(self) -> None:
+        from lvgl_ai import paths
+
+        scenarios = paths.REPO_ROOT / "user" / "scenarios"
+        if not scenarios.is_dir():
+            self.skipTest("not the development repository")
+        missing = [
+            name
+            for name in policy.PROTECTED_SCENARIOS
+            if not (scenarios / name).is_file()
+        ]
+        self.assertEqual(missing, [])
 
 
 class ScaffoldPolicyTest(_TempRepo):

@@ -1,0 +1,398 @@
+{
+  "schema": "lvgl-ai-scenario-v1",
+  "name": "intro",
+  "app": "intro",
+  "display": {
+    "width": 800,
+    "height": 600
+  },
+  "steps": [
+    {
+      "type": "wait",
+      "ms": 120
+    },
+    {
+      "type": "mark",
+      "id": "overview"
+    },
+    {
+      "type": "snapshot",
+      "label": "overview"
+    },
+    {
+      "type": "click_at",
+      "x": 150,
+      "y": 84
+    },
+    {
+      "type": "wait",
+      "ms": 400
+    },
+    {
+      "type": "mark",
+      "id": "loop"
+    },
+    {
+      "type": "snapshot",
+      "label": "loop"
+    },
+    {
+      "type": "click_at",
+      "x": 150,
+      "y": 430
+    },
+    {
+      "type": "wait",
+      "ms": 400
+    },
+    {
+      "type": "mark",
+      "id": "loop-build"
+    },
+    {
+      "type": "snapshot",
+      "label": "loop-build"
+    },
+    {
+      "type": "drag",
+      "from": [
+        400,
+        520
+      ],
+      "to": [
+        400,
+        200
+      ],
+      "steps": 10,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 1000
+    },
+    {
+      "type": "snapshot",
+      "label": "loop-scrolled"
+    },
+    {
+      "type": "click_at",
+      "x": 720,
+      "y": 500
+    },
+    {
+      "type": "wait",
+      "ms": 150
+    },
+    {
+      "type": "mark",
+      "id": "loop-playing"
+    },
+    {
+      "type": "snapshot",
+      "label": "loop-playing"
+    },
+    {
+      "type": "wait",
+      "ms": 2600
+    },
+    {
+      "type": "snapshot",
+      "label": "loop-play-next"
+    },
+    {
+      "type": "click_at",
+      "x": 230,
+      "y": 84
+    },
+    {
+      "type": "wait",
+      "ms": 400
+    },
+    {
+      "type": "mark",
+      "id": "evidence"
+    },
+    {
+      "type": "snapshot",
+      "label": "evidence"
+    },
+    {
+      "type": "drag",
+      "from": [
+        400,
+        520
+      ],
+      "to": [
+        400,
+        180
+      ],
+      "steps": 10,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 700
+    },
+    {
+      "type": "drag",
+      "from": [
+        400,
+        520
+      ],
+      "to": [
+        400,
+        180
+      ],
+      "steps": 10,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 700
+    },
+    {
+      "type": "snapshot",
+      "label": "evidence-bottom"
+    },
+    {
+      "type": "click_at",
+      "x": 320,
+      "y": 84
+    },
+    {
+      "type": "wait",
+      "ms": 400
+    },
+    {
+      "type": "mark",
+      "id": "inspector"
+    },
+    {
+      "type": "snapshot",
+      "label": "inspector"
+    },
+    {
+      "type": "drag",
+      "from": [
+        400,
+        520
+      ],
+      "to": [
+        400,
+        180
+      ],
+      "steps": 10,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 700
+    },
+    {
+      "type": "drag",
+      "from": [
+        400,
+        520
+      ],
+      "to": [
+        400,
+        200
+      ],
+      "steps": 10,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 700
+    },
+    {
+      "type": "snapshot",
+      "label": "inspector-bottom"
+    },
+    {
+      "type": "click_at",
+      "x": 415,
+      "y": 84
+    },
+    {
+      "type": "wait",
+      "ms": 400
+    },
+    {
+      "type": "mark",
+      "id": "versions"
+    },
+    {
+      "type": "snapshot",
+      "label": "versions"
+    },
+    {
+      "type": "click_at",
+      "x": 600,
+      "y": 400
+    },
+    {
+      "type": "wait",
+      "ms": 300
+    },
+    {
+      "type": "snapshot",
+      "label": "versions-94"
+    },
+    {
+      "type": "drag",
+      "from": [
+        400,
+        520
+      ],
+      "to": [
+        400,
+        180
+      ],
+      "steps": 10,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 700
+    },
+    {
+      "type": "drag",
+      "from": [
+        400,
+        520
+      ],
+      "to": [
+        400,
+        200
+      ],
+      "steps": 10,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 700
+    },
+    {
+      "type": "snapshot",
+      "label": "versions-bottom"
+    },
+    {
+      "type": "click_at",
+      "x": 500,
+      "y": 84
+    },
+    {
+      "type": "wait",
+      "ms": 400
+    },
+    {
+      "type": "mark",
+      "id": "start"
+    },
+    {
+      "type": "snapshot",
+      "label": "start"
+    },
+    {
+      "type": "drag",
+      "from": [
+        400,
+        520
+      ],
+      "to": [
+        400,
+        180
+      ],
+      "steps": 10,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 700
+    },
+    {
+      "type": "drag",
+      "from": [
+        400,
+        520
+      ],
+      "to": [
+        400,
+        180
+      ],
+      "steps": 10,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 700
+    },
+    {
+      "type": "drag",
+      "from": [
+        400,
+        520
+      ],
+      "to": [
+        400,
+        180
+      ],
+      "steps": 10,
+      "interval_ms": 16
+    },
+    {
+      "type": "wait",
+      "ms": 700
+    },
+    {
+      "type": "snapshot",
+      "label": "start-bottom"
+    },
+    {
+      "type": "click_at",
+      "x": 60,
+      "y": 84
+    },
+    {
+      "type": "wait",
+      "ms": 400
+    },
+    {
+      "type": "key",
+      "action": "press",
+      "key": "RIGHT"
+    },
+    {
+      "type": "key",
+      "action": "release",
+      "key": "RIGHT"
+    },
+    {
+      "type": "wait",
+      "ms": 150
+    },
+    {
+      "type": "snapshot",
+      "label": "keyboard-focus"
+    },
+    {
+      "type": "key",
+      "action": "press",
+      "key": "ENTER"
+    },
+    {
+      "type": "key",
+      "action": "release",
+      "key": "ENTER"
+    },
+    {
+      "type": "wait",
+      "ms": 400
+    },
+    {
+      "type": "snapshot",
+      "label": "keyboard-loop"
+    }
+  ]
+}

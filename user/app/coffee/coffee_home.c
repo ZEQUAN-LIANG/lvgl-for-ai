@@ -1,8 +1,3 @@
-/**
- * @file coffee_home.c
- * The home page: greeting, drink carousel, selected-drink hero and the live
- * machine status panel.
- */
 
 #include "coffee_ui.h"
 
@@ -364,4 +359,4 @@ void coffee_home_refresh(void)
     refresh_status();
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

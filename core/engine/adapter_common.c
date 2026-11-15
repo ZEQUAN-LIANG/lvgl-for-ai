@@ -1,14 +1,3 @@
-/**
- * @file adapter_common.c
- * Version-independent adapter mechanics shared by LVGL 8.x and 9.x.
- *
- * This file owns the adapter lifecycle, the pointer/keypad/encoder state
- * machines (blocked read rollback, coalesced move, encoder diff consumption),
- * the hit reply buffers, framebuffer to RGBA conversion, PNG / raw file IO
- * and tick/timer forwarding. The version files only implement the
- * ``adapter_prim_*`` primitives from adapter_internal.h.
- */
-
 #include "adapter.h"
 #include "adapter_internal.h"
 #include "png_writer.h"

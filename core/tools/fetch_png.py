@@ -12,6 +12,7 @@ Run with ``python -I`` and an explicit repository root:
     python -I core/tools/fetch_png.py --repo-root . --force
 """
 
+
 from __future__ import annotations
 
 import argparse

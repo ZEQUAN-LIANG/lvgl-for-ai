@@ -1,8 +1,3 @@
-/**
- * @file xhs_profile.c
- * The 我 tab: profile header, stats and a note grid that opens the shared note
- * detail overlay.
- */
 
 #include "xhs_ui.h"
 
@@ -190,4 +185,4 @@ lv_obj_t * xhs_profile_create(lv_obj_t * parent)
     return page;
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif
