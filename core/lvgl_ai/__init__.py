@@ -11,7 +11,7 @@ from .control import (
     RuntimeCrash,
     ScenarioError,
     ToolError,
-    summarize_session,
+    session_index,
 )
 from .paths import TOOL_VERSION
 from .scenario import play_scenario
@@ -30,5 +30,5 @@ __all__ = [
     "ScenarioError",
     "__version__",
     "play_scenario",
-    "summarize_session",
+    "session_index",
 ]

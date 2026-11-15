@@ -905,6 +905,9 @@ def _write_annotations(session_dir: Path) -> None:
                 "regions": [],
                 "tags": ["layout"],
                 "text": "static annotation",
+                "author": "human",
+                "source": "web",
+                "feedback_anchor": {"kind": "t_ms", "t_ms": 16},
             }
         ],
     }
@@ -1333,6 +1336,9 @@ def _write_http_session(root: Path) -> Path:
                         ],
                         "tags": ["seed"],
                         "text": "existing note",
+                        "author": "human",
+                        "source": "web",
+                        "feedback_anchor": {"kind": "t_ms", "t_ms": 0},
                     }
                 ],
             },
@@ -1350,6 +1356,8 @@ def _write_http_session(root: Path) -> Path:
         "id": FIXTURE_SESSION_ID,
         "status": "ok",
         "app": FIXTURE_APP,
+        "scenario": None,
+        "source_digest": None,
         "record_changed_only": False,
         "mode": "headless",
         "input": ["real", "virtual"],
@@ -2057,6 +2065,10 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
     new_app_module = _load_module(
         "contract_snapshot_new_app", TOOL_ROOT / "tools" / "new_app.py"
     )
+    report_module = _load_module(
+        "contract_snapshot_session_report",
+        TOOL_ROOT / "session_report.py",
+    )
 
     output = io.StringIO()
     original_runtime = cli_module.Runtime
@@ -2104,6 +2116,22 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
         ["Bad-Name", "--repo-root", str(repo)],
     )
 
+    report_sessions = workspace / "report-sessions"
+    report_sessions.mkdir()
+    report_session = _write_http_session(report_sessions)
+    report_json = _run_python(
+        TOOL_ROOT / "session_report.py",
+        [str(report_session), "--json"],
+    )
+    report_full = _run_python(
+        TOOL_ROOT / "session_report.py",
+        [str(report_session), "--json", "--full"],
+    )
+    report_timeline = _run_python(
+        TOOL_ROOT / "session_report.py",
+        ["timeline", str(report_session), "--json"],
+    )
+
     return {
         "cli": {
             "parser": _parser_contract(cli_module.build_parser()),
@@ -2137,6 +2165,16 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
                     if isinstance(build_payload, dict)
                     else None
                 ),
+                "session_dir_present": bool(
+                    build_payload.get("session_dir")
+                    if isinstance(build_payload, dict)
+                    else None
+                ),
+                "index_keys": (
+                    sorted(build_payload)
+                    if isinstance(build_payload, dict)
+                    else None
+                ),
             },
         },
         "web": {
@@ -2155,6 +2193,13 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
             "json_success": _json_contract(new_app),
             "error_exit": new_app_error.returncode,
             "error_stdout_empty": new_app_error.stdout == "",
+        },
+        "session_report": {
+            "parser": _parser_contract(report_module.build_parser()),
+            "help": _help_contract(TOOL_ROOT / "session_report.py"),
+            "json_index": _json_contract(report_json),
+            "full_exit": report_full.returncode,
+            "timeline": _json_contract(report_timeline),
         },
     }
 

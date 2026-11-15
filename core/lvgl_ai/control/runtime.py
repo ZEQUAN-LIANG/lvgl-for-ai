@@ -153,6 +153,7 @@ class Runtime:
         headless: bool = True,
         window: bool = False,
         sessions_root: str | Path | None = None,
+        scenario: str | Path | None = None,
         timeout: float = 30.0,
         diff_threshold: int = 10,
         reference: str | Path | None = None,
@@ -247,6 +248,7 @@ class Runtime:
             app=resolved_app,
             record_changed_only=resolved_record_changed_only,
             lvgl_src=self._plan.lvgl_src,
+            scenario=scenario,
             mode=resolved_mode,
         )
 

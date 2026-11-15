@@ -9,7 +9,7 @@ from .errors import (
     ScenarioError,
     ToolError,
 )
-from .evidence import summarize_session
+from .evidence import session_index
 from .recording import Recording
 from .runtime import Runtime
 
@@ -24,5 +24,5 @@ __all__ = [
     "RuntimeCrash",
     "ScenarioError",
     "ToolError",
-    "summarize_session",
+    "session_index",
 ]

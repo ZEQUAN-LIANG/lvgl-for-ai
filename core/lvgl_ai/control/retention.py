@@ -19,8 +19,13 @@ from pathlib import Path
 from . import session_schema
 
 DEFAULT_SESSION_LIMIT = 10
+PROTECTED_SESSION_LIMIT = 50
 SESSION_DIR_RE = session_schema.SESSION_ID_RE
 DISCARDED_STATUSES = frozenset({"build_error"})
+PROTECTED_FILES = (
+    (session_schema.ANNOTATIONS_FILE, "notes"),
+    (session_schema.WHITEBOARDS_FILE, "whiteboards"),
+)
 
 
 def prune_sessions(
@@ -48,6 +53,7 @@ def prune_sessions(
 
     removed: list[Path] = []
     survivors: list[Path] = []
+    protected: list[Path] = []
     if (
         keep_path is not None
         and keep_path.parent == root_path.resolve()
@@ -57,6 +63,9 @@ def prune_sessions(
     for path, status in sessions:
         if _same_path(path, keep_path):
             continue
+        if _is_protected(path):
+            protected.append(path)
+            continue
         if status in DISCARDED_STATUSES:
             if _remove(path):
                 removed.append(path)
@@ -64,11 +73,29 @@ def prune_sessions(
         survivors.append(path)
 
     for path in survivors[limit:]:
-        if _same_path(path, keep_path):
-            continue
+        if _remove(path):
+            removed.append(path)
+    for path in protected[PROTECTED_SESSION_LIMIT:]:
         if _remove(path):
             removed.append(path)
     return removed
+
+
+def _is_protected(path: Path) -> bool:
+    for filename, collection in PROTECTED_FILES:
+        document = path / filename
+        if not document.is_file():
+            continue
+        try:
+            data = json.loads(document.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return True
+        items = data.get(collection) if isinstance(data, dict) else None
+        if items is None:
+            return True
+        if isinstance(items, list) and items:
+            return True
+    return False
 
 
 def _manifest_status(path: Path) -> str | None:

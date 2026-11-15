@@ -81,7 +81,7 @@ class PruneSessionsTest(unittest.TestCase):
 
         self.assertEqual(self.names(), [session_id(0), session_id(4)])
 
-    def test_annotations_do_not_protect_old_sessions(self) -> None:
+    def test_empty_annotations_do_not_protect_old_sessions(self) -> None:
         old = self.make_session(session_id(0))
         (old / "annotations.json").write_text(
             json.dumps({"schema": "lvgl-ai-annotations-v1", "notes": []}),
@@ -93,6 +93,95 @@ class PruneSessionsTest(unittest.TestCase):
         prune_sessions(self.root, limit=10)
 
         self.assertNotIn(old.name, self.names())
+
+    def test_non_empty_notes_protect_old_sessions(self) -> None:
+        old = self.make_session(session_id(0))
+        self.write_note(old)
+        for seq in range(1, 12):
+            self.make_session(session_id(seq))
+
+        prune_sessions(self.root, limit=10)
+
+        self.assertIn(old.name, self.names())
+
+    def test_non_empty_whiteboards_protect_old_sessions(self) -> None:
+        old = self.make_session(session_id(0))
+        (old / "whiteboards.json").write_text(
+            json.dumps(
+                {
+                    "schema": "lvgl-ai-whiteboards-v1",
+                    "whiteboards": [{"id": "wb1"}],
+                }
+            ),
+            encoding="utf-8",
+        )
+        for seq in range(1, 12):
+            self.make_session(session_id(seq))
+
+        prune_sessions(self.root, limit=10)
+
+        self.assertIn(old.name, self.names())
+
+    def test_unreadable_annotations_count_as_protected(self) -> None:
+        old = self.make_session(session_id(0))
+        (old / "annotations.json").write_text("{broken", encoding="utf-8")
+        for seq in range(1, 12):
+            self.make_session(session_id(seq))
+
+        prune_sessions(self.root, limit=10)
+
+        self.assertIn(old.name, self.names())
+
+    def test_protected_sessions_do_not_count_toward_the_limit(self) -> None:
+        protected = [
+            self.make_session(session_id(seq)) for seq in range(2)
+        ]
+        for path in protected:
+            self.write_note(path)
+        for seq in range(2, 14):
+            self.make_session(session_id(seq))
+
+        prune_sessions(self.root, limit=10)
+
+        self.assertEqual(
+            sorted(self.names()),
+            sorted([path.name for path in protected] + [
+                session_id(seq) for seq in range(4, 14)
+            ]),
+        )
+
+    def test_build_error_with_notes_is_protected(self) -> None:
+        broken = self.make_session(session_id(10), status="build_error")
+        self.write_note(broken)
+        for seq in range(10):
+            self.make_session(session_id(seq))
+
+        prune_sessions(self.root)
+
+        self.assertIn(broken.name, self.names())
+
+    def write_note(self, path: Path) -> None:
+        (path / "annotations.json").write_text(
+            json.dumps(
+                {
+                    "schema": "lvgl-ai-annotations-v1",
+                    "notes": [
+                        {
+                            "id": "note-1",
+                            "frame_no": 1,
+                            "t_ms": 0,
+                            "regions": [],
+                            "tags": [],
+                            "text": "keep me",
+                            "author": "human",
+                            "source": "chat",
+                            "feedback_anchor": {"kind": "t_ms", "t_ms": 0},
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
 
     def test_unrelated_directories_are_left_alone(self) -> None:
         notes = self.root / "notes"

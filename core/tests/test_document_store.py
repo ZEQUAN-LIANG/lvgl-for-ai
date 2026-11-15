@@ -43,7 +43,7 @@ class DocumentStoreTest(unittest.TestCase):
             json.loads(self.path.read_text(encoding="utf-8")), document
         )
         self.assertEqual(self.store.read(), document)
-        self.assertFalse((self.root / "doc.json.tmp").exists())
+        self.assertEqual(list(self.root.glob("doc.json.*.tmp")), [])
 
     def test_extra_top_level_fields_follow_the_store_option(self) -> None:
         document = {
@@ -82,7 +82,7 @@ class DocumentStoreTest(unittest.TestCase):
         real_replace = Path.replace
 
         def failing_replace(path: Path, target: Path):
-            if path.name == "doc.json.tmp":
+            if path.name.startswith("doc.json.") and path.name.endswith(".tmp"):
                 raise OSError("disk full")
             return real_replace(path, target)
 
@@ -94,7 +94,7 @@ class DocumentStoreTest(unittest.TestCase):
 
         self.assertEqual(caught.exception.code, "test_write_error")
         self.assertEqual(self.path.read_bytes(), before)
-        self.assertFalse((self.root / "doc.json.tmp").exists())
+        self.assertEqual(list(self.root.glob("doc.json.*.tmp")), [])
 
     def test_transaction_rolls_back_images_it_created(self) -> None:
         existing = self.root / "images" / "existing.png"

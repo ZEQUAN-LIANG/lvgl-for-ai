@@ -396,30 +396,39 @@ engine，不写时使用默认 800×600。显式 `--app` 只覆盖应用，不�
 `build/lvgl_<version>/lvgl_engine`，不重新编译 `user/app`。产物不存在时抛
 `EngineNotFound`；改过 C 代码后仍要用源码构建。
 
-退出码：`0` 会话正常结束；`1` build / link / crash；`2` harness、scenario、协议或环境错误。`--json` 在 stdout 输出一行 JSON，始终包含 `session_id` / `manifest_path` / `app` / `error`；会话证据可读时再带上 `session_dir`、`status`、`display`、`frame_count`、`requested_app`、`effective_app`、`snapshots`、`marks`、`log_tail`，字段语义与 `summarize_session` 一致。摘要读取失败（崩溃会话、文件不齐）时只保留可得字段，不改变退出码；诊断只走 stderr。
+退出码：`0` 会话正常结束；`1` build / link / crash；`2` harness、scenario、协议或环境错误。会话证据可读时，`--json` 输出与 `session_report.py --json` 相同的 `lvgl-ai-session-index-v1` 索引；读取失败时只保留 `session_id` / `manifest_path` / `app` / `error` 四个字段，不改变退出码；诊断只走 stderr。
 
 ## 会话报告
 
 不启动 engine、不启动网页，读取已有会话的证据：
 
 ```bash
-# 最新会话的人类可读摘要
+# 最新会话的索引（人类可读；加 --json 输出同一份 JSON）
 python -I core/session_report.py
-
-# 指定会话，stdout 只有一行 JSON
 python -I core/session_report.py sessions/<id> --json
+python -I core/session_report.py sessions/<id> --compact
 
-# 显式指定最新会话，并且只看最后 5 行 engine.log
-python -I core/session_report.py --latest --log-tail 5
+# 有界查询：每行最多 N 条，全部支持 --json
+python -I core/session_report.py timeline sessions/<id> --limit 20
+python -I core/session_report.py diffs sessions/<id> --after-t 2280 --before-t 2300
+python -I core/session_report.py frames sessions/<id> --last 3
+python -I core/session_report.py notes sessions/<id> --resolve sessions/<new>
+python -I core/session_report.py resolve sessions/<id> --click 41:43 --at result
+python -I core/session_report.py context sessions/<id> --click 41:43 --window-ms 200
+python -I core/session_report.py feedback sessions/<old> --previous sessions/<new>
 ```
 
-会话根默认 `sessions/`，可用 `LVGL_AI_SESSIONS_ROOT` 覆盖；无参数或 `--latest` 取最新会话。摘要包含 status、mode、display、帧数与帧绝对路径、requested / effective app、快照、marks、inputs、帧差异和日志尾部。
+会话根默认 `sessions/`，可用 `LVGL_AI_SESSIONS_ROOT` 覆盖；无参数或 `--latest` 取最新会话。索引是查询计划：counts、raw 文件体积/行数、timeline 终点、最大变化区域、clicks（`frame_before` / `frame_after`）、snapshots、marks、notes、whiteboards、日志尾部和 `next_reads` 命令；快照列表只保留最近 5 条与总数，避免索引膨胀。
 
-摘要字段以 `core/lvgl_ai/control/evidence.py` 的 `SUMMARY_FIELDS` 为准；`frames` 是帧 PNG 的绝对路径，供视觉证据命令使用，CLI `--json` 只增加 `CLI_EVIDENCE_FIELDS` 中的较短字段集。`recorded` 与 `Recording.open()` 使用同一规则：manifest 描述录制（`frame_count > 0` 或 artifacts 含 `timeline` / `frame_diffs`）时必须同时存在 `timeline.ndjson` 与 `frame_diffs.ndjson`，缺失按损坏证据报错；`record=False` 或 crash 会话没有这些文件时返回空列表并标记 `recorded: false`，只有 `manifest.json` 或 `engine.log` 缺失才算错误。未知会话或损坏文件退出码 `2`，错误只走 stderr。
+索引字段以 `core/lvgl_ai/control/evidence.py` 的 `INDEX_FIELDS` 为准；`session_dir` 是绝对路径，索引里的 frames / snapshots / diff 图片路径相对 `session_dir`，视觉命令传 `--session` 即可解析。`recorded` 与 `Recording.open()` 使用同一规则：manifest 描述录制（`frame_count > 0` 或 artifacts 含 `timeline` / `frame_diffs`）时必须同时存在 `timeline.ndjson` 与 `frame_diffs.ndjson`，缺失按损坏证据报错；`record=False` 或 crash 会话没有这些文件时返回空列表并标记 `recorded: false`，只有 `manifest.json` 或 `engine.log` 缺失才算错误。crash / harness_error 会话的 `timeline.ndjson` 可以包含被截断的行，索引会跳过无法解析的行。未知会话或损坏文件退出码 `2`，错误只走 stderr。
 
-`crop`、`contact-sheet` 与 `compare --out` 的输出路径必须显式给出，且不能落在任一源会话的证据目录内：写入 `sessions/<id>/` 的新 PNG 会被 `Recording.frames` / `Recording.snapshots` 当成证据。`pixel` 只读不写。`compare` 的会话输入按摘要顺序取最后一张快照；没有快照时取文件名排序的最后一帧，规则同时写在 `--help` 与票 09。
+`resolve` 按 timeline 行顺序选帧，不按精确 `t_ms`：input 命令只入队 LVGL，录帧发生在 `tick` / `wait`。`click --at event` 取 down 前最后一帧，`--at result` 取 up 后第一条 evidence（帧或 snapshot）；`mark` 优先同 `t_ms` 的 snapshot。
 
-Python 侧的稳定入口是 `lvgl_ai.summarize_session(session, log_tail_lines=20)`，接受会话目录或 `manifest.json`。
+`crop`、`contact-sheet` 与 `compare --out` 的输出路径必须显式给出，且不能落在任一源会话的证据目录内：写入 `sessions/<id>/` 的新 PNG 会被 `Recording.frames` / `Recording.snapshots` 当成证据。`pixel` 只读不写。`crop` / `pixel` / `contact-sheet` 接受 `--session`，用于解析索引里的相对图片路径。`compare` 的会话输入取最后一张快照；没有快照时取文件名排序的最后一帧，规则同时写在 `--help` 与票 09。
+
+人类反馈用 `core/feedback.py add` 写入（`author` 只能是 `human`，`source` 是 `web` / `chat`）：`--click` / `--mark` / `--input-seq` / `--t-ms` / `--frame` 选一个锚点，`--region` 可重复。note 存在 `annotations.json`，包含 `author` / `source` / `feedback_anchor`；retention 不会删除含非空 note 或白板的会话。
+
+Python 侧的稳定入口是 `lvgl_ai.session_index(session, log_tail_lines=10, compact=False)`，接受会话目录或 `manifest.json`。
 
 ## 等待画面稳定
 

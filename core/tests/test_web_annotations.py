@@ -18,7 +18,10 @@ from lvgl_ai.web.annotations import (
 )
 from web_support import SESSION_ID, WebHarness, make_web_session
 
-NOTE_FIELDS = {"id", "frame_no", "t_ms", "regions", "tags", "text"}
+NOTE_FIELDS = {
+    "id", "frame_no", "t_ms", "regions", "tags", "text",
+    "author", "source", "feedback_anchor",
+}
 
 
 def valid_note(**overrides):
@@ -44,7 +47,7 @@ class AnnotationApiTest(unittest.TestCase):
         self.annotations_path = self.session / "annotations.json"
 
 
-    def test_post_note_writes_schema_and_all_six_fields(self) -> None:
+    def test_post_note_writes_the_documented_fields(self) -> None:
         status, _, payload = self.harness.json(
             "POST",
             f"/api/sessions/{SESSION_ID}/annotations",
@@ -127,8 +130,16 @@ class AnnotationApiTest(unittest.TestCase):
                             ],
                             "tags": [],
                             "text": "old",
+                            "author": "human",
+                            "source": "web",
+                            "feedback_anchor": {"kind": "t_ms", "t_ms": 0},
                         },
-                        valid_note(id="keep"),
+                        {
+                            **valid_note(id="keep"),
+                            "author": "human",
+                            "source": "web",
+                            "feedback_anchor": {"kind": "t_ms", "t_ms": 16},
+                        },
                     ],
                 }
             )
@@ -253,7 +264,7 @@ class AnnotationApiTest(unittest.TestCase):
         )
         self.assertGreaterEqual(status, 400)
         self.assertEqual(self.annotations_path.read_bytes(), before)
-        self.assertFalse((self.session / "annotations.json.tmp").exists())
+        self.assertEqual(list(self.session.glob("annotations.json.*.tmp")), [])
 
     def test_duplicate_id_is_rejected_without_touching_the_file(self) -> None:
         self.assertEqual(
@@ -433,7 +444,10 @@ class WriteNoteTransactionTest(unittest.TestCase):
         real_replace = Path.replace
 
         def failing_replace(path, target):
-            if path.name == "annotations.json.tmp":
+            if (
+                path.name.startswith("annotations.json.")
+                and path.name.endswith(".tmp")
+            ):
                 raise OSError("disk full")
             return real_replace(path, target)
 

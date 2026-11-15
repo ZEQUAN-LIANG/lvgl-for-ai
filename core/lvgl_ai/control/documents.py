@@ -10,6 +10,8 @@ caller; this module owns the envelope, file names and side effects.
 from __future__ import annotations
 
 import json
+import os
+import secrets
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterable, Iterator, Mapping
@@ -69,7 +71,9 @@ class DocumentStore:
 
     def write(self, document: Any) -> dict[str, Any]:
         data = self._normalize(document, code=self.write_code)
-        tmp = self.path.with_name(self.path.name + ".tmp")
+        tmp = self.path.with_name(
+            f"{self.path.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp"
+        )
         try:
             tmp.write_text(
                 json.dumps(data, indent=2, ensure_ascii=False) + "\n",

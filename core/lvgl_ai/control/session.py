@@ -12,6 +12,7 @@ files through the shared :mod:`~lvgl_ai.control.session_schema` layout.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import threading
 from pathlib import Path
@@ -170,6 +171,7 @@ class SessionStore:
         app: str | None = None,
         record_changed_only: bool = False,
         lvgl_src: str | Path | None = None,
+        scenario: str | Path | None = None,
         tool_version: str = paths.TOOL_VERSION,
         mode: str = "headless",
     ) -> None:
@@ -184,6 +186,11 @@ class SessionStore:
         self.mode = mode
         self.tool_version = tool_version
         self._lvgl_src = None if lvgl_src is None else str(lvgl_src)
+        self._scenario_path = (
+            None if scenario is None else Path(scenario).expanduser().resolve()
+        )
+        self._scenario_cache: dict[str, Any] | None | bool = False
+        self._source_digest_cache: dict[str, Any] | None | bool = False
         self.session_id: str | None = None
         self.session_dir: Path | None = None
         self._log: TailLog | None = None
@@ -316,6 +323,8 @@ class SessionStore:
             id=self.session_id,
             status=outcome.status,
             app=self.app,
+            scenario=self._scenario_metadata(),
+            source_digest=self._source_digest(),
             record_changed_only=self.record_changed_only,
             mode=ready.get("mode", self.mode),
             input=list(ready.get("inputs", ["real", "virtual"])),
@@ -345,6 +354,32 @@ class SessionStore:
             encoding="utf-8",
         )
         tmp.replace(self.manifest_path)
+
+    def _scenario_metadata(self) -> dict[str, Any] | None:
+        if self._scenario_cache is not False:
+            return self._scenario_cache  # type: ignore[return-value]
+        metadata = None
+        if self.build and self._scenario_path is not None:
+            try:
+                data = self._scenario_path.read_bytes()
+            except OSError:
+                data = None
+            if data is not None:
+                metadata = {
+                    "path": _relative_to_repo(self._scenario_path),
+                    "sha256": hashlib.sha256(data).hexdigest(),
+                }
+        self._scenario_cache = metadata
+        return metadata
+
+    def _source_digest(self) -> dict[str, Any] | None:
+        if self._source_digest_cache is not False:
+            return self._source_digest_cache  # type: ignore[return-value]
+        digest = None
+        if self.build:
+            digest = _directory_digest(paths.user_app_dir_from_env())
+        self._source_digest_cache = digest
+        return digest
 
     def _frames(self) -> list[Path]:
         if self.session_dir is None:
@@ -379,3 +414,38 @@ def _display_metadata(ready: Mapping[str, Any]) -> dict[str, int] | None:
     if not isinstance(display, Mapping) or display_problem(display) is not None:
         return None
     return {"width": display["width"], "height": display["height"]}
+
+
+def _relative_to_repo(path: Path) -> str:
+    try:
+        return path.resolve().relative_to(paths.REPO_ROOT.resolve()).as_posix()
+    except (OSError, ValueError):
+        return path.resolve().as_posix()
+
+
+def _directory_digest(directory: Path) -> dict[str, Any] | None:
+    if not directory.is_dir():
+        return None
+    digest = hashlib.sha256()
+    files = 0
+    try:
+        entries = sorted(
+            path for path in directory.rglob("*") if path.is_file()
+        )
+    except OSError:
+        return None
+    for path in entries:
+        try:
+            relative = path.relative_to(directory).as_posix()
+            data = path.read_bytes()
+        except (OSError, ValueError):
+            continue
+        digest.update(relative.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(data)
+        files += 1
+    return {
+        "dir": _relative_to_repo(directory),
+        "sha256": digest.hexdigest(),
+        "files": files,
+    }

@@ -462,6 +462,8 @@ class SessionSchemaTest(unittest.TestCase):
             "schema": MANIFEST_SCHEMA,
             "id": "20260102-030405-abcd",
             "status": "ok",
+            "scenario": None,
+            "source_digest": None,
             "mode": "headless",
             "input": ["real", "virtual"],
             "build": {"status": "ok", "log": "build.log"},

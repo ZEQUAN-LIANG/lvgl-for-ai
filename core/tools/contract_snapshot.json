@@ -5,30 +5,76 @@
       "cli": {
         "help": {
           "exit": 0,
-          "text": "usage: cli.py [-h] [--lvgl LVGL] [--app APP] [--record | --no-record] [--build | --no-build] [--prebuilt | --source] [--scenario SCENARIO | --idle] [--yes] [--offline] [--json] Run a headless LVGL session and optionally play a scenario. arguments: -h, --help show this help message and exit --lvgl LVGL LVGL version, e.g. 9.6 (default: scenario lvgl, LVGL_AI_LVGL_VERSION, or 9.6) --app APP user app variant (forwarded as LVGL_AI_DEMO); with --scenario the scenario's app is used when this flag is omitted --record, --no-record record frames and evidence files (default: on) --build, --no-build rebuild lvgl_engine from user/app before launch (default: on); --no-build uses an existing build/ engine --prebuilt compile user/app against the prebuilt host SDK in sdk/<version> instead of CMake --source build from lvgl-src/<version> with CMake (default: auto; prebuilt is used when the source tree is missing) --scenario SCENARIO scenario JSON file to play after startup --idle keep the session running until Ctrl+C --yes download a missing LVGL version pack without prompting --offline never download a missing LVGL version pack --json print one JSON summary on stdout"
+          "text": "usage: cli.py [-h] [--lvgl LVGL] [--app APP] [--record | --no-record] [--build | --no-build] [--prebuilt | --source] [--scenario SCENARIO | --idle] [--yes] [--offline] [--json] Run a headless LVGL session and optionally play a scenario. arguments: -h, --help show this help message and exit --lvgl LVGL LVGL version, e.g. 9.6 (default: scenario lvgl, LVGL_AI_LVGL_VERSION, or 9.6) --app APP user app variant (forwarded as LVGL_AI_DEMO); with --scenario the scenario's app is used when this flag is omitted --record, --no-record record frames and evidence files (default: on) --build, --no-build rebuild lvgl_engine from user/app before launch (default: on); --no-build uses an existing build/ engine --prebuilt compile user/app against the prebuilt host SDK in sdk/<version> instead of CMake --source build from lvgl-src/<version> with CMake (default: auto; prebuilt is used when the source tree is missing) --scenario SCENARIO scenario JSON file to play after startup --idle keep the session running until Ctrl+C --yes download a missing LVGL version pack without prompting --offline never download a missing LVGL version pack --json print the session index as JSON on stdout"
         },
         "invalid_exit": 2,
         "json_build_error": {
           "error_code": "build_error",
           "exit": 1,
-          "keys": [
+          "index_keys": [
             "annotations",
-            "app",
+            "build",
+            "clicks",
+            "counts",
+            "diffs",
             "display",
             "effective_app",
             "error",
             "frame_count",
+            "frames",
+            "inputs",
             "log_tail",
-            "manifest_path",
+            "log_truncated",
+            "lvgl",
             "marks",
+            "mode",
+            "next_reads",
+            "raw_files",
+            "record_changed_only",
+            "recorded",
             "requested_app",
+            "schema",
             "session_dir",
             "session_id",
             "snapshots",
             "status",
+            "timeline",
+            "truncated",
             "whiteboards"
           ],
-          "manifest_path_present": true,
+          "keys": [
+            "annotations",
+            "build",
+            "clicks",
+            "counts",
+            "diffs",
+            "display",
+            "effective_app",
+            "error",
+            "frame_count",
+            "frames",
+            "inputs",
+            "log_tail",
+            "log_truncated",
+            "lvgl",
+            "marks",
+            "mode",
+            "next_reads",
+            "raw_files",
+            "record_changed_only",
+            "recorded",
+            "requested_app",
+            "schema",
+            "session_dir",
+            "session_id",
+            "snapshots",
+            "status",
+            "timeline",
+            "truncated",
+            "whiteboards"
+          ],
+          "manifest_path_present": false,
+          "session_dir_present": true,
           "session_id_present": true,
           "stdout_lines": 1
         },
@@ -204,7 +250,7 @@
               "choices": null,
               "default": false,
               "dest": "json",
-              "help": "print one JSON summary on stdout",
+              "help": "print the session index as JSON on stdout",
               "nargs": 0,
               "option_strings": [
                 "--json"
@@ -376,6 +422,482 @@
           "description": "Create a user app variant, scenario, and apps[] registration.",
           "mutually_exclusive": [],
           "prog": "new_app.py"
+        }
+      },
+      "session_report": {
+        "full_exit": 2,
+        "help": {
+          "exit": 0,
+          "text": "usage: session_report.py [-h] [--latest] [--log-tail N] [--compact] [--json] [SESSION] Read one session's evidence without starting an engine or web. The default output is the session index; query subcommands are bounded and every command accepts --json. positional arguments: SESSION session directory or manifest.json arguments: -h, --help show this help message and exit --latest use the newest session under the sessions root (default) --log-tail N include the last N engine.log lines (default: 10) --compact shrink snapshots, note text and the log tail --json print the session index as one JSON object queries: timeline, diffs, frames, notes, resolve, context, feedback; visual: crop, contact-sheet, pixel, compare"
+        },
+        "json_index": {
+          "error_code": null,
+          "exit": 0,
+          "json_shape": {
+            "object": {
+              "annotations": {
+                "object": {
+                  "count": "integer",
+                  "notes": {
+                    "array": [
+                      {
+                        "object": {
+                          "anchor_frames": {
+                            "array": [
+                              "integer"
+                            ]
+                          },
+                          "annotated": {
+                            "array": []
+                          },
+                          "annotated_regions": {
+                            "array": []
+                          },
+                          "author": "string",
+                          "feedback_anchor": {
+                            "object": {
+                              "kind": "string",
+                              "t_ms": "integer"
+                            }
+                          },
+                          "frame_end": "integer",
+                          "frame_images": {
+                            "array": [
+                              "string"
+                            ]
+                          },
+                          "frame_start": "integer",
+                          "id": "string",
+                          "images": {
+                            "array": [
+                              "string"
+                            ]
+                          },
+                          "regions": {
+                            "array": [
+                              {
+                                "object": {
+                                  "annotated": "null",
+                                  "frame_no": "integer",
+                                  "h": "integer",
+                                  "image": "string",
+                                  "w": "integer",
+                                  "x": "integer",
+                                  "y": "integer"
+                                }
+                              }
+                            ]
+                          },
+                          "source": "string",
+                          "tags": {
+                            "array": [
+                              "string"
+                            ]
+                          },
+                          "text": "string"
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "build": {
+                "object": {
+                  "log": "string",
+                  "status": "string"
+                }
+              },
+              "clicks": {
+                "array": []
+              },
+              "counts": {
+                "object": {
+                  "annotations": "integer",
+                  "checks": {
+                    "object": {
+                      "failed": "integer",
+                      "total": "integer"
+                    }
+                  },
+                  "clicks": "integer",
+                  "drags": "integer",
+                  "inputs": "integer",
+                  "marks": "integer",
+                  "snapshots": "integer",
+                  "waits": "integer",
+                  "whiteboards": "integer"
+                }
+              },
+              "diffs": {
+                "object": {
+                  "changed_rows": "integer",
+                  "file": "string",
+                  "max_changed_ratio": "number",
+                  "rows": "integer",
+                  "threshold": "integer",
+                  "top": {
+                    "array": [
+                      {
+                        "object": {
+                          "bbox": {
+                            "object": {
+                              "h": "integer",
+                              "w": "integer",
+                              "x": "integer",
+                              "y": "integer"
+                            }
+                          },
+                          "changed_px": "integer",
+                          "changed_ratio": "number",
+                          "frame_no": "integer",
+                          "image": "string",
+                          "t_ms": "integer"
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "display": "null",
+              "effective_app": "null",
+              "error": "null",
+              "frame_count": "integer",
+              "frames": {
+                "object": {
+                  "count": "integer",
+                  "dir": "string",
+                  "last": "string",
+                  "last_snapshot": "string",
+                  "last_t_ms": "integer"
+                }
+              },
+              "inputs": {
+                "object": {
+                  "hit_empty": "integer",
+                  "hit_named": "integer"
+                }
+              },
+              "log_tail": {
+                "array": [
+                  "string"
+                ]
+              },
+              "log_truncated": "boolean",
+              "lvgl": "string",
+              "marks": {
+                "array": [
+                  {
+                    "object": {
+                      "frame_no": "integer",
+                      "id": "string",
+                      "t_ms": "integer"
+                    }
+                  }
+                ]
+              },
+              "mode": "string",
+              "next_reads": {
+                "array": [
+                  {
+                    "object": {
+                      "command": "string",
+                      "est_bytes": "integer",
+                      "why": "string"
+                    }
+                  }
+                ]
+              },
+              "raw_files": {
+                "object": {
+                  "build_log": {
+                    "object": {
+                      "bytes": "integer",
+                      "path": "string"
+                    }
+                  },
+                  "engine_log": {
+                    "object": {
+                      "bytes": "integer",
+                      "path": "string"
+                    }
+                  },
+                  "frame_diffs": {
+                    "object": {
+                      "bytes": "integer",
+                      "path": "string",
+                      "rows": "integer"
+                    }
+                  },
+                  "manifest": {
+                    "object": {
+                      "bytes": "integer",
+                      "path": "string"
+                    }
+                  },
+                  "reference_diffs": {
+                    "object": {
+                      "bytes": "integer",
+                      "path": "string",
+                      "rows": "integer"
+                    }
+                  },
+                  "timeline": {
+                    "object": {
+                      "bytes": "integer",
+                      "path": "string",
+                      "rows": "integer"
+                    }
+                  }
+                }
+              },
+              "record_changed_only": "boolean",
+              "recorded": "boolean",
+              "requested_app": "string",
+              "schema": "string",
+              "session_dir": "string",
+              "session_id": "string",
+              "snapshots": {
+                "object": {
+                  "count": "integer",
+                  "dir": "string",
+                  "items": {
+                    "array": [
+                      {
+                        "object": {
+                          "frame_no": "integer",
+                          "label": "string",
+                          "path": "string",
+                          "t_ms": "integer"
+                        }
+                      }
+                    ]
+                  },
+                  "last": "string"
+                }
+              },
+              "status": "string",
+              "timeline": {
+                "object": {
+                  "end": {
+                    "object": {
+                      "frame_count": "integer",
+                      "t_ms": "integer",
+                      "truncated": "boolean"
+                    }
+                  },
+                  "first_frame_no": "integer",
+                  "first_t_ms": "integer",
+                  "last_frame_no": "integer",
+                  "last_frame_t_ms": "integer"
+                }
+              },
+              "truncated": "boolean",
+              "whiteboards": {
+                "object": {
+                  "count": "integer",
+                  "items": {
+                    "array": []
+                  },
+                  "pending": "integer"
+                }
+              }
+            }
+          },
+          "keys": [
+            "annotations",
+            "build",
+            "clicks",
+            "counts",
+            "diffs",
+            "display",
+            "effective_app",
+            "error",
+            "frame_count",
+            "frames",
+            "inputs",
+            "log_tail",
+            "log_truncated",
+            "lvgl",
+            "marks",
+            "mode",
+            "next_reads",
+            "raw_files",
+            "record_changed_only",
+            "recorded",
+            "requested_app",
+            "schema",
+            "session_dir",
+            "session_id",
+            "snapshots",
+            "status",
+            "timeline",
+            "truncated",
+            "whiteboards"
+          ],
+          "stdout_lines": 1
+        },
+        "parser": {
+          "actions": [
+            {
+              "action": "_HelpAction",
+              "choices": null,
+              "default": "==SUPPRESS==",
+              "dest": "help",
+              "help": "show this help message and exit",
+              "nargs": 0,
+              "option_strings": [
+                "-h",
+                "--help"
+              ],
+              "required": false,
+              "type": null
+            },
+            {
+              "action": "_StoreAction",
+              "choices": null,
+              "default": null,
+              "dest": "session",
+              "help": "session directory or manifest.json",
+              "nargs": "?",
+              "option_strings": [],
+              "required": false,
+              "type": null
+            },
+            {
+              "action": "_StoreTrueAction",
+              "choices": null,
+              "default": false,
+              "dest": "latest",
+              "help": "use the newest session under the sessions root (default)",
+              "nargs": 0,
+              "option_strings": [
+                "--latest"
+              ],
+              "required": false,
+              "type": null
+            },
+            {
+              "action": "_StoreAction",
+              "choices": null,
+              "default": 10,
+              "dest": "log_tail",
+              "help": "include the last N engine.log lines (default: 10)",
+              "nargs": null,
+              "option_strings": [
+                "--log-tail"
+              ],
+              "required": false,
+              "type": "_log_tail_lines"
+            },
+            {
+              "action": "_StoreTrueAction",
+              "choices": null,
+              "default": false,
+              "dest": "compact",
+              "help": "shrink snapshots, note text and the log tail",
+              "nargs": 0,
+              "option_strings": [
+                "--compact"
+              ],
+              "required": false,
+              "type": null
+            },
+            {
+              "action": "_StoreTrueAction",
+              "choices": null,
+              "default": false,
+              "dest": "json",
+              "help": "print the session index as one JSON object",
+              "nargs": 0,
+              "option_strings": [
+                "--json"
+              ],
+              "required": false,
+              "type": null
+            }
+          ],
+          "description": "Read one session's evidence without starting an engine or web. The default output is the session index; query subcommands are bounded and every command accepts --json.",
+          "mutually_exclusive": [],
+          "prog": "session_report.py"
+        },
+        "timeline": {
+          "error_code": null,
+          "exit": 0,
+          "json_shape": {
+            "object": {
+              "returned": "integer",
+              "rows": {
+                "array": [
+                  {
+                    "object": {
+                      "action": "string",
+                      "device": "string",
+                      "frame_no": "integer",
+                      "hit": "string",
+                      "hit_class": "string",
+                      "schema": "string",
+                      "seq": "integer",
+                      "t_ms": "integer",
+                      "type": "string",
+                      "x": "integer",
+                      "y": "integer"
+                    }
+                  },
+                  {
+                    "object": {
+                      "file": "string",
+                      "frame_no": "integer",
+                      "label": "string",
+                      "schema": "string",
+                      "t_ms": "integer",
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "object": {
+                      "frame_count": "integer",
+                      "schema": "string",
+                      "t_ms": "integer",
+                      "truncated": "boolean",
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "object": {
+                      "frame_end": "integer",
+                      "frame_start": "integer",
+                      "schema": "string",
+                      "t_ms_end": "integer",
+                      "t_ms_start": "integer",
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "object": {
+                      "frame_no": "integer",
+                      "id": "string",
+                      "schema": "string",
+                      "t_ms": "integer",
+                      "type": "string"
+                    }
+                  }
+                ]
+              },
+              "schema": "string",
+              "session_dir": "string",
+              "total": "integer",
+              "truncated": "boolean"
+            }
+          },
+          "keys": [
+            "returned",
+            "rows",
+            "schema",
+            "session_dir",
+            "total",
+            "truncated"
+          ],
+          "stdout_lines": 1
         }
       },
       "web": {
@@ -752,7 +1274,9 @@
                   "lvgl_src": "string",
                   "mode": "string",
                   "record_changed_only": "boolean",
+                  "scenario": "null",
                   "schema": "string",
+                  "source_digest": "null",
                   "status": "string",
                   "tool_version": "string",
                   "truncated": "boolean"
@@ -946,6 +1470,13 @@
                     "array": [
                       {
                         "object": {
+                          "author": "string",
+                          "feedback_anchor": {
+                            "object": {
+                              "kind": "string",
+                              "t_ms": "integer"
+                            }
+                          },
                           "frame_no": "integer",
                           "id": "string",
                           "regions": {
@@ -961,6 +1492,7 @@
                               }
                             ]
                           },
+                          "source": "string",
                           "t_ms": "integer",
                           "tags": {
                             "array": [
@@ -1076,6 +1608,13 @@
                     "array": [
                       {
                         "object": {
+                          "author": "string",
+                          "feedback_anchor": {
+                            "object": {
+                              "kind": "string",
+                              "t_ms": "integer"
+                            }
+                          },
                           "frame_no": "integer",
                           "id": "string",
                           "regions": {
@@ -1091,6 +1630,7 @@
                               }
                             ]
                           },
+                          "source": "string",
                           "t_ms": "integer",
                           "tags": {
                             "array": [
@@ -1107,6 +1647,13 @@
               },
               "note": {
                 "object": {
+                  "author": "string",
+                  "feedback_anchor": {
+                    "object": {
+                      "kind": "string",
+                      "t_ms": "integer"
+                    }
+                  },
                   "frame_no": "integer",
                   "id": "string",
                   "regions": {
@@ -1122,6 +1669,7 @@
                       }
                     ]
                   },
+                  "source": "string",
                   "t_ms": "integer",
                   "tags": {
                     "array": [
@@ -1211,6 +1759,13 @@
                     "array": [
                       {
                         "object": {
+                          "author": "string",
+                          "feedback_anchor": {
+                            "object": {
+                              "kind": "string",
+                              "t_ms": "integer"
+                            }
+                          },
                           "frame_no": "integer",
                           "id": "string",
                           "regions": {
@@ -1226,6 +1781,7 @@
                               }
                             ]
                           },
+                          "source": "string",
                           "t_ms": "integer",
                           "tags": {
                             "array": [
@@ -4587,7 +5143,7 @@
           "ScenarioError",
           "__version__",
           "play_scenario",
-          "summarize_session"
+          "session_index"
         ],
         "members": {
           "BuildError": {
@@ -4963,6 +5519,11 @@
                 "name": "sessions_root"
               },
               {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "scenario"
+              },
+              {
                 "default": 30.0,
                 "kind": "KEYWORD_ONLY",
                 "name": "timeout"
@@ -5070,7 +5631,7 @@
               }
             ]
           },
-          "summarize_session": {
+          "session_index": {
             "kind": "function",
             "signature": [
               {
@@ -5078,9 +5639,14 @@
                 "name": "session"
               },
               {
-                "default": 20,
+                "default": 10,
                 "kind": "POSITIONAL_OR_KEYWORD",
                 "name": "log_tail_lines"
+              },
+              {
+                "default": false,
+                "kind": "KEYWORD_ONLY",
+                "name": "compact"
               }
             ]
           }
@@ -5101,11 +5667,19 @@
             "array": [
               {
                 "object": {
+                  "author": "string",
+                  "feedback_anchor": {
+                    "object": {
+                      "kind": "string",
+                      "t_ms": "integer"
+                    }
+                  },
                   "frame_no": "integer",
                   "id": "string",
                   "regions": {
                     "array": []
                   },
+                  "source": "string",
                   "t_ms": "integer",
                   "tags": {
                     "array": [
@@ -5237,7 +5811,9 @@
           "lvgl_src": "string",
           "mode": "string",
           "record_changed_only": "boolean",
+          "scenario": "null",
           "schema": "string",
+          "source_digest": "null",
           "status": "string",
           "tool_version": "string",
           "truncated": "boolean"
@@ -5269,11 +5845,19 @@
       },
       "note_shape": {
         "object": {
+          "author": "string",
+          "feedback_anchor": {
+            "object": {
+              "kind": "string",
+              "t_ms": "integer"
+            }
+          },
           "frame_no": "integer",
           "id": "string",
           "regions": {
             "array": []
           },
+          "source": "string",
           "t_ms": "integer",
           "tags": {
             "array": [
@@ -5372,7 +5956,9 @@
         "lvgl",
         "lvgl_src",
         "mode",
+        "scenario",
         "schema",
+        "source_digest",
         "status",
         "tool_version",
         "truncated"

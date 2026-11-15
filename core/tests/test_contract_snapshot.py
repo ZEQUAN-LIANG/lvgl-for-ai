@@ -115,7 +115,9 @@ class ContractSnapshotTest(unittest.TestCase):
 
     def test_cli_parsers_help_exit_codes_and_json(self) -> None:
         cli = self._section("cli")
-        self.assertEqual(sorted(cli), ["cli", "new_app", "web"])
+        self.assertEqual(
+            sorted(cli), ["cli", "new_app", "session_report", "web"]
+        )
         options = {
             option
             for action in cli["cli"]["parser"]["actions"]
@@ -139,8 +141,19 @@ class ContractSnapshotTest(unittest.TestCase):
         )
         self.assertTrue(cli["cli"]["json_build_error"]["session_id_present"])
         self.assertTrue(
-            cli["cli"]["json_build_error"]["manifest_path_present"]
+            cli["cli"]["json_build_error"]["session_dir_present"]
         )
+        self.assertIn("schema", cli["cli"]["json_build_error"]["keys"])
+        report = cli["session_report"]
+        self.assertEqual(report["json_index"]["exit"], 0)
+        self.assertIn("schema", report["json_index"]["keys"])
+        self.assertIn("counts", report["json_index"]["keys"])
+        self.assertIn("next_reads", report["json_index"]["keys"])
+        self.assertEqual(report["full_exit"], 2)
+        self.assertEqual(report["timeline"]["exit"], 0)
+        self.assertEqual(report["timeline"]["keys"], [
+            "returned", "rows", "schema", "session_dir", "total", "truncated"
+        ])
         web_options = {
             option
             for action in cli["web"]["parser"]["actions"]

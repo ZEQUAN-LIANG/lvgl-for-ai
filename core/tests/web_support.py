@@ -166,6 +166,9 @@ def make_web_session(
                             "regions": [{"x": 0, "y": 0, "w": 1, "h": 1}],
                             "tags": ["seed"],
                             "text": "existing note",
+                            "author": "human",
+                            "source": "web",
+                            "feedback_anchor": {"kind": "t_ms", "t_ms": 0},
                         }
                     ],
                 },
@@ -199,6 +202,8 @@ def make_web_session(
         "id": session_id,
         "status": status,
         "app": app,
+        "scenario": None,
+        "source_digest": None,
         "mode": "headless",
         "input": ["real", "virtual"],
         "build": {"status": "ok", "log": "build.log"},

@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from lvgl_ai import Recording, summarize_session
+from lvgl_ai import Recording, session_index
 from lvgl_ai.control import session_schema
 from lvgl_ai.control.retention import prune_sessions
 from session_fixtures import (
@@ -39,7 +39,7 @@ class SessionContractTest(unittest.TestCase):
     def test_recording_summary_and_web_share_display_status_and_files(self) -> None:
         recording = Recording.open(self.session)
         manifest = recording.manifest
-        summary = summarize_session(self.session)
+        index = session_index(self.session)
 
         status, _, listing = self.harness.json("GET", "/api/sessions")
         self.assertEqual(status, 200)
@@ -57,10 +57,10 @@ class SessionContractTest(unittest.TestCase):
         self.assertEqual(manifest["display"], DISPLAY)
         self.assertEqual(manifest["frame_count"], 2)
 
-        self.assertEqual(summary["display"], DISPLAY)
+        self.assertEqual(index["display"], DISPLAY)
         self.assertEqual(detail["manifest"]["display"], DISPLAY)
         self.assertEqual(entry["status"], "ok")
-        self.assertEqual(summary["status"], "ok")
+        self.assertEqual(index["status"], "ok")
         self.assertEqual(detail["manifest"]["status"], "ok")
 
         expected_frames = [FRAME_1, FRAME_2]
@@ -69,17 +69,18 @@ class SessionContractTest(unittest.TestCase):
             ["000001.png", "000002.png"],
         )
         self.assertEqual(
-            [Path(path).name for path in summary["frames"]],
-            ["000001.png", "000002.png"],
+            Path(index["frames"]["last"]).name,
+            "000002.png",
         )
+        self.assertEqual(index["frames"]["count"], 2)
         self.assertEqual(
             [frame["file"] for frame in detail["frames"]], expected_frames
         )
         self.assertEqual(detail["frames_available"], 2)
         self.assertEqual(detail["frame_count"], 2)
         self.assertEqual(
-            [Path(snapshot["path"]).name for snapshot in summary["snapshots"]],
-            [Path(SNAPSHOT).name],
+            Path(index["snapshots"]["items"][0]["path"]).name,
+            Path(SNAPSHOT).name,
         )
         self.assertEqual(
             [snapshot["file"] for snapshot in detail["snapshots"]], [SNAPSHOT]
@@ -120,10 +121,10 @@ class SessionContractTest(unittest.TestCase):
 
         removed = prune_sessions(self.root, limit=1)
 
-        self.assertEqual(removed, [old])
+        self.assertEqual(removed, [])
         self.assertEqual(
             sorted(path.name for path in self.root.iterdir()),
-            [SESSION_NAME],
+            sorted([SESSION_NAME, OLD_SESSION]),
         )
 
 
@@ -164,14 +165,13 @@ class FileLayoutConstantsTest(unittest.TestCase):
                 ["n1"],
             )
 
-            summary = summarize_session(self.session)
+            index = session_index(self.session)
             self.assertEqual(
-                [Path(path).parent.name for path in summary["frames"]],
-                ["frames-b3", "frames-b3"],
+                Path(index["frames"]["last"]).parent.name, "frames-b3"
             )
-            self.assertEqual(summary["annotations"]["count"], 1)
+            self.assertEqual(index["annotations"]["count"], 1)
             self.assertEqual(
-                summary["annotations"]["notes"][0]["id"], "n1"
+                index["annotations"]["notes"][0]["id"], "n1"
             )
 
     def test_retention_follows_the_shared_manifest_name(self) -> None:
@@ -190,10 +190,10 @@ class FileLayoutConstantsTest(unittest.TestCase):
 
             removed = prune_sessions(self.root, limit=1)
 
-        self.assertEqual(removed, [old])
+        self.assertEqual(removed, [])
         self.assertEqual(
             sorted(path.name for path in self.root.iterdir()),
-            [SESSION_NAME],
+            sorted([SESSION_NAME, OLD_SESSION]),
         )
 
     def test_web_reads_follow_the_shared_names(self) -> None:
@@ -355,7 +355,7 @@ class RecordedContractTest(unittest.TestCase):
         self.assertFalse(
             session_schema.session_is_recorded(manifest, self.session)
         )
-        self.assertFalse(summarize_session(self.session)["recorded"])
+        self.assertFalse(session_index(self.session)["recorded"])
 
     def test_recorded_needs_manifest_intent_and_both_evidence_files(self) -> None:
         manifest = self._manifest()
@@ -372,6 +372,57 @@ class RecordedContractTest(unittest.TestCase):
         self.assertFalse(
             session_schema.session_is_recorded(manifest, self.session)
         )
+
+
+class ManifestSourceFieldsTest(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        self.session = make_summary_session(self.root, display=DISPLAY)
+        self.path = self.session / "manifest.json"
+
+    def _write(self, **changes) -> None:
+        manifest = json.loads(self.path.read_text(encoding="utf-8"))
+        manifest.update(changes)
+        self.path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    def test_missing_scenario_or_source_digest_is_rejected(self) -> None:
+        for field in ("scenario", "source_digest"):
+            with self.subTest(field=field):
+                self.setUp()
+                manifest = json.loads(
+                    self.path.read_text(encoding="utf-8")
+                )
+                del manifest[field]
+                self.path.write_text(json.dumps(manifest), encoding="utf-8")
+                with self.assertRaises(ValueError) as caught:
+                    Recording.open(self.session)
+                self.assertIn(field, str(caught.exception))
+
+    def test_null_and_object_values_are_accepted(self) -> None:
+        self._write(
+            scenario={"path": "user/scenarios/x.json", "sha256": "a" * 64},
+            source_digest={"dir": "user/app", "sha256": "b" * 64, "files": 2},
+        )
+
+        self.assertEqual(Recording.open(self.session).manifest["schema"],
+                         "lvgl-ai-session-v1")
+
+    def test_incomplete_objects_are_rejected(self) -> None:
+        cases = [
+            {"scenario": {"path": "x.json"}},
+            {"source_digest": {"dir": "user/app", "files": 1}},
+            {"scenario": "user/scenarios/x.json"},
+            {"source_digest": []},
+        ]
+        for change in cases:
+            with self.subTest(change=change):
+                self.setUp()
+                self._write(**change)
+                with self.assertRaises(ValueError):
+                    Recording.open(self.session)
 
 
 class DisplayValidatorTest(unittest.TestCase):

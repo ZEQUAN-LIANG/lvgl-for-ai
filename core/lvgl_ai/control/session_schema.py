@@ -45,6 +45,8 @@ MANIFEST_FIELDS = (
     "id",
     "status",
     "app",
+    "scenario",
+    "source_digest",
     "record_changed_only",
     "mode",
     "input",
@@ -191,6 +193,18 @@ def validate_manifest(data: dict[str, Any], path: Path) -> dict[str, Any]:
         allowed = ", ".join(sorted(SESSION_STATUSES))
         raise ValueError(f"{path}: status must be one of {allowed}; got {status!r}")
     validate_display(data.get("display"), path=path, allow_none=True)
+    _validate_optional_object(
+        data.get("scenario"),
+        path=path,
+        label="scenario",
+        fields=("path", "sha256"),
+    )
+    _validate_optional_object(
+        data.get("source_digest"),
+        path=path,
+        label="source_digest",
+        fields=("dir", "sha256", "files"),
+    )
     _require_int(data, "frame_count", path)
     if not isinstance(data["checks"], list):
         raise ValueError(f"{path}: checks must be a list")
@@ -231,6 +245,24 @@ def list_pngs(directory: Path) -> list[Path]:
     if not directory.is_dir():
         return []
     return sorted(path for path in directory.glob("*.png") if path.is_file())
+
+
+def _validate_optional_object(
+    value: Any,
+    *,
+    path: Path,
+    label: str,
+    fields: tuple[str, ...],
+) -> None:
+    if value is None:
+        return
+    if not isinstance(value, dict):
+        raise ValueError(f"{path}: {label} must be null or an object")
+    missing = [field for field in fields if field not in value]
+    if missing:
+        raise ValueError(
+            f"{path}: {label} is missing {', '.join(missing)}"
+        )
 
 
 def _require_int(data: dict[str, Any], field: str, path: Path) -> None:

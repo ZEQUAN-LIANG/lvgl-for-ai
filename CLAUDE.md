@@ -92,7 +92,7 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 
 - `--no-build` 复用 `build/lvgl_<token>/lvgl_engine.exe`，缺失时报 `EngineNotFound`；默认 `--build` 会重新配置/编译 `user/app`。
 - 录制只保存画面变化的帧：只在画面变化时写 PNG 与 timeline frame / diff 行；`frame_no` 保持连续。CLI 与网页录制都没有逐帧开关；无变化帧不进入磁盘、时间轴和 AI 摘要。
-- `session_report.py` 与 CLI `--json` 共用 `summarize_session`；只给证据，不做判定。视觉输出必须显式给 `--out`，且不能写入会话证据目录。
+- `session_report.py` 与 CLI `--json` 共用 `session_index`；只给证据，不做判定。视觉输出必须显式给 `--out`，且不能写入会话证据目录。
 - `release_all.py` 只产出两个 zip；`release.py` 才产出解包目录、`.sha256` 与 release manifest。两者在 engine 源码、`user/app`、宿主 SDK manifest 与 GCC 版本摘要未变时复用 `build/release/lvgl_<token>/`；`--force-build` 强制重建。
 - `upload_release.py` 只读 `GITHUB_TOKEN` / `GITEE_TOKEN`；`--replace` 删除同名旧资产，`--notes-file` 不传时保留线上 Release 正文。
 - 环境变量：`LVGL_AI_LVGL_VERSION`（默认 9.6）、`LVGL_AI_LVGL_SRC`、`LVGL_AI_ZLIB_SRC`、`LVGL_AI_LIBPNG_SRC`、`LVGL_AI_SESSIONS_ROOT`、`LVGL_AI_MAX_FRAMES`、`LVGL_AI_MAX_LOG_BYTES`、`LVGL_AI_ENCODE_BUDGET_BYTES`、`LVGL_AI_DEMO`、`LVGL_AI_USER_APP_DIR`、`LVGL_AI_GCC`。
@@ -108,7 +108,7 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 - `control/runtime.py`：`Runtime(app=...)` 选择用户应用变体；`pointer` / `key` / `encoder` / `tick` / `wait` / `input` / `snapshot` / `mark`；`wait(ms)`、`wait(frames=n)`、`wait_stable(...)`。`build_mode` 默认为 `auto`。
 - `control/prebuilt.py`：宿主 SDK manifest 校验、编译器解析与 gcc 编译/链接命令构造；`control/build_plan.py` 按 `auto` / `source` / `prebuilt` 选择构建路径，预编译对象缓存与源码构建共用 `build/lvgl_<version>/`，切换模式时删除旧 engine。
 - `control/recording.py`：`Recording` 只读视图，`open()` 不启动 engine；`annotations` 是唯一可写入口。
-- `control/evidence.py`：`summarize_session` 是 CLI `--json` 与 `session_report.py` 共用的唯一摘要入口。
+- `control/evidence.py`：`session_index` 是 CLI `--json` 与 `session_report.py` 共用的唯一索引入口。
 - `core/session_report.py`：只读证据报告与视觉证据子命令（`crop` / `contact-sheet` / `pixel` / `compare`）。
 - `lvgl_ai/scenario.py`：`play_scenario` 把 `lvgl-ai-scenario-v1` 步骤翻译成 Runtime 调用；`click_at`、`drag`、`pointer`、`text` 只在控制层展开。
 - `control/session.py`、`control/engine_link.py`、`control/build_plan.py`、`control/retention.py`、`control/engine_guard.py`：会话状态、engine 子进程与协议回执、构建计划、会话保留、非默认应用目录的构建锁与残留 engine。改这些行为先找对应模块，不要在 `Runtime` 里另起一套。
@@ -119,7 +119,7 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 
 **多版本**：`adapter_9x.c` / `adapter_8x.c` 是唯一 include LVGL / lodepng 的文件；engine 其余部分只依赖 `adapter.h`。PNG 编码在 `png_writer.c`，只依赖 libpng/zlib。9.x 用 `lv_indev_create` / `lv_indev_set_read_cb`，8.x 用 `lv_indev_drv_*`。9.2+ 有对象名；9.1 与 8.x 的 `hit` 为空，只能看 `hit_class`。支持 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3；发布包 intro 应用按 9.4+ 门编写，9.1/8.x 走旧 harness。跨版本只比较事件语义与 session 文件集合，不比较像素。版本索引在 `meta/versions.json`（开发仓库与发布包同一位置），安装入口 `core/tools/install_version.py`，场景可用 `"lvgl"` 字段选择版本（`--lvgl` 优先）。
 
-**证据**：`sessions/<id>/` 包含 `manifest.json`（`lvgl-ai-session-v1`，status 只有 `ok` / `build_error` / `link_error` / `crash` / `harness_error`）、`timeline.ndjson`、`frame_diffs.ndjson`、`frames/`、`snapshots/`、`engine.log`、`build.log`、`annotations.json`、`whiteboards.json`、`whiteboards/`。标注是单帧（`frame_no` + `regions`）或时间区间（`frame_start`..`frame_end` + `anchors[]`，每个锚点一帧的 `regions`）。每个 region 同时保存 bbox、原始局部图（`regions/<note>-aN-rM.png`）和带标注局部图（`...-annotated.png`）；每个锚点另有整帧原图与带标注整帧。白板有 `frame` / `range` / `global` 三种 scope，保存即生效；图片在 `whiteboards/`，文字在 `text` / `labels`。AI 读取顺序：`summarize_session` 摘要里的 `annotations` / `whiteboards` 索引（`frame_images`、`annotated`、`regions`、`images`、`text`、`labels`）→ 先读文字和 bbox → 按需打开整帧或局部图。录制期间有临时 `.encode/`，正常停止后删除。`record=false` 不写 frames / timeline / frame_diffs，只写临时 `live.rgba`。默认上限 600 帧、日志 16 MB。
+**证据**：`sessions/<id>/` 包含 `manifest.json`（`lvgl-ai-session-v1`，status 只有 `ok` / `build_error` / `link_error` / `crash` / `harness_error`）、`timeline.ndjson`、`frame_diffs.ndjson`、`frames/`、`snapshots/`、`engine.log`、`build.log`、`annotations.json`、`whiteboards.json`、`whiteboards/`。标注是单帧（`frame_no` + `regions`）或时间区间（`frame_start`..`frame_end` + `anchors[]`，每个锚点一帧的 `regions`）。每个 region 同时保存 bbox、原始局部图（`regions/<note>-aN-rM.png`）和带标注局部图（`...-annotated.png`）；每个锚点另有整帧原图与带标注整帧。白板有 `frame` / `range` / `global` 三种 scope，保存即生效；图片在 `whiteboards/`，文字在 `text` / `labels`。AI 读取顺序：`session_index` 里的 `annotations` / `whiteboards` 索引（`frame_images`、`annotated`、`regions`、`images`、`text`、`labels`）→ 先读文字和 bbox → 按需打开整帧或局部图。录制期间有临时 `.encode/`，正常停止后删除。`record=false` 不写 frames / timeline / frame_diffs，只写临时 `live.rgba`。默认上限 600 帧、日志 16 MB。
 
 ## 目录与产物
 
@@ -145,7 +145,7 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
   变更时同步更新该名单。
 - 不静默自动重建旧 engine；`--no-build` 遇到旧 engine 时直接报错并提示用 `--build` 重建。
 - 不改已安装的 `lvgl-src/<version>/`；要改 LVGL 就把 unified diff 放进 `patches/<version>/`，由 `fetch_lvgl.py` 应用。
-- 不引入第二套协议客户端；CLI、网页与 `session_report.py` 都走 `Runtime` / `Recording` / `summarize_session`。
+- 不引入第二套协议客户端；CLI、网页与 `session_report.py` 都走 `Runtime` / `Recording` / `session_index`。
 - 发布包布局是 `<package>/lvgl-verify-loop/`；开发仓库工具根是 `core/`，两者由 `paths.py` 区分。发布包不含 `runtime/`、`smoke/`、测试与维护脚本。
 - 发布包不自带 Python：宿主机必须提供 Python 3.9+ 并在 PATH 上。改 `user/app/**/*.c` 后重新编译需要 GCC（MinGW-w64 64 位，版本与 `sdk/*/manifest.json` 一致，当前 15.2.0）；从 LVGL 源码构建需要 CMake 3.20+、Ninja 和 GCC。
 - Windows 双击启动器只负责拉起 `pythonw` / `pyw`；端口、URL、HTTP 与串口逻辑留在 Python。

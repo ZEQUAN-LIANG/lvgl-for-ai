@@ -6,7 +6,7 @@
 
 Only argument mapping: parse flags, construct ``Runtime``, run
 ``play_scenario`` or stay idle, then translate the outcome into exit codes and
-the optional ``--json`` summary. Protocol and evidence files live in
+the optional ``--json`` session index. Protocol and evidence files live in
 ``lvgl_ai``; this file never speaks the wire protocol itself.
 
 Exit codes: 0 = session finished ok; 1 = build, link or engine crash;
@@ -25,13 +25,11 @@ scenario's optional ``lvgl`` field selects the version when ``--lvgl`` is
 omitted; explicit ``--lvgl`` wins, then the scenario field, then
 ``LVGL_AI_LVGL_VERSION``, then the default 9.6.
 
-``--json`` prints exactly one JSON object on stdout. The original fields
-``session_id``, ``manifest_path``, ``app`` and ``error`` (``null`` on success)
-are always present; ``session_dir``, ``status``, ``display``, ``frame_count``,
-``requested_app``, ``effective_app``, ``snapshots``, ``marks`` and ``log_tail``
-come from :func:`lvgl_ai.summarize_session` when the session evidence can be
-read. A failed read leaves the original fields in place. Diagnostics stay on
-stderr.
+``--json`` prints exactly one JSON object on stdout. When the session evidence
+is readable it is the same ``lvgl-ai-session-index-v1`` document as
+``session_report.py --json``; otherwise a failed read keeps the original
+``session_id`` / ``manifest_path`` / ``app`` / ``error`` envelope. Diagnostics
+stay on stderr.
 """
 
 from __future__ import annotations
@@ -53,11 +51,10 @@ from lvgl_ai import (
     RuntimeCrash,
     ScenarioError,
     play_scenario,
-    summarize_session,
+    session_index,
 )
 from lvgl_ai import paths
 from lvgl_ai.control.errors import dump_error, exit_code_for
-from lvgl_ai.control.evidence import CLI_EVIDENCE_FIELDS
 from lvgl_ai.control.input import TOKEN_PATTERN, is_token
 from lvgl_ai.scenario import load_scenario
 
@@ -174,7 +171,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--json",
         action="store_true",
-        help="print one JSON summary on stdout",
+        help="print the session index as JSON on stdout",
     )
     return parser
 
@@ -217,6 +214,8 @@ def main(argv: list[str] | None = None) -> int:
         runtime_kwargs["build_mode"] = args.build_mode
     if app is not None:
         runtime_kwargs["app"] = app
+    if args.scenario is not None:
+        runtime_kwargs["scenario"] = args.scenario
     runtime_kwargs["record_changed_only"] = True
     display = None if scenario is None else scenario.get("display")
     if display is not None:
@@ -275,31 +274,34 @@ def _report(error: Exception | None, *, as_json: bool, runtime: Runtime) -> None
     if error is not None:
         print(f"[cli] {error}", file=sys.stderr)
     if as_json:
-        payload = {
-            "session_id": runtime.session_id,
-            "manifest_path": (
-                None if runtime.manifest_path is None else str(runtime.manifest_path)
-            ),
-            "app": getattr(runtime, "app", None),
-            "error": dump_error(error),
-        }
-        _add_evidence(payload, runtime)
-        print(json.dumps(payload, ensure_ascii=False), flush=True)
+        payload = _index_payload(runtime)
+        if payload is None:
+            payload = {
+                "session_id": runtime.session_id,
+                "manifest_path": (
+                    None
+                    if runtime.manifest_path is None
+                    else str(runtime.manifest_path)
+                ),
+                "app": getattr(runtime, "app", None),
+                "error": dump_error(error),
+            }
+        print(
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+            flush=True,
+        )
         return
     if error is None and runtime.session_dir is not None:
         print(runtime.session_dir)
 
 
-def _add_evidence(payload: dict, runtime: Runtime) -> None:
+def _index_payload(runtime: Runtime) -> dict | None:
     if runtime.session_dir is None:
-        return
-    payload["session_dir"] = str(Path(runtime.session_dir).resolve())
+        return None
     try:
-        summary = summarize_session(runtime.session_dir)
+        return session_index(runtime.session_dir)
     except Exception:  # noqa: BLE001 - evidence is optional for the CLI
-        return
-    for field in CLI_EVIDENCE_FIELDS:
-        payload[field] = summary[field]
+        return None
 
 
 if __name__ == "__main__":

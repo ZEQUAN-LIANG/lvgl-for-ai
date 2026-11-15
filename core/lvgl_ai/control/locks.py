@@ -17,7 +17,9 @@ from typing import IO
 from .errors import BuildError
 
 LOCK_FILE_NAME = ".build.lock"
+ANNOTATIONS_LOCK_FILE_NAME = ".annotations.lock"
 BUILD_LOCK_TIMEOUT_S = 660.0
+ANNOTATIONS_LOCK_TIMEOUT_S = 30.0
 RETRY_INTERVAL_S = 0.1
 
 if os.name == "nt":
@@ -74,6 +76,46 @@ def build_lock(
     build_dir: str | Path, *, timeout: float = BUILD_LOCK_TIMEOUT_S
 ) -> BuildLock:
     return BuildLock(build_dir, timeout=timeout)
+
+
+class FileLock:
+    """One OS file lock with a caller-chosen path and timeout."""
+
+    def __init__(self, path: str | Path, *, timeout: float) -> None:
+        self.path = Path(path)
+        self.timeout = float(timeout)
+        self._handle: IO[bytes] | None = None
+
+    def __enter__(self) -> "FileLock":
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        handle = open(self.path, "a+b")
+        if handle.seek(0, os.SEEK_END) == 0:
+            handle.write(b"\0")
+            handle.flush()
+        handle.seek(0)
+        deadline = time.monotonic() + self.timeout
+        while True:
+            try:
+                _try_lock(handle)
+            except OSError:
+                if time.monotonic() >= deadline:
+                    handle.close()
+                    raise TimeoutError(f"file lock timeout: {self.path}")
+                time.sleep(RETRY_INTERVAL_S)
+                continue
+            self._handle = handle
+            return self
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
+        handle = self._handle
+        self._handle = None
+        if handle is None:
+            return False
+        try:
+            _unlock(handle)
+        finally:
+            handle.close()
+        return False
 
 
 def _try_lock(handle: IO[bytes]) -> None:

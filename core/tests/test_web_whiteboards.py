@@ -215,7 +215,10 @@ class WhiteboardTransactionTest(unittest.TestCase):
         real_replace = Path.replace
 
         def failing_replace(path, target):
-            if path.name == "whiteboards.json.tmp":
+            if (
+                path.name.startswith("whiteboards.json.")
+                and path.name.endswith(".tmp")
+            ):
                 raise OSError("disk full")
             return real_replace(path, target)
 

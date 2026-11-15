@@ -26,7 +26,7 @@ from lvgl_ai import (
     play_scenario,
 )
 from lvgl_ai import paths
-from lvgl_ai.control.evidence import CLI_EVIDENCE_FIELDS
+from lvgl_ai.control.evidence import INDEX_FIELDS
 from session_fixtures import SESSION_NAME, make_summary_session as make_session
 
 TOOL_ROOT = Path(__file__).resolve().parent.parent
@@ -105,7 +105,8 @@ class CliUnitTest(unittest.TestCase):
         code, _, _ = run_cli(["--scenario", str(path)])
 
         factory.assert_called_once_with(
-            lvgl="9.4", build=True, record=True, record_changed_only=True
+            lvgl="9.4", build=True, record=True,
+            scenario=path, record_changed_only=True,
         )
         self.assertEqual(code, 0)
         self.assertEqual(fake.start_calls, 1)
@@ -116,7 +117,8 @@ class CliUnitTest(unittest.TestCase):
         code, _, _ = run_cli(["--lvgl", "9.6", "--scenario", str(path)])
 
         factory.assert_called_once_with(
-            lvgl="9.6", build=True, record=True, record_changed_only=True
+            lvgl="9.6", build=True, record=True,
+            scenario=path, record_changed_only=True,
         )
         self.assertEqual(code, 0)
         self.assertEqual(fake.start_calls, 1)
@@ -201,7 +203,7 @@ class CliUnitTest(unittest.TestCase):
             ],
         )
 
-    def test_json_keeps_old_fields_and_adds_the_session_evidence(self) -> None:
+    def test_json_outputs_the_session_index(self) -> None:
         session = make_session(
             self.root / "sessions",
             display={"width": 390, "height": 450},
@@ -215,14 +217,9 @@ class CliUnitTest(unittest.TestCase):
         payload = one_json(out)
 
         self.assertEqual(payload["session_id"], SESSION_NAME)
-        self.assertEqual(payload["manifest_path"], str(fake.manifest_path))
-        self.assertEqual(payload["app"], "coffee")
+        self.assertEqual(payload["schema"], "lvgl-ai-session-index-v1")
         self.assertIsNone(payload["error"])
-        self.assertEqual(
-            set(payload),
-            {"session_id", "manifest_path", "app", "error"}
-            | set(CLI_EVIDENCE_FIELDS),
-        )
+        self.assertEqual(set(payload), set(INDEX_FIELDS))
 
         self.assertEqual(payload["session_dir"], str(session.resolve()))
         self.assertEqual(payload["status"], "ok")
@@ -231,11 +228,11 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(payload["requested_app"], "coffee")
         self.assertEqual(payload["effective_app"], "coffee")
         self.assertEqual(
-            [snapshot["label"] for snapshot in payload["snapshots"]],
+            [snapshot["label"] for snapshot in payload["snapshots"]["items"]],
             ["after_click"],
         )
-        self.assertTrue(
-            Path(payload["snapshots"][0]["path"]).is_absolute()
+        self.assertFalse(
+            Path(payload["snapshots"]["items"][0]["path"]).is_absolute()
         )
         self.assertEqual(
             [mark["id"] for mark in payload["marks"]], ["start"]
@@ -256,12 +253,10 @@ class CliUnitTest(unittest.TestCase):
         self.assertEqual(payload["session_id"], SESSION_NAME)
         self.assertEqual(payload["manifest_path"], str(fake.manifest_path))
         self.assertIsNone(payload["error"])
-        self.assertEqual(payload["session_dir"], str(session.resolve()))
-        for field in CLI_EVIDENCE_FIELDS:
-            if field == "session_dir":
-                continue
-            with self.subTest(field=field):
-                self.assertNotIn(field, payload)
+        self.assertEqual(
+            set(payload),
+            {"session_id", "manifest_path", "app", "error"},
+        )
 
     def test_app_flag_is_forwarded_and_reported(self) -> None:
         fake, factory = self._patch_runtime(app="coffee")
@@ -287,6 +282,7 @@ class CliUnitTest(unittest.TestCase):
             build=True,
             record=True,
             app="xiaohongshu",
+            scenario=self._scenario(app="xiaohongshu"),
             record_changed_only=True,
         )
 
@@ -559,8 +555,8 @@ class CliRealEngineIntegrationTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = one_json(result.stdout)
-        self.assertTrue(Path(payload["manifest_path"]).is_file())
-        recording = Recording.open(payload["manifest_path"])
+        self.assertTrue(Path(payload["session_dir"], "manifest.json").is_file())
+        recording = Recording.open(payload["session_dir"])
         self.assertEqual(recording.manifest["status"], "ok")
         self.assertEqual(recording.timeline(), library_rows)
 
@@ -576,7 +572,7 @@ class CliRealEngineIntegrationTest(unittest.TestCase):
         self.assertEqual(code, 0, err)
         payload = one_json(out)
         self.assertIsNone(payload["error"])
-        recording = Recording.open(payload["manifest_path"])
+        recording = Recording.open(payload["session_dir"])
         self.assertEqual(recording.manifest["status"], "ok")
         self.assertEqual(recording.manifest["id"], payload["session_id"])
         self.assertGreaterEqual(len(recording.frames), 1)
@@ -595,7 +591,7 @@ class CliRealEngineIntegrationTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = one_json(result.stdout)
-        recording = Recording.open(payload["manifest_path"])
+        recording = Recording.open(payload["session_dir"])
         self.assertEqual(recording.manifest["status"], "ok")
         self.assertIsNone(recording.manifest["error"])
         self.assertEqual(recording.timeline()[-1]["type"], "end")

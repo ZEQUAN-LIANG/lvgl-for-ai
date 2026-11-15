@@ -99,6 +99,9 @@ def make_session(
                             "regions": [{"x": 1, "y": 2, "w": 3, "h": 4}],
                             "tags": ["layout"],
                             "text": "button is too low",
+                            "author": "human",
+                            "source": "web",
+                            "feedback_anchor": {"kind": "t_ms", "t_ms": 0},
                         }
                     ],
                 },
@@ -140,6 +143,8 @@ def make_session(
         "id": name,
         "status": status,
         "app": app,
+        "scenario": None,
+        "source_digest": None,
         "record_changed_only": record_changed_only,
         "mode": "headless",
         "input": ["real", "virtual"],

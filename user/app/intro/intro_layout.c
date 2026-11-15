@@ -489,7 +489,7 @@ static const intro_seg_t intro_seg_evidence_43[] = {
     {"Read the summary", INTRO_F_BODY_11B},
 };
 static const intro_seg_t intro_seg_evidence_44[] = {
-    {"summarize_session", INTRO_F_MONO_9},
+    {"session_index", INTRO_F_MONO_9},
 };
 static const intro_seg_t intro_seg_evidence_45[] = {
     {" returns the annotations / whiteboards index and key fields.", INTRO_F_BODY_10},
@@ -760,7 +760,7 @@ static const intro_seg_t intro_seg_inspector_37[] = {
     {" share Runtime / Recording / ", INTRO_F_BODY_11},
 };
 static const intro_seg_t intro_seg_inspector_38[] = {
-    {"summarize_session.", INTRO_F_BODY_11},
+    {"session_index.", INTRO_F_BODY_11},
 };
 
 static const intro_text_t intro_text_inspector[] = {

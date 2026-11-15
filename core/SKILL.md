@@ -111,16 +111,25 @@ bin\lvgl.cmd assets image --app <app> --input user\app\<app>\logo.png --cf ARGB8
 
 ## 证据读取顺序
 
-`--json` 的 stdout 只有一行，包含 `session_id`、`session_dir`、`status`、
-`frame_count`、`snapshots`、`marks`、`log_tail` 和 `error`。随后：
+`--json` 的 stdout 只有一行 `lvgl-ai-session-index-v1` 索引（`session_report.py
+--json` 同一份文档）：`session_dir`、`status`、counts、raw 文件体积/行数、
+timeline 终点、diffs、frames、marks、snapshots、clicks、annotations、
+whiteboards、`log_tail`、`next_reads`。先读索引，再按 `next_reads` 查询：
 
-1. 读 `session_dir/manifest.json`：`status`、`app`、`display`、`frame_count`、
-   `error.detail`。
-2. 读 `session_dir/build.log`：实际构建命令、`build mode`、原始编译器输出。
-3. 读 `session_dir/timeline.ndjson` 与 `frame_diffs.ndjson`：输入命中对象
-   （`hit` / `hit_class`）、帧区间、变化 bbox。
-4. 读 `annotations.json` / `whiteboards.json` 的文字与 bbox，再按需打开
-   `frames/`、`snapshots/` 或 `regions/` 里的 PNG。
+```bash
+python -I core\session_report.py sessions\<id> --json
+python -I core\session_report.py timeline sessions\<id> --limit 20
+python -I core\session_report.py diffs sessions\<id> --top 5
+python -I core\session_report.py resolve sessions\<id> --click 41:43 --at result
+python -I core\session_report.py context sessions\<id> --click 41:43
+```
+
+1. 需要构建原因时读 `session_dir/build.log`；需要精确状态时读 `engine.log`。
+2. `timeline` / `diffs` / `frames` 默认有上限；不要直接整读 100 KB 的 ndjson。
+3. 人类反馈在 `notes` 里；跨轮定位用 `notes --resolve` 或
+   `feedback --previous`。按需打开索引给出的帧、快照或 `regions/` PNG。
+4. 聊天里的人类反馈用 `python -I core\feedback.py add` 写入，不手改
+   `annotations.json`。
 
 会话目录还包含 `engine.log`。退出码：`0` 正常结束；`1` build / link / crash；
 `2` harness、scenario、协议或环境错误。`record=False` 不写 frames/timeline/
@@ -196,5 +205,5 @@ CMake/Ninja 不能从 LVGL 源码构建。
   `printf` 到 `engine.log`，再做证据读取。
 - 改过 `user/app/*.c` 后必须用 `--build` 重新构建（需要 GCC）；`--no-build` 只用于
   运行当前 engine。
-- 不写第二套协议客户端；只用 `Runtime` / `Recording` / `summarize_session`。
+- 不写第二套协议客户端；只用 `Runtime` / `Recording` / `session_index`。
 - 路径含空格或中文时，命令中的路径要用引号包住。
