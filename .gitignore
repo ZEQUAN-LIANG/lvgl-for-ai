@@ -1,18 +1,22 @@
-/user/.trash/
+/.trash/
 *.pyc
 __pycache__/
-.scratch/tmp/
+.ruff_cache/
+.scratch/
 sessions/
-/lvgl-src/*
-!/lvgl-src/README.md
-/third_party/*
-!/third_party/README.md
+/engine/lvgl/*
+!/engine/lvgl/README.md
+!/engine/lvgl/patches/
+/engine/third_party/*
+!/engine/third_party/README.md
+!/engine/third_party/freetype/
 /build/
-/sdk/
-/release/
+/dist/
+/.lvgl-verify-loop/
 /chip-adapt/vendor/*
 !/chip-adapt/vendor/README.md
 /chip-adapt/exports/
+/chip-adapt/sifli/tools/SiFli-Host.exe
 /chip-adapt/sifli/host/.cache/
 /chip-adapt/sifli/host/logs/
 /chip-adapt/sifli/host/config.json
@@ -22,4 +26,8 @@ sessions/
 .claude/settings.local.json
 /.test-tmp/
 /.test-sessions/
-user/app/**/*.dump
+/user/app/**/*.dump
+# Double-click launchers are build artifacts; regenerate with
+# scripts/launchers/build.py (MinGW gcc + windres).
+/bin/LVGL-AI-Viewer.exe
+/bin/SiFli-Host.exe

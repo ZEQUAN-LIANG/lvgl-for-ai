@@ -1,0 +1,155 @@
+{
+  "assets": {
+    "coffee_font_12": {
+      "kind": "font",
+      "name": "coffee_font_12",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 12
+      },
+      "output": "coffee_font_12.h",
+      "source": "Deng.ttf",
+      "status": "legacy"
+    },
+    "coffee_font_13": {
+      "kind": "font",
+      "name": "coffee_font_13",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 13
+      },
+      "output": "coffee_font_13.h",
+      "source": "Deng.ttf",
+      "status": "legacy"
+    },
+    "coffee_font_14": {
+      "kind": "font",
+      "name": "coffee_font_14",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 14
+      },
+      "output": "coffee_font_14.h",
+      "source": "Deng.ttf",
+      "status": "legacy"
+    },
+    "coffee_font_14b": {
+      "kind": "font",
+      "name": "coffee_font_14b",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 14
+      },
+      "output": "coffee_font_14b.h",
+      "source": "Dengb.ttf",
+      "status": "legacy"
+    },
+    "coffee_font_16": {
+      "kind": "font",
+      "name": "coffee_font_16",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 16
+      },
+      "output": "coffee_font_16.h",
+      "source": "Deng.ttf",
+      "status": "legacy"
+    },
+    "coffee_font_18b": {
+      "kind": "font",
+      "name": "coffee_font_18b",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 18
+      },
+      "output": "coffee_font_18b.h",
+      "source": "Dengb.ttf",
+      "status": "legacy"
+    },
+    "coffee_font_24b": {
+      "kind": "font",
+      "name": "coffee_font_24b",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 24
+      },
+      "output": "coffee_font_24b.h",
+      "source": "Dengb.ttf",
+      "status": "legacy"
+    },
+    "coffee_font_32b": {
+      "kind": "font",
+      "name": "coffee_font_32b",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 32
+      },
+      "output": "coffee_font_32b.h",
+      "source": "Dengb.ttf",
+      "status": "legacy"
+    },
+    "coffee_font_44b": {
+      "kind": "font",
+      "name": "coffee_font_44b",
+      "options": {
+        "bpp": 4,
+        "compress": false,
+        "kerning": false,
+        "metrics": "glyphs",
+        "scan_app": true,
+        "size": 44
+      },
+      "output": "coffee_font_44b.h",
+      "source": "Dengb.ttf",
+      "status": "legacy"
+    },
+    "coffee_images": {
+      "kind": "image",
+      "name": "coffee_images",
+      "options": {
+        "formats": [
+          "RGB565",
+          "ARGB8888"
+        ]
+      },
+      "output": "coffee_images.h",
+      "source": "procedural",
+      "status": "legacy"
+    }
+  },
+  "generator": "legacy (gen_coffee_assets.py, removed)",
+  "schema": "lvgl-verify-loop-assets-v1",
+  "target_lvgl": "9.6"
+}

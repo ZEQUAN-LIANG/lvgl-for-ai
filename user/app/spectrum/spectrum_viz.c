@@ -1,12 +1,3 @@
-/**
- * @file spectrum_viz.c
- * ARGB-free HUD canvas for the ORBITAL app.
- *
- * The canvas is an opaque 432x404 XRGB8888 buffer. Every timer tick we redraw
- * the backdrop, HUD furniture and the active effect, then invalidate once.
- * The circular album cover is a separate image object above the canvas so it
- * can rotate and scale without being repainted by hand.
- */
 
 #include "spectrum.h"
 
@@ -15,22 +6,23 @@
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
 
-#define SP_PI 3.14159265358979323846f
-#define VIZ_W SPECTRUM_VIZ_W
-#define VIZ_H SPECTRUM_VIZ_H
-#define VIZ_CX SPECTRUM_VIZ_CX
-#define VIZ_CY SPECTRUM_VIZ_CY
-#define STAR_COUNT 260
+#define SP_PI         3.14159265358979323846f
+#define VIZ_W         SPECTRUM_VIZ_W
+#define VIZ_H         SPECTRUM_VIZ_H
+#define VIZ_CX        SPECTRUM_VIZ_CX
+#define VIZ_CY        SPECTRUM_VIZ_CY
+#define STAR_COUNT    260
 #define BG_STAR_COUNT 130
-#define SHOCK_COUNT 6
-#define GLOW_COUNT 4
+#define SHOCK_COUNT   6
+#define GLOW_COUNT    4
 
 LV_DRAW_BUF_DEFINE_STATIC(viz_draw_buf, VIZ_W, VIZ_H, LV_COLOR_FORMAT_XRGB8888);
 
 /* The HTML canvas backdrop is a diagonal linear gradient with four additive
  * radial glows, a 40/160 px grid, a radial vignette and a CSS scanline/vignette
  * overlay. LVGL has no radial gradients, so the static parts are baked into an
- * XRGB buffer and the glows are added per frame with precomputed alpha masks. */
+ * XRGB buffer and the glows are added per frame with precomputed alpha masks.
+ */
 typedef struct {
     int x;
     int y;
@@ -88,8 +80,10 @@ static int viz_shock_count;
 static uint32_t viz_rng = 911u;
 static uint32_t bg_rng = 23u;
 
-static const int cover_sizes[SPECTRUM_MODE_COUNT] = {146, 124, 118, 88, 78, 118};
-static const float cover_speed[SPECTRUM_MODE_COUNT] = {0.28f, -0.20f, 0.16f, -0.30f, 0.24f, 0.32f};
+static const int cover_sizes[SPECTRUM_MODE_COUNT] = {146, 124, 118,
+                                                     88,  78,  118};
+static const float cover_speed[SPECTRUM_MODE_COUNT] = {0.28f,  -0.20f, 0.16f,
+                                                       -0.30f, 0.24f,  0.32f};
 
 static float viz_clamp(float value, float lo, float hi)
 {
@@ -123,8 +117,6 @@ static float band_at(const float * values, float f)
     return values[i] + (values[j] - values[i]) * t;
 }
 
-/* ------------------------------------------------------------- drawing */
-
 static void draw_line(lv_layer_t * layer, int x1, int y1, int x2, int y2,
                       uint32_t color, int width, int opa)
 {
@@ -143,8 +135,8 @@ static void draw_line(lv_layer_t * layer, int x1, int y1, int x2, int y2,
 }
 
 static void draw_line_caps(lv_layer_t * layer, int x1, int y1, int x2, int y2,
-                           uint32_t color, int width, int opa,
-                           int round_start, int round_end)
+                           uint32_t color, int width, int opa, int round_start,
+                           int round_end)
 {
     lv_draw_line_dsc_t dsc;
     lv_draw_line_dsc_init(&dsc);
@@ -179,8 +171,8 @@ static void draw_circle(lv_layer_t * layer, int cx, int cy, int radius,
               LV_RADIUS_CIRCLE, color, opa);
 }
 
-static void draw_ring(lv_layer_t * layer, int cx, int cy, int radius,
-                      int width, uint32_t color, int opa)
+static void draw_ring(lv_layer_t * layer, int cx, int cy, int radius, int width,
+                      uint32_t color, int opa)
 {
     lv_draw_arc_dsc_t dsc;
     lv_draw_arc_dsc_init(&dsc);
@@ -197,7 +189,8 @@ static void draw_ring(lv_layer_t * layer, int cx, int cy, int radius,
 }
 
 static void draw_arc_segment(lv_layer_t * layer, int cx, int cy, int radius,
-                             int start, int end, int width, uint32_t color, int opa)
+                             int start, int end, int width, uint32_t color,
+                             int opa)
 {
     lv_draw_arc_dsc_t dsc;
     lv_draw_arc_dsc_init(&dsc);
@@ -234,8 +227,6 @@ static void draw_dashed_circle(lv_layer_t * layer, int cx, int cy, int radius,
     dsc.dash_gap = gap;
     lv_draw_line(layer, &dsc);
 }
-
-/* ----------------------------------------------------------- backdrop */
 
 static void viz_apply_white(uint32_t * pixel, float alpha)
 {
@@ -303,9 +294,9 @@ static void viz_init_glow_masks(void)
                 float dy = (float)(y - glow->y);
                 float t = sqrtf(dx * dx + dy * dy) / (float)glow->radius;
                 if(t >= 1.0f) continue;
-                float profile = t < 0.45f ?
-                                1.0f - 0.66f * (t / 0.45f) :
-                                0.34f * (1.0f - (t - 0.45f) / 0.55f);
+                float profile = t < 0.45f
+                                    ? 1.0f - 0.66f * (t / 0.45f)
+                                    : 0.34f * (1.0f - (t - 0.45f) / 0.55f);
                 int mask = (int)(profile * 255.0f + 0.5f);
                 if(mask < 0) mask = 0;
                 if(mask > 255) mask = 255;
@@ -325,24 +316,27 @@ static void viz_build_base(const spectrum_palette_t * pal)
             float t = ((float)x * vx + (float)y * vy) / vv;
             if(t < 0.0f) t = 0.0f;
             if(t > 1.0f) t = 1.0f;
-            viz_bg_base[y * VIZ_W + x] = t < 0.5f ?
-                viz_mix_rgb(pal->bg1, pal->bg0, t * 2.0f) :
-                viz_mix_rgb(pal->bg0, 0x010207, (t - 0.5f) * 2.0f);
+            viz_bg_base[y * VIZ_W + x] =
+                t < 0.5f ? viz_mix_rgb(pal->bg1, pal->bg0, t * 2.0f)
+                         : viz_mix_rgb(pal->bg0, 0x010207, (t - 0.5f) * 2.0f);
         }
     }
 
-    /* The canvas strokes from 0.5, 40.5, ...: one full pixel per 40/160 px. */
     for(int x = 0; x < VIZ_W; x += 40) {
-        for(int y = 0; y < VIZ_H; y++) viz_apply_white(&viz_bg_base[y * VIZ_W + x], 0.026f);
+        for(int y = 0; y < VIZ_H; y++)
+            viz_apply_white(&viz_bg_base[y * VIZ_W + x], 0.026f);
     }
     for(int y = 0; y < VIZ_H; y += 40) {
-        for(int x = 0; x < VIZ_W; x++) viz_apply_white(&viz_bg_base[y * VIZ_W + x], 0.026f);
+        for(int x = 0; x < VIZ_W; x++)
+            viz_apply_white(&viz_bg_base[y * VIZ_W + x], 0.026f);
     }
     for(int x = 0; x < VIZ_W; x += 160) {
-        for(int y = 0; y < VIZ_H; y++) viz_apply_white(&viz_bg_base[y * VIZ_W + x], 0.045f);
+        for(int y = 0; y < VIZ_H; y++)
+            viz_apply_white(&viz_bg_base[y * VIZ_W + x], 0.045f);
     }
     for(int y = 0; y < VIZ_H; y += 160) {
-        for(int x = 0; x < VIZ_W; x++) viz_apply_white(&viz_bg_base[y * VIZ_W + x], 0.045f);
+        for(int x = 0; x < VIZ_W; x++)
+            viz_apply_white(&viz_bg_base[y * VIZ_W + x], 0.045f);
     }
 
     for(int y = 0; y < VIZ_H; y++) {
@@ -352,8 +346,8 @@ static void viz_build_base(const spectrum_palette_t * pal)
             float t = (sqrtf(dx * dx + dy * dy) - 120.0f) / 400.0f;
             if(t <= 0.0f) continue;
             if(t > 1.0f) t = 1.0f;
-            float alpha = t < 0.62f ? 0.16f * (t / 0.62f) :
-                          0.16f + 0.46f * ((t - 0.62f) / 0.38f);
+            float alpha = t < 0.62f ? 0.16f * (t / 0.62f)
+                                    : 0.16f + 0.46f * ((t - 0.62f) / 0.38f);
             viz_apply_black(&viz_bg_base[y * VIZ_W + x], alpha);
         }
     }
@@ -370,8 +364,10 @@ static void viz_build_overlay(void)
             float t = sqrtf(dx * dx + dy * dy) / radius;
             float a_rad;
             if(t <= 0.38f) a_rad = 0.0f;
-            else if(t >= 1.0f) a_rad = 0.42f;
-            else a_rad = 0.42f * (t - 0.38f) / 0.62f;
+            else if(t >= 1.0f)
+                a_rad = 0.42f;
+            else
+                a_rad = 0.42f * (t - 0.38f) / 0.62f;
 
             float scan = (y % 3 == 0) ? 0.0143f : 0.0f;
             float a_vig = a_lin + a_rad * (1.0f - a_lin);
@@ -452,7 +448,8 @@ static void viz_prepare_backdrop(const spectrum_palette_t * pal)
                 if(r > 255) r = 255;
                 if(gg > 255) gg = 255;
                 if(b > 255) b = 255;
-                row[x] = ((uint32_t)r << 16) | ((uint32_t)gg << 8) | (uint32_t)b;
+                row[x] =
+                    ((uint32_t)r << 16) | ((uint32_t)gg << 8) | (uint32_t)b;
             }
         }
     }
@@ -505,8 +502,9 @@ static void draw_background(lv_layer_t * layer, const spectrum_palette_t * pal)
 {
     for(int i = 0; i < BG_STAR_COUNT; i++) {
         viz_bg_star_t * star = &viz_bg_stars[i];
-        float tw = 0.18f + 0.55f * (0.5f + 0.5f * sinf(
-            spectrum_sim.time * star->speed + star->phase));
+        float tw = 0.18f +
+                   0.55f * (0.5f + 0.5f * sinf(spectrum_sim.time * star->speed +
+                                               star->phase));
         int alpha = (int)(tw * (0.35f + spectrum_sim.high) * 255.0f);
         draw_circle(layer, (int)star->x, (int)star->y,
                     star->radius < 1.0f ? 1 : 2,
@@ -522,17 +520,16 @@ static void draw_background(lv_layer_t * layer, const spectrum_palette_t * pal)
     }
 
     for(int i = 0; i < 72; i++) {
-        float a = -spectrum_sim.time * 0.04f +
-                  (float)i * (SP_PI * 2.0f / 72.0f);
+        float a =
+            -spectrum_sim.time * 0.04f + (float)i * (SP_PI * 2.0f / 72.0f);
         int r0 = 220;
         int r1 = (i % 6 == 0) ? 227 : 223;
-        draw_line(layer, VIZ_CX + (int)(cosf(a) * r0), VIZ_CY + (int)(sinf(a) * r0),
-                  VIZ_CX + (int)(cosf(a) * r1), VIZ_CY + (int)(sinf(a) * r1),
-                  pal->dim, 1, (i % 6 == 0) ? 56 : 23);
+        draw_line(layer, VIZ_CX + (int)(cosf(a) * r0),
+                  VIZ_CY + (int)(sinf(a) * r0), VIZ_CX + (int)(cosf(a) * r1),
+                  VIZ_CY + (int)(sinf(a) * r1), pal->dim, 1,
+                  (i % 6 == 0) ? 56 : 23);
     }
 }
-
-/* --------------------------------------------------------------- cover */
 
 static void viz_add_halo(const spectrum_palette_t * pal, int size)
 {
@@ -583,8 +580,6 @@ static void viz_add_halo(const spectrum_palette_t * pal, int size)
     }
 }
 
-/* ------------------------------------------------------------- effects */
-
 static void draw_orbit(lv_layer_t * layer, const spectrum_palette_t * pal)
 {
     const int n = 64;
@@ -593,7 +588,8 @@ static void draw_orbit(lv_layer_t * layer, const spectrum_palette_t * pal)
 
     for(int k = 0; k < n; k++) {
         float f = (float)k / (float)(n - 1);
-        float v = powf(viz_clamp(band_at(spectrum_sim.bands, f), 0.0f, 1.0f), 1.3f);
+        float v =
+            powf(viz_clamp(band_at(spectrum_sim.bands, f), 0.0f, 1.0f), 1.3f);
         float a = -SP_PI / 2.0f + (float)k * (SP_PI * 2.0f / (float)n);
         float ca = cosf(a);
         float sa = sinf(a);
@@ -603,10 +599,8 @@ static void draw_orbit(lv_layer_t * layer, const spectrum_palette_t * pal)
         int y1 = VIZ_CY + (int)(sa * (inner + 8 + v * max_len));
         uint32_t color = (k % 4 == 0) ? pal->c : (k % 3 == 0) ? pal->b : pal->a;
 
-        draw_line(layer, x0, y0, x1, y1, color, 9,
-                  25 + (int)(v * 46.0f));
-        draw_line(layer, x0, y0, x1, y1, color, 2,
-                  115 + (int)(v * 127.0f));
+        draw_line(layer, x0, y0, x1, y1, color, 9, 25 + (int)(v * 46.0f));
+        draw_line(layer, x0, y0, x1, y1, color, 2, 115 + (int)(v * 127.0f));
     }
 
     draw_ring(layer, VIZ_CX, VIZ_CY, 214, 1, pal->a, 76);
@@ -672,24 +666,27 @@ static void draw_radial(lv_layer_t * layer, const spectrum_palette_t * pal)
     const int inner = 102;
     for(int k = 0; k < n; k++) {
         float f = (float)k / (float)(n - 1);
-        float v = powf(viz_clamp(band_at(spectrum_sim.bands, f), 0.0f, 1.0f), 1.2f);
+        float v =
+            powf(viz_clamp(band_at(spectrum_sim.bands, f), 0.0f, 1.0f), 1.2f);
         float peak = viz_clamp(band_at(spectrum_sim.peaks, f), 0.0f, 1.0f);
         float a = -SP_PI / 2.0f + (float)k * (SP_PI * 2.0f / (float)n);
         float ca = cosf(a);
         float sa = sinf(a);
         float len = 12.0f + v * 118.0f;
-        const float stops[7] = {0.0f, 1.0f / 6.0f, 2.0f / 6.0f, 3.0f / 6.0f,
-                                4.0f / 6.0f, 5.0f / 6.0f, 1.0f};
+        const float stops[7] = {0.0f,        1.0f / 6.0f, 2.0f / 6.0f,
+                                3.0f / 6.0f, 4.0f / 6.0f, 5.0f / 6.0f,
+                                1.0f};
         for(int seg = 0; seg < 6; seg++) {
             float mid = (stops[seg] + stops[seg + 1]) * 0.5f;
-            uint32_t color = mid < 0.6f ?
-                spectrum_mix(pal->b, pal->a, mid / 0.6f) :
-                spectrum_mix(pal->a, pal->c, (mid - 0.6f) / 0.4f);
+            uint32_t color =
+                mid < 0.6f ? spectrum_mix(pal->b, pal->a, mid / 0.6f)
+                           : spectrum_mix(pal->a, pal->c, (mid - 0.6f) / 0.4f);
             float r0 = inner + len * stops[seg];
             float r1 = inner + len * stops[seg + 1];
-            draw_line_caps(layer, VIZ_CX + (int)(ca * r0), VIZ_CY + (int)(sa * r0),
-                           VIZ_CX + (int)(ca * r1), VIZ_CY + (int)(sa * r1),
-                           color, 3, LV_OPA_COVER, 0, seg == 5 ? 1 : 0);
+            draw_line_caps(layer, VIZ_CX + (int)(ca * r0),
+                           VIZ_CY + (int)(sa * r0), VIZ_CX + (int)(ca * r1),
+                           VIZ_CY + (int)(sa * r1), color, 3, LV_OPA_COVER, 0,
+                           seg == 5 ? 1 : 0);
         }
 
         float peak_len = powf(peak, 1.2f) * 118.0f;
@@ -743,16 +740,16 @@ static void draw_sonar(lv_layer_t * layer, const spectrum_palette_t * pal)
     for(int k = 0; k < 26; k++) {
         float a = sweep - (float)k * 0.017f;
         int opa = (int)((1.0f - (float)k / 26.0f) * 40.0f);
-        draw_line(layer, VIZ_CX, VIZ_CY,
-                  VIZ_CX + (int)(cosf(a) * radius),
-                  VIZ_CY + (int)(sinf(a) * radius),
-                  pal->a, k == 0 ? 2 : 1, opa);
+        draw_line(layer, VIZ_CX, VIZ_CY, VIZ_CX + (int)(cosf(a) * radius),
+                  VIZ_CY + (int)(sinf(a) * radius), pal->a, k == 0 ? 2 : 1,
+                  opa);
     }
 
     for(int i = 0; i < 20; i++) {
         float f = (float)i / 19.0f;
         float v = viz_clamp(band_at(spectrum_sim.bands, f), 0.0f, 1.0f);
-        float a = (float)i * (SP_PI * 2.0f / 20.0f) + sinf((float)i * 2.1f) * 0.22f;
+        float a =
+            (float)i * (SP_PI * 2.0f / 20.0f) + sinf((float)i * 2.1f) * 0.22f;
         int r = 54 + (int)(v * 168.0f);
         int x = VIZ_CX + (int)(cosf(a) * r);
         int y = VIZ_CY + (int)(sinf(a) * r);
@@ -765,19 +762,19 @@ static void draw_sonar(lv_layer_t * layer, const spectrum_palette_t * pal)
                     128 + (int)(v * 127.0f));
         draw_arc_segment(layer, VIZ_CX, VIZ_CY, r,
                          (int)((a - 0.18f) * 57.29578f) % 360,
-                         (int)((a + 0.18f) * 57.29578f) % 360,
-                         1, pal->a, 26 + (int)(v * 38.0f));
+                         (int)((a + 0.18f) * 57.29578f) % 360, 1, pal->a,
+                         26 + (int)(v * 38.0f));
     }
 
-    draw_line(layer, VIZ_CX, VIZ_CY,
-              VIZ_CX + (int)(cosf(sweep) * radius),
+    draw_line(layer, VIZ_CX, VIZ_CY, VIZ_CX + (int)(cosf(sweep) * radius),
               VIZ_CY + (int)(sinf(sweep) * radius), pal->a, 2, 89);
 }
 
-static void draw_stars(lv_layer_t * layer, const spectrum_palette_t * pal, double dt)
+static void draw_stars(lv_layer_t * layer, const spectrum_palette_t * pal,
+                       double dt)
 {
-    double warp = 0.55 + spectrum_sim.energy * 2.2 +
-                  spectrum_sim.beat_pulse * 0.7;
+    double warp =
+        0.55 + spectrum_sim.energy * 2.2 + spectrum_sim.beat_pulse * 0.7;
 
     if(spectrum_sim.just_beat && viz_shock_count < SHOCK_COUNT) {
         viz_shocks[viz_shock_count].radius = 70.0f;
@@ -801,12 +798,13 @@ static void draw_stars(lv_layer_t * layer, const spectrum_palette_t * pal, doubl
         int y0 = VIZ_CY + (int)(sa * previous);
         int x1 = VIZ_CX + (int)(ca * star->radius);
         int y1 = VIZ_CY + (int)(sa * star->radius);
-        uint32_t color = star->color == 0 ? pal->a :
-                         star->color == 1 ? pal->b : pal->c;
+        uint32_t color = star->color == 0   ? pal->a
+                         : star->color == 1 ? pal->b
+                                            : pal->c;
         double near = star->radius / 220.0;
         int alpha = 20 + (int)(near * 199.0);
-        draw_line(layer, x0, y0, x1, y1, color,
-                  star->size > 1.4 ? 2 : 1, alpha);
+        draw_line(layer, x0, y0, x1, y1, color, star->size > 1.4 ? 2 : 1,
+                  alpha);
         if(near > 0.82f) {
             draw_circle(layer, x1, y1, 1, color, alpha);
         }
@@ -826,8 +824,6 @@ static void draw_stars(lv_layer_t * layer, const spectrum_palette_t * pal, doubl
 
     draw_ring(layer, VIZ_CX, VIZ_CY, 228, 1, pal->a, 56);
 }
-
-/* ---------------------------------------------------------------- api */
 
 void spectrum_viz_reset(void)
 {
@@ -887,8 +883,6 @@ void spectrum_viz_create(lv_obj_t * parent)
     lv_obj_set_clickable(viz_ring_outer, false);
     lv_obj_set_scrollable(viz_ring_outer, false);
 
-    /* CSS scanlines + stage vignette sit above the canvas (and the cover) but
-     * below the panels, tags and transport. */
     viz_create_overlay(parent);
 }
 
@@ -910,18 +904,29 @@ void spectrum_viz_update(double dt)
     draw_background(&layer, pal);
 
     switch(mode) {
-        case SPECTRUM_MODE_ORBIT: draw_orbit(&layer, pal); break;
-        case SPECTRUM_MODE_DUAL: draw_dual(&layer, pal); break;
-        case SPECTRUM_MODE_RADIAL: draw_radial(&layer, pal); break;
-        case SPECTRUM_MODE_SPIRAL: draw_spiral(&layer, pal); break;
-        case SPECTRUM_MODE_SONAR: draw_sonar(&layer, pal); break;
-        case SPECTRUM_MODE_STARS: draw_stars(&layer, pal, dt); break;
-        default: break;
+        case SPECTRUM_MODE_ORBIT:
+            draw_orbit(&layer, pal);
+            break;
+        case SPECTRUM_MODE_DUAL:
+            draw_dual(&layer, pal);
+            break;
+        case SPECTRUM_MODE_RADIAL:
+            draw_radial(&layer, pal);
+            break;
+        case SPECTRUM_MODE_SPIRAL:
+            draw_spiral(&layer, pal);
+            break;
+        case SPECTRUM_MODE_SONAR:
+            draw_sonar(&layer, pal);
+            break;
+        case SPECTRUM_MODE_STARS:
+            draw_stars(&layer, pal, dt);
+            break;
+        default:
+            break;
     }
     lv_canvas_finish_layer(viz_canvas, &layer);
 
-    /* HTML draws a 'lighter' radial glow, then the cover, on top of the
-     * effect. The halo is composited additively straight into the canvas. */
     viz_add_halo(pal, size);
 
     int spin = (int)(spectrum_sim.time * cover_speed[mode] * 1800.0 / SP_PI);
@@ -1000,4 +1005,4 @@ void spectrum_viz_update(double dt)
     lv_obj_invalidate(viz_cover_spin);
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

@@ -1,6 +1,6 @@
 # ORBITAL · spectrum
 
-`spectrum` 是 LVGL 9.6 的音频频谱播放器应用变体。布局常量在 `spectrum.h`，视觉资源由 `gen_spectrum_assets.py` 生成并提交为 `spectrum_*.h`；两者是本应用的真源：
+`spectrum` 是 LVGL 9.6 的音频频谱播放器应用变体。布局常量在 `spectrum.h`，视觉资源已生成为提交的 `spectrum_*.h`；两者是本应用的真源：
 
 - 左侧 `PLAY QUEUE`：三首模拟曲目，点击切歌；下面是 PEAK / RMS / SYNC 与信号参数。
 - 中间全屏 800×600 HUD canvas：中央旋转封面 + 六种频谱效果。
@@ -36,13 +36,13 @@
 ## 场景
 
 ```bash
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/spectrum.json
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/spectrum.json --record-changed-only
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/spectrum.json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/spectrum.json --record-changed-only
 ```
 
 场景会依次进入六种模式并快照，再验证切歌、换调色板、收藏、暂停、拖动进度与音量。交互坐标直接来自 `spectrum_page.c` 的布局常量。
 
-网页端启动 `python -I core/web.py` 后，顶部「应用」下拉会多出 `spectrum`（来自场景的 `app` 字段）；测试模式可以实时看动画。
+网页端启动 `python -I console/entrypoints/serve.py` 后，顶部「应用」下拉会多出 `spectrum`（来自场景的 `app` 字段）；测试模式可以实时看动画。
 
 ## 实现要点
 
@@ -50,19 +50,32 @@ python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/spectrum.json --recor
 - 背景是斜向三段渐变、40/160 px 网格与径向暗角预烘焙成 800×600 XRGB 底图；四处加性辉光用预计算 alpha 蒙版逐帧叠加；扫描线与 stage 暗角做成独立 ARGB 叠加层。
 - 封面拆成静态 `base` 与旋转 `spin` 两层：`base` 含渐变、黑胶与中心孔，`spin` 只含电弧、霓虹轮廓与碎片；`spin` 使用 `LV_BLEND_MODE_ADDITIVE` 叠在 `base` 上。为减少小尺寸缩放误差，另有 96/88/78 px 的旋转层与 88/78 px 底板。
 - 没有径向/锥形渐变：HUD 环、频谱柱与粒子都用圆/线/矩形/圆弧近似；封面辉光用 256×256 的加性 alpha 贴图按尺寸缩放后直接写入画布。
-- 图标、字体、光晕贴图与封面层由 `gen_spectrum_assets.py` 生成；构建不依赖 Node 或网络。
+- 图标、字体、光晕贴图与封面层已生成并提交；构建不依赖转换器、Node 或网络。
 - 字体只包含 ASCII：Segoe UI Bold 14，Consolas Regular 7/8/9，Consolas Bold 9/32。
 - 播放/暂停、切歌、调色板、AUTO、收藏全部有 `spectrum_*` 命名，便于 timeline hit 证据定位。
 - `(112,324)` 区域（左侧 SIGNAL 表）没有可点击控件，隐藏的 `demo_button` 仍能被工具的 `settings.json` 场景命中。
 
 ## 重新生成资源
 
-```bash
-python -I user/app/spectrum/gen_spectrum_assets.py
-python -I user/app/spectrum/gen_spectrum_assets.py --preview .scratch/tmp/spectrum-assets
+`spectrum_*.h` 已提交，构建不依赖转换器。字体用内置工具重生成（只含 ASCII）：
+
+```bat
+bin\lvgl.cmd assets font --app spectrum --font C:\Windows\Fonts\segoeuib.ttf ^
+  --size 14 --bpp 4 --range 0x20-0x7E --name spectrum_sans_14
+bin\lvgl.cmd assets font --app spectrum --font C:\Windows\Fonts\consola.ttf ^
+  --size 7 --bpp 4 --range 0x20-0x7E --name spectrum_mono_7
 ```
 
-封面层来自已提交的 `covers_src/*.png`，图标与光晕由脚本用纯 Python 生成；字体需要 Node.js + `npx lv_font_conv`，以及 Windows 的 `segoeuib.ttf` / `consola.ttf` / `consolab.ttf`。生成的 `spectrum_*.h` 已提交；只有修改文案、封面或字体时才需要重跑，`--skip-fonts` 可跳过字体。
+封面层来自已提交的 `covers_src/` PNG；`spectrum_covers.h` 是旧生成器产出的合并头，已冻结，
+不再由内置转换器重建。`assets.json` 的 `spectrum_covers.source_hashes` 记录全部 63 个源文件
+的 SHA256，改动 PNG 时需要同步更新。单层预览可用内置转换器生成独立头：
+
+```bat
+bin\lvgl.cmd assets image --app spectrum --input user\app\spectrum\covers_src\cover_t0_p0_base.png --cf ARGB8888
+```
+
+图标与光晕是程序化绘制的，当前以提交的 `spectrum_icons.h` / `spectrum_glow.h` 为准；
+若要重生成，先导出 PNG 再用 `assets image`。旧的 `gen_spectrum_assets.py` 已删除。
 
 ## 相关文件
 

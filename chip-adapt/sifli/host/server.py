@@ -25,21 +25,21 @@ HOST_DIR = Path(__file__).resolve().parent
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
-from broker import SerialBroker, ports  # noqa: E402
-from build_flash import (  # noqa: E402
+from broker import SerialBroker, ports
+from build_flash import (
     environment,
     find_build_dir,
     flasher_page_url,
     package_firmware,
     resolve_project_dir,
 )
-from config import (  # noqa: E402
+from config import (
     ensure_runtime_dirs,
     load_config,
     public_base_url,
 )
-from events import EventHub  # noqa: E402
-from http_layer import (  # noqa: E402
+from events import EventHub
+from http_layer import (
     SseWriter,
     actor_from,
     content_type_for,
@@ -50,10 +50,10 @@ from http_layer import (  # noqa: E402
     read_json_body,
     safe_join,
 )
-from jobs import TERMINAL_STATUSES, Job, JobManager  # noqa: E402
-from runner import BuildRequest, FlashRequest, JobRunner  # noqa: E402
-from serial_log import list_sessions  # noqa: E402
-from state import StateStore, suggest  # noqa: E402
+from jobs import TERMINAL_STATUSES, Job, JobManager
+from runner import BuildRequest, FlashRequest, JobRunner
+from serial_log import list_sessions
+from state import StateStore, suggest
 
 VERSION = "0.1.0"
 
@@ -87,7 +87,6 @@ class HostHandler(BaseHTTPRequestHandler):
     server_version = f"SiFliHost/{VERSION}"
     server: HostServer
 
-    # Exact paths first; prefix routes are matched in declaration order.
     GET_ROUTES = {
         "/": "_get_index",
         "/index.html": "_get_index",
@@ -150,8 +149,6 @@ class HostHandler(BaseHTTPRequestHandler):
             if path.startswith(prefix):
                 return name
         return None
-
-    # -- plumbing ------------------------------------------------------
 
     def log_message(self, fmt: str, *args: Any) -> None:
         print(
@@ -275,7 +272,9 @@ class HostHandler(BaseHTTPRequestHandler):
         writer = SseWriter(self.wfile)
         try:
             self.send_response(200)
-            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header(
+                "Content-Type", "text/event-stream; charset=utf-8"
+            )
             self.send_header("Cache-Control", "no-cache")
             self.send_header("Connection", "close")
             self.send_header("X-Accel-Buffering", "no")
@@ -321,8 +320,6 @@ class HostHandler(BaseHTTPRequestHandler):
             message,
             data=data or {},
         )
-
-    # -- GET -----------------------------------------------------------
 
     def _get_index(self, path: str, query: dict[str, list[str]]) -> None:
         self._send_file(self.server.web_dir / "index.html")
@@ -524,7 +521,9 @@ class HostHandler(BaseHTTPRequestHandler):
         self._send_file(target, cache="no-store", download_name=target.name)
 
     def _get_firmware(self, path: str, query: dict[str, list[str]]) -> None:
-        name = path[len("/firmware/") :] if path.startswith("/firmware/") else ""
+        name = (
+            path[len("/firmware/") :] if path.startswith("/firmware/") else ""
+        )
         target = safe_join(self.server.firmware_dir, name)
         if target is None:
             self._send_json(403, {"ok": False, "error": "invalid path"})
@@ -576,8 +575,6 @@ class HostHandler(BaseHTTPRequestHandler):
 
     def _get_static(self, path: str, query: dict[str, list[str]]) -> None:
         self._send_file(self.server.web_dir / path.lstrip("/"))
-
-    # -- POST ----------------------------------------------------------
 
     def _post_open(
         self,
@@ -666,8 +663,6 @@ class HostHandler(BaseHTTPRequestHandler):
         }.get(line_ending, b"")
         result = self.server.broker.send(payload)
         actor = self._actor()
-        # Web terminal keystrokes are already visible in the terminal;
-        # keep the activity feed focused on AI/CLI operations.
         if actor != "web":
             preview = payload.decode("utf-8", "replace")
             if len(preview) > 200:
@@ -716,9 +711,7 @@ class HostHandler(BaseHTTPRequestHandler):
         path: str,
         query: dict[str, list[str]],
     ) -> None:
-        result = self.server.broker.reset(
-            int(body.get("pulse_ms") or 100)
-        )
+        result = self.server.broker.reset(int(body.get("pulse_ms") or 100))
         self._event("serial.reset", "RTS reset pulse", result)
         self._send_json(200, {"ok": True, **result})
 
@@ -938,7 +931,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         server = HostServer((host, port), HostHandler, config)
     except OSError as exc:
-        print(f"[sifli-host] cannot bind {host}:{port}: {exc}", file=sys.stderr)
+        print(
+            f"[sifli-host] cannot bind {host}:{port}: {exc}", file=sys.stderr
+        )
         return 1
 
     actual_host, actual_port = server.server_address[:2]

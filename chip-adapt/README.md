@@ -1,7 +1,7 @@
 # chip-adapt
 
-黄山派 SiFli SF32LB52x 的导出适配层与 PC 侧上位机。它和 `core/` 的 LVGL
-headless 宿主分开：`core/` 负责预览/取证，本目录负责把 `user/app` 导出成
+黄山派 SiFli SF32LB52x 的导出适配层与 PC 侧上位机。它和 `console/` 的 LVGL
+headless 宿主分开：`console/` 负责预览/取证，本目录负责把 `user/app` 导出成
 SiFli-SDK 工程，并提供串口、构建和烧录入口。
 
 ## 先看三个区
@@ -12,7 +12,7 @@ SiFli-SDK 工程，并提供串口、构建和烧录入口。
 | 外部大件 | `chip-adapt/vendor/` | 否（仅 README） | 否 | 按 `vendor/README.md` 下载 |
 | 上位机运行时依赖 | `chip-adapt/sifli/host/vendor/`、`host/web/vendor/` | 否 | 否 | `bootstrap.ps1` |
 | 生成物 | `chip-adapt/exports/`、`host/.cache/`、`host/logs/` | 否 | 否 | `export.py` / host 运行 |
-| 双击启动器 | `LVGL-AI-Viewer.exe`、`chip-adapt/sifli/tools/SiFli-Host.exe` | 是 | 否 | `core/tools/launchers/build.py` |
+| 双击启动器 | `bin/LVGL-AI-Viewer.exe`、`chip-adapt/sifli/tools/SiFli-Host.exe` | 否（构建生成） | 否 | `scripts/launchers/build.py` |
 | 系统级工具 | `%USERPROFILE%\.sifli` 或 `SIFLI_SDK_TOOLS_PATH` | 否 | 否 | SDK `install.ps1` |
 
 - `chip-adapt/docs/sifli.html`：SDK 图形能力知识索引，不是操作手册。
@@ -26,7 +26,7 @@ SiFli-SDK 工程，并提供串口、构建和烧录入口。
 | --- | --- | --- |
 | 导出应用到 SDK 工程 | `sifli/README.md` | `python -I chip-adapt/sifli/export.py <app> --dry-run --force` |
 | 构建 / 烧录 / 看串口 | `sifli/host/README.md` | `python -I chip-adapt/sifli/host/server.py --open` |
-| 直接点开上位机 / 重建启动器 | `sifli/tools/` | 双击 `SiFli-Host.exe`；`python -I core/tools/launchers/build.py` |
+| 直接点开上位机 / 重建启动器 | `sifli/tools/` | 双击 `SiFli-Host.exe`；`python -I scripts/launchers/build.py` |
 | 改导出规则或模板 | `sifli/export.py`、`sifli/asset_plan.py`、`sifli/templates/` | `python -I chip-adapt/sifli/run_tests.py` |
 | 改上位机 | `sifli/host/` | `python -I chip-adapt/sifli/host/tests/run_tests.py` |
 | 下载/升级 SDK、工具链、sftool | `vendor/README.md` | `host/scripts/install-toolchain.ps1`（国内网络默认镜像）；不在仓库内改 SDK |
@@ -50,7 +50,7 @@ SiFli-SDK 工程，并提供串口、构建和烧录入口。
 | 改导出逻辑 | `sifli/export.py`、`sifli/asset_plan.py` | 适配器测试、`sifli/README.md` | 改 `vendor/`、`exports/` |
 | 改导出模板 | `sifli/templates/` | 测试、导出 dry-run | 在导出副本里手改 |
 | 改上位机 | `sifli/host/` | host 测试、host README/API 表 | 另起协议客户端 |
-| 改启动器或图标 | `core/tools/launchers/` | 重建 exe、`core/tests/test_launchers.py` | 手改 exe/ico；启动器掺端口/URL/协议 |
+| 改启动器或图标 | `scripts/launchers/` | 重建 exe、`scripts/tests/tools/test_launchers.py` | 手改 exe/ico；启动器掺端口/URL/协议 |
 | 升级 SDK | `vendor/README.md` + 重下 | 路径、链接、API 复核 | 直接改 SDK 源码 |
 | 新增/修改应用 | `user/app/<app>/` | 场景、`assets.json`、`apps[]` 注册 | 改 `exports/<app>/` |
 | 改文档 | 本节列出的各 README | 链接校验 | 复制官方 skill 内容 |
@@ -118,11 +118,11 @@ python -I chip-adapt/sifli/run_tests.py
 python -I chip-adapt/sifli/host/tests/run_tests.py
 
 # 重建两个双击启动器（MinGW gcc + windres）
-python -I core/tools/launchers/build.py
+python -I scripts/launchers/build.py
 
 # headless 验证导出副本（先安装 9.4 源码与 PNG 依赖）
-LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/exports/sift_watch/src/app" \
-  python -I core/cli.py --lvgl 9.4 --scenario user/scenarios/sift_watch.json
+LVGL_VERIFY_LOOP_USER_APP_DIR="$PWD/chip-adapt/exports/sift_watch/src/app" \
+  python -I console/entrypoints/cli.py --lvgl 9.4 --scenario user/scenarios/sift_watch.json
 ```
 
 ## 不做什么

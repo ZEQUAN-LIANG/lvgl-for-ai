@@ -8,7 +8,8 @@
 
 zc_ctx_t zc;
 
-void zc_gfx_bind(uint16_t * fb, uint16_t * backdrop, int w, int h, int dy, int safe)
+void zc_gfx_bind(uint16_t * fb, uint16_t * backdrop, int w, int h, int dy,
+                 int safe)
 {
     zc.fb = fb;
     zc.backdrop = backdrop;
@@ -78,7 +79,8 @@ void zc_blend_rect(int x, int y, int w, int h, uint16_t color, uint8_t alpha)
     }
     for(int yy = y0; yy < y1; yy++) {
         uint16_t * row = zc.fb + yy * zc.w;
-        for(int xx = x0; xx < x1; xx++) row[xx] = zc_blend565(row[xx], color, alpha);
+        for(int xx = x0; xx < x1; xx++)
+            row[xx] = zc_blend565(row[xx], color, alpha);
     }
 }
 
@@ -87,7 +89,8 @@ void zc_rect_world(int x, int y, int w, int h, uint16_t color)
     zc_rect(x + zc.ox, y + zc.oy, w, h, color);
 }
 
-void zc_blend_rect_world(int x, int y, int w, int h, uint16_t color, uint8_t alpha)
+void zc_blend_rect_world(int x, int y, int w, int h, uint16_t color,
+                         uint8_t alpha)
 {
     zc_blend_rect(x + zc.ox, y + zc.oy, w, h, color, alpha);
 }
@@ -138,7 +141,8 @@ void zc_line(int x1, int y1, int x2, int y2, int size, uint16_t color)
     int dy = y2 - y1;
     int ax = dx < 0 ? -dx : dx;
     int ay = dy < 0 ? -dy : dy;
-    int steps = (int)ceilf((float)(ax > ay ? ax : ay) / fmaxf(1.0f, (float)size * 0.55f));
+    int steps = (int)ceilf((float)(ax > ay ? ax : ay) /
+                           fmaxf(1.0f, (float)size * 0.55f));
     if(steps < 1) steps = 1;
     for(int i = 0; i <= steps; i++) {
         float t = (float)i / (float)steps;
@@ -153,8 +157,8 @@ void zc_line_world(int x1, int y1, int x2, int y2, int size, uint16_t color)
     zc_line(x1 + zc.ox, y1 + zc.oy, x2 + zc.ox, y2 + zc.oy, size, color);
 }
 
-void zc_chamfer_panel(int x, int y, int w, int h, uint16_t fill, uint16_t border,
-                      int cut, uint16_t inner)
+void zc_chamfer_panel(int x, int y, int w, int h, uint16_t fill,
+                      uint16_t border, int cut, uint16_t inner)
 {
     zc_rect(x + cut, y, w - cut * 2, h, fill);
     zc_rect(x, y + cut, w, h - cut * 2, fill);
@@ -176,7 +180,8 @@ void zc_copy_backdrop(void)
 {
     if(zc.backdrop == NULL) return;
     if(zc.ox == 0 && zc.oy == 0) {
-        memcpy(zc.fb, zc.backdrop, (size_t)zc.w * (size_t)zc.h * sizeof(uint16_t));
+        memcpy(zc.fb, zc.backdrop,
+               (size_t)zc.w * (size_t)zc.h * sizeof(uint16_t));
         return;
     }
     zc_clear(ZC_INK);
@@ -192,8 +197,6 @@ void zc_copy_backdrop(void)
                (size_t)(dx1 - dx0) * sizeof(uint16_t));
     }
 }
-
-/* ---------------------------------------------------------------- text */
 
 static const zc_glyph5_t * find5(char ch)
 {
@@ -217,7 +220,9 @@ void zc_text(const char * text, int x, int y, int scale, uint16_t color,
     if(scale < 1) scale = 1;
     if(spacing < 0) spacing = scale;
     int total = zc_text_width(text, scale, spacing);
-    int cx = align == ZC_ALIGN_CENTER ? x - total / 2 : align == ZC_ALIGN_RIGHT ? x - total : x;
+    int cx = align == ZC_ALIGN_CENTER  ? x - total / 2
+             : align == ZC_ALIGN_RIGHT ? x - total
+                                       : x;
     for(const char * p = text; *p != '\0'; p++) {
         char ch = *p;
         if(ch >= 'a' && ch <= 'z') ch = (char)(ch - 'a' + 'A');
@@ -228,7 +233,8 @@ void zc_text(const char * text, int x, int y, int scale, uint16_t color,
                 uint8_t bits = g->rows[row];
                 for(int col = 0; col < 5; col++) {
                     if(bits & (uint8_t)(0x10U >> col)) {
-                        zc_rect(cx + col * scale, y + row * scale, scale, scale, color);
+                        zc_rect(cx + col * scale, y + row * scale, scale, scale,
+                                color);
                     }
                 }
             }
@@ -257,11 +263,13 @@ static uint32_t utf8_next(const char ** pp)
         *pp += 2;
     }
     else if((p[0] & 0xF0U) == 0xE0U && p[1] != 0 && p[2] != 0) {
-        cp = ((uint32_t)(p[0] & 0x0FU) << 12) | ((uint32_t)(p[1] & 0x3FU) << 6) | (p[2] & 0x3FU);
+        cp = ((uint32_t)(p[0] & 0x0FU) << 12) |
+             ((uint32_t)(p[1] & 0x3FU) << 6) | (p[2] & 0x3FU);
         *pp += 3;
     }
     else if((p[0] & 0xF8U) == 0xF0U && p[1] != 0 && p[2] != 0 && p[3] != 0) {
-        cp = ((uint32_t)(p[0] & 0x07U) << 18) | ((uint32_t)(p[1] & 0x3FU) << 12) |
+        cp = ((uint32_t)(p[0] & 0x07U) << 18) |
+             ((uint32_t)(p[1] & 0x3FU) << 12) |
              ((uint32_t)(p[2] & 0x3FU) << 6) | (p[3] & 0x3FU);
         *pp += 4;
     }
@@ -291,7 +299,8 @@ static void draw_cjk_bitmap(const zc_glyph_t * g, int x, int y, uint16_t color)
     int stride = (g->w + 7) / 8;
     for(int row = 0; row < g->h; row++) {
         for(int col = 0; col < g->w; col++) {
-            if(bits[row * stride + (col >> 3)] & (uint8_t)(0x80U >> (col & 7))) {
+            if(bits[row * stride + (col >> 3)] &
+               (uint8_t)(0x80U >> (col & 7))) {
                 zc_pixel(x + col, y + row, color);
             }
         }
@@ -302,7 +311,9 @@ void zc_cn_text(const char * text, int x, int y, int size, uint16_t color,
                 zc_align_t align, bool shadow)
 {
     int total = zc_cn_width(text, size);
-    int cx = align == ZC_ALIGN_CENTER ? x - total / 2 : align == ZC_ALIGN_RIGHT ? x - total : x;
+    int cx = align == ZC_ALIGN_CENTER  ? x - total / 2
+             : align == ZC_ALIGN_RIGHT ? x - total
+                                       : x;
     if(shadow) {
         int sx = cx;
         const char * p = text;
@@ -310,7 +321,8 @@ void zc_cn_text(const char * text, int x, int y, int size, uint16_t color,
             uint32_t cp = utf8_next(&p);
             const zc_glyph_t * g = zc_cjk_lookup(cp, size);
             if(g != NULL) {
-                draw_cjk_bitmap(g, sx + g->xoff + 1, y + g->yoff + 2, ZC_RGB565(3, 6, 3));
+                draw_cjk_bitmap(g, sx + g->xoff + 1, y + g->yoff + 2,
+                                ZC_RGB565(3, 6, 3));
                 sx += g->adv;
             }
             else {
@@ -337,15 +349,19 @@ void zc_heart(int x, int y, bool filled, int scale, bool flash)
 {
     static const char * rows[5] = {".X.X.", "XXXXX", "XXXXX", ".XXX.", "..X.."};
     uint16_t body = flash ? ZC_WHITE : filled ? ZC_RED : ZC_RGB565(53, 39, 29);
-    uint16_t shade = flash ? ZC_BONE : filled ? ZC_RED_D : ZC_RGB565(32, 24, 18);
+    uint16_t shade = flash    ? ZC_BONE
+                     : filled ? ZC_RED_D
+                              : ZC_RGB565(32, 24, 18);
     for(int r = 0; r < 5; r++) {
         for(int c = 0; c < 5; c++) {
             if(rows[r][c] != 'X') continue;
-            uint16_t col = (r == 4 || (r == 3 && (c == 0 || c == 4))) ? shade : body;
+            uint16_t col =
+                (r == 4 || (r == 3 && (c == 0 || c == 4))) ? shade : body;
             zc_rect(x + c * scale, y + r * scale, scale, scale, col);
         }
     }
     if(filled && !flash) {
-        zc_rect(x + 2 * scale, y + 1 * scale, scale, scale, ZC_RGB565(245, 154, 99));
+        zc_rect(x + 2 * scale, y + 1 * scale, scale, scale,
+                ZC_RGB565(245, 154, 99));
     }
 }

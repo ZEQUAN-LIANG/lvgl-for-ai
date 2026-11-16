@@ -86,8 +86,6 @@
     $("localEcho").checked = false;
   }
 
-  // -- helpers -------------------------------------------------------
-
   function parseJson(text) {
     try {
       return JSON.parse(text);
@@ -319,8 +317,6 @@
     startEventsStream();
   }
 
-  // -- SSE -----------------------------------------------------------
-
   function openSse(url, { onMessage, onError }) {
     const stream = new EventSource(url);
     stream.onmessage = (message) => {
@@ -394,8 +390,6 @@
     );
     state.stream = stream;
   }
-
-  // -- job visualization ---------------------------------------------
 
   function setJobProgress(percent, label) {
     const value =
@@ -611,8 +605,6 @@
     }
   }
 
-  // -- status / ports -------------------------------------------------
-
   function updateStatusbar() {
     $("statusPort").textContent = state.port || "—";
     $("statusBaud").textContent = state.baud ? String(state.baud) : "—";
@@ -752,8 +744,6 @@
     updateStatusbar();
   }
 
-  // -- connection ----------------------------------------------------
-
   async function connect() {
     if (state.connected || state.connecting) return;
     const port = $("portSelect").value;
@@ -823,8 +813,6 @@
     }
   }
 
-  // -- build / flash --------------------------------------------------
-
   function deriveApp(projectDir) {
     const normalized = String(projectDir || "")
       .replace(/\\/g, "/")
@@ -893,8 +881,6 @@
     await startJob("flash", flashPayload(buildFirst));
   }
 
-  // -- wiring ---------------------------------------------------------
-
   function onClick(id, handler) {
     $(id).addEventListener("click", (event) => {
       try {
@@ -935,7 +921,6 @@
         $("localEcho").checked ? "1" : "0",
       );
     } catch {
-      /* ignore storage errors */
     }
   });
 
@@ -1026,7 +1011,6 @@
     await refreshSuggestions(true);
     await refreshStatus();
     await loadActivityHistory();
-    // Attach a job that was already running before the page reloaded.
     const data = await api("/api/jobs");
     const running = (data.jobs || []).find(
       (job) => job.status === "running" || job.status === "queued",

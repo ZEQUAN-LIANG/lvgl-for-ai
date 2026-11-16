@@ -73,7 +73,6 @@ button:disabled {
   overflow: hidden;
 }
 
-/* -- top bar ------------------------------------------------------- */
 
 .topbar {
   display: flex;
@@ -308,7 +307,6 @@ button:active:not(:disabled) {
   }
 }
 
-/* -- tabs ---------------------------------------------------------- */
 
 .tabs {
   display: flex;
@@ -383,7 +381,6 @@ button:active:not(:disabled) {
   align-items: center;
 }
 
-/* -- global progress ----------------------------------------------- */
 
 .global-progress {
   position: relative;
@@ -419,7 +416,6 @@ button:active:not(:disabled) {
   z-index: 1;
 }
 
-/* -- workspace ----------------------------------------------------- */
 
 .workspace {
   position: relative;
@@ -822,7 +818,6 @@ button:active:not(:disabled) {
   background: rgba(90, 214, 200, 0.045);
 }
 
-/* -- status bar ---------------------------------------------------- */
 
 .statusbar {
   display: flex;
@@ -848,7 +843,6 @@ button:active:not(:disabled) {
   color: var(--muted);
 }
 
-/* -- toast --------------------------------------------------------- */
 
 .toast {
   position: fixed;
@@ -878,7 +872,6 @@ button:active:not(:disabled) {
   color: #ffc2c5;
 }
 
-/* -- responsive ---------------------------------------------------- */
 
 @media (max-width: 1000px) {
   .status-pill {

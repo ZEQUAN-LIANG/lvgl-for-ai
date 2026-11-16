@@ -1,0 +1,46 @@
+# Tool configuration only. The project has no Python packaging metadata.
+# Entry point: python -I scripts/lint.py check|format|hook
+
+[tool.ruff]
+line-length = 79
+target-version = "py39"
+src = [
+    "console",
+    "scripts",
+    "user",
+    "chip-adapt/sifli",
+]
+respect-gitignore = true
+extend-exclude = [
+    ".claude",
+    ".scratch",
+    "build",
+    "dist",
+    "licenses",
+    "sessions",
+    "engine/lvgl",
+    "engine/third_party",
+    "console/assets/vendor",
+    "chip-adapt/vendor",
+    "chip-adapt/exports",
+    "chip-adapt/sifli/host/vendor",
+    "chip-adapt/sifli/host/.cache",
+    ".test-tmp",
+    ".test-sessions",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+ignore = [
+    # Every tool inserts the tool root into sys.path before importing the
+    # package, so module-level imports after that bootstrap are deliberate.
+    "E402",
+    # ruff format already wraps code to line-length.  What remains are HTML
+    # templates, docstring examples and long string literals that cannot be
+    # folded without changing what they say.
+    "E501",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+line-ending = "auto"

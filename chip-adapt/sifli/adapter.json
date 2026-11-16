@@ -1,5 +1,5 @@
 {
-  "schema": "lvgl-ai-chip-adapter-v1",
+  "schema": "lvgl-verify-loop-chip-adapter-v1",
   "chip": "sifli",
   "name": "SiFli SF32LB52x (黄山派)",
   "board": "sf32lb52-lchspi-ulp",

@@ -1,11 +1,11 @@
 #include "zc_audio.h"
 #include "zc_synth.h"
 
-#if defined(LVGL_AI_EZIP_ASSETS)
+#if defined(LVGL_VERIFY_LOOP_EZIP_ASSETS)
 #include "rtthread.h"
 #endif
 
-#if defined(LVGL_AI_EZIP_ASSETS) && defined(PA_USING_AW8155)
+#if defined(LVGL_VERIFY_LOOP_EZIP_ASSETS) && defined(PA_USING_AW8155)
 
 #include "rtdevice.h"
 #include "bf0_hal.h"
@@ -15,10 +15,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#define ZC_AUDIO_SR 16000
+#define ZC_AUDIO_SR      16000
 #define ZC_AUDIO_SAMPLES 320
-#define ZC_AUDIO_BYTES (ZC_AUDIO_SAMPLES * 2)
-#define ZC_EVENT_COUNT 64
+#define ZC_AUDIO_BYTES   (ZC_AUDIO_SAMPLES * 2)
+#define ZC_EVENT_COUNT   64
 
 static rt_device_t s_prc;
 static rt_device_t s_codec;
@@ -62,8 +62,10 @@ static bool audio_config(void)
     struct rt_audio_caps caps;
     struct rt_audio_sr_convert src;
 
-    rt_device_control(s_codec, AUDIO_CTL_SETOUTPUT, (void *)(uintptr_t)AUDPRC_TX_TO_CODEC);
-    rt_device_control(s_prc, AUDIO_CTL_SETOUTPUT, (void *)(uintptr_t)AUDPRC_TX_TO_CODEC);
+    rt_device_control(s_codec, AUDIO_CTL_SETOUTPUT,
+                      (void *)(uintptr_t)AUDPRC_TX_TO_CODEC);
+    rt_device_control(s_prc, AUDIO_CTL_SETOUTPUT,
+                      (void *)(uintptr_t)AUDPRC_TX_TO_CODEC);
 
     memset(&caps, 0, sizeof(caps));
     caps.main_type = AUDIO_TYPE_OUTPUT;
@@ -72,7 +74,8 @@ static bool audio_config(void)
     caps.udata.config.channels = 1;
     caps.udata.config.samplerate = ZC_AUDIO_SR;
     caps.udata.config.samplefmt = 16;
-    if(rt_device_control(s_codec, AUDIO_CTL_CONFIGURE, &caps) != RT_EOK) return false;
+    if(rt_device_control(s_codec, AUDIO_CTL_CONFIGURE, &caps) != RT_EOK)
+        return false;
 
     src.channel = 1;
     src.source_sr = ZC_AUDIO_SR;
@@ -94,7 +97,8 @@ static bool audio_config(void)
     caps.udata.config.channels = 1;
     caps.udata.config.samplerate = ZC_AUDIO_SR;
     caps.udata.config.samplefmt = 16;
-    if(rt_device_control(s_prc, AUDIO_CTL_CONFIGURE, &caps) != RT_EOK) return false;
+    if(rt_device_control(s_prc, AUDIO_CTL_CONFIGURE, &caps) != RT_EOK)
+        return false;
 
     rt_device_control(s_codec, AUDIO_CTL_SETVOLUME, (void *)(intptr_t)0);
     rt_device_control(s_codec, AUDIO_CTL_MUTE, (void *)(intptr_t)1);
@@ -138,7 +142,8 @@ bool zc_audio_start(void)
         return false;
     }
     rt_device_set_tx_complete(s_prc, audio_tx_done);
-    rt_device_control(s_prc, AUDIO_CTL_SET_TX_DMA_SIZE, (void *)(uintptr_t)ZC_AUDIO_BYTES);
+    rt_device_control(s_prc, AUDIO_CTL_SET_TX_DMA_SIZE,
+                      (void *)(uintptr_t)ZC_AUDIO_BYTES);
     if(!audio_config()) {
         rt_kprintf("[zc_audio] audio config failed\n");
         return false;

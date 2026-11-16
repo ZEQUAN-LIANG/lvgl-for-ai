@@ -9,16 +9,16 @@ LVGL 9.6 默认启动本应用；`user/scenarios/coffee.json` 已声明 `"app": 
 
 ```bash
 # 无窗口、录制并回放完整场景
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/coffee.json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/coffee.json
 
 # 保持会话直到 Ctrl+C（headless）
-python -I core/cli.py --lvgl 9.6 --app coffee --idle
+python -I console/entrypoints/cli.py --lvgl 9.6 --app coffee --idle
 ```
 
 切到小红书应用时用对应 scenario（或网页端顶部「应用」下拉）：
 
 ```bash
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/xiaohongshu.json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/xiaohongshu.json
 ```
 
 网页 live 录制/测试模式每 100 ms 推进一次虚拟时间（10 fps），吐司、时钟、萃取和养护进度会持续变化。网页 live 默认只保留变化帧：画面不变时不会产生新 PNG，也不消耗 600 帧预算；HUD 的 `t_ms` 仍持续前进。动画密集时 600 个保留帧约对应 60 s。
@@ -26,7 +26,7 @@ python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/xiaohongshu.json
 CLI 场景默认仍逐帧录制：场景约 55 s 虚拟时间，默认 600 帧上限会让 manifest 标记 `truncated`，但 28 张 snapshots 仍完整写入。需要完整帧时显式提高上限（帧体积较大）：
 
 ```bash
-LVGL_AI_MAX_FRAMES=4000 python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/coffee.json
+LVGL_VERIFY_LOOP_MAX_FRAMES=4000 python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/coffee.json
 ```
 
 ## 功能
@@ -43,13 +43,24 @@ LVGL_AI_MAX_FRAMES=4000 python -I core/cli.py --lvgl 9.6 --scenario user/scenari
 
 ## 素材
 
-`coffee_*.h` 是生成并提交的文件。只有修改 `TEXTS` 或画法时才需要重新生成：
+`coffee_*.h` 是已提交的生成文件，构建不依赖转换器。字体用内置 `lvgl assets` 重生成：
 
-```bash
-python -I user/app/coffee/gen_coffee_assets.py --preview .scratch/tmp/coffee-preview
+```bat
+bin\lvgl.cmd assets font --app coffee --font C:\Windows\Fonts\Deng.ttf ^
+  --size 16 --bpp 4 --scan-app --name coffee_font_16
 ```
 
-需要 Node.js（`npx lv_font_conv`）和 Windows 自带的 `C:/Windows/Fonts/Deng.ttf`、`Dengb.ttf`。只嵌入 `TEXTS` 中用到的字符与可打印 ASCII。
+只嵌入 `coffee_texts.h` 中用到的字符与可打印 ASCII；`--scan-app` 会从应用的
+`.c/.h` 字符串字面量收集字符集。`assets.json` 记录 legacy 字号/bpp 参数。
+
+图片是程序化绘制，当前以提交的 `coffee_images.h` 为准。若要用内置工具重生成，
+先把美术导出为 PNG，再运行：
+
+```bat
+bin\lvgl.cmd assets image --app coffee --input <source.png> --cf ARGB8888
+```
+
+旧的 `gen_coffee_assets.py` 已删除；它不再参与构建或资源生成。
 
 ## 模块
 

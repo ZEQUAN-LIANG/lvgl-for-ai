@@ -1,23 +1,9 @@
-/**
- * @file app.c
- * The user entry point: lvgl_engine calls exactly this function.
- *
- * LVGL 9.6 starts the AURELIA C9 coffee machine by default. LVGL_AI_DEMO selects
- * the app variant: coffee (default), xiaohongshu (alias xhs), spectrum,
- * sift_watch, zombie_cannon or textarea_evidence. The CLI and
- * web set it from a scenario's "app" field, so the same value is recorded in
- * the session manifest. The original demo tree is always created but hidden,
- * because the tool's integration tests target its named button; older LVGL
- * targets show that demo as-is.
- *
- * Every app exposes the same ``void create(void)`` entry. Adding an app means
- * one row in ``apps`` plus its implementation; the tool layer never learns app
- * names.
- */
 
 #include "lvgl.h"
 
 #include "app.h"
+#include "asset_probe/asset_probe.h"
+
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
 #include "coffee/coffee_ui.h"
 #include "xiaohongshu/xhs_page.h"
@@ -25,6 +11,8 @@
 #include "textarea_evidence/textarea_evidence.h"
 #include "sift_watch/sift_watch.h"
 #include "zombie_cannon/zombie_cannon.h"
+#include "intro/intro.h"
+#include "demo_feedback/demo_feedback.h"
 #endif
 
 #include <stdio.h>
@@ -32,7 +20,7 @@
 #include <string.h>
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
-typedef void (* app_create_fn)(void);
+typedef void (*app_create_fn)(void);
 
 typedef struct {
     const char * name;
@@ -46,6 +34,9 @@ static const app_entry_t apps[] = {
     {"textarea_evidence", textarea_evidence_create},
     {"sift_watch", sift_watch_create},
     {"zombie_cannon", zombie_cannon_create},
+    {"intro", intro_create},
+    {"demo_feedback", demo_feedback_create},
+    {"asset_probe", asset_probe_create},
 };
 
 #define APP_COUNT (sizeof(apps) / sizeof(apps[0]))
@@ -82,10 +73,10 @@ void app_create(void)
     printf("[app] app_create\n");
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
-    const char * requested = getenv("LVGL_AI_DEMO");
+    const char * requested = getenv("LVGL_VERIFY_LOOP_DEMO");
     const char * name = (requested == NULL || requested[0] == '\0')
-                        ? apps[0].name
-                        : app_canonical(requested);
+                            ? apps[0].name
+                            : app_canonical(requested);
     const app_entry_t * app = app_find(name);
 
     app_print_apps();
@@ -95,14 +86,20 @@ void app_create(void)
         exit(1);
     }
 
-    /* The original demo tree stays transparent behind every app because the
-     * tool's integration tests target its named button. */
     demo_harness_create(false);
     printf("[app] app=%s\n", app->name);
     app->create();
 #else
-    printf("[app] app=harness (LVGL < 9.6)\n");
-    demo_harness_create(true);
+    const char * requested = getenv("LVGL_VERIFY_LOOP_DEMO");
+    if(requested != NULL && strcmp(requested, "asset_probe") == 0) {
+        demo_harness_create(false);
+        printf("[app] app=asset_probe (LVGL < 9.6)\n");
+        asset_probe_create();
+    }
+    else {
+        printf("[app] app=harness (LVGL < 9.6)\n");
+        demo_harness_create(true);
+    }
 #endif
 
     printf("[demo_asset] font=demo_asset_font_8 image=demo_asset_logo\n");

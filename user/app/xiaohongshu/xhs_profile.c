@@ -1,8 +1,3 @@
-/**
- * @file xhs_profile.c
- * The 我 tab: profile header, stats and a note grid that opens the shared note
- * detail overlay.
- */
 
 #include "xhs_ui.h"
 
@@ -12,15 +7,21 @@
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
 
 static const char * const profile_tabs[3] = {
-    XHS_TXT_PROFILE_NOTES, XHS_TXT_PROFILE_FAV, XHS_TXT_PROFILE_LIKED,
+    XHS_TXT_PROFILE_NOTES,
+    XHS_TXT_PROFILE_FAV,
+    XHS_TXT_PROFILE_LIKED,
 };
 static const char * const stat_labels[3] = {
-    XHS_TXT_STAT_FOLLOW, XHS_TXT_STAT_FANS, XHS_TXT_STAT_LIKES,
+    XHS_TXT_STAT_FOLLOW,
+    XHS_TXT_STAT_FANS,
+    XHS_TXT_STAT_LIKES,
 };
 static const char * const stat_values[3] = {
-    XHS_TXT_STAT_FOLLOW_N, XHS_TXT_STAT_FANS_N, XHS_TXT_STAT_LIKES_N,
+    XHS_TXT_STAT_FOLLOW_N,
+    XHS_TXT_STAT_FANS_N,
+    XHS_TXT_STAT_LIKES_N,
 };
-static const int stat_centers[3] = { 58, 152, 246 };
+static const int stat_centers[3] = {58, 152, 246};
 
 static lv_obj_t * profile_grid;
 static lv_obj_t * profile_tab_labels[3];
@@ -29,9 +30,9 @@ static int active_profile_tab = 0;
 
 static const int * profile_set(int tab)
 {
-    static const int notes[6] = { 0, 1, 2, 3, 4, 5 };
-    static const int favorites[3] = { 1, 2, 5 };
-    static const int liked[3] = { 0, 3, 4 };
+    static const int notes[6] = {0, 1, 2, 3, 4, 5};
+    static const int favorites[3] = {1, 2, 5};
+    static const int liked[3] = {0, 3, 4};
     return tab == 1 ? favorites : tab == 2 ? liked : notes;
 }
 
@@ -55,9 +56,8 @@ static void xhs_profile_grid_build(void)
         int note_index = set[i];
         int column = i % 3;
         int row = i / 3;
-        lv_obj_t * tile = xhs_cover_thumb(profile_grid, note_index,
-                                          8 + column * 98,
-                                          row * 112, 94, 104, 8);
+        lv_obj_t * tile = xhs_cover_thumb(
+            profile_grid, note_index, 8 + column * 98, row * 112, 94, 104, 8);
         xhs_clickable(tile, NULL);
         lv_obj_add_event_cb(tile, xhs_profile_note_cb, LV_EVENT_CLICKED,
                             (void *)(intptr_t)note_index);
@@ -70,12 +70,12 @@ static void xhs_profile_tab_cb(lv_event_t * event)
     int index = (int)(intptr_t)lv_event_get_user_data(event);
     active_profile_tab = index;
     for(int i = 0; i < 3; i++) {
-        lv_obj_set_style_text_font(profile_tab_labels[i],
-                                   xhs_font(i == index ? XHS_FT_12B
-                                                       : XHS_FT_12), 0);
-        lv_obj_set_style_text_color(profile_tab_labels[i],
-                                    lv_color_hex(i == index ? XHS_TEXT
-                                                            : XHS_MUTED), 0);
+        lv_obj_set_style_text_font(
+            profile_tab_labels[i],
+            xhs_font(i == index ? XHS_FT_12B : XHS_FT_12), 0);
+        lv_obj_set_style_text_color(
+            profile_tab_labels[i],
+            lv_color_hex(i == index ? XHS_TEXT : XHS_MUTED), 0);
     }
     lv_obj_align_to(profile_underline, profile_tab_labels[index],
                     LV_ALIGN_OUT_BOTTOM_MID, 0, 1);
@@ -121,33 +121,32 @@ lv_obj_t * xhs_profile_create(lv_obj_t * parent)
 
     xhs_avatar(header, 16, 36, 60, XHS_RED, "小", XHS_FT_14B);
 
-    xhs_label_at(header, XHS_TXT_PROFILE_NAME, XHS_FT_14B, XHS_TEXT,
-                 90, 40, 160, 22);
-    xhs_label_at(header, XHS_TXT_PROFILE_ID, XHS_FT_11, XHS_MUTED,
-                 90, 66, 170, 16);
+    xhs_label_at(header, XHS_TXT_PROFILE_NAME, XHS_FT_14B, XHS_TEXT, 90, 40,
+                 160, 22);
+    xhs_label_at(header, XHS_TXT_PROFILE_ID, XHS_FT_11, XHS_MUTED, 90, 66, 170,
+                 16);
 
     lv_obj_t * edit = xhs_pill(header, 214, 38, 74, 24, XHS_WHITE,
-                               XHS_TXT_PROFILE_EDIT, XHS_FT_11, XHS_MUTED,
-                               12);
+                               XHS_TXT_PROFILE_EDIT, XHS_FT_11, XHS_MUTED, 12);
     lv_obj_set_style_border_width(edit, 1, 0);
     lv_obj_set_style_border_color(edit, lv_color_hex(0xE3E3E7), 0);
     xhs_clickable(edit, "profile_edit");
     lv_obj_add_event_cb(edit, xhs_profile_edit_cb, LV_EVENT_CLICKED, NULL);
 
-    xhs_label_at(header, XHS_TXT_PROFILE_BIO, XHS_FT_12, XHS_TEXT,
-                 16, 108, 272, 18);
+    xhs_label_at(header, XHS_TXT_PROFILE_BIO, XHS_FT_12, XHS_TEXT, 16, 108, 272,
+                 18);
     xhs_image(header, XHS_ICON_LOCATION, 16, 130);
-    xhs_label_at(header, XHS_TXT_PROFILE_LOCATION, XHS_FT_11, XHS_MUTED,
-                 32, 131, 120, 16);
+    xhs_label_at(header, XHS_TXT_PROFILE_LOCATION, XHS_FT_11, XHS_MUTED, 32,
+                 131, 120, 16);
 
     for(int i = 0; i < 3; i++) {
-        lv_obj_t * value = xhs_label_at(header, stat_values[i], XHS_FT_12B,
-                                        XHS_TEXT, stat_centers[i] - 40,
-                                        152, 80, 18);
+        lv_obj_t * value =
+            xhs_label_at(header, stat_values[i], XHS_FT_12B, XHS_TEXT,
+                         stat_centers[i] - 40, 152, 80, 18);
         lv_obj_set_style_text_align(value, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_t * label = xhs_label_at(header, stat_labels[i], XHS_FT_11,
-                                        XHS_MUTED, stat_centers[i] - 40,
-                                        171, 80, 16);
+        lv_obj_t * label =
+            xhs_label_at(header, stat_labels[i], XHS_FT_11, XHS_MUTED,
+                         stat_centers[i] - 40, 171, 80, 16);
         lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
         lv_obj_t * hit = xhs_box(header, stat_centers[i] - 40, 148, 80, 42);
@@ -190,4 +189,4 @@ lv_obj_t * xhs_profile_create(lv_obj_t * parent)
     return page;
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

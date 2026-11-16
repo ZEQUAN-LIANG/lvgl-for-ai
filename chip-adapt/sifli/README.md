@@ -28,7 +28,7 @@ SDK、工具链、sftool 和可选的 Web Flasher 资源都是外部下载物，
 
 `user/app/sift_watch` 是唯一源码真源：本地 headless（LVGL 9.6）直接编译它，导出时按
 LVGL 9.4 基线原样复制到 `<app>/src/app/sift_watch/`，只在每个 `.c` 顶部插入
-`#include "lvgl_ai_sdk.h"`。共享应用只暴露 `void sift_watch_create(void)`；
+`#include "lvgl_verify_loop_sdk.h"`。共享应用只暴露 `void sift_watch_create(void)`；
 headless 的 `app_create`、SDK 的 `app_create` / `main.c` 和 `user/app/app.c` 的注册表
 都属于目标侧，不进入共享源码。
 
@@ -55,7 +55,7 @@ headless 的 `app_create`、SDK 的 `app_create` / `main.c` 和 `user/app/app.c`
       app.c                 # 固定入口：app_assets_init(); <app>_create();
       assets.h/.c           # 生成的资源层
       app.h, lvgl_compat.h  # 从 user/app 复制
-      lvgl_ai_sdk.h         # SDK 头或模拟桩的二选一入口
+      lvgl_verify_loop_sdk.h         # SDK 头或模拟桩的二选一入口
       sim_sifli.h/.c        # 仅运行时验证使用；SDK 构建排除
       <app>/
         assets.json         # 资源清单副本
@@ -75,7 +75,7 @@ cache-only 清单，只申请 PSRAM/SRAM 池而不生成图片符号（`sift_wat
 
 ```json
 {
-  "schema": "lvgl-ai-assets-v1",
+  "schema": "lvgl-verify-loop-assets-v1",
   "local_header": "watch_assets.h",
   "assets": {
     "watch_bg":   {"file": "watch_bg.png",   "mode": "ezip", "placement": "flash", "transform": "none"},
@@ -102,12 +102,12 @@ cache-only 清单，只申请 PSRAM/SRAM 池而不生成图片符号（`sift_wat
 
 导出目录生成 `src/app/<app>/assets.h` 和 `assets.c`：
 
-- SDK 构建（`LVGL_AI_EZIP_ASSETS`）声明 EZIP/raw 符号；热图通过
+- SDK 构建（`LVGL_VERIFY_LOOP_EZIP_ASSETS`）声明 EZIP/raw 符号；热图通过
   `app_asset_<name>()` 返回 PSRAM/SRAM 副本。
 - 本地运行时构建不定义该宏，`assets.h` 包含 `local_header` 指定的头（例如
   `watch_assets.h`），并提供空的 `app_assets_init()`。
 
-应用代码只写 `#include "assets.h"`，不再自己判断 `LVGL_AI_EZIP_ASSETS`。
+应用代码只写 `#include "assets.h"`，不再自己判断 `LVGL_VERIFY_LOOP_EZIP_ASSETS`。
 
 生成资源头的尺寸宏来自 PNG IHDR：资源名大写后加 `_W` / `_H`，例如
 `watch_ring.png` 生成 `WATCH_RING_W` / `WATCH_RING_H`。导出模板把 `src/raw/*.c`
@@ -141,7 +141,7 @@ while (1) {
 导出**不做源码降级**。应用必须直接使用 LVGL 9.4 可用的 API；版本门建议写成
 `LVGL_VERSION_MINOR >= 4`，这样本地 9.6 预览和导出 9.4 都能编译。导出只做两件事：
 
-- 原样复制应用源码，并在每个 `.c` 顶部插入 `#include "lvgl_ai_sdk.h"`（SDK/模拟头入口）
+- 原样复制应用源码，并在每个 `.c` 顶部插入 `#include "lvgl_verify_loop_sdk.h"`（SDK/模拟头入口）
 - 扫描 9.5/9.6-only API，发现时返回 `unsupported_api`，不生成会编译失败的工程
 
 会被拒绝的符号：
@@ -160,7 +160,7 @@ python -I chip-adapt/sifli/export.py sift_watch --dry-run --force
 python -I chip-adapt/sifli/export.py sift_watch --force
 ```
 
-导出、源码复制和 EZIP 转换全部在适配脚本里，`core/` 不包含芯片导出逻辑。导出的
+导出、源码复制和 EZIP 转换全部在适配脚本里，`console/` 不包含芯片导出逻辑。导出的
 README 和返回的验证命令使用 `adapter.json` 的 `lvgl_version`（当前 9.4）：导出工程跟随
 SiFli SDK 的 LVGL 9.4 基线，而源目录本地预览仍用 9.6。
 
@@ -179,17 +179,17 @@ python -I chip-adapt/sifli/host/cli.py build --app sift_watch --actor ai --json
 源目录用 LVGL 9.6 跑本地 headless：
 
 ```bash
-python -I core/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch.json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch.json
 ```
 
 导出副本用 LVGL 9.4 跑同一场景；SDK 专有函数由 `sim_sifli` 桩处理：
 
 ```bash
-LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/exports/sift_watch/src/app" \
-  python -I core/cli.py --lvgl 9.4 --scenario user/scenarios/sift_watch.json
+LVGL_VERIFY_LOOP_USER_APP_DIR="$PWD/chip-adapt/exports/sift_watch/src/app" \
+  python -I console/entrypoints/cli.py --lvgl 9.4 --scenario user/scenarios/sift_watch.json
 ```
 
-`lvgl_ai_sdk.h` 用 `__has_include("littlevgl2rtt.h")` 判断环境：SDK 构建拿真实头，
+`lvgl_verify_loop_sdk.h` 用 `__has_include("littlevgl2rtt.h")` 判断环境：SDK 构建拿真实头，
 运行时验证拿 `sim_sifli.h`。桩只用于验证，不代表 EPIC、触摸或真实刷新行为。
 `sift_watch` 场景声明 390x450；两次运行都应得到 `status=ok`、`app=sift_watch`、
 `display=390x450`，并保留 timeline/snapshot 证据。
@@ -205,8 +205,8 @@ framebuffer，不依赖 LVGL 9.5/9.6 API；`sift_watch_zombie.json` 覆盖进入
 4Ω/8Ω 喇叭，并短接核心板 5-6、7-8、11-12 跳线帽。导出的 9.4 副本可用同一场景验证：
 
 ```bash
-LVGL_AI_USER_APP_DIR="$PWD/chip-adapt/exports/sift_watch/src/app" \
-  python -I core/cli.py --lvgl 9.4 --scenario user/scenarios/sift_watch_zombie.json
+LVGL_VERIFY_LOOP_USER_APP_DIR="$PWD/chip-adapt/exports/sift_watch/src/app" \
+  python -I console/entrypoints/cli.py --lvgl 9.4 --scenario user/scenarios/sift_watch_zombie.json
 ```
 
 `zombie_cannon` 是 390x460 的独立预览外壳，不进入导出；黄山派以 `sift_watch` 为准。

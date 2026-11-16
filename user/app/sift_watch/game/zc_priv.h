@@ -6,8 +6,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define ZC_RGB565(r, g, b) \
-    ((uint16_t)((((uint16_t)(r) & 0xF8U) << 8) | (((uint16_t)(g) & 0xFCU) << 3) | ((uint16_t)(b) >> 3)))
+#define ZC_RGB565(r, g, b)                                                     \
+    ((uint16_t)((((uint16_t)(r) & 0xF8U) << 8) |                               \
+                (((uint16_t)(g) & 0xFCU) << 3) | ((uint16_t)(b) >> 3)))
 
 #define ZC_INK       ZC_RGB565(8, 11, 7)
 #define ZC_INK2      ZC_RGB565(14, 19, 12)
@@ -36,20 +37,14 @@
 #define ZC_SMOKE     ZC_RGB565(42, 46, 36)
 #define ZC_BLACK     ZC_RGB565(0, 0, 0)
 
-typedef enum {
-    ZC_ALIGN_LEFT = 0,
-    ZC_ALIGN_CENTER,
-    ZC_ALIGN_RIGHT
-} zc_align_t;
+typedef enum { ZC_ALIGN_LEFT = 0, ZC_ALIGN_CENTER, ZC_ALIGN_RIGHT } zc_align_t;
 
 typedef struct {
     uint16_t * fb;
     uint16_t * backdrop;
     int w;
     int h;
-    /* Bottom-anchored art is lifted by this amount on the 390x450 watch. */
     int dy;
-    /* 0 on the HTML canvas; 44 inside the round-corner watch panel. */
     int safe;
     int ox;
     int oy;
@@ -60,4 +55,4 @@ typedef struct {
 
 extern zc_ctx_t zc;
 
-#endif /* ZC_PRIV_H */
+#endif

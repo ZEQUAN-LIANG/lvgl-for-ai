@@ -7,4 +7,4 @@
 void zombie_cannon_create(void);
 #endif
 
-#endif /* ZOMBIE_CANNON_H */
+#endif

@@ -1,8 +1,3 @@
-/**
- * @file xhs_page.c
- * The phone shell: decorative backdrop, status bar, root-tab host, overlay
- * host and the bottom navigation bar. Pages live in their own modules.
- */
 
 #include "app.h"
 #include "xhs_page.h"
@@ -20,18 +15,19 @@ static lv_obj_t * overlay_host;
 static lv_obj_t * bottom_nav;
 
 static const char * const nav_texts[4] = {
-    XHS_TXT_NAV_HOME, XHS_TXT_NAV_MARKET, XHS_TXT_NAV_MESSAGE, XHS_TXT_NAV_ME,
+    XHS_TXT_NAV_HOME,
+    XHS_TXT_NAV_MARKET,
+    XHS_TXT_NAV_MESSAGE,
+    XHS_TXT_NAV_ME,
 };
 
 static void xhs_nav_style(int active)
 {
     for(int i = 0; i < 4; i++) {
-        lv_obj_set_style_text_font(nav_labels[i],
-                                   xhs_font(i == active ? XHS_FT_12B
-                                                        : XHS_FT_12), 0);
-        lv_obj_set_style_text_color(nav_labels[i],
-                                    lv_color_hex(i == active ? XHS_TEXT
-                                                             : XHS_MUTED), 0);
+        lv_obj_set_style_text_font(
+            nav_labels[i], xhs_font(i == active ? XHS_FT_12B : XHS_FT_12), 0);
+        lv_obj_set_style_text_color(
+            nav_labels[i], lv_color_hex(i == active ? XHS_TEXT : XHS_MUTED), 0);
     }
 }
 
@@ -100,8 +96,8 @@ static void xhs_build_status_bar(lv_obj_t * panel)
 
 static void xhs_bottom_nav(lv_obj_t * panel)
 {
-    bottom_nav = xhs_box(panel, 0, XHS_SCREEN_H - XHS_NAV_H,
-                         XHS_SCREEN_W, XHS_NAV_H);
+    bottom_nav =
+        xhs_box(panel, 0, XHS_SCREEN_H - XHS_NAV_H, XHS_SCREEN_W, XHS_NAV_H);
     lv_obj_set_style_bg_color(bottom_nav, lv_color_hex(XHS_WHITE), 0);
     lv_obj_set_style_bg_opa(bottom_nav, LV_OPA_COVER, 0);
 
@@ -109,10 +105,10 @@ static void xhs_bottom_nav(lv_obj_t * panel)
     lv_obj_set_style_bg_color(divider, lv_color_hex(XHS_LINE), 0);
     lv_obj_set_style_bg_opa(divider, LV_OPA_COVER, 0);
 
-    const int centers[4] = { 38, 104, 200, 266 };
+    const int centers[4] = {38, 104, 200, 266};
     for(int i = 0; i < 4; i++) {
-        lv_obj_t * label = xhs_label(bottom_nav, nav_texts[i],
-                                     XHS_FT_12, XHS_MUTED);
+        lv_obj_t * label =
+            xhs_label(bottom_nav, nav_texts[i], XHS_FT_12, XHS_MUTED);
         lv_obj_set_pos(label, centers[i] - 20, 11);
         lv_obj_set_size(label, 40, 17);
         lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
@@ -127,8 +123,8 @@ static void xhs_bottom_nav(lv_obj_t * panel)
     lv_obj_set_style_bg_color(dot, lv_color_hex(XHS_RED), 0);
     lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, 0);
 
-    lv_obj_t * publish = xhs_pill(bottom_nav, 131, 9, 42, 28,
-                                  XHS_RED, "", XHS_FT_12, XHS_WHITE, 14);
+    lv_obj_t * publish = xhs_pill(bottom_nav, 131, 9, 42, 28, XHS_RED, "",
+                                  XHS_FT_12, XHS_WHITE, 14);
     lv_obj_set_style_shadow_color(publish, lv_color_hex(XHS_RED), 0);
     lv_obj_set_style_shadow_width(publish, 8, 0);
     lv_obj_set_style_shadow_opa(publish, 55, 0);
@@ -154,7 +150,6 @@ void xhs_page_create(void)
     lv_obj_set_style_bg_grad_dir(screen, LV_GRAD_DIR_VER, 0);
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
 
-    /* Soft backdrop behind the phone. */
     lv_obj_t * blob = lv_obj_create(screen);
     lv_obj_set_pos(blob, -190, -230);
     lv_obj_set_size(blob, 520, 520);
@@ -189,7 +184,6 @@ void xhs_page_create(void)
     lv_obj_set_scrollable(ring, false);
     lv_obj_set_clickable(ring, false);
 
-    /* Phone frame. */
     lv_obj_t * phone = lv_obj_create(screen);
     lv_obj_set_pos(phone, 238, 8);
     lv_obj_set_size(phone, 324, 584);
@@ -207,7 +201,6 @@ void xhs_page_create(void)
     lv_obj_set_scrollable(phone, false);
     lv_obj_set_clickable(phone, false);
 
-    /* Side buttons. */
     lv_obj_t * button;
     button = lv_obj_create(screen);
     lv_obj_set_pos(button, 234, 154);
@@ -239,7 +232,6 @@ void xhs_page_create(void)
     lv_obj_set_scrollable(button, false);
     lv_obj_set_clickable(button, false);
 
-    /* Screen. */
     lv_obj_t * panel = lv_obj_create(phone);
     lv_obj_set_pos(panel, 10, 10);
     lv_obj_set_size(panel, XHS_SCREEN_W, XHS_SCREEN_H);
@@ -264,7 +256,6 @@ void xhs_page_create(void)
     root_pages[2] = xhs_messages_create(tab_host);
     root_pages[3] = xhs_profile_create(tab_host);
 
-    /* Dynamic island overlays the status bar. */
     lv_obj_t * notch = xhs_box(panel, 115, 7, 74, 20);
     lv_obj_set_style_radius(notch, 10, 0);
     lv_obj_set_style_bg_color(notch, lv_color_hex(0x0B0B0D), 0);
@@ -280,4 +271,4 @@ void xhs_page_create(void)
     printf("[xhs] page ready notes=%d\n", XHS_NOTE_COUNT);
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

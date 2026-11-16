@@ -11,9 +11,9 @@ HOST_DIR = Path(__file__).resolve().parents[1]
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
-import runner  # noqa: E402
-from build_flash import BuildFlashError  # noqa: E402
-from jobs import Job  # noqa: E402
+import runner
+from build_flash import BuildFlashError
+from jobs import Job
 
 
 class FakeBroker:
@@ -115,7 +115,9 @@ class JobRunnerTest(unittest.TestCase):
     def test_build_records_app_state(self) -> None:
         job = _job()
         result = {"project_dir": "P", "build_dir": "B"}
-        with mock.patch.object(runner, "run_build", return_value=result) as build:
+        with mock.patch.object(
+            runner, "run_build", return_value=result
+        ) as build:
             self.runner.build(
                 job,
                 runner.BuildRequest.from_body({"app": "sift_watch"}),
@@ -157,11 +159,14 @@ class JobRunnerTest(unittest.TestCase):
 
     def test_build_unexpected_error_fails_job(self) -> None:
         job = _job()
-        with mock.patch.object(
-            runner,
-            "run_build",
-            side_effect=RuntimeError("boom"),
-        ), redirect_stderr(io.StringIO()):
+        with (
+            mock.patch.object(
+                runner,
+                "run_build",
+                side_effect=RuntimeError("boom"),
+            ),
+            redirect_stderr(io.StringIO()),
+        ):
             self.runner.build(job, runner.BuildRequest.from_body({}))
         self.assertEqual(job.status, "failed")
         self.assertEqual(_stream_text(job, "stderr"), ["boom"])
@@ -216,7 +221,9 @@ class JobRunnerTest(unittest.TestCase):
         with mock.patch.object(runner, "run_flash", return_value=result):
             self.runner.flash(
                 job,
-                runner.FlashRequest.from_body({"build_dir": result["build_dir"]}),
+                runner.FlashRequest.from_body(
+                    {"build_dir": result["build_dir"]}
+                ),
             )
         self.assertEqual(self.state.calls[0][0], "update")
         self.assertEqual(
@@ -232,21 +239,28 @@ class JobRunnerTest(unittest.TestCase):
             "baud": 1_000_000,
             "build_dir": built["build_dir"],
         }
-        with mock.patch.object(
-            runner,
-            "run_build",
-            return_value=built,
-        ) as build, mock.patch.object(
-            runner,
-            "run_flash",
-            return_value=flashed,
-        ) as flash:
+        with (
+            mock.patch.object(
+                runner,
+                "run_build",
+                return_value=built,
+            ) as build,
+            mock.patch.object(
+                runner,
+                "run_flash",
+                return_value=flashed,
+            ) as flash,
+        ):
             self.runner.flash(
                 job,
-                runner.FlashRequest.from_body({"build": True, "app": "sift_watch"}),
+                runner.FlashRequest.from_body(
+                    {"build": True, "app": "sift_watch"}
+                ),
             )
         build.assert_called_once()
-        self.assertEqual(flash.call_args.kwargs["build_dir"], built["build_dir"])
+        self.assertEqual(
+            flash.call_args.kwargs["build_dir"], built["build_dir"]
+        )
         self.assertIn("build ok; starting flash", _stream_text(job, "status"))
 
     def test_flash_without_reconnect_skips_reopen(self) -> None:
@@ -276,7 +290,9 @@ class JobRunnerTest(unittest.TestCase):
         with mock.patch.object(runner, "run_flash", return_value=result):
             self.runner.flash(
                 job,
-                runner.FlashRequest.from_body({"build_dir": result["build_dir"]}),
+                runner.FlashRequest.from_body(
+                    {"build_dir": result["build_dir"]}
+                ),
             )
         self.assertEqual(job.status, "ok")
         self.assertEqual(

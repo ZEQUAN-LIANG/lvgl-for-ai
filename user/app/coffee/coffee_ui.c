@@ -1,9 +1,3 @@
-/**
- * @file coffee_ui.c
- * Model, generated assets and the small view vocabulary shared by the
- * AURELIA C9 pages. Only this translation unit includes the generated asset
- * headers, so fonts and images exist exactly once.
- */
 
 #include "coffee_ui.h"
 
@@ -14,10 +8,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-
-/* ------------------------------------------------------------------------- */
-/* Model                                                                      */
-/* ------------------------------------------------------------------------- */
 
 coffee_state_t coffee_state = {
     .water_ml = 2050,
@@ -49,108 +39,238 @@ coffee_state_t coffee_state = {
 };
 
 coffee_drink_t coffee_drinks[COFFEE_DRINK_COUNT] = {
-    [COFFEE_DRINK_ESPRESSO] = {
-        .name = COFFEE_TXT_D0_NAME, .italian = COFFEE_TXT_D0_IT,
-        .desc = COFFEE_TXT_D0_DESC, .art = COFFEE_ART_ESPRESSO,
-        .volume = 30, .volume_min = 20, .volume_max = 60, .volume_step = 5,
-        .strength = 5, .temp_c = 93, .milk_ml = 0, .milk_max = 0, .foam = 0,
-    },
-    [COFFEE_DRINK_DOPPIO] = {
-        .name = COFFEE_TXT_D1_NAME, .italian = COFFEE_TXT_D1_IT,
-        .desc = COFFEE_TXT_D1_DESC, .art = COFFEE_ART_DOPPIO,
-        .volume = 60, .volume_min = 40, .volume_max = 100, .volume_step = 5,
-        .strength = 5, .temp_c = 93, .milk_ml = 0, .milk_max = 0, .foam = 0,
-    },
-    [COFFEE_DRINK_RISTRETTO] = {
-        .name = COFFEE_TXT_D2_NAME, .italian = COFFEE_TXT_D2_IT,
-        .desc = COFFEE_TXT_D2_DESC, .art = COFFEE_ART_RISTRETTO,
-        .volume = 20, .volume_min = 15, .volume_max = 40, .volume_step = 5,
-        .strength = 5, .temp_c = 93, .milk_ml = 0, .milk_max = 0, .foam = 0,
-    },
-    [COFFEE_DRINK_AMERICANO] = {
-        .name = COFFEE_TXT_D3_NAME, .italian = COFFEE_TXT_D3_IT,
-        .desc = COFFEE_TXT_D3_DESC, .art = COFFEE_ART_AMERICANO,
-        .volume = 150, .volume_min = 80, .volume_max = 300, .volume_step = 10,
-        .strength = 3, .temp_c = 93, .milk_ml = 0, .milk_max = 0, .foam = 0,
-    },
-    [COFFEE_DRINK_CAPPUCCINO] = {
-        .name = COFFEE_TXT_D4_NAME, .italian = COFFEE_TXT_D4_IT,
-        .desc = COFFEE_TXT_D4_DESC, .art = COFFEE_ART_CAPPUCCINO,
-        .volume = 160, .volume_min = 120, .volume_max = 260, .volume_step = 10,
-        .strength = 3, .temp_c = 93, .milk_ml = 120, .milk_max = 200,
-        .foam = 3, .milk_drink = true,
-    },
-    [COFFEE_DRINK_LATTE] = {
-        .name = COFFEE_TXT_D5_NAME, .italian = COFFEE_TXT_D5_IT,
-        .desc = COFFEE_TXT_D5_DESC, .art = COFFEE_ART_LATTE,
-        .volume = 220, .volume_min = 150, .volume_max = 320, .volume_step = 10,
-        .strength = 3, .temp_c = 93, .milk_ml = 160, .milk_max = 240,
-        .foam = 2, .milk_drink = true,
-    },
-    [COFFEE_DRINK_FLATWHITE] = {
-        .name = COFFEE_TXT_D6_NAME, .italian = COFFEE_TXT_D6_IT,
-        .desc = COFFEE_TXT_D6_DESC, .art = COFFEE_ART_FLATWHITE,
-        .volume = 160, .volume_min = 120, .volume_max = 240, .volume_step = 10,
-        .strength = 4, .temp_c = 93, .milk_ml = 110, .milk_max = 200,
-        .foam = 1, .milk_drink = true,
-    },
-    [COFFEE_DRINK_MACCHIATO] = {
-        .name = COFFEE_TXT_D7_NAME, .italian = COFFEE_TXT_D7_IT,
-        .desc = COFFEE_TXT_D7_DESC, .art = COFFEE_ART_MACCHIATO,
-        .volume = 40, .volume_min = 30, .volume_max = 80, .volume_step = 5,
-        .strength = 5, .temp_c = 93, .milk_ml = 20, .milk_max = 60,
-        .foam = 1, .milk_drink = true,
-    },
-    [COFFEE_DRINK_MOCHA] = {
-        .name = COFFEE_TXT_D8_NAME, .italian = COFFEE_TXT_D8_IT,
-        .desc = COFFEE_TXT_D8_DESC, .art = COFFEE_ART_MOCHA,
-        .volume = 200, .volume_min = 150, .volume_max = 300, .volume_step = 10,
-        .strength = 4, .temp_c = 93, .milk_ml = 130, .milk_max = 220,
-        .foam = 2, .milk_drink = true,
-    },
-    [COFFEE_DRINK_COLDBREW] = {
-        .name = COFFEE_TXT_D9_NAME, .italian = COFFEE_TXT_D9_IT,
-        .desc = COFFEE_TXT_D9_DESC, .art = COFFEE_ART_COLDBREW,
-        .volume = 200, .volume_min = 150, .volume_max = 300, .volume_step = 10,
-        .strength = 4, .temp_c = 4, .milk_ml = 0, .milk_max = 0, .foam = 0,
-        .cold = true,
-    },
-    [COFFEE_DRINK_HOTWATER] = {
-        .name = COFFEE_TXT_D10_NAME, .italian = COFFEE_TXT_D10_IT,
-        .desc = COFFEE_TXT_D10_DESC, .art = COFFEE_ART_HOTWATER,
-        .volume = 200, .volume_min = 100, .volume_max = 300, .volume_step = 10,
-        .strength = 0, .temp_c = 93, .milk_ml = 0, .milk_max = 0, .foam = 0,
-        .water_only = true,
-    },
-    [COFFEE_DRINK_STEAM] = {
-        .name = COFFEE_TXT_D11_NAME, .italian = COFFEE_TXT_D11_IT,
-        .desc = COFFEE_TXT_D11_DESC, .art = COFFEE_ART_STEAM,
-        .volume = 150, .volume_min = 100, .volume_max = 300, .volume_step = 10,
-        .strength = 0, .temp_c = 93, .milk_ml = 150, .milk_max = 300,
-        .foam = 3, .milk_drink = true, .steam_only = true,
-    },
+    [COFFEE_DRINK_ESPRESSO] =
+        {
+            .name = COFFEE_TXT_D0_NAME,
+            .italian = COFFEE_TXT_D0_IT,
+            .desc = COFFEE_TXT_D0_DESC,
+            .art = COFFEE_ART_ESPRESSO,
+            .volume = 30,
+            .volume_min = 20,
+            .volume_max = 60,
+            .volume_step = 5,
+            .strength = 5,
+            .temp_c = 93,
+            .milk_ml = 0,
+            .milk_max = 0,
+            .foam = 0,
+        },
+    [COFFEE_DRINK_DOPPIO] =
+        {
+            .name = COFFEE_TXT_D1_NAME,
+            .italian = COFFEE_TXT_D1_IT,
+            .desc = COFFEE_TXT_D1_DESC,
+            .art = COFFEE_ART_DOPPIO,
+            .volume = 60,
+            .volume_min = 40,
+            .volume_max = 100,
+            .volume_step = 5,
+            .strength = 5,
+            .temp_c = 93,
+            .milk_ml = 0,
+            .milk_max = 0,
+            .foam = 0,
+        },
+    [COFFEE_DRINK_RISTRETTO] =
+        {
+            .name = COFFEE_TXT_D2_NAME,
+            .italian = COFFEE_TXT_D2_IT,
+            .desc = COFFEE_TXT_D2_DESC,
+            .art = COFFEE_ART_RISTRETTO,
+            .volume = 20,
+            .volume_min = 15,
+            .volume_max = 40,
+            .volume_step = 5,
+            .strength = 5,
+            .temp_c = 93,
+            .milk_ml = 0,
+            .milk_max = 0,
+            .foam = 0,
+        },
+    [COFFEE_DRINK_AMERICANO] =
+        {
+            .name = COFFEE_TXT_D3_NAME,
+            .italian = COFFEE_TXT_D3_IT,
+            .desc = COFFEE_TXT_D3_DESC,
+            .art = COFFEE_ART_AMERICANO,
+            .volume = 150,
+            .volume_min = 80,
+            .volume_max = 300,
+            .volume_step = 10,
+            .strength = 3,
+            .temp_c = 93,
+            .milk_ml = 0,
+            .milk_max = 0,
+            .foam = 0,
+        },
+    [COFFEE_DRINK_CAPPUCCINO] =
+        {
+            .name = COFFEE_TXT_D4_NAME,
+            .italian = COFFEE_TXT_D4_IT,
+            .desc = COFFEE_TXT_D4_DESC,
+            .art = COFFEE_ART_CAPPUCCINO,
+            .volume = 160,
+            .volume_min = 120,
+            .volume_max = 260,
+            .volume_step = 10,
+            .strength = 3,
+            .temp_c = 93,
+            .milk_ml = 120,
+            .milk_max = 200,
+            .foam = 3,
+            .milk_drink = true,
+        },
+    [COFFEE_DRINK_LATTE] =
+        {
+            .name = COFFEE_TXT_D5_NAME,
+            .italian = COFFEE_TXT_D5_IT,
+            .desc = COFFEE_TXT_D5_DESC,
+            .art = COFFEE_ART_LATTE,
+            .volume = 220,
+            .volume_min = 150,
+            .volume_max = 320,
+            .volume_step = 10,
+            .strength = 3,
+            .temp_c = 93,
+            .milk_ml = 160,
+            .milk_max = 240,
+            .foam = 2,
+            .milk_drink = true,
+        },
+    [COFFEE_DRINK_FLATWHITE] =
+        {
+            .name = COFFEE_TXT_D6_NAME,
+            .italian = COFFEE_TXT_D6_IT,
+            .desc = COFFEE_TXT_D6_DESC,
+            .art = COFFEE_ART_FLATWHITE,
+            .volume = 160,
+            .volume_min = 120,
+            .volume_max = 240,
+            .volume_step = 10,
+            .strength = 4,
+            .temp_c = 93,
+            .milk_ml = 110,
+            .milk_max = 200,
+            .foam = 1,
+            .milk_drink = true,
+        },
+    [COFFEE_DRINK_MACCHIATO] =
+        {
+            .name = COFFEE_TXT_D7_NAME,
+            .italian = COFFEE_TXT_D7_IT,
+            .desc = COFFEE_TXT_D7_DESC,
+            .art = COFFEE_ART_MACCHIATO,
+            .volume = 40,
+            .volume_min = 30,
+            .volume_max = 80,
+            .volume_step = 5,
+            .strength = 5,
+            .temp_c = 93,
+            .milk_ml = 20,
+            .milk_max = 60,
+            .foam = 1,
+            .milk_drink = true,
+        },
+    [COFFEE_DRINK_MOCHA] =
+        {
+            .name = COFFEE_TXT_D8_NAME,
+            .italian = COFFEE_TXT_D8_IT,
+            .desc = COFFEE_TXT_D8_DESC,
+            .art = COFFEE_ART_MOCHA,
+            .volume = 200,
+            .volume_min = 150,
+            .volume_max = 300,
+            .volume_step = 10,
+            .strength = 4,
+            .temp_c = 93,
+            .milk_ml = 130,
+            .milk_max = 220,
+            .foam = 2,
+            .milk_drink = true,
+        },
+    [COFFEE_DRINK_COLDBREW] =
+        {
+            .name = COFFEE_TXT_D9_NAME,
+            .italian = COFFEE_TXT_D9_IT,
+            .desc = COFFEE_TXT_D9_DESC,
+            .art = COFFEE_ART_COLDBREW,
+            .volume = 200,
+            .volume_min = 150,
+            .volume_max = 300,
+            .volume_step = 10,
+            .strength = 4,
+            .temp_c = 4,
+            .milk_ml = 0,
+            .milk_max = 0,
+            .foam = 0,
+            .cold = true,
+        },
+    [COFFEE_DRINK_HOTWATER] =
+        {
+            .name = COFFEE_TXT_D10_NAME,
+            .italian = COFFEE_TXT_D10_IT,
+            .desc = COFFEE_TXT_D10_DESC,
+            .art = COFFEE_ART_HOTWATER,
+            .volume = 200,
+            .volume_min = 100,
+            .volume_max = 300,
+            .volume_step = 10,
+            .strength = 0,
+            .temp_c = 93,
+            .milk_ml = 0,
+            .milk_max = 0,
+            .foam = 0,
+            .water_only = true,
+        },
+    [COFFEE_DRINK_STEAM] =
+        {
+            .name = COFFEE_TXT_D11_NAME,
+            .italian = COFFEE_TXT_D11_IT,
+            .desc = COFFEE_TXT_D11_DESC,
+            .art = COFFEE_ART_STEAM,
+            .volume = 150,
+            .volume_min = 100,
+            .volume_max = 300,
+            .volume_step = 10,
+            .strength = 0,
+            .temp_c = 93,
+            .milk_ml = 150,
+            .milk_max = 300,
+            .foam = 3,
+            .milk_drink = true,
+            .steam_only = true,
+        },
 };
 
 #define FAVORITE_BIT(drink) (1u << (drink))
 
 coffee_profile_t coffee_profiles[3] = {
     {
-        .name = COFFEE_TXT_PROFILE_0, .initial = "A", .color = 0xC8A464,
-        .today = 2, .week = { 1, 2, 3, 2, 4, 3, 2 },
+        .name = COFFEE_TXT_PROFILE_0,
+        .initial = "A",
+        .color = 0xC8A464,
+        .today = 2,
+        .week = {1, 2, 3, 2, 4, 3, 2},
         .favorites = FAVORITE_BIT(COFFEE_DRINK_LATTE) |
                      FAVORITE_BIT(COFFEE_DRINK_ESPRESSO) |
                      FAVORITE_BIT(COFFEE_DRINK_FLATWHITE),
     },
     {
-        .name = COFFEE_TXT_PROFILE_1, .initial = "M", .color = 0xB9857A,
-        .today = 1, .week = { 0, 1, 0, 2, 1, 1, 1 },
+        .name = COFFEE_TXT_PROFILE_1,
+        .initial = "M",
+        .color = 0xB9857A,
+        .today = 1,
+        .week = {0, 1, 0, 2, 1, 1, 1},
         .favorites = FAVORITE_BIT(COFFEE_DRINK_CAPPUCCINO) |
                      FAVORITE_BIT(COFFEE_DRINK_MOCHA) |
                      FAVORITE_BIT(COFFEE_DRINK_COLDBREW),
     },
     {
-        .name = COFFEE_TXT_PROFILE_2, .initial = "访", .color = 0x7F8FA6,
-        .today = 0, .week = { 0, 0, 1, 0, 0, 0, 0 },
+        .name = COFFEE_TXT_PROFILE_2,
+        .initial = "访",
+        .color = 0x7F8FA6,
+        .today = 0,
+        .week = {0, 0, 1, 0, 0, 0, 0},
         .favorites = FAVORITE_BIT(COFFEE_DRINK_AMERICANO),
     },
 };
@@ -183,7 +303,8 @@ void coffee_toggle_favorite(int drink)
     bool added = (profile->favorites & FAVORITE_BIT(drink)) != 0;
     coffee_log("favorite drink=%d profile=%s added=%d", drink, profile->name,
                added ? 1 : 0);
-    coffee_toast(added ? COFFEE_TXT_FAVORITE_ADDED : COFFEE_TXT_FAVORITE_REMOVED);
+    coffee_toast(added ? COFFEE_TXT_FAVORITE_ADDED
+                       : COFFEE_TXT_FAVORITE_REMOVED);
     coffee_home_refresh();
     coffee_favorites_refresh();
 }
@@ -228,8 +349,8 @@ void coffee_format_clock(char * buffer, size_t size)
     uint32_t hours = (total / 3600u) % 24u;
     uint32_t minutes = (total / 60u) % 60u;
     uint32_t secs = total % 60u;
-    snprintf(buffer, size, "%02u:%02u:%02u", (unsigned)hours,
-             (unsigned)minutes, (unsigned)secs);
+    snprintf(buffer, size, "%02u:%02u:%02u", (unsigned)hours, (unsigned)minutes,
+             (unsigned)secs);
 }
 
 void coffee_log(const char * format, ...)
@@ -241,10 +362,6 @@ void coffee_log(const char * format, ...)
     printf("\n");
     va_end(args);
 }
-
-/* ------------------------------------------------------------------------- */
-/* Generated assets                                                           */
-/* ------------------------------------------------------------------------- */
 
 const lv_font_t * coffee_font(coffee_font_id_t id)
 {
@@ -388,10 +505,6 @@ const lv_image_dsc_t * coffee_art(coffee_art_id_t id)
     }
 }
 
-/* ------------------------------------------------------------------------- */
-/* View vocabulary                                                            */
-/* ------------------------------------------------------------------------- */
-
 lv_obj_t * coffee_box(lv_obj_t * parent, int x, int y, int w, int h)
 {
     lv_obj_t * obj = lv_obj_create(parent);
@@ -435,8 +548,8 @@ lv_obj_t * coffee_label(lv_obj_t * parent, const char * text,
 }
 
 lv_obj_t * coffee_label_at(lv_obj_t * parent, const char * text,
-                           coffee_font_id_t font, uint32_t color,
-                           int x, int y, int w, int h)
+                           coffee_font_id_t font, uint32_t color, int x, int y,
+                           int w, int h)
 {
     lv_obj_t * label = coffee_label(parent, text, font, color);
     lv_obj_set_pos(label, x, y);
@@ -444,8 +557,8 @@ lv_obj_t * coffee_label_at(lv_obj_t * parent, const char * text,
     return label;
 }
 
-lv_obj_t * coffee_icon_obj(lv_obj_t * parent, coffee_icon_id_t icon,
-                           int x, int y, int size, uint32_t color)
+lv_obj_t * coffee_icon_obj(lv_obj_t * parent, coffee_icon_id_t icon, int x,
+                           int y, int size, uint32_t color)
 {
     lv_obj_t * image = lv_image_create(parent);
     lv_image_set_src(image, coffee_icon(icon));
@@ -461,8 +574,8 @@ lv_obj_t * coffee_icon_obj(lv_obj_t * parent, coffee_icon_id_t icon,
     return image;
 }
 
-lv_obj_t * coffee_art_obj(lv_obj_t * parent, coffee_art_id_t art,
-                          int x, int y, int size)
+lv_obj_t * coffee_art_obj(lv_obj_t * parent, coffee_art_id_t art, int x, int y,
+                          int size)
 {
     lv_obj_t * image = lv_image_create(parent);
     lv_image_set_src(image, coffee_art(art));
@@ -498,8 +611,8 @@ lv_obj_t * coffee_pill(lv_obj_t * parent, int x, int y, int w, int h,
 }
 
 lv_obj_t * coffee_button(lv_obj_t * parent, int x, int y, int w, int h,
-                         bool primary, const char * text,
-                         coffee_font_id_t font, const char * name)
+                         bool primary, const char * text, coffee_font_id_t font,
+                         const char * name)
 {
     lv_obj_t * button = coffee_card(parent, x, y, w, h, h / 2,
                                     primary ? COFFEE_GOLD : COFFEE_CARD_UP,
@@ -539,8 +652,8 @@ void coffee_bar_set(lv_obj_t * fill, int pct)
     lv_obj_set_width(fill, width * pct / 100);
 }
 
-lv_obj_t * coffee_toggle(lv_obj_t * parent, int x, int y, int w, int h,
-                         bool on, const char * name)
+lv_obj_t * coffee_toggle(lv_obj_t * parent, int x, int y, int w, int h, bool on,
+                         const char * name)
 {
     lv_obj_t * track = coffee_card(parent, x, y, w, h, h / 2,
                                    on ? COFFEE_GOLD : COFFEE_LINE, 0);
@@ -569,10 +682,9 @@ void coffee_toggle_set(lv_obj_t * track, bool on)
     int track_h = lv_obj_get_height(track);
     int knob_w = lv_obj_get_width(knob);
     int knob_h = lv_obj_get_height(knob);
-    lv_obj_set_pos(knob, on ? track_w - knob_w - 3 : 3,
-                   (track_h - knob_h) / 2);
-    lv_obj_set_style_bg_color(track, lv_color_hex(on ? COFFEE_GOLD
-                                                       : COFFEE_LINE), 0);
+    lv_obj_set_pos(knob, on ? track_w - knob_w - 3 : 3, (track_h - knob_h) / 2);
+    lv_obj_set_style_bg_color(track,
+                              lv_color_hex(on ? COFFEE_GOLD : COFFEE_LINE), 0);
 }
 
 void coffee_clickable(lv_obj_t * obj, const char * name)
@@ -587,10 +699,6 @@ void coffee_hide(lv_obj_t * obj, bool hidden)
 {
     if(obj != NULL) lv_obj_set_hidden(obj, hidden);
 }
-
-/* ------------------------------------------------------------------------- */
-/* Toast, dim overlay and modal shell                                         */
-/* ------------------------------------------------------------------------- */
 
 static lv_obj_t * toast_box;
 static lv_obj_t * toast_label;
@@ -616,8 +724,8 @@ void coffee_toast(const char * text)
         lv_obj_set_style_shadow_opa(toast_box, 110, 0);
         coffee_icon_obj(toast_box, COFFEE_ICON_CHECK, 14, 11, 22,
                         COFFEE_GOLD_BRIGHT);
-        toast_label = coffee_label_at(toast_box, "", COFFEE_FT_13,
-                                      COFFEE_CREAM, 44, 12, 320, 22);
+        toast_label = coffee_label_at(toast_box, "", COFFEE_FT_13, COFFEE_CREAM,
+                                      44, 12, 320, 22);
     }
     lv_label_set_text(toast_label, text);
     lv_obj_set_hidden(toast_box, false);
@@ -674,10 +782,9 @@ lv_obj_t * coffee_modal_open(int w, int h)
     lv_obj_set_scrollable(scrim, false);
     coffee_clickable(scrim, "modal_scrim");
 
-    lv_obj_t * panel = coffee_card(modal_host,
-                                   (COFFEE_SCREEN_W - w) / 2,
-                                   (COFFEE_SCREEN_H - h) / 2,
-                                   w, h, 22, COFFEE_CARD, COFFEE_LINE);
+    lv_obj_t * panel = coffee_card(modal_host, (COFFEE_SCREEN_W - w) / 2,
+                                   (COFFEE_SCREEN_H - h) / 2, w, h, 22,
+                                   COFFEE_CARD, COFFEE_LINE);
     lv_obj_set_style_shadow_color(panel, lv_color_hex(0x000000), 0);
     lv_obj_set_style_shadow_width(panel, 40, 0);
     lv_obj_set_style_shadow_opa(panel, 150, 0);
@@ -703,4 +810,4 @@ void coffee_refresh_all(void)
     coffee_settings_refresh();
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

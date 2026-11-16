@@ -10,7 +10,7 @@ HOST_DIR = Path(__file__).resolve().parents[1]
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
-from state import StateStore, suggest  # noqa: E402
+from state import StateStore, suggest
 
 
 class StateSuggestTest(unittest.TestCase):
@@ -20,7 +20,9 @@ class StateSuggestTest(unittest.TestCase):
         self.app = self.root / "user" / "app" / "sift_watch"
         self.app.mkdir(parents=True)
         (self.app / "sift_watch.c").write_text("", encoding="utf-8")
-        self.project = self.root / "chip-adapt" / "exports" / "sift_watch" / "project"
+        self.project = (
+            self.root / "chip-adapt" / "exports" / "sift_watch" / "project"
+        )
         self.project.mkdir(parents=True)
         (self.project / "SConstruct").write_text("", encoding="utf-8")
         self.build = self.project / "build_sf32lb52-lchspi-ulp_hcpu"

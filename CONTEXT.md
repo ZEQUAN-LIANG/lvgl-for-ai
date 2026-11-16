@@ -1,105 +1,61 @@
-# AI-first LVGL 开发平台
+# LVGL Verify Loop 术语
 
-一个让 AI 直接编辑、实时预览并导出 LVGL UI 的开发平台。本文件只记录这个项目特有的术语，不记录实现细节。
+本文件只记录当前 skill 特有的术语，不记录实现细节。
 
 ## Language
 
-**场景（Scene）**：
-描述 LVGL 控件树、属性、样式与行为绑定的文本文档，是 UI 布局与外观的真源。
-_Avoid_: UI 文件、工程文件、画布文件
-
 **真源（Source of truth）**：
-编辑直接作用、预览与导出共同派生的权威表示；本项目中是场景文本，而不是运行中的控件树或生成后的 C。
-_Avoid_: 主文件、源工程
-
-**运行时（Runtime）**：
-一个常驻的真实 LVGL 实例，接收场景更新并渲染预览；它不是 Web 重实现的渲染器。
-_Avoid_: 渲染器、模拟器内核、模拟器（歧义：既可能指运行时，也可能指预览界面）
+用户界面的权威表示，在本项目中就是 `user/app/**/*.c`；工具不维护第二份场景或对象树真源。
+_Avoid_: 场景真源、UI 文件
 
 **应用变体（App variant）**：
-同一个入口 `app_create` 下由 `LVGL_AI_DEMO` 选择的用户界面实现；每个变体暴露统一的 `void <name>_create(void)`，入口内部用 `lv_screen_active()` 取屏幕，工具只转发名字，不维护应用清单。
-_Avoid_: 页面（太泛）、场景（与 Scene 冲突）
+同一个 engine 入口 `app_create` 下由 `apps[]` 表映射的用户界面实现，每个变体暴露 `void <name>_create(void)`。
+_Avoid_: 页面、demo
 
-**应用管理台（App manager）**：
-网页端用于选择、测试、录制、新建、删除、恢复应用的用户界面；它调用同一套运行时与文件操作，不是第二套控制协议。
-_Avoid_: 管理页面、文件管理器
+**场景（Scenario）**：
+描述一次运行输入与证据锚点的 JSON：`app`、可选的 `display`、以及 wait / click / drag / mark / snapshot 等步骤；它不是布局真源。
+_Avoid_: UI 文件、工程文件
 
-**应用回收站（App trash）**：
-`user/.trash/apps/<trash-id>/` 下的软删除区，保存被移除的应用目录、场景和元数据；不参与构建、预览或发布包，可恢复或永久删除。
-_Avoid_: 垃圾桶、备份目录
+**宿主 SDK（Host SDK）**：
+`dist/lvgl/<version>/` 下预编译的宿主静态库、公共头、`lv_conf.h` 与 `manifest.json`；预编译构建只依赖它和 GCC。
+_Avoid_: 工具链、SDK 包
 
-**场景热更新（Scene hot update）**：
-运行时收到新场景后按稳定 ID 计算差异并就地应用，不重新编译 C、不重启进程。
-_Avoid_: 热重载、刷新
+**Engine**：
+`engine/` 编译出的 `lvgl_engine.exe`，负责初始化 LVGL、虚拟输入、录帧、timeline 与协议回执。
+_Avoid_: 模拟器、运行时（与 Runtime 区分）
 
-**C 代码热重载（C code hot reload）**：
-进程不退出，把改动后的 C 编译成新模块并加载，重建对象树并按稳定 name 恢复状态；它仍需要编译，不是场景热更新。
-_Avoid_: 热重载（单独使用，易与场景热更新混淆）、无编译更新
-
-**热应用（Hot apply）**：
-在常驻运行时上应用改动而不重启；可以是参数值、稳定 ID 重建或快照恢复，不承诺替换代码。
-_Avoid_: 热更新、热重载（两者语义更窄）
-
-**协议（Protocol）**：
-AI/工具与运行时之间的消息集合，包含整场景应用、运行期动态值、查询与错误上报。
-_Avoid_: API、接口（单独使用太泛）
-
-**代码逃生通道（Code escape hatch）**：
-当场景层表达不了或效果不如手写代码时，AI 直接编写 C 并保持热预览的一等公民路径。
-_Avoid_: 高级模式、自定义代码
-
-**行为绑定（Behavior binding）**：
-场景节点通过稳定名字引用 C 处理器或声明式动作，把布局与行为分离。
-_Avoid_: 回调、事件处理（太泛）
-
-**Harness**：
-驱动 AI 的外部编码环境（Claude Code、Cursor 等）；平台不内置模型，也不假定某一个 harness。
-_Avoid_: 客户端、IDE
-
-**预览（Preview）**：
-人类查看运行时画面的界面；从只读开始，逐步支持交互与检查器。
-_Avoid_: 模拟器界面、播放器
-
-**实时预览流（Live frame stream）**：
-测试或录制运行期间，从运行时 framebuffer 到浏览器 canvas 的原始像素通道；只用于观察，不进入会话证据，停止后不保留。
-_Avoid_: 视频流、直播、录像
-
-**导出（Export）**：
-把场景与行为 C 合并生成可编译的 LVGL C 工程；运行时本身不进入导出产物。
-_Avoid_: 编译、打包
-
-**垂直切片（Vertical slice）**：
-贯穿场景、运行时、协议、AI 接口、预览、导出的最小端到端路径。
-_Avoid_: MVP（太泛）、demo
-
-**设计系统（Design system）**：
-预置组件与设计令牌的集合，供 AI 组合而不是每次从零写样式。
-_Avoid_: 组件库（可互换，但优先用设计系统）
-
-**原生代码优先（Native-code-first）**：
-主路径原则：每个 UI 框架的原生代码（LVGL 为 C，TouchGFX/Dear ImGui 为 C++）是唯一真源；平台提供构建、观察与验证，不引入第二真源。
-_Avoid_: C-first（会让核心写死语言）、场景真源
-
-**验证回路（Verification loop）**：
-修改 → 构建 → 运行 → 取证 → 判定 → 修正 的闭环，是平台的核心产品。
-_Avoid_: 测试流程、CI
-
-**探针（Probe）**：
-注入运行时、把内部状态变成可查询证据的能力；可能需要给 UI 框架源码打补丁。
-_Avoid_: 调试器（太泛）、instrumentation
-
-**验证报告（Verification report）**：
-一轮验证的结构化证据与判定；机器读 JSON、人读摘要，每条结论指向证据。
-_Avoid_: 测试日志、输出
-
-**自验收（Self-acceptance）**：
-AI 在交付前用自己声明的检查跑通并引用证据，而不是等人类指出问题。
-_Avoid_: 自测、自动测试（太泛）
+**运行时（Runtime）**：
+Python 控制层的一个实例，驱动一个 engine 进程并对应一次会话；它不是 Web 重实现的渲染器。
+_Avoid_: 渲染器、模拟器
 
 **会话（Session）**：
-一段可重放的运行时录制，包含帧序列、输入事件、证据标记与评论，按时间戳对齐；AI 与人类共用同一种格式，用于验收、复现与回归。
-_Avoid_: 录像、操作记录（太窄）
+`user/sessions/<id>/` 下的一次可重放录制，包含 manifest、帧、timeline、日志与标注；AI 与人类共用同一种证据格式。
+_Avoid_: 录像、操作记录
 
-**效果规格（EffectSpec）**：
-从参考视频提取的结构化描述：状态、对象、转移、效果、证据与置信度；AI 据此写原生代码，并用同时间点渲染对比验证。
-_Avoid_: 视频摘要、设计稿
+**证据（Evidence）**：
+会话目录里可供引用的产物：`manifest.json`、`build.log`、`timeline.ndjson`、`frame_diffs.ndjson`、`engine.log`、`frames/`、`snapshots/`。
+_Avoid_: 测试结果、日志
+
+**标记与快照（Mark / Snapshot）**：
+场景里的证据锚点；`mark` 在 timeline 上打点，`snapshot` 额外保存一张命名 PNG。
+_Avoid_: 断言、检查点
+
+**录制（Recording）**：
+对已有会话的只读视图，通过 `Recording.open()` 读取 manifest、timeline、帧与标注；写标注是唯一可写入口。
+_Avoid_: 回放器、播放器
+
+**构建方式（Build mode）**：
+源码构建（`engine/lvgl/<version>`，需要 CMake/Ninja/GCC）、预编译构建（`dist/lvgl/<version>`，只需要 GCC）或 `--no-build`（直接复用 engine）；实际选择写在 `build.log` 第一行。
+_Avoid_: 编译模式、工具链
+
+**版本包（Pack）**：
+与 core 同一 Release 发布的预编译版本资产，包含 `dist/lvgl/<version>`、engine 和 `pack.json`；通过 sha256 校验。
+_Avoid_: 安装包、SDK
+
+**虚拟时间（Virtual time）**：
+由 tick / wait 推进的确定性时钟，不依赖墙钟；动画、定时器和录制时间轴都以它为准。
+_Avoid_: 模拟时间、假时钟
+
+**验收（Acceptance）**：
+由人类在对话中给出的界面标准；工具只提供环境、输入和证据，不输出 pass/fail、baseline 或 approval。
+_Avoid_: 测试结论、通过率

@@ -24,7 +24,7 @@ if str(VENDOR_DIR) not in sys.path:
 try:
     import serial
     from serial.tools import list_ports as serial_list_ports
-except ImportError as exc:  # pragma: no cover - setup error
+except ImportError as exc:
     raise RuntimeError(
         "pyserial is missing. Run: python -m pip install --target "
         f"{VENDOR_DIR} --no-deps pyserial==3.5"
@@ -32,8 +32,6 @@ except ImportError as exc:  # pragma: no cover - setup error
 
 
 class SerialError(RuntimeError):
-    """A serial-port failure with a machine-readable reason."""
-
     def __init__(self, message: str, *, code: str = "serial_error") -> None:
         super().__init__(message)
         self.code = code
@@ -45,8 +43,6 @@ def _com_number(port: str) -> int:
 
 
 def normalize_port(port: str) -> str:
-    """Normalize ``12``/``com12``/``COM12`` to the platform's port name."""
-
     value = str(port or "").strip()
     if not value:
         raise SerialError("port is empty", code="port_empty")
@@ -66,8 +62,6 @@ def normalize_port(port: str) -> str:
 
 
 def list_ports() -> list[dict[str, Any]]:
-    """Enumerate serial ports with pyserial's cross-platform helper."""
-
     ports: list[dict[str, Any]] = []
     for info in serial_list_ports.comports():
         device = str(info.device)
@@ -89,11 +83,6 @@ def list_ports() -> list[dict[str, Any]]:
 
 
 def pick_port(port: str | None = None) -> str:
-    """Return an explicit port, or the only available port.
-
-    Multiple ports without an explicit choice is an error, not a guess.
-    """
-
     if port:
         return normalize_port(port)
     ports = [item["port"] for item in list_ports()]
@@ -133,8 +122,6 @@ def _map_open_error(port: str, exc: Exception) -> SerialError:
 
 
 class SerialBackend:
-    """Minimal serial interface used by the broker and tests."""
-
     is_open: bool = False
     port: str = ""
 

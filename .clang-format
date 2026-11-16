@@ -1,0 +1,42 @@
+# Style source of truth for repo-owned C sources under core/, user/app/ and
+# chip-adapt/sifli/templates/ (the device templates carry their own config).
+#
+# This is deliberately not plain Allman: the existing hand-written code puts
+# struct/union/enum opening braces on the same line, breaks before `else`,
+# indents case labels, and keeps short if/for/while bodies on one line.
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 80
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
+  AfterControlStatement: Never
+  AfterStruct: false
+  AfterUnion: false
+  AfterEnum: false
+  AfterExternBlock: false
+  BeforeElse: true
+  BeforeWhile: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Always
+AllowShortLoopsOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: false
+
+AlignConsecutiveMacros: Consecutive
+PointerAlignment: Middle
+SpaceBeforeParens: Never
+SortIncludes: false
+IndentPPDirectives: None
+PPIndentWidth: 0
+IndentCaseLabels: true
+IndentExternBlock: NoIndent
+
+# DeriveLF keeps each file's existing CRLF/LF style instead of flipping it.
+LineEnding: DeriveLF

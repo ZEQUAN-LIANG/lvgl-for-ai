@@ -1,13 +1,3 @@
-/**
- * @file demo_compat.c
- * The original demo, kept as the stable hit/focus target used by the
- * tool's integration tests.
- *
- * On LVGL 9.6 the demo is created transparent behind the Xiaohongshu page:
- * pointer hits at (112,324) and keypad/encoder focus still reach the named
- * button, while the visible screen belongs to xiaohongshu/xhs_page.c. Older
- * targets show the demo unchanged.
- */
 
 #include "app.h"
 #include "demo_assets.h"
@@ -50,9 +40,6 @@ static lv_obj_t * demo_button_create(lv_obj_t * parent)
     lv_obj_t * label = lv_label_create(button);
     lv_label_set_text(label, "Click");
     lv_obj_center(label);
-    /* The label must not swallow the hit test: clicks belong to the button.
-     * lv_obj_set_clickable() is the 9.6 spelling; older 9.x uses
-     * lv_obj_remove_flag(); 8.x uses lv_obj_clear_flag(). */
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
     lv_obj_set_clickable(label, false);
 #elif LVGL_VERSION_MAJOR >= 9
@@ -64,7 +51,7 @@ static lv_obj_t * demo_button_create(lv_obj_t * parent)
 }
 
 static void demo_group_create(lv_obj_t * panel, lv_obj_t * button,
-                                  lv_obj_t * title)
+                              lv_obj_t * title)
 {
     demo_group = lv_group_create();
     if(demo_group == NULL) {
@@ -72,8 +59,6 @@ static void demo_group_create(lv_obj_t * panel, lv_obj_t * button,
         return;
     }
 
-    /* Order matters: panel -> button -> title. The button starts focused, so
-     * encoder +1 moves to the title and -1 moves to the panel. */
     lv_group_add_obj(demo_group, panel);
     lv_group_add_obj(demo_group, button);
     lv_group_add_obj(demo_group, title);
@@ -91,16 +76,11 @@ static void demo_group_create(lv_obj_t * panel, lv_obj_t * button,
 
 static void demo_hide(lv_obj_t * panel, lv_obj_t * button, lv_obj_t * title)
 {
-    /* Opacity does not affect hit testing; these objects stay interactive. */
     lv_obj_set_style_opa(panel, LV_OPA_TRANSP, 0);
     lv_obj_set_style_bg_opa(panel, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(panel, 0, 0);
     lv_obj_set_style_shadow_opa(panel, LV_OPA_TRANSP, 0);
 
-    /* The button stays invisible but must still flash while pressed: the
-     * tool's frame-diff tests click it and require the pressed transition to
-     * change pixels. Its label is hidden separately so the button keeps a
-     * backdrop-tinted pressed fill only. */
     lv_obj_t * label = lv_obj_get_child(button, 0);
     if(label != NULL) {
         lv_obj_set_style_opa(label, LV_OPA_TRANSP, 0);

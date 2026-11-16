@@ -1,11 +1,3 @@
-"""Last-used flash paths and auto-fill suggestions.
-
-The web UI should not make the user hunt for the exported project or the build
-directory every time.  A small JSON file under ``host/.cache`` records the last
-successful build/open, and a filesystem scan supplies a fallback on a fresh
-checkout.
-"""
-
 from __future__ import annotations
 
 import json
@@ -105,7 +97,9 @@ def _scan_builds(exports_root: Path) -> list[dict[str, Any]]:
     return builds
 
 
-def _app_from_project(project_dir: str | Path | None, exports_root: Path) -> str:
+def _app_from_project(
+    project_dir: str | Path | None, exports_root: Path
+) -> str:
     if not project_dir:
         return ""
     path = Path(str(project_dir)).resolve()
@@ -140,7 +134,9 @@ def _pick_port(state_port: str, ports: list[dict[str, Any]]) -> str:
         return state_port
     for item in ports:
         description = str(item.get("description") or "")
-        if re.search(r"CH340|USB-SERIAL|CP210|FTDI|Silicon Labs", description, re.I):
+        if re.search(
+            r"CH340|USB-SERIAL|CP210|FTDI|Silicon Labs", description, re.I
+        ):
             return str(item["port"])
     return names[0] if names else ""
 
@@ -154,7 +150,9 @@ def suggest(config: dict[str, Any], store: StateStore) -> dict[str, Any]:
     ports = list_ports()
 
     app = str(state.get("app") or config.get("app") or "")
-    project_dir = str(state.get("project_dir") or config.get("project_dir") or "")
+    project_dir = str(
+        state.get("project_dir") or config.get("project_dir") or ""
+    )
     build_dir = str(state.get("build_dir") or "")
 
     project_path = Path(project_dir) if project_dir else None
@@ -176,11 +174,9 @@ def suggest(config: dict[str, Any], store: StateStore) -> dict[str, Any]:
         if candidate.is_dir():
             project_dir = str(candidate)
 
-    # Do not let a stale app name leak onto an SDK example or another
-    # project.  Only an exported <exports>/<app>/project keeps an app.
-    project_app = _app_from_project(project_dir, exports_root) or _app_from_project(
-        build_dir, exports_root
-    )
+    project_app = _app_from_project(
+        project_dir, exports_root
+    ) or _app_from_project(build_dir, exports_root)
     if project_app:
         app = project_app
     elif project_dir or build_dir:

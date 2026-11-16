@@ -72,5 +72,6 @@ if(zc_wants_exit()) { zc_clear_exit(); /* 回到手表应用抽屉 */ }
   PSRAM 预渲染，EZIP 只适合改造成 `lv_image` 分层后省 Flash/启动解码，不能直接
   memcpy 到当前 canvas。
 - 中文点阵由 `.scratch/tmp/zc/fontgen.mjs` 用与 HTML 相同的 SimSun/阈值生成；改文案后
-  需要重新生成 `zc_cjk_font.c`。
+  需要重新生成 `zc_cjk_font.c`。这是自定义 `zc_glyph_t` 点阵，不是 LVGL `lv_font_t`；
+  内置 `lvgl assets font` 暂不处理这种格式。
 - 导出 `sift_watch` 时这些 `.c/.h` 会原样复制；不要使用 LVGL 9.5/9.6-only API。
