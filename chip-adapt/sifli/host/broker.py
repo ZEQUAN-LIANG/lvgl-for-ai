@@ -380,7 +380,9 @@ class SerialBroker:
                 "buffered_bytes": self._ring.buffered,
             }
 
-    def send(self, data: bytes, *, source: str = "api") -> dict[str, Any]:
+    def send(
+        self, data: bytes, *, source: str = "api", private: bool = False
+    ) -> dict[str, Any]:
         payload = bytes(data)
         with self._lock:
             backend = self._backend
@@ -393,7 +395,12 @@ class SerialBroker:
         with self._cond:
             self._total_tx += written
             if self._log is not None:
-                self._log.write_event("tx", payload, source=source)
+                self._log.write_event(
+                    "tx",
+                    b"" if private else payload,
+                    source=source,
+                    extra={"redacted": True} if private else None,
+                )
         return {"bytes": written, "total_tx": self._total_tx}
 
     def reset(self, pulse_ms: int = 100) -> dict[str, Any]:
