@@ -22,6 +22,8 @@ sessions/
 /chip-adapt/sifli/host/config.json
 /chip-adapt/sifli/host/vendor/
 /chip-adapt/sifli/host/web/vendor/
+/chip-adapt/esp32/host/logs/
+/chip-adapt/esp32/host/.cache/
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
 /.test-tmp/

@@ -1,0 +1,1377 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>ESP32-C6 Studio</title>
+    <style>
+      :root {
+        --bg: #060a0f;
+        --bg-2: #081019;
+        --panel: #0b141d;
+        --panel-2: #0f1b26;
+        --line: #1b2b38;
+        --line-soft: #142330;
+        --text: #e7f0f8;
+        --muted: #89a0b3;
+        --dim: #5f7486;
+        --cyan: #38bdf8;
+        --cyan-2: #0ea5e9;
+        --green: #34d399;
+        --amber: #fbbf24;
+        --red: #fb7185;
+        --violet: #a78bfa;
+        --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+        --radius: 16px;
+      }
+      * { box-sizing: border-box; }
+      html, body { min-height: 100%; }
+      body {
+        margin: 0;
+        background:
+          radial-gradient(1000px 520px at 88% -12%, rgba(14, 90, 120, 0.35), transparent 65%),
+          radial-gradient(800px 480px at 0% 100%, rgba(20, 60, 105, 0.22), transparent 60%),
+          var(--bg);
+        color: var(--text);
+        font: 14px/1.55 "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+      }
+      button, input, select { font: inherit; color: var(--text); }
+      button { cursor: pointer; }
+      ::selection { background: rgba(56, 189, 248, 0.35); }
+      ::-webkit-scrollbar { width: 10px; height: 10px; }
+      ::-webkit-scrollbar-thumb { background: #1d3445; border-radius: 99px; border: 2px solid var(--bg); }
+      ::-webkit-scrollbar-track { background: transparent; }
+      .hidden { display: none !important; }
+
+      .app { display: grid; grid-template-columns: 224px minmax(0, 1fr); min-height: 100vh; }
+      .sidebar {
+        position: sticky; top: 0; height: 100vh; padding: 18px 14px;
+        background: linear-gradient(180deg, rgba(10, 18, 26, 0.94), rgba(7, 12, 18, 0.9));
+        border-right: 1px solid var(--line-soft);
+        display: flex; flex-direction: column; gap: 18px;
+        backdrop-filter: blur(18px);
+      }
+      .brand { display: flex; gap: 10px; align-items: center; padding: 4px 6px 12px; }
+      .brand-mark {
+        width: 38px; height: 38px; border-radius: 12px;
+        display: grid; place-items: center; font-weight: 800; letter-spacing: .05em;
+        color: #04121b; background: linear-gradient(135deg, #7dd3fc, #34d399);
+        box-shadow: 0 0 24px rgba(56, 189, 248, 0.25);
+      }
+      .brand strong { display: block; font-size: 15px; letter-spacing: .03em; }
+      .brand span { color: var(--muted); font-size: 11px; }
+      .nav { display: flex; flex-direction: column; gap: 4px; }
+      .nav-item {
+        display: flex; align-items: center; gap: 10px; width: 100%;
+        padding: 10px 12px; border: 1px solid transparent; border-radius: 11px;
+        background: transparent; color: var(--muted); text-align: left;
+      }
+      .nav-item svg { width: 18px; height: 18px; flex: 0 0 auto; opacity: .85; }
+      .nav-item:hover { color: var(--text); background: rgba(56, 189, 248, 0.06); }
+      .nav-item.active {
+        color: var(--text); border-color: #1d3b4f;
+        background: linear-gradient(90deg, rgba(56, 189, 248, 0.14), rgba(52, 211, 153, 0.05));
+        box-shadow: inset 3px 0 0 var(--cyan);
+      }
+      .sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+      .side-status {
+        display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+        border: 1px solid var(--line-soft); border-radius: 11px; color: var(--muted);
+        font-size: 12px; background: rgba(11, 20, 29, 0.65);
+      }
+      .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex: 0 0 auto; }
+      .dot.on { background: var(--green); box-shadow: 0 0 10px var(--green); }
+      .fake-badge {
+        align-self: flex-start; padding: 3px 8px; border-radius: 999px;
+        color: var(--amber); border: 1px solid rgba(251, 191, 36, 0.35);
+        background: rgba(251, 191, 36, 0.08); font-size: 10px; letter-spacing: .12em;
+      }
+
+      .main { min-width: 0; padding: 20px 24px 40px; }
+      .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 18px; }
+      .page-title { margin-right: auto; }
+      .page-title h1 { margin: 0; font-size: 22px; letter-spacing: .02em; }
+      .page-title p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+      .topbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+      .field { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+      input, select {
+        background: #0a121a; border: 1px solid var(--line); border-radius: 9px;
+        padding: 8px 10px; outline: none; min-width: 0;
+      }
+      input:focus, select:focus { border-color: #2b5a75; box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08); }
+      button {
+        border: 1px solid var(--line); border-radius: 9px; padding: 8px 13px;
+        background: #0b141d; color: var(--text);
+      }
+      button:hover { border-color: #2b4b61; background: #0e1a24; }
+      button.primary { border-color: #2b6a8a; color: #dff6ff; background: linear-gradient(180deg, #0d3042, #0a2433); }
+      button.primary:hover { border-color: var(--cyan); }
+      button.ghost { background: transparent; color: var(--muted); }
+      button.danger { border-color: rgba(251, 113, 133, 0.35); color: var(--red); background: rgba(251, 113, 133, 0.06); }
+      button.small { padding: 6px 10px; font-size: 12px; }
+      button:disabled { opacity: .45; cursor: not-allowed; }
+      button.busy { position: relative; color: transparent !important; }
+      button.busy::after {
+        content: ""; position: absolute; inset: 0; margin: auto;
+        width: 14px; height: 14px; border-radius: 50%;
+        border: 2px solid rgba(255,255,255,.25); border-top-color: var(--cyan);
+        animation: spin .7s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .pill {
+        display: inline-flex; align-items: center; gap: 8px; padding: 7px 11px;
+        border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 12px;
+        background: rgba(9, 16, 23, 0.7); white-space: nowrap;
+      }
+      .pill.open { color: var(--green); border-color: #1d4234; }
+
+      .view { display: none; }
+      .view.active { display: block; animation: fade .18s ease; }
+      @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+      .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; }
+      .span-3 { grid-column: span 3; }
+      .span-4 { grid-column: span 4; }
+      .span-5 { grid-column: span 5; }
+      .span-6 { grid-column: span 6; }
+      .span-7 { grid-column: span 7; }
+      .span-8 { grid-column: span 8; }
+      .span-12 { grid-column: span 12; }
+      @media (max-width: 1180px) {
+        .span-3 { grid-column: span 6; }
+        .span-4 { grid-column: span 6; }
+        .span-5, .span-7 { grid-column: span 6; }
+        .span-8 { grid-column: span 12; }
+      }
+      @media (max-width: 760px) {
+        .app { grid-template-columns: 1fr; }
+        .sidebar { position: relative; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; }
+        .nav { flex-direction: row; flex-wrap: wrap; }
+        .nav-item { width: auto; }
+        .sidebar-foot { margin: 0 0 0 auto; flex-direction: row; }
+        .main { padding: 16px; }
+        .span-3, .span-4, .span-5, .span-6, .span-7, .span-8 { grid-column: span 12; }
+      }
+
+      .card {
+        background: linear-gradient(180deg, rgba(16, 27, 38, 0.92), rgba(9, 16, 23, 0.92));
+        border: 1px solid var(--line); border-radius: var(--radius);
+        padding: 16px; box-shadow: var(--shadow); min-width: 0;
+      }
+      .card h2 { margin: 0; font-size: 12px; letter-spacing: .13em; color: var(--muted); font-weight: 600; }
+      .card h3 { margin: 0 0 10px; font-size: 15px; }
+      .card .sub { color: var(--muted); font-size: 12px; margin: 3px 0 0; }
+      .card-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+      .card-head .grow { flex: 1; min-width: 0; }
+      .card-hero {
+        background:
+          radial-gradient(420px 220px at 100% 0%, rgba(56, 189, 248, 0.18), transparent 65%),
+          linear-gradient(160deg, rgba(14, 35, 48, 0.95), rgba(8, 16, 23, 0.96));
+        border-color: #1d3d50;
+      }
+      .hero-top { display: flex; align-items: flex-start; gap: 12px; }
+      .hero-title { font-size: 20px; font-weight: 650; letter-spacing: .02em; }
+      .hero-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+      .hero-page {
+        margin-left: auto; text-align: right; color: var(--muted); font-size: 12px;
+      }
+      .hero-page strong { display: block; color: var(--cyan); font-size: 20px; letter-spacing: .04em; }
+      .hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+      .range-row { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+      .range-row input[type="range"] { flex: 1; accent-color: var(--cyan); padding: 0; }
+      .range-value { min-width: 42px; text-align: right; color: var(--cyan); font-variant-numeric: tabular-nums; }
+
+      .stat { display: flex; flex-direction: column; gap: 4px; }
+      .stat .label { color: var(--muted); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+      .stat .value { font-size: 20px; font-weight: 650; letter-spacing: .01em; }
+      .stat .meta { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .stat.wifi .value { color: var(--cyan); }
+      .stat.bt .value { color: var(--violet); }
+      .stat.heap .value { color: var(--green); }
+      .stat.uptime .value { color: var(--amber); }
+      .bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; }
+      .bars span { width: 4px; border-radius: 2px; background: #213444; }
+      .bars span.on { background: var(--cyan); }
+      .bt-bars span.on { background: var(--violet); }
+
+      .quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .quick-grid button { justify-content: center; }
+      .log-preview {
+        margin: 0; height: 156px; overflow: auto; padding: 10px;
+        background: #060b10; border: 1px solid var(--line-soft); border-radius: 11px;
+        color: #b9c9d6; font: 11.5px/1.5 Consolas, "Cascadia Mono", monospace;
+        white-space: pre-wrap; word-break: break-word;
+      }
+
+      .page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+      .page-button {
+        padding: 22px 12px; border-radius: 12px; border: 1px solid var(--line);
+        background: #0a121a; text-align: center; font-size: 14px;
+      }
+      .page-button:hover { border-color: #2b5a75; }
+      .page-button.active {
+        border-color: var(--cyan); color: var(--cyan);
+        background: linear-gradient(180deg, rgba(56, 189, 248, 0.14), rgba(56, 189, 248, 0.04));
+        box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.2);
+      }
+      .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+      .current-page { color: var(--muted); font-size: 12px; }
+      .current-page strong { color: var(--cyan); font-size: 14px; }
+
+      .wifi-status { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .kv { background: rgba(6, 11, 16, 0.5); border: 1px solid var(--line-soft); border-radius: 10px; padding: 10px 12px; }
+      .kv .k { color: var(--muted); font-size: 11px; letter-spacing: .08em; }
+      .kv .v { margin-top: 3px; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .switch { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; cursor: pointer; }
+      .switch input { position: absolute; opacity: 0; pointer-events: none; }
+      .switch .track {
+        width: 38px; height: 21px; border-radius: 99px; background: #1a2a36;
+        border: 1px solid #284152; position: relative; transition: .18s;
+      }
+      .switch .track::after {
+        content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px;
+        border-radius: 50%; background: #6b8294; transition: .18s;
+      }
+      .switch input:checked + .track { background: rgba(56, 189, 248, 0.25); border-color: #2b6a8a; }
+      .switch input:checked + .track::after { transform: translateX(17px); background: var(--cyan); }
+      .network-list { display: flex; flex-direction: column; gap: 6px; max-height: 380px; overflow: auto; }
+      .network {
+        display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+        border: 1px solid var(--line-soft); border-radius: 11px; background: rgba(6, 11, 16, 0.45);
+      }
+      .network:hover { border-color: #244457; background: rgba(13, 24, 33, 0.8); }
+      .network-main { flex: 1; min-width: 0; }
+      .network-ssid { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .network-meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
+      .tag {
+        display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px;
+        border: 1px solid var(--line); color: var(--muted); font-size: 10px; letter-spacing: .04em;
+      }
+      .tag.ok { color: var(--green); border-color: rgba(52, 211, 153, 0.3); }
+      .tag.warn { color: var(--amber); border-color: rgba(251, 191, 36, 0.3); }
+      .empty { color: var(--muted); font-size: 12px; padding: 18px; text-align: center; border: 1px dashed var(--line); border-radius: 11px; }
+
+      .form-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+      .form-row input { flex: 1; min-width: 120px; }
+      .hint { color: var(--muted); font-size: 11.5px; margin: 8px 0 0; }
+      .section-title { display: flex; align-items: center; gap: 8px; margin: 18px 0 8px; }
+      .section-title h2 { margin: 0; font-size: 12px; letter-spacing: .13em; color: var(--muted); }
+      .section-title .line { flex: 1; height: 1px; background: var(--line-soft); }
+
+      .bt-hero { display: flex; gap: 14px; align-items: center; }
+      .bt-orb {
+        width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center;
+        background: radial-gradient(circle at 30% 20%, rgba(167, 139, 250, .5), rgba(167, 139, 250, .08));
+        border: 1px solid rgba(167, 139, 250, .3); color: #ddd6fe;
+      }
+      .bt-orb svg { width: 26px; height: 26px; }
+      .bt-state { font-size: 18px; font-weight: 650; }
+      .bt-state.on { color: var(--violet); }
+
+      .serial-grid { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 14px; }
+      @media (max-width: 1000px) { .serial-grid { grid-template-columns: 1fr; } }
+      .serial-status { display: flex; flex-direction: column; gap: 10px; }
+      .serial-line { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 12px; }
+      .serial-line strong { color: var(--text); font-weight: 500; }
+      .terminal-wrap { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+      .terminal {
+        margin: 0; height: 420px; overflow: auto; padding: 12px;
+        background: #05090d; border: 1px solid var(--line); border-radius: 12px;
+        color: #b9c9d6; font: 12px/1.55 Consolas, "Cascadia Mono", monospace;
+        white-space: pre-wrap; word-break: break-word;
+      }
+      .terminal .at { color: var(--cyan); }
+      .terminal .err { color: var(--red); }
+      .terminal-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+      .terminal-tools .grow { flex: 1; }
+      .check { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+      .check input { accent-color: var(--cyan); }
+      .command-row { display: flex; gap: 8px; }
+      .command-row input { flex: 1; font-family: Consolas, "Cascadia Mono", monospace; }
+
+      .info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .info-grid .kv .v { font-size: 13px; }
+      .danger-zone { border-color: rgba(251, 113, 133, 0.25); }
+      .protocol { width: 100%; border-collapse: collapse; font-size: 12px; }
+      .protocol th, .protocol td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line-soft); }
+      .protocol th { color: var(--muted); font-weight: 500; }
+      .protocol code { color: var(--cyan); }
+
+      .toast {
+        position: fixed; right: 22px; bottom: 22px; z-index: 60;
+        max-width: 380px; padding: 11px 14px; border-radius: 11px;
+        border: 1px solid #28506a; background: #0b1a25; color: var(--text);
+        box-shadow: var(--shadow); opacity: 0; transform: translateY(10px);
+        pointer-events: none; transition: .2s;
+      }
+      .toast.show { opacity: 1; transform: none; }
+      .toast.error { border-color: rgba(251, 113, 133, .5); color: #ffd9df; }
+
+      .modal {
+        position: fixed; inset: 0; z-index: 70; display: grid; place-items: center;
+        background: rgba(2, 6, 10, 0.72); backdrop-filter: blur(6px);
+        opacity: 0; pointer-events: none; transition: .18s;
+      }
+      .modal.open { opacity: 1; pointer-events: auto; }
+      .modal-card {
+        width: min(440px, calc(100vw - 32px)); padding: 20px;
+        background: linear-gradient(180deg, #0f1c27, #0a121a);
+        border: 1px solid #234256; border-radius: 16px; box-shadow: var(--shadow);
+      }
+      .modal-card h2 { margin: 0 0 4px; font-size: 18px; }
+      .modal-card p { margin: 0 0 14px; color: var(--muted); font-size: 12px; }
+      .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+      .password-wrap { position: relative; }
+      .password-wrap input { width: 100%; padding-right: 68px; }
+      .password-wrap button { position: absolute; right: 4px; top: 4px; padding: 4px 8px; font-size: 11px; }
+      .full { width: 100%; }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">C6</div>
+          <div>
+            <strong>ESP32-C6 Studio</strong>
+            <span>172×320 · Wi-Fi 6 / BLE</span>
+          </div>
+        </div>
+
+        <nav class="nav" id="nav">
+          <button class="nav-item active" data-view="dashboard" type="button">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm10 8h8V11h-8v10zM3 21h8v-6H3v6zm10-12h8V3h-8v6z"/></svg>
+            概览
+          </button>
+          <button class="nav-item" data-view="pages" type="button">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h9v7H4V4zm0 9h9v7H4v-7zm11-9h5v7h-5V4zm0 9h5v7h-5v-7z"/></svg>
+            页面
+          </button>
+          <button class="nav-item" data-view="wifi" type="button">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm0-6.5c1.6 0 3.1.6 4.2 1.7l1.6-1.6A8.4 8.4 0 0 0 12 11.3c-2.2 0-4.3.9-5.8 2.4l1.6 1.6A5.9 5.9 0 0 1 12 13.5zm0-5.2c2.9 0 5.6 1.1 7.6 3.1l1.6-1.6A13.1 13.1 0 0 0 12 6.1c-4 0-7.7 1.6-10.4 4.3l1.6 1.6A11 11 0 0 1 12 8.3z"/></svg>
+            Wi-Fi
+          </button>
+          <button class="nav-item" data-view="bt" type="button">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l5 5-4 4 4 4-5 5V2zm2 3.4v4.2l2.1-2.1L14 5.4zm0 7.2v4.2l2.1-2.1L14 12.6zM4.3 7.4l1.4-1.4 11.9 11.9-1.4 1.4L4.3 7.4z"/></svg>
+            蓝牙
+          </button>
+          <button class="nav-item" data-view="serial" type="button">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5h18v14H3V5zm3 3v2h3V8H6zm0 4v2h3v-2H6zm5-4v2h7V8h-7zm0 4v2h7v-2h-7z"/></svg>
+            串口
+          </button>
+          <button class="nav-item" data-view="system" type="button">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8.4 4.6l1.7 1.3-2 3.4-2-.8a7.7 7.7 0 0 1-1.5.9l-.3 2.2h-4l-.3-2.2a7.7 7.7 0 0 1-1.5-.9l-2 .8-2-3.4 1.7-1.3a7.3 7.3 0 0 1 0-1.6L2.8 10l2-3.4 2 .8a7.7 7.7 0 0 1 1.5-.9L8.6 4h4l.3 2.2c.5.2 1 .5 1.5.9l2-.8 2 3.4-1.7 1.3c.1.5.1 1.1 0 1.6z"/></svg>
+            系统
+          </button>
+        </nav>
+
+        <div class="sidebar-foot">
+          <div class="side-status"><span class="dot" id="sideDot"></span><span id="sideStatus">串口未连接</span></div>
+          <span class="fake-badge hidden" id="fakeBadge">FAKE DEMO</span>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="page-title">
+            <h1 id="viewTitle">概览</h1>
+            <p id="viewSub">ESP32-C6 · 172×320 · 无触摸 · ST7789</p>
+          </div>
+          <div class="topbar-actions">
+            <label class="field"><span>端口</span><select id="portSelect"></select></label>
+            <button id="refreshPorts" class="ghost" type="button" title="刷新串口">↻</button>
+            <label class="field"><span>波特率</span><input id="baudInput" value="115200" size="7" /></label>
+            <button id="connectBtn" class="primary" type="button">连接</button>
+            <button id="disconnectBtn" class="ghost" type="button" disabled>断开</button>
+            <div class="pill" id="statusPill"><span class="dot" id="statusDot"></span><span id="statusText">未连接</span></div>
+          </div>
+        </header>
+
+        <section class="view active" id="view-dashboard">
+          <div class="grid">
+            <article class="card card-hero span-8">
+              <div class="hero-top">
+                <div>
+                  <h2>设备</h2>
+                  <div class="hero-title">ESP32-C6 演示板</div>
+                  <div class="hero-sub">ST7789 · 172×320 · LVGL 9.6 · 串口页面控制</div>
+                </div>
+                <div class="hero-page">
+                  当前页面
+                  <strong id="dashPage">-</strong>
+                  <span id="dashPageIndex"></span>
+                </div>
+              </div>
+              <div class="hero-actions">
+                <button id="dashPrev" class="ghost" type="button">← 上一页</button>
+                <button id="dashNext" class="primary" type="button">下一页 →</button>
+                <button id="dashRefresh" class="ghost" type="button">刷新状态</button>
+              </div>
+              <div class="range-row">
+                <span class="field">背光</span>
+                <input id="dashBrightness" type="range" min="0" max="100" value="42" />
+                <span class="range-value" id="dashBrightnessValue">42%</span>
+              </div>
+            </article>
+
+            <article class="card stat wifi span-4">
+              <span class="label">Wi-Fi</span>
+              <span class="value" id="dashWifiState">未连接</span>
+              <span class="meta" id="dashWifiSsid">未配置网络</span>
+              <span class="meta" id="dashWifiIp">—</span>
+              <div class="bars" id="dashWifiBars"></div>
+            </article>
+
+            <article class="card stat bt span-3">
+              <span class="label">蓝牙</span>
+              <span class="value" id="dashBtState">已关闭</span>
+              <span class="meta" id="dashBtName">—</span>
+              <span class="meta" id="dashBtDetail">—</span>
+            </article>
+
+            <article class="card stat heap span-3">
+              <span class="label">可用内存</span>
+              <span class="value" id="dashHeap">—</span>
+              <span class="meta" id="dashChip">ESP32-C6</span>
+            </article>
+
+            <article class="card stat uptime span-3">
+              <span class="label">运行时间</span>
+              <span class="value" id="dashUptime">—</span>
+              <span class="meta" id="dashFlash">4 MB Flash</span>
+            </article>
+
+            <article class="card span-3">
+              <h2>快捷操作</h2>
+              <div class="quick-grid">
+                <button id="dashScanWifi" class="ghost small" type="button">扫描 Wi-Fi</button>
+                <button id="dashBtOn" class="ghost small" type="button">开启蓝牙</button>
+                <button id="dashPages" class="ghost small" type="button">页面列表</button>
+                <button id="dashSys" class="ghost small" type="button">系统信息</button>
+              </div>
+            </article>
+
+            <article class="card span-12">
+              <div class="card-head">
+                <div class="grow">
+                  <h2>串口日志</h2>
+                  <p class="sub">与页面/无线命令共用同一个 broker；命令回复以 @ 开头。</p>
+                </div>
+                <button id="dashSerial" class="ghost small" type="button">打开串口页</button>
+              </div>
+              <pre class="log-preview" id="logPreview"></pre>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-pages">
+          <div class="grid">
+            <article class="card span-8">
+              <div class="card-head">
+                <div class="grow">
+                  <h2>页面切换</h2>
+                  <p class="sub">列表来自固件 <code>pages</code> 命令，不在前端写死。</p>
+                </div>
+                <button id="refreshPages" class="ghost small" type="button">刷新页面列表</button>
+              </div>
+              <div class="page-grid" id="pageButtons"></div>
+              <div class="toolbar">
+                <button id="pagePrev" class="ghost" type="button">← 上一页</button>
+                <button id="pageNext" class="primary" type="button">下一页 →</button>
+                <span class="current-page">当前：<strong id="pageCurrent">-</strong></span>
+              </div>
+            </article>
+
+            <article class="card span-4">
+              <h2>页面控制</h2>
+              <p class="sub">真机无触摸，网页按钮通过串口发 <code>page &lt;name&gt;</code>。</p>
+              <div class="range-row">
+                <span class="field">背光</span>
+                <input id="pageBrightness" type="range" min="0" max="100" value="42" />
+                <span class="range-value" id="pageBrightnessValue">42%</span>
+              </div>
+              <div class="section-title"><h2>协议</h2><span class="line"></span></div>
+              <table class="protocol">
+                <tr><th>输入</th><th>回复</th></tr>
+                <tr><td><code>pages</code></td><td><code>@PAGES ...</code></td></tr>
+                <tr><td><code>page status</code></td><td><code>@OK PAGE status</code></td></tr>
+                <tr><td><code>page next</code></td><td><code>@OK PAGE ...</code></td></tr>
+              </table>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-wifi">
+          <div class="grid">
+            <article class="card span-5">
+              <div class="card-head">
+                <div class="grow">
+                  <h2>Wi-Fi 状态</h2>
+                  <p class="sub">连接状态、IP 和信号强度来自固件。</p>
+                </div>
+                <span class="tag" id="wifiStateTag">未连接</span>
+              </div>
+              <div class="wifi-status">
+                <div class="kv"><div class="k">SSID</div><div class="v" id="wifiSsid">—</div></div>
+                <div class="kv"><div class="k">IP</div><div class="v" id="wifiIp">—</div></div>
+                <div class="kv"><div class="k">信号</div><div class="v"><span id="wifiRssi">—</span> <span class="bars" id="wifiBars"></span></div></div>
+                <div class="kv"><div class="k">安全</div><div class="v" id="wifiSecurity">—</div></div>
+              </div>
+              <div class="toolbar">
+                <label class="switch"><input id="wifiAutoToggle" type="checkbox" /><span class="track"></span>自动连接</label>
+                <button id="wifiDisconnectBtn" class="danger small" type="button" disabled>断开</button>
+                <button id="wifiScanBtn" class="primary small" type="button">扫描网络</button>
+              </div>
+              <p class="hint">扫描会阻塞串口几秒；扫描期间其他串口命令会排队。</p>
+            </article>
+
+            <article class="card span-7">
+              <div class="card-head">
+                <div class="grow">
+                  <h2>附近网络</h2>
+                  <p class="sub">点击“连接”输入密码；开放网络直接连接。</p>
+                </div>
+              </div>
+              <div class="network-list" id="wifiNetworks">
+                <div class="empty">点击“扫描网络”发现附近 Wi-Fi。</div>
+              </div>
+              <div class="section-title"><h2>手动连接</h2><span class="line"></span></div>
+              <form class="form-row" id="wifiManualForm">
+                <input id="wifiManualSsid" placeholder="SSID（隐藏网络）" autocomplete="off" />
+                <input id="wifiManualPassword" type="password" placeholder="密码" autocomplete="off" />
+                <button class="primary" type="submit">连接</button>
+              </form>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-bt">
+          <div class="grid">
+            <article class="card span-6">
+              <div class="bt-hero">
+                <div class="bt-orb">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l5 5-4 4 4 4-5 5V2zm2 3.4v4.2l2.1-2.1L14 5.4zm0 7.2v4.2l2.1-2.1L14 12.6zM4.3 7.4l1.4-1.4 11.9 11.9-1.4 1.4L4.3 7.4z"/></svg>
+                </div>
+                <div class="grow">
+                  <h2>蓝牙状态</h2>
+                  <div class="bt-state" id="btStateText">已关闭</div>
+                  <p class="sub" id="btStateSub">开启后设备可被扫描和连接</p>
+                </div>
+              </div>
+              <div class="section-title"><h2>设置</h2><span class="line"></span></div>
+              <div class="serial-status">
+                <label class="switch"><input id="btEnabledToggle" type="checkbox" /><span class="track"></span>启用蓝牙</label>
+                <label class="switch"><input id="btDiscoverableToggle" type="checkbox" /><span class="track"></span>允许发现 / 广播</label>
+              </div>
+              <div class="form-row">
+                <input id="btNameInput" placeholder="设备名称" autocomplete="off" />
+                <button id="btSaveName" class="primary" type="button">保存名称</button>
+              </div>
+              <p class="hint">名称支持中文；host 会做 URL 编码后通过串口发送。</p>
+            </article>
+
+            <article class="card span-6">
+              <h2>设备信息</h2>
+              <div class="info-grid">
+                <div class="kv"><div class="k">广播名称</div><div class="v" id="btNameDisplay">—</div></div>
+                <div class="kv"><div class="k">连接数</div><div class="v" id="btConnected">0</div></div>
+                <div class="kv"><div class="k">可发现</div><div class="v" id="btDiscoverableText">否</div></div>
+                <div class="kv"><div class="k">状态</div><div class="v" id="btEnabledText">关闭</div></div>
+              </div>
+              <div class="toolbar">
+                <button id="btAdvertiseBtn" class="primary small" type="button">重新广播</button>
+                <button id="btRefreshBtn" class="ghost small" type="button">刷新状态</button>
+              </div>
+              <p class="hint">这是配置 UI；真实 BLE 广播/配对由 ESP-IDF 固件侧实现。</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-serial">
+          <div class="serial-grid">
+            <article class="card">
+              <h2>串口连接</h2>
+              <div class="serial-status">
+                <div class="serial-line"><span>状态</span><strong id="serialState">未连接</strong></div>
+                <div class="serial-line"><span>端口</span><strong id="serialPort">—</strong></div>
+                <div class="serial-line"><span>波特率</span><strong id="serialBaud">—</strong></div>
+                <label class="switch"><input id="serialAutoReconnect" type="checkbox" /><span class="track"></span>自动重连</label>
+              </div>
+              <div class="section-title"><h2>命令</h2><span class="line"></span></div>
+              <label class="field" style="display:flex;justify-content:space-between;margin-bottom:8px"><span>行尾</span>
+                <select id="serialLineEnding">
+                  <option value="lf" selected>LF</option>
+                  <option value="crlf">CRLF</option>
+                  <option value="cr">CR</option>
+                  <option value="none">无</option>
+                </select>
+              </label>
+              <div class="command-row">
+                <input id="serialCommand" placeholder="page status / wifi status / ping" />
+                <button id="serialSend" class="primary" type="button">发送</button>
+              </div>
+              <p class="hint">调试用；页面和 Wi-Fi/蓝牙按钮会走各自的 API。</p>
+            </article>
+
+            <article class="card terminal-wrap">
+              <div class="card-head">
+                <div class="grow">
+                  <h2>串口日志</h2>
+                  <p class="sub">同一份字节流；SSE 实时推送。</p>
+                </div>
+                <div class="terminal-tools">
+                  <label class="check"><input id="logAutoscroll" type="checkbox" checked />自动滚动</label>
+                  <button id="logClear" class="ghost small" type="button">清空</button>
+                  <button id="logDownload" class="ghost small" type="button">下载</button>
+                </div>
+              </div>
+              <pre class="terminal" id="serialLog"></pre>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-system">
+          <div class="grid">
+            <article class="card span-8">
+              <div class="card-head">
+                <div class="grow">
+                  <h2>系统信息</h2>
+                  <p class="sub">来自固件 <code>sys info</code> 和 host broker。</p>
+                </div>
+                <button id="sysRefresh" class="ghost small" type="button">刷新</button>
+              </div>
+              <div class="info-grid">
+                <div class="kv"><div class="k">芯片</div><div class="v" id="sysChip">—</div></div>
+                <div class="kv"><div class="k">Flash</div><div class="v" id="sysFlash">—</div></div>
+                <div class="kv"><div class="k">可用内存</div><div class="v" id="sysHeap">—</div></div>
+                <div class="kv"><div class="k">运行时间</div><div class="v" id="sysUptime">—</div></div>
+                <div class="kv"><div class="k">应用</div><div class="v" id="sysApp">—</div></div>
+                <div class="kv"><div class="k">当前页面</div><div class="v" id="sysPage">—</div></div>
+                <div class="kv"><div class="k">串口</div><div class="v" id="sysSerial">—</div></div>
+                <div class="kv"><div class="k">模式</div><div class="v" id="sysFake">—</div></div>
+              </div>
+            </article>
+
+            <article class="card span-4 danger-zone">
+              <h2>维护</h2>
+              <p class="sub">重置只发送 <code>sys reset</code>，不会重新烧录固件。</p>
+              <div class="toolbar">
+                <button id="resetBtn" class="danger" type="button">重置设备</button>
+              </div>
+              <div class="section-title"><h2>协议</h2><span class="line"></span></div>
+              <table class="protocol">
+                <tr><th>命令</th><th>用途</th></tr>
+                <tr><td><code>wifi scan</code></td><td>扫描网络</td></tr>
+                <tr><td><code>wifi connect</code></td><td>连接（URL 编码）</td></tr>
+                <tr><td><code>bt name</code></td><td>修改广播名</td></tr>
+                <tr><td><code>sys info</code></td><td>芯片/内存/页面</td></tr>
+              </table>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="modal" id="wifiModal">
+      <div class="modal-card">
+        <h2 id="wifiModalTitle">连接 Wi-Fi</h2>
+        <p id="wifiModalHint">输入密码后通过串口发送给设备。</p>
+        <label class="field" style="display:block;margin-bottom:8px">SSID
+          <input id="wifiModalSsid" class="full" readonly style="margin-top:4px" />
+        </label>
+        <div class="password-wrap">
+          <input id="wifiModalPassword" type="password" placeholder="密码" autocomplete="off" />
+          <button id="wifiModalShow" class="ghost small" type="button">显示</button>
+        </div>
+        <div class="modal-actions">
+          <button id="wifiModalCancel" class="ghost" type="button">取消</button>
+          <button id="wifiModalConnect" class="primary" type="button">连接</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const views = {
+        dashboard: ["概览", "ESP32-C6 · 172×320 · 无触摸 · ST7789"],
+        pages: ["页面", "串口切换 LVGL 页面"],
+        wifi: ["Wi-Fi", "扫描、连接和状态"],
+        bt: ["蓝牙", "启用、广播名和可发现性"],
+        serial: ["串口", "连接、命令和日志"],
+        system: ["系统", "芯片信息、内存和重置"],
+      };
+      const state = {
+        view: "dashboard",
+        status: null,
+        fake: false,
+        sys: {},
+        pages: [],
+        currentPage: "",
+        wifi: {},
+        bt: {},
+        networks: [],
+        log: [],
+        logLimit: 320,
+        modal: null,
+      };
+
+      function esc(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        }[char]));
+      }
+
+      async function api(path, options = {}) {
+        const response = await fetch(path, options);
+        let payload;
+        try {
+          payload = await response.json();
+        } catch (error) {
+          payload = { ok: false, error: "bad_response", message: String(error) };
+        }
+        if (!response.ok || !payload.ok) {
+          const error = new Error(payload.message || payload.error || "请求失败");
+          error.payload = payload;
+          throw error;
+        }
+        return payload;
+      }
+
+      const post = (path, body) => api(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body ?? {}),
+      });
+
+      let toastTimer = null;
+      function toast(message, type = "ok") {
+        const node = $("toast");
+        node.textContent = message;
+        node.className = `toast show${type === "error" ? " error" : ""}`;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { node.className = "toast"; }, 3200);
+      }
+
+      async function withBusy(button, fn) {
+        if (button) { button.classList.add("busy"); button.disabled = true; }
+        try {
+          return await fn();
+        } finally {
+          if (button) { button.classList.remove("busy"); button.disabled = false; }
+        }
+      }
+
+      function formatUptime(seconds) {
+        const total = Math.max(0, Number(seconds) || 0);
+        const hours = Math.floor(total / 3600);
+        const minutes = Math.floor((total % 3600) / 60);
+        const secs = total % 60;
+        if (hours) return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+        if (minutes) return `${minutes}m ${String(secs).padStart(2, "0")}s`;
+        return `${secs}s`;
+      }
+
+      function barsHtml(rssi) {
+        const level = rssi >= -55 ? 4 : rssi >= -67 ? 3 : rssi >= -78 ? 2 : 1;
+        return [1, 2, 3, 4].map((index) =>
+          `<span class="${index <= level ? "on" : ""}" style="height:${4 + index * 3}px"></span>`
+        ).join("");
+      }
+
+      function setCurrentPage(name) {
+        if (!name) return;
+        state.currentPage = name;
+        renderPages();
+      }
+
+      function renderPages() {
+        const buttons = state.pages.map((name) => `
+          <button type="button" class="page-button ${name === state.currentPage ? "active" : ""}" data-page="${esc(name)}">${esc(name)}</button>
+        `).join("");
+        $("pageButtons").innerHTML = buttons || '<div class="empty">连接串口后刷新页面列表。</div>';
+        $("dashPage").textContent = state.currentPage || "-";
+        $("pageCurrent").textContent = state.currentPage || "-";
+        const index = state.pages.indexOf(state.currentPage);
+        $("dashPageIndex").textContent = index >= 0 ? `${index + 1}/${state.pages.length}` : "";
+      }
+
+      function renderWifi() {
+        const wifi = state.wifi || {};
+        const connected = wifi.state === "connected";
+        $("dashWifiState").textContent = connected ? "已连接" : "未连接";
+        $("dashWifiSsid").textContent = connected ? (wifi.ssid || "—") : "未配置网络";
+        $("dashWifiIp").textContent = connected ? (wifi.ip || "—") : "—";
+        $("dashWifiBars").innerHTML = connected ? barsHtml(wifi.rssi || 0) : "";
+
+        $("wifiStateTag").textContent = connected ? "已连接" : "未连接";
+        $("wifiStateTag").className = `tag ${connected ? "ok" : ""}`;
+        $("wifiSsid").textContent = connected ? (wifi.ssid || "—") : "—";
+        $("wifiIp").textContent = connected ? (wifi.ip || "—") : "—";
+        $("wifiRssi").textContent = connected ? `${wifi.rssi || 0} dBm` : "—";
+        $("wifiBars").innerHTML = connected ? barsHtml(wifi.rssi || 0) : "";
+        $("wifiSecurity").textContent = connected ? (wifi.security || "—") : "—";
+        $("wifiAutoToggle").checked = Boolean(wifi.auto);
+        $("wifiDisconnectBtn").disabled = !connected;
+      }
+
+      function renderBt() {
+        const bt = state.bt || {};
+        const enabled = Boolean(bt.enabled);
+        const discoverable = Boolean(bt.discoverable);
+        $("dashBtState").textContent = enabled ? "已开启" : "已关闭";
+        $("dashBtName").textContent = bt.name || "—";
+        $("dashBtDetail").textContent = `可发现 ${discoverable ? "是" : "否"} · 连接 ${bt.connected ?? 0}`;
+
+        $("btStateText").textContent = enabled ? (discoverable ? "广播中" : "已开启") : "已关闭";
+        $("btStateText").className = `bt-state ${enabled ? "on" : ""}`;
+        $("btStateSub").textContent = enabled
+          ? (discoverable ? "设备可被附近主机发现" : "已开启，但未广播")
+          : "开启后设备可被扫描和连接";
+        $("btEnabledToggle").checked = enabled;
+        $("btDiscoverableToggle").checked = discoverable;
+        $("btDiscoverableToggle").disabled = !enabled;
+        $("btNameInput").value = bt.name || "";
+        $("btNameDisplay").textContent = bt.name || "—";
+        $("btConnected").textContent = String(bt.connected ?? 0);
+        $("btDiscoverableText").textContent = discoverable ? "是" : "否";
+        $("btEnabledText").textContent = enabled ? "开启" : "关闭";
+      }
+
+      function renderSys() {
+        const sys = state.sys || {};
+        $("dashHeap").textContent = sys.heap || "—";
+        $("dashChip").textContent = sys.chip || "—";
+        $("dashUptime").textContent = formatUptime(sys.uptime_s);
+        $("dashFlash").textContent = sys.flash ? `${sys.flash} Flash` : "—";
+
+        $("sysChip").textContent = sys.chip || "—";
+        $("sysFlash").textContent = sys.flash || "—";
+        $("sysHeap").textContent = sys.heap || "—";
+        $("sysUptime").textContent = formatUptime(sys.uptime_s);
+        $("sysApp").textContent = sys.app || "—";
+        $("sysPage").textContent = sys.page || "—";
+        $("sysSerial").textContent = state.status?.open ? `${state.status.port} · ${state.status.baud}` : "未连接";
+        $("sysFake").textContent = state.fake ? "fake backend" : "serial";
+
+        if (sys.brightness !== undefined) setBrightness(Number(sys.brightness));
+        if (sys.page) setCurrentPage(sys.page);
+      }
+
+      function renderStatus() {
+        const status = state.status || {};
+        const open = Boolean(status.open);
+        $("statusDot").className = `dot ${open ? "on" : ""}`;
+        $("statusText").textContent = open ? `${status.port} · ${state.fake ? "fake" : "serial"}` : "未连接";
+        $("statusPill").classList.toggle("open", open);
+        $("sideDot").className = `dot ${open ? "on" : ""}`;
+        $("sideStatus").textContent = open ? `${status.port} 已连接` : "串口未连接";
+        $("fakeBadge").classList.toggle("hidden", !state.fake);
+        $("connectBtn").disabled = open;
+        $("disconnectBtn").disabled = !open;
+        $("serialState").textContent = open ? "已连接" : "未连接";
+        $("serialPort").textContent = status.port || "—";
+        $("serialBaud").textContent = status.baud || "—";
+        $("serialAutoReconnect").checked = Boolean(status.auto_reconnect);
+        if (!open) {
+          state.pages = [];
+          state.currentPage = "";
+          renderPages();
+        }
+      }
+
+      function renderNetworks() {
+        if (!state.networks.length) {
+          $("wifiNetworks").innerHTML = '<div class="empty">点击“扫描网络”发现附近 Wi-Fi。</div>';
+          return;
+        }
+        $("wifiNetworks").innerHTML = state.networks.map((network) => `
+          <div class="network">
+            <div class="network-main">
+              <div class="network-ssid">${esc(network.ssid)}</div>
+              <div class="network-meta">${esc(network.security)} · ${network.rssi} dBm</div>
+            </div>
+            <div class="bars">${barsHtml(network.rssi)}</div>
+            <button class="ghost small" type="button" data-connect="${esc(network.ssid)}" data-security="${esc(network.security)}">连接</button>
+          </div>
+        `).join("");
+      }
+
+      function renderLog() {
+        const text = state.log.join("\n");
+        $("serialLog").innerHTML = state.log.map((line) => {
+          if (line.startsWith("@")) {
+            return `<span class="at">@</span>${esc(line.slice(1))}`;
+          }
+          if (line.startsWith("[stderr]") || line.includes("ERROR")) {
+            return `<span class="err">${esc(line)}</span>`;
+          }
+          return esc(line);
+        }).join("\n");
+        $("logPreview").textContent = state.log.slice(-9).join("\n");
+        if ($("logAutoscroll").checked) {
+          $("serialLog").scrollTop = $("serialLog").scrollHeight;
+        }
+      }
+
+      function appendLog(text) {
+        if (!text) return;
+        for (const line of text.split(/\r?\n/)) {
+          if (line) state.log.push(line);
+        }
+        if (state.log.length > state.logLimit) state.log.splice(0, state.log.length - state.logLimit);
+        renderLog();
+        const page = text.match(/@(?:OK|STATE)(?: PAGE| page=)([A-Za-z0-9_-]+)/);
+        if (page) setCurrentPage(page[1]);
+        if (text.includes("@READY")) toast("固件已就绪");
+      }
+
+      function setBrightness(value) {
+        const clamped = Math.max(0, Math.min(100, value));
+        $("dashBrightness").value = String(clamped);
+        $("pageBrightness").value = String(clamped);
+        $("dashBrightnessValue").textContent = `${clamped}%`;
+        $("pageBrightnessValue").textContent = `${clamped}%`;
+      }
+
+      async function loadStatus(silent = false) {
+        try {
+          const data = await api("/api/status");
+          state.status = data.serial;
+          state.fake = Boolean(data.fake);
+          renderStatus();
+          return data;
+        } catch (error) {
+          if (!silent) toast(error.message, "error");
+        }
+      }
+
+      async function loadPorts() {
+        try {
+          const data = await api("/api/ports");
+          const select = $("portSelect");
+          const previous = select.value;
+          select.innerHTML = "";
+          if (!data.ports.length) {
+            select.add(new Option("未发现串口", ""));
+          }
+          for (const item of data.ports) {
+            const label = `${item.port}${item.description ? " · " + item.description : ""}`;
+            select.add(new Option(label, item.port));
+          }
+          if (previous && [...select.options].some((option) => option.value === previous)) {
+            select.value = previous;
+          }
+        } catch (error) {
+          toast(error.message, "error");
+        }
+      }
+
+      async function loadSys() {
+        try {
+          const data = await api("/api/sys");
+          state.sys = data.sys || {};
+          renderSys();
+        } catch (error) {
+          state.sys = {};
+          renderSys();
+        }
+      }
+
+      async function loadWifi() {
+        try {
+          const data = await api("/api/wifi");
+          state.wifi = data.wifi || {};
+        } catch (error) {
+          state.wifi = {};
+        }
+        renderWifi();
+      }
+
+      async function loadBt() {
+        try {
+          const data = await api("/api/bt");
+          state.bt = data.bt || {};
+        } catch (error) {
+          state.bt = {};
+        }
+        renderBt();
+      }
+
+      async function loadPages() {
+        try {
+          const data = await api("/api/pages");
+          state.pages = data.pages || [];
+          if (data.current) state.currentPage = data.current;
+        } catch (error) {
+          state.pages = [];
+        }
+        renderPages();
+      }
+
+      async function refreshView(view = state.view) {
+        if (view === "dashboard") {
+          await Promise.allSettled([loadStatus(true), loadSys(), loadWifi(), loadBt(), loadPages()]);
+        } else if (view === "pages") {
+          await loadPages();
+        } else if (view === "wifi") {
+          await loadWifi();
+        } else if (view === "bt") {
+          await loadBt();
+        } else if (view === "serial") {
+          await loadStatus(true);
+        } else if (view === "system") {
+          await Promise.allSettled([loadStatus(true), loadSys()]);
+        }
+      }
+
+      function switchView(view) {
+        if (!views[view]) return;
+        state.view = view;
+        document.querySelectorAll(".nav-item").forEach((item) => {
+          item.classList.toggle("active", item.dataset.view === view);
+        });
+        document.querySelectorAll(".view").forEach((section) => {
+          section.classList.toggle("active", section.id === `view-${view}`);
+        });
+        $("viewTitle").textContent = views[view][0];
+        $("viewSub").textContent = views[view][1];
+        refreshView(view);
+      }
+
+      async function connectSerial() {
+        const port = $("portSelect").value;
+        const baud = Number($("baudInput").value) || 115200;
+        if (!port) { toast("请选择串口", "error"); return; }
+        let connected = false;
+        await withBusy($("connectBtn"), async () => {
+          try {
+            await post("/api/open", { port, baud });
+            connected = true;
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
+        if (connected) {
+          toast(`已连接 ${port}`);
+          await loadStatus(true);
+          await refreshView();
+        }
+      }
+
+      async function disconnectSerial() {
+        let closed = false;
+        await withBusy($("disconnectBtn"), async () => {
+          try {
+            await post("/api/close");
+            closed = true;
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
+        if (closed) {
+          toast("已断开");
+          await loadStatus(true);
+          state.pages = [];
+          renderPages();
+        }
+      }
+
+      async function switchPage(name) {
+        try {
+          const data = await post("/api/page", { name });
+          setCurrentPage(data.page || name);
+          toast(`已切换: ${data.page || name}`);
+        } catch (error) {
+          toast(error.message, "error");
+        }
+      }
+
+      async function stepPage(direction) {
+        try {
+          const data = await post(`/api/page/${direction}`);
+          setCurrentPage(data.page);
+          toast(`已切换: ${data.page}`);
+        } catch (error) {
+          toast(error.message, "error");
+        }
+      }
+
+      async function scanWifi() {
+        await withBusy($("wifiScanBtn"), async () => {
+          try {
+            const data = await post("/api/wifi/scan");
+            state.networks = data.networks || [];
+            renderNetworks();
+            toast(`发现 ${state.networks.length} 个网络`);
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
+      }
+
+      function openWifiModal(ssid, security) {
+        state.modal = { ssid, security };
+        $("wifiModalTitle").textContent = `连接 ${ssid}`;
+        $("wifiModalSsid").value = ssid;
+        $("wifiModalPassword").value = "";
+        $("wifiModalPassword").type = "password";
+        $("wifiModalShow").textContent = "显示";
+        $("wifiModalHint").textContent = security === "OPEN"
+          ? "开放网络，无需密码。"
+          : `${security} 网络，输入密码后通过串口发送。`;
+        $("wifiModal").classList.add("open");
+        setTimeout(() => $("wifiModalPassword").focus(), 50);
+      }
+
+      function closeWifiModal() {
+        $("wifiModal").classList.remove("open");
+        state.modal = null;
+      }
+
+      async function connectWifi(ssid, password, button) {
+        await withBusy(button, async () => {
+          try {
+            const data = await post("/api/wifi/connect", { ssid, password });
+            closeWifiModal();
+            toast(`已连接 ${data.wifi?.ssid || ssid}`);
+            await Promise.allSettled([loadWifi(), loadSys()]);
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
+      }
+
+      async function disconnectWifi() {
+        let disconnected = false;
+        await withBusy($("wifiDisconnectBtn"), async () => {
+          try {
+            await post("/api/wifi/disconnect");
+            disconnected = true;
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
+        if (disconnected) {
+          toast("Wi-Fi 已断开");
+          await Promise.allSettled([loadWifi(), loadSys()]);
+        }
+      }
+
+      async function toggleWifiAuto(enabled) {
+        try {
+          await post("/api/wifi/auto", { enabled });
+          toast(`自动连接已${enabled ? "开启" : "关闭"}`);
+          await loadWifi();
+        } catch (error) {
+          toast(error.message, "error");
+          await loadWifi();
+        }
+      }
+
+      async function toggleBt(enabled) {
+        try {
+          await post("/api/bt/enable", { enabled });
+          toast(`蓝牙已${enabled ? "开启" : "关闭"}`);
+          await Promise.allSettled([loadBt(), loadSys()]);
+        } catch (error) {
+          toast(error.message, "error");
+          await loadBt();
+        }
+      }
+
+      async function saveBtName() {
+        const name = $("btNameInput").value.trim();
+        if (!name) { toast("名称不能为空", "error"); return; }
+        await withBusy($("btSaveName"), async () => {
+          try {
+            const data = await post("/api/bt/name", { name });
+            toast(`蓝牙名称已改为 ${data.name}`);
+            await loadBt();
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
+      }
+
+      async function toggleBtDiscoverable(enabled) {
+        try {
+          await post("/api/bt/discoverable", { enabled });
+          toast(enabled ? "已开启广播" : "已关闭广播");
+          await loadBt();
+        } catch (error) {
+          toast(error.message, "error");
+          await loadBt();
+        }
+      }
+
+      async function applyBrightness(value) {
+        try {
+          const data = await post("/api/brightness", { value: Number(value) });
+          setBrightness(data.value);
+          toast(`背光 ${data.value}%`);
+        } catch (error) {
+          toast(error.message, "error");
+        }
+      }
+
+      async function sendCommand() {
+        const data = $("serialCommand").value.trim();
+        if (!data) return;
+        await withBusy($("serialSend"), async () => {
+          try {
+            await post("/api/send", {
+              data,
+              line_ending: $("serialLineEnding").value,
+            });
+            toast(`已发送: ${data}`);
+            $("serialCommand").value = "";
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
+      }
+
+      async function toggleAutoReconnect(enabled) {
+        try {
+          await post("/api/serial/auto_reconnect", { enabled });
+          toast(`自动重连已${enabled ? "开启" : "关闭"}`);
+          await loadStatus(true);
+        } catch (error) {
+          toast(error.message, "error");
+          await loadStatus(true);
+        }
+      }
+
+      async function resetDevice() {
+        if (!window.confirm("发送 sys reset 让设备重启（模拟/真机）？")) return;
+        await withBusy($("resetBtn"), async () => {
+          try {
+            await post("/api/system/reset");
+            toast("已发送重置命令");
+            await Promise.allSettled([loadStatus(true), loadSys(), loadWifi(), loadBt(), loadPages()]);
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
+      }
+
+      function startStream() {
+        const stream = new EventSource("/api/stream?since=0");
+        stream.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.text) appendLog(data.text);
+          } catch (error) {
+            appendLog(String(event.data));
+          }
+        };
+      }
+
+      function bindEvents() {
+        document.querySelectorAll(".nav-item").forEach((item) => {
+          item.addEventListener("click", () => switchView(item.dataset.view));
+        });
+        $("refreshPorts").addEventListener("click", loadPorts);
+        $("connectBtn").addEventListener("click", connectSerial);
+        $("disconnectBtn").addEventListener("click", disconnectSerial);
+        $("dashPrev").addEventListener("click", () => stepPage("prev"));
+        $("dashNext").addEventListener("click", () => stepPage("next"));
+        $("dashRefresh").addEventListener("click", () => refreshView("dashboard"));
+        $("dashScanWifi").addEventListener("click", () => { switchView("wifi"); scanWifi(); });
+        $("dashBtOn").addEventListener("click", () => { switchView("bt"); toggleBt(true); });
+        $("dashPages").addEventListener("click", () => switchView("pages"));
+        $("dashSys").addEventListener("click", () => switchView("system"));
+        $("dashSerial").addEventListener("click", () => switchView("serial"));
+        $("refreshPages").addEventListener("click", loadPages);
+        $("pagePrev").addEventListener("click", () => stepPage("prev"));
+        $("pageNext").addEventListener("click", () => stepPage("next"));
+        $("pageButtons").addEventListener("click", (event) => {
+          const button = event.target.closest("[data-page]");
+          if (button) switchPage(button.dataset.page);
+        });
+        $("dashBrightness").addEventListener("input", (event) => setBrightness(Number(event.target.value)));
+        $("pageBrightness").addEventListener("input", (event) => setBrightness(Number(event.target.value)));
+        $("dashBrightness").addEventListener("change", (event) => applyBrightness(event.target.value));
+        $("pageBrightness").addEventListener("change", (event) => applyBrightness(event.target.value));
+        $("wifiScanBtn").addEventListener("click", scanWifi);
+        $("wifiDisconnectBtn").addEventListener("click", disconnectWifi);
+        $("wifiAutoToggle").addEventListener("change", (event) => toggleWifiAuto(event.target.checked));
+        $("wifiNetworks").addEventListener("click", (event) => {
+          const button = event.target.closest("[data-connect]");
+          if (button) openWifiModal(button.dataset.connect, button.dataset.security);
+        });
+        $("wifiManualForm").addEventListener("submit", (event) => {
+          event.preventDefault();
+          const ssid = $("wifiManualSsid").value.trim();
+          const password = $("wifiManualPassword").value;
+          if (!ssid) { toast("请输入 SSID", "error"); return; }
+          connectWifi(ssid, password, null);
+        });
+        $("wifiModalCancel").addEventListener("click", closeWifiModal);
+        $("wifiModalConnect").addEventListener("click", () => {
+          if (!state.modal) return;
+          connectWifi(state.modal.ssid, $("wifiModalPassword").value, $("wifiModalConnect"));
+        });
+        $("wifiModalShow").addEventListener("click", () => {
+          const input = $("wifiModalPassword");
+          const show = input.type === "password";
+          input.type = show ? "text" : "password";
+          $("wifiModalShow").textContent = show ? "隐藏" : "显示";
+        });
+        $("wifiModal").addEventListener("click", (event) => {
+          if (event.target === $("wifiModal")) closeWifiModal();
+        });
+        $("btEnabledToggle").addEventListener("change", (event) => toggleBt(event.target.checked));
+        $("btDiscoverableToggle").addEventListener("change", (event) => toggleBtDiscoverable(event.target.checked));
+        $("btSaveName").addEventListener("click", saveBtName);
+        $("btAdvertiseBtn").addEventListener("click", () => toggleBtDiscoverable(true));
+        $("btRefreshBtn").addEventListener("click", loadBt);
+        $("serialAutoReconnect").addEventListener("change", (event) => toggleAutoReconnect(event.target.checked));
+        $("serialSend").addEventListener("click", sendCommand);
+        $("serialCommand").addEventListener("keydown", (event) => {
+          if (event.key === "Enter") sendCommand();
+        });
+        $("logClear").addEventListener("click", () => {
+          state.log = [];
+          renderLog();
+        });
+        $("logDownload").addEventListener("click", () => {
+          const blob = new Blob([state.log.join("\n") + "\n"], { type: "text/plain" });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = "esp32-c6-host.log";
+          link.click();
+          URL.revokeObjectURL(link.href);
+        });
+        $("sysRefresh").addEventListener("click", () => refreshView("system"));
+        $("resetBtn").addEventListener("click", resetDevice);
+        $("baudInput").addEventListener("change", () => {
+          try { localStorage.setItem("c6.baud", $("baudInput").value); } catch (error) {}
+        });
+      }
+
+      async function boot() {
+        bindEvents();
+        const params = new URLSearchParams(location.search);
+        if (!params.has("no-stream")) {
+          startStream();
+        }
+        try {
+          const saved = localStorage.getItem("c6.baud");
+          if (saved) $("baudInput").value = saved;
+        } catch (error) {}
+        await loadStatus(true);
+        await loadPorts();
+        await refreshView("dashboard");
+        const initial = params.get("view");
+        if (initial && views[initial]) switchView(initial);
+        setInterval(() => loadStatus(true), 5000);
+      }
+
+      boot();
+    </script>
+  </body>
+</html>
