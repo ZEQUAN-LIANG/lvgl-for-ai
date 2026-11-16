@@ -1,11 +1,3 @@
-"""Per-connection serial logs and log-session listing.
-
-One ``SerialLog`` owns a ``logs/<stamp>-<port>/`` directory containing the
-UTF-8 text log, the raw byte stream, an NDJSON event log and ``meta.json``.
-The broker holds its condition lock while calling the write methods, so this
-class does not lock; ``close()`` is idempotent.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -159,15 +151,15 @@ class SerialLog:
         if extra:
             event.update(extra)
         try:
-            self._events_file.write(json.dumps(event, ensure_ascii=False) + "\n")
+            self._events_file.write(
+                json.dumps(event, ensure_ascii=False) + "\n"
+            )
             self._events_file.flush()
         except OSError:
             pass
 
 
 def list_sessions(root: str | Path) -> list[dict[str, Any]]:
-    """List serial log directories, newest first, with their ``meta.json``."""
-
     root = Path(root)
     if not root.is_dir():
         return []

@@ -10,25 +10,27 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Sequence
 
 ADAPTER_DIR = Path(__file__).resolve().parent
 REPO_ROOT = ADAPTER_DIR.parents[1]
-CORE_ROOT = REPO_ROOT / "core"
-for _path in (CORE_ROOT, ADAPTER_DIR):
+CONSOLE_ROOT = REPO_ROOT / "console"
+for _path in (CONSOLE_ROOT, ADAPTER_DIR):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-import layout  # noqa: E402
-from lvgl_ai.apps import common, registry  # noqa: E402
-from asset_plan import AssetPlan, ExportError, plan_assets  # noqa: E402
+import layout
+from appmgr import common, registry
+from asset_plan import AssetPlan, ExportError, plan_assets
 
-ADAPTER_SCHEMA = "lvgl-ai-chip-adapter-v1"
-EXPORT_SCHEMA = "lvgl-ai-export-v1"
-SDK_INCLUDE = '#include "lvgl_ai_sdk.h"\n'
+ADAPTER_SCHEMA = "lvgl-verify-loop-chip-adapter-v1"
+EXPORT_SCHEMA = "lvgl-verify-loop-export-v1"
+SDK_INCLUDE = '#include "lvgl_verify_loop_sdk.h"\n'
 TEXT_SUFFIXES = {".c", ".h"}
+EXCLUDED_SOURCE_DIRS = {"design", "covers_src"}
 INCOMPATIBLE_APIS = {
     "lv_obj_set_clickable": (
         "LVGL 9.6 API; use lv_obj_add_flag/lv_obj_remove_flag "
@@ -106,7 +108,9 @@ def export_app(
         app_symbol, app=app, has_assets=asset_plan.has_assets
     ).encode("utf-8")
     _apply_cache_config(plan, asset_plan.cache)
-    plan["export.json"] = _export_manifest(app, app_symbol, asset_plan).encode("utf-8")
+    plan["export.json"] = _export_manifest(app, app_symbol, asset_plan).encode(
+        "utf-8"
+    )
     warnings = _adapter_warnings(adapter_dir, adapter)
 
     created: list[str] = []
@@ -122,8 +126,8 @@ def export_app(
     commands = [
         f"cd {destination / 'project'} && scons --board={adapter['board']} -j8",
         (
-            f'LVGL_AI_USER_APP_DIR="{destination / "src" / "app"}" '
-            f"python -I core/cli.py --lvgl {adapter['lvgl_version']} "
+            f'LVGL_VERIFY_LOOP_USER_APP_DIR="{destination / "src" / "app"}" '
+            f"python -I console/entrypoints/cli.py --lvgl {adapter['lvgl_version']} "
             f"--scenario user/scenarios/{app}.json"
         ),
     ]
@@ -164,7 +168,9 @@ def _load_adapter(adapter_dir: Path) -> dict[str, Any]:
             f"unexpected adapter schema in {path}",
             detail={"schema": payload.get("schema")},
         )
-    missing = [key for key in ("board", "lvgl_version") if not payload.get(key)]
+    missing = [
+        key for key in ("board", "lvgl_version") if not payload.get(key)
+    ]
     if missing:
         raise ExportError(
             "adapter_invalid",
@@ -179,10 +185,20 @@ def _registered_symbol(root: Path, app: str) -> str:
     try:
         text = app_c.read_text(encoding="utf-8-sig")
     except OSError as exc:
-        raise ExportError("app_missing", f"cannot read {app_c}: {exc}") from exc
+        raise ExportError(
+            "app_missing", f"cannot read {app_c}: {exc}"
+        ) from exc
     for name, symbol in registry.parse_app_entries(text):
         if name == app:
             return symbol
+    header = root / "user" / "app" / app / f"{app}.h"
+    try:
+        header_text = header.read_text(encoding="utf-8-sig")
+    except OSError:
+        header_text = ""
+    symbol = f"{app}_create"
+    if re.search(rf"\bvoid\s+{re.escape(symbol)}\s*\(", header_text):
+        return symbol
     raise ExportError(
         "app_not_registered",
         f'app "{app}" is not registered in {app_c}',
@@ -203,7 +219,9 @@ def _build_plan(
 
     for path in sorted(templates_dir.rglob("*")):
         if path.is_file():
-            plan[path.relative_to(templates_dir).as_posix()] = path.read_bytes()
+            plan[path.relative_to(templates_dir).as_posix()] = (
+                path.read_bytes()
+            )
 
     shared_dir = root / "user" / "app"
     for name in ("app.h", "lvgl_compat.h"):
@@ -216,6 +234,8 @@ def _build_plan(
         if not path.is_file() or "__pycache__" in path.parts:
             continue
         if path.name.startswith("ccheck_tmp_") or path.suffix == ".dump":
+            continue
+        if EXCLUDED_SOURCE_DIRS & set(path.relative_to(source_dir).parts):
             continue
         relative = path.relative_to(source_dir).as_posix()
         label = f"user/app/{app}/{relative}"
@@ -267,7 +287,7 @@ def _entry_source(app_symbol: str, *, app: str, has_assets: bool) -> str:
     include = f'#include "{app}/assets.h"\n' if has_assets else ""
     init = "    app_assets_init();\n" if has_assets else ""
     return (
-        '#include "lvgl_ai_sdk.h"\n'
+        '#include "lvgl_verify_loop_sdk.h"\n'
         '#include "lvgl.h"\n'
         f"{include}"
         "\n"
@@ -299,8 +319,8 @@ def _export_readme(app: str, app_symbol: str, lvgl_version: str) -> str:
         "## 运行时验证\n"
         "\n"
         "```bash\n"
-        f'LVGL_AI_USER_APP_DIR="chip-adapt/exports/{app}/src/app" '
-        f"python -I core/cli.py --lvgl {lvgl_version} "
+        f'LVGL_VERIFY_LOOP_USER_APP_DIR="chip-adapt/exports/{app}/src/app" '
+        f"python -I console/entrypoints/cli.py --lvgl {lvgl_version} "
         f"--scenario user/scenarios/{app}.json\n"
         "```\n"
     )
@@ -337,9 +357,7 @@ def _apply_cache_config(plan: dict[str, bytes], cache: dict[str, Any]) -> None:
     plan[path] = ("\n".join(lines) + "\n").encode("utf-8")
 
 
-def _export_manifest(
-    app: str, app_symbol: str, asset_plan: AssetPlan
-) -> str:
+def _export_manifest(app: str, app_symbol: str, asset_plan: AssetPlan) -> str:
     return (
         json.dumps(
             {

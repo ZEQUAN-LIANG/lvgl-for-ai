@@ -1,5 +1,5 @@
 {
-  "schema": "lvgl-ai-scenario-v1",
+  "schema": "lvgl-verify-loop-scenario-v1",
   "name": "settings",
   "steps": [
     {"type": "click_at", "x": 112, "y": 324},

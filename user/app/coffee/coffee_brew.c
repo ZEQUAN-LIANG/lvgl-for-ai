@@ -1,8 +1,3 @@
-/**
- * @file coffee_brew.c
- * The brewing overlay: live arc, cup fill, phase list, pressure/temperature
- * and the completion flow. All timing uses the engine's virtual clock.
- */
 
 #include "coffee_ui.h"
 
@@ -72,8 +67,8 @@ static bool check_resources(coffee_drink_t * drink)
     int cups = drink->double_cup ? 2 : 1;
     int water_needed = drink->steam_only ? 100 : drink->volume * cups + 30;
     if(coffee_state.water_ml < water_needed) {
-        coffee_log("brew blocked reason=water need=%d have=%d",
-                   water_needed, coffee_state.water_ml);
+        coffee_log("brew blocked reason=water need=%d have=%d", water_needed,
+                   coffee_state.water_ml);
         coffee_toast(COFFEE_TXT_TOAST_LOW_WATER);
         return false;
     }
@@ -89,8 +84,8 @@ static bool check_resources(coffee_drink_t * drink)
     if(drink->milk_drink) {
         int milk_needed = drink->milk_ml * cups;
         if(coffee_state.milk_ml < milk_needed) {
-            coffee_log("brew blocked reason=milk need=%d have=%d",
-                       milk_needed, coffee_state.milk_ml);
+            coffee_log("brew blocked reason=milk need=%d have=%d", milk_needed,
+                       coffee_state.milk_ml);
             coffee_toast(COFFEE_TXT_TOAST_LOW_MILK);
             return false;
         }
@@ -112,18 +107,19 @@ static void update_phases(int pct)
     for(int i = 0; i < phase_count; i++) {
         bool done = pct >= phase_bounds[i];
         bool running = !done && i == active;
-        const char * status = done ? COFFEE_TXT_STATUS_DONE
-                                   : running ? COFFEE_TXT_STATUS_ACTIVE
-                                             : COFFEE_TXT_STATUS_WAIT;
+        const char * status = done      ? COFFEE_TXT_STATUS_DONE
+                              : running ? COFFEE_TXT_STATUS_ACTIVE
+                                        : COFFEE_TXT_STATUS_WAIT;
         lv_label_set_text(phase_status[i], status);
         lv_obj_set_style_text_color(phase_labels[i],
-                                    lv_color_hex(done ? COFFEE_MUTED
-                                                      : running ? COFFEE_CREAM
-                                                                : COFFEE_DIM), 0);
+                                    lv_color_hex(done      ? COFFEE_MUTED
+                                                 : running ? COFFEE_CREAM
+                                                           : COFFEE_DIM),
+                                    0);
         lv_obj_set_style_bg_color(phase_dots[i],
-                                  lv_color_hex(done ? COFFEE_GREEN
-                                                    : running ? COFFEE_GOLD
-                                                              : COFFEE_CARD_UP),
+                                  lv_color_hex(done      ? COFFEE_GREEN
+                                               : running ? COFFEE_GOLD
+                                                         : COFFEE_CARD_UP),
                                   0);
         coffee_hide(phase_checks[i], !done);
         if(done) {
@@ -174,10 +170,10 @@ static void brew_finish(void)
     profile->week[6]++;
     drink->brews++;
 
-    coffee_log("brew done drink=%d elapsed=%u water=%d beans=%d milk=%d grounds=%d",
-               brew_drink, (unsigned)lv_tick_elaps(brew_start),
-               coffee_state.water_ml, coffee_state.beans_g,
-               coffee_state.milk_ml, coffee_state.grounds_pct);
+    coffee_log(
+        "brew done drink=%d elapsed=%u water=%d beans=%d milk=%d grounds=%d",
+        brew_drink, (unsigned)lv_tick_elaps(brew_start), coffee_state.water_ml,
+        coffee_state.beans_g, coffee_state.milk_ml, coffee_state.grounds_pct);
 
     char message[64];
     snprintf(message, sizeof(message), "%s%s", drink->name,
@@ -186,7 +182,8 @@ static void brew_finish(void)
 
     lv_arc_set_value(brew_arc, 100);
     lv_label_set_text(brew_title, COFFEE_TXT_BREW_DONE);
-    lv_obj_set_style_text_color(brew_title, lv_color_hex(COFFEE_GOLD_BRIGHT), 0);
+    lv_obj_set_style_text_color(brew_title, lv_color_hex(COFFEE_GOLD_BRIGHT),
+                                0);
     char buffer[24];
     format_mmss(buffer, sizeof(buffer), lv_tick_elaps(brew_start));
     lv_label_set_text(brew_elapsed, buffer);
@@ -200,8 +197,7 @@ static void brew_finish(void)
     for(int i = 0; i < phase_count; i++) {
         lv_label_set_text(phase_status[i], COFFEE_TXT_STATUS_DONE);
         coffee_hide(phase_checks[i], false);
-        lv_obj_set_style_bg_color(phase_dots[i],
-                                  lv_color_hex(COFFEE_GREEN), 0);
+        lv_obj_set_style_bg_color(phase_dots[i], lv_color_hex(COFFEE_GREEN), 0);
     }
 
     coffee_home_refresh();
@@ -319,7 +315,7 @@ static void phase_name_setup(const coffee_drink_t * drink)
         phase_names[0] = COFFEE_TXT_PHASE_PREHEAT;
         phase_names[1] = COFFEE_TXT_PHASE_WATER;
         phase_names[2] = COFFEE_TXT_PHASE_DONE;
-        int bounds[3] = { 15, 90, 100 };
+        int bounds[3] = {15, 90, 100};
         for(int i = 0; i < 3; i++) phase_bounds[i] = bounds[i];
     }
     else if(drink->steam_only) {
@@ -328,7 +324,7 @@ static void phase_name_setup(const coffee_drink_t * drink)
         phase_names[1] = COFFEE_TXT_PHASE_HEAT_MILK;
         phase_names[2] = COFFEE_TXT_PHASE_FROTH;
         phase_names[3] = COFFEE_TXT_PHASE_DONE;
-        int bounds[4] = { 12, 45, 90, 100 };
+        int bounds[4] = {12, 45, 90, 100};
         for(int i = 0; i < 4; i++) phase_bounds[i] = bounds[i];
     }
     else if(drink->milk_drink) {
@@ -339,7 +335,7 @@ static void phase_name_setup(const coffee_drink_t * drink)
         phase_names[3] = COFFEE_TXT_PHASE_EXTRACT;
         phase_names[4] = COFFEE_TXT_PHASE_MILK;
         phase_names[5] = COFFEE_TXT_PHASE_DONE;
-        int bounds[6] = { 8, 20, 30, 70, 92, 100 };
+        int bounds[6] = {8, 20, 30, 70, 92, 100};
         for(int i = 0; i < 6; i++) phase_bounds[i] = bounds[i];
     }
     else {
@@ -349,7 +345,7 @@ static void phase_name_setup(const coffee_drink_t * drink)
         phase_names[2] = COFFEE_TXT_PHASE_PREINFUSE;
         phase_names[3] = COFFEE_TXT_PHASE_EXTRACT;
         phase_names[4] = COFFEE_TXT_PHASE_DONE;
-        int bounds[5] = { 8, 20, 30, 92, 100 };
+        int bounds[5] = {8, 20, 30, 92, 100};
         for(int i = 0; i < 5; i++) phase_bounds[i] = bounds[i];
     }
 }
@@ -359,16 +355,12 @@ static void build_cup(lv_obj_t * panel, const coffee_drink_t * drink)
     const int cup_x = 44;
     const int cup_y = 80;
 
-    /* The liquid container sits behind the cup image. The image has a
-     * transparent opening at x=58..132, y=40..128 (3x supersampled asset
-     * coordinates), so the fill is visible through the ceramic walls. */
-    lv_obj_t * inner = coffee_card(panel, cup_x + 48, cup_y + 40, 94, 88, 8,
-                                   0xCDBFAC, 0);
+    lv_obj_t * inner =
+        coffee_card(panel, cup_x + 48, cup_y + 40, 94, 88, 8, 0xCDBFAC, 0);
     lv_obj_set_style_clip_corner(inner, true, 0);
-    brew_liquid = coffee_card(inner, 0, 88, 94, 0, 0,
-                              liquid_color(drink), 0);
-    brew_crema = coffee_card(brew_liquid, 0, 0, 94, 5, 0,
-                             crema_color(drink), 0);
+    brew_liquid = coffee_card(inner, 0, 88, 94, 0, 0, liquid_color(drink), 0);
+    brew_crema =
+        coffee_card(brew_liquid, 0, 0, 94, 5, 0, crema_color(drink), 0);
 
     lv_obj_t * cup = lv_image_create(panel);
     lv_image_set_src(cup, coffee_brew_cup_asset());
@@ -406,10 +398,10 @@ void coffee_start_brew(int drink)
     }
     if(brew_duration > 32000u) brew_duration = 32000u;
 
-    coffee_log("brew start drink=%d volume=%d strength=%d temp=%d milk=%d foam=%d double=%d duration=%u",
-               drink, item->volume, item->strength, item->temp_c,
-               item->milk_ml, item->foam, item->double_cup ? 1 : 0,
-               (unsigned)brew_duration);
+    coffee_log("brew start drink=%d volume=%d strength=%d temp=%d milk=%d "
+               "foam=%d double=%d duration=%u",
+               drink, item->volume, item->strength, item->temp_c, item->milk_ml,
+               item->foam, item->double_cup ? 1 : 0, (unsigned)brew_duration);
 
     lv_obj_t * panel = coffee_modal_open(660, 450);
     if(panel == NULL) return;
@@ -432,17 +424,17 @@ void coffee_start_brew(int drink)
 
     build_cup(panel, item);
 
-    brew_elapsed = coffee_label_at(panel, "00:00", COFFEE_FT_32B,
-                                    COFFEE_CREAM, 0, 296, 280, 42);
+    brew_elapsed = coffee_label_at(panel, "00:00", COFFEE_FT_32B, COFFEE_CREAM,
+                                   0, 296, 280, 42);
     lv_obj_set_style_text_align(brew_elapsed, LV_TEXT_ALIGN_CENTER, 0);
-    brew_eta = coffee_label_at(panel, "", COFFEE_FT_12, COFFEE_MUTED,
-                                0, 340, 280, 18);
+    brew_eta =
+        coffee_label_at(panel, "", COFFEE_FT_12, COFFEE_MUTED, 0, 340, 280, 18);
     lv_obj_set_style_text_align(brew_eta, LV_TEXT_ALIGN_CENTER, 0);
 
     brew_title = coffee_label_at(panel, COFFEE_TXT_BREWING, COFFEE_FT_12,
-                                  COFFEE_GOLD, 300, 18, 200, 16);
-    coffee_label_at(panel, item->name, COFFEE_FT_24B, COFFEE_CREAM,
-                    300, 38, 300, 32);
+                                 COFFEE_GOLD, 300, 18, 200, 16);
+    coffee_label_at(panel, item->name, COFFEE_FT_24B, COFFEE_CREAM, 300, 38,
+                    300, 32);
     char params[80];
     if(item->steam_only) {
         snprintf(params, sizeof(params), "%s %d %s", COFFEE_TXT_MILK_AMOUNT,
@@ -454,55 +446,54 @@ void coffee_start_brew(int drink)
         if(item->milk_drink && item->milk_ml > 0) {
             size_t used = strlen(params);
             snprintf(params + used, sizeof(params) - used, " %s %s %d %s",
-                     COFFEE_TXT_DIVIDER, COFFEE_TXT_MILK_AMOUNT,
-                     item->milk_ml, COFFEE_TXT_ML);
+                     COFFEE_TXT_DIVIDER, COFFEE_TXT_MILK_AMOUNT, item->milk_ml,
+                     COFFEE_TXT_ML);
         }
     }
     else {
         snprintf(params, sizeof(params), "%d %s", item->volume, COFFEE_TXT_ML);
     }
-    coffee_label_at(panel, params, COFFEE_FT_12, COFFEE_MUTED,
-                    300, 78, 330, 16);
+    coffee_label_at(panel, params, COFFEE_FT_12, COFFEE_MUTED, 300, 78, 330,
+                    16);
 
     phase_name_setup(item);
     for(int i = 0; i < phase_count; i++) {
         int y = 110 + i * 34;
-        lv_obj_t * dot = coffee_card(panel, 300, y, 22, 22, 11,
-                                     COFFEE_CARD_UP, 0);
+        lv_obj_t * dot =
+            coffee_card(panel, 300, y, 22, 22, 11, COFFEE_CARD_UP, 0);
         phase_dots[i] = dot;
-        phase_checks[i] = coffee_icon_obj(dot, COFFEE_ICON_CHECK, 0, 0, 14,
-                                          0x16210F);
+        phase_checks[i] =
+            coffee_icon_obj(dot, COFFEE_ICON_CHECK, 0, 0, 14, 0x16210F);
         lv_obj_center(phase_checks[i]);
         coffee_hide(phase_checks[i], true);
-        phase_labels[i] = coffee_label_at(panel, phase_names[i],
-                                          COFFEE_FT_13, COFFEE_DIM,
-                                          332, y + 2, 150, 18);
-        phase_status[i] = coffee_label_at(panel, COFFEE_TXT_STATUS_WAIT,
-                                          COFFEE_FT_12, COFFEE_DIM,
-                                          512, y + 3, 88, 16);
+        phase_labels[i] = coffee_label_at(panel, phase_names[i], COFFEE_FT_13,
+                                          COFFEE_DIM, 332, y + 2, 150, 18);
+        phase_status[i] =
+            coffee_label_at(panel, COFFEE_TXT_STATUS_WAIT, COFFEE_FT_12,
+                            COFFEE_DIM, 512, y + 3, 88, 16);
         lv_obj_set_style_text_align(phase_status[i], LV_TEXT_ALIGN_RIGHT, 0);
     }
 
-    lv_obj_t * pressure_card = coffee_card(panel, 300, 324, 150, 58, 14,
-                                           COFFEE_CARD_UP, 0);
+    lv_obj_t * pressure_card =
+        coffee_card(panel, 300, 324, 150, 58, 14, COFFEE_CARD_UP, 0);
     coffee_label_at(pressure_card, COFFEE_TXT_PRESSURE, COFFEE_FT_12,
                     COFFEE_MUTED, 14, 8, 100, 16);
     brew_pressure = coffee_label_at(pressure_card, "0.0", COFFEE_FT_18B,
                                     COFFEE_CREAM, 14, 28, 100, 24);
 
-    lv_obj_t * temp_card = coffee_card(panel, 462, 324, 156, 58, 14,
-                                       COFFEE_CARD_UP, 0);
+    lv_obj_t * temp_card =
+        coffee_card(panel, 462, 324, 156, 58, 14, COFFEE_CARD_UP, 0);
     coffee_label_at(temp_card, COFFEE_TXT_WATER_TEMP, COFFEE_FT_12,
                     COFFEE_MUTED, 14, 8, 100, 16);
-    brew_temp = coffee_label_at(temp_card, "", COFFEE_FT_18B, COFFEE_CREAM,
-                                14, 28, 120, 24);
+    brew_temp = coffee_label_at(temp_card, "", COFFEE_FT_18B, COFFEE_CREAM, 14,
+                                28, 120, 24);
 
-    brew_cancel = coffee_button(panel, 300, 394, 140, 44, false,
-                                COFFEE_TXT_CANCEL_BREW, COFFEE_FT_14B,
-                                "brew_cancel");
+    brew_cancel =
+        coffee_button(panel, 300, 394, 140, 44, false, COFFEE_TXT_CANCEL_BREW,
+                      COFFEE_FT_14B, "brew_cancel");
     lv_obj_add_event_cb(brew_cancel, cancel_event_cb, LV_EVENT_CLICKED, NULL);
-    brew_done = coffee_button(panel, 462, 394, 156, 44, true,
-                              COFFEE_TXT_DONE, COFFEE_FT_14B, "brew_done");
+    brew_done = coffee_button(panel, 462, 394, 156, 44, true, COFFEE_TXT_DONE,
+                              COFFEE_FT_14B, "brew_done");
     coffee_hide(brew_done, true);
     lv_obj_add_event_cb(brew_done, done_event_cb, LV_EVENT_CLICKED, NULL);
 
@@ -510,4 +501,4 @@ void coffee_start_brew(int drink)
     brew_tick();
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

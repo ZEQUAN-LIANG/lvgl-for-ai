@@ -18,4 +18,4 @@ void zc_audio_set_muted(bool muted);
 bool zc_audio_is_started(void);
 void zc_audio_play(zc_sfx_t id);
 
-#endif /* ZC_AUDIO_H */
+#endif

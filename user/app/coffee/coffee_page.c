@@ -1,8 +1,3 @@
-/**
- * @file coffee_page.c
- * The machine shell: ambient backdrop, top status bar, vertical navigation,
- * page host, standby layer and brightness overlay.
- */
 
 #include "coffee_ui.h"
 
@@ -40,28 +35,28 @@ static const coffee_icon_id_t nav_icon_ids[COFFEE_PAGE_COUNT] = {
 };
 
 static const char * const nav_names[COFFEE_PAGE_COUNT] = {
-    "nav_coffee", "nav_favorites", "nav_maintenance", "nav_settings",
+    "nav_coffee",
+    "nav_favorites",
+    "nav_maintenance",
+    "nav_settings",
 };
 
 static void nav_style(int active)
 {
     for(int i = 0; i < COFFEE_PAGE_COUNT; i++) {
         bool on = i == active;
-        lv_obj_set_style_bg_color(nav_items[i],
-                                  lv_color_hex(on ? COFFEE_CARD_UP
-                                                  : COFFEE_BG),
-                                  0);
-        lv_obj_set_style_bg_opa(nav_items[i], on ? LV_OPA_COVER
-                                                 : LV_OPA_TRANSP, 0);
+        lv_obj_set_style_bg_color(
+            nav_items[i], lv_color_hex(on ? COFFEE_CARD_UP : COFFEE_BG), 0);
+        lv_obj_set_style_bg_opa(nav_items[i], on ? LV_OPA_COVER : LV_OPA_TRANSP,
+                                0);
         lv_obj_set_style_border_width(nav_items[i], on ? 1 : 0, 0);
         lv_obj_set_style_border_color(nav_items[i],
                                       lv_color_hex(COFFEE_GOLD_DIM), 0);
-        lv_obj_set_style_image_recolor(nav_icons[i],
-                                       lv_color_hex(on ? COFFEE_GOLD_BRIGHT
-                                                       : COFFEE_MUTED), 0);
-        lv_obj_set_style_text_color(nav_labels[i],
-                                    lv_color_hex(on ? COFFEE_CREAM
-                                                    : COFFEE_MUTED), 0);
+        lv_obj_set_style_image_recolor(
+            nav_icons[i], lv_color_hex(on ? COFFEE_GOLD_BRIGHT : COFFEE_MUTED),
+            0);
+        lv_obj_set_style_text_color(
+            nav_labels[i], lv_color_hex(on ? COFFEE_CREAM : COFFEE_MUTED), 0);
         coffee_hide(nav_bars[i], !on);
     }
 }
@@ -150,8 +145,8 @@ void coffee_shell_refresh(void)
 
     coffee_profile_t * profile = coffee_profile();
     if(profile_avatar != NULL) {
-        lv_obj_set_style_bg_color(profile_avatar,
-                                  lv_color_hex(profile->color), 0);
+        lv_obj_set_style_bg_color(profile_avatar, lv_color_hex(profile->color),
+                                  0);
     }
     if(profile_initial != NULL) {
         lv_label_set_text(profile_initial, profile->initial);
@@ -195,49 +190,49 @@ static void build_top_bar(lv_obj_t * screen)
     lv_obj_set_style_bg_opa(line, LV_OPA_COVER, 0);
 
     lv_obj_t * mark = coffee_card(bar, 20, 12, 34, 34, 17, COFFEE_GOLD, 0);
-    lv_obj_t * bean = coffee_icon_obj(mark, COFFEE_ICON_BEAN, 0, 0, 22,
-                                      0x1A1308);
+    lv_obj_t * bean =
+        coffee_icon_obj(mark, COFFEE_ICON_BEAN, 0, 0, 22, 0x1A1308);
     lv_obj_center(bean);
 
-    coffee_label_at(bar, COFFEE_TXT_BRAND, COFFEE_FT_18B, COFFEE_CREAM,
-                    64, 6, 180, 26);
-    coffee_label_at(bar, COFFEE_TXT_BRAND_SUB, COFFEE_FT_12,
-                    COFFEE_GOLD_DIM, 64, 32, 180, 16);
+    coffee_label_at(bar, COFFEE_TXT_BRAND, COFFEE_FT_18B, COFFEE_CREAM, 64, 6,
+                    180, 26);
+    coffee_label_at(bar, COFFEE_TXT_BRAND_SUB, COFFEE_FT_12, COFFEE_GOLD_DIM,
+                    64, 32, 180, 16);
 
-    lv_obj_t * status = coffee_card(bar, 236, 13, 170, 32, 16,
-                                    COFFEE_CARD_UP, COFFEE_LINE);
+    lv_obj_t * status =
+        coffee_card(bar, 236, 13, 170, 32, 16, COFFEE_CARD_UP, COFFEE_LINE);
     lv_obj_t * ready_dot = coffee_box(status, 14, 12, 7, 7);
     lv_obj_set_style_radius(ready_dot, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_color(ready_dot, lv_color_hex(COFFEE_GREEN), 0);
     lv_obj_set_style_bg_opa(ready_dot, LV_OPA_COVER, 0);
-    coffee_label_at(status, COFFEE_TXT_READY, COFFEE_FT_13, COFFEE_CREAM,
-                    28, 6, 44, 20);
+    coffee_label_at(status, COFFEE_TXT_READY, COFFEE_FT_13, COFFEE_CREAM, 28, 6,
+                    44, 20);
     lv_obj_t * separator = coffee_box(status, 80, 20, 1, 16);
     lv_obj_set_style_bg_color(separator, lv_color_hex(COFFEE_LINE), 0);
     lv_obj_set_style_bg_opa(separator, LV_OPA_COVER, 0);
-    top_temp = coffee_label_at(status, "", COFFEE_FT_13, COFFEE_MUTED,
-                               94, 6, 64, 20);
+    top_temp =
+        coffee_label_at(status, "", COFFEE_FT_13, COFFEE_MUTED, 94, 6, 64, 20);
 
-    coffee_label_at(bar, COFFEE_TXT_WEATHER, COFFEE_FT_13, COFFEE_MUTED,
-                    420, 19, 100, 20);
+    coffee_label_at(bar, COFFEE_TXT_WEATHER, COFFEE_FT_13, COFFEE_MUTED, 420,
+                    19, 100, 20);
 
     coffee_icon_obj(bar, COFFEE_ICON_WIFI, 524, 17, 24, COFFEE_DIM);
 
-    top_clock = coffee_label_at(bar, "09:41:00", COFFEE_FT_24B,
-                                COFFEE_CREAM, 552, 6, 112, 30);
-    coffee_label_at(bar, COFFEE_TXT_DATE, COFFEE_FT_12, COFFEE_MUTED,
-                    552, 36, 112, 16);
+    top_clock = coffee_label_at(bar, "09:41:00", COFFEE_FT_24B, COFFEE_CREAM,
+                                552, 6, 112, 30);
+    coffee_label_at(bar, COFFEE_TXT_DATE, COFFEE_FT_12, COFFEE_MUTED, 552, 36,
+                    112, 16);
 
-    lv_obj_t * profile = coffee_card(bar, 680, 9, 104, 40, 20,
-                                     COFFEE_CARD_UP, COFFEE_LINE);
+    lv_obj_t * profile =
+        coffee_card(bar, 680, 9, 104, 40, 20, COFFEE_CARD_UP, COFFEE_LINE);
     coffee_clickable(profile, "profile_switch");
     lv_obj_add_event_cb(profile, profile_event_cb, LV_EVENT_CLICKED, NULL);
     profile_avatar = coffee_card(profile, 6, 5, 30, 30, 15, COFFEE_GOLD, 0);
-    profile_initial = coffee_label(profile_avatar, "A", COFFEE_FT_14B,
-                                   0x1A1308);
+    profile_initial =
+        coffee_label(profile_avatar, "A", COFFEE_FT_14B, 0x1A1308);
     lv_obj_center(profile_initial);
-    profile_name = coffee_label_at(profile, "", COFFEE_FT_13, COFFEE_CREAM,
-                                   42, 12, 38, 18);
+    profile_name = coffee_label_at(profile, "", COFFEE_FT_13, COFFEE_CREAM, 42,
+                                   12, 38, 18);
     coffee_icon_obj(profile, COFFEE_ICON_CHEVRON_RIGHT, 88, 17, 14,
                     COFFEE_GOLD_DIM);
 }
@@ -246,22 +241,21 @@ static void build_nav(lv_obj_t * screen)
 {
     lv_obj_t * nav = coffee_card(screen, 0, COFFEE_TOP_H, COFFEE_NAV_W,
                                  COFFEE_PAGE_H, 0, 0x110E0B, 0);
-    lv_obj_t * divider = coffee_box(nav, COFFEE_NAV_W - 1, 0, 1,
-                                    COFFEE_PAGE_H);
+    lv_obj_t * divider = coffee_box(nav, COFFEE_NAV_W - 1, 0, 1, COFFEE_PAGE_H);
     lv_obj_set_style_bg_color(divider, lv_color_hex(COFFEE_LINE_SOFT), 0);
     lv_obj_set_style_bg_opa(divider, LV_OPA_COVER, 0);
 
     for(int i = 0; i < COFFEE_PAGE_COUNT; i++) {
-        lv_obj_t * item = coffee_card(nav, 16, 22 + i * 78, 64, 64, 18,
-                                      COFFEE_BG, 0);
+        lv_obj_t * item =
+            coffee_card(nav, 16, 22 + i * 78, 64, 64, 18, COFFEE_BG, 0);
         coffee_clickable(item, nav_names[i]);
         lv_obj_add_event_cb(item, nav_event_cb, LV_EVENT_CLICKED,
                             (void *)(intptr_t)i);
-        lv_obj_t * icon = coffee_icon_obj(item, nav_icon_ids[i], 0, 0, 24,
-                                          COFFEE_MUTED);
+        lv_obj_t * icon =
+            coffee_icon_obj(item, nav_icon_ids[i], 0, 0, 24, COFFEE_MUTED);
         lv_obj_align(icon, LV_ALIGN_TOP_MID, 0, 8);
-        lv_obj_t * label = coffee_label(item, nav_texts[i], COFFEE_FT_12,
-                                        COFFEE_MUTED);
+        lv_obj_t * label =
+            coffee_label(item, nav_texts[i], COFFEE_FT_12, COFFEE_MUTED);
         lv_obj_align(label, LV_ALIGN_BOTTOM_MID, 0, -7);
         lv_obj_t * bar = coffee_box(nav, 0, 22 + i * 78 + 20, 3, 24);
         lv_obj_set_style_radius(bar, 2, 0);
@@ -275,16 +269,16 @@ static void build_nav(lv_obj_t * screen)
         nav_bars[i] = bar;
     }
 
-    lv_obj_t * power = coffee_icon_button(nav, 26, COFFEE_PAGE_H - 62, 44,
-                                           COFFEE_ICON_POWER, COFFEE_MUTED,
-                                           COFFEE_CARD_UP, "nav_power");
+    lv_obj_t * power =
+        coffee_icon_button(nav, 26, COFFEE_PAGE_H - 62, 44, COFFEE_ICON_POWER,
+                           COFFEE_MUTED, COFFEE_CARD_UP, "nav_power");
     lv_obj_add_event_cb(power, power_event_cb, LV_EVENT_CLICKED, NULL);
 }
 
 static void build_standby(lv_obj_t * screen)
 {
-    standby_layer = coffee_card(screen, 0, 0, COFFEE_SCREEN_W,
-                                COFFEE_SCREEN_H, 0, COFFEE_BG_DEEP, 0);
+    standby_layer = coffee_card(screen, 0, 0, COFFEE_SCREEN_W, COFFEE_SCREEN_H,
+                                0, COFFEE_BG_DEEP, 0);
     coffee_clickable(standby_layer, "standby_wake");
     lv_obj_add_event_cb(standby_layer, standby_event_cb, LV_EVENT_CLICKED,
                         NULL);
@@ -294,23 +288,22 @@ static void build_standby(lv_obj_t * screen)
     lv_obj_set_style_bg_color(line, lv_color_hex(COFFEE_GOLD), 0);
     lv_obj_set_style_bg_opa(line, LV_OPA_COVER, 0);
 
-    lv_obj_t * brand = coffee_label_at(standby_layer, COFFEE_TXT_BRAND,
-                                       COFFEE_FT_44B, COFFEE_GOLD,
-                                       0, 190, COFFEE_SCREEN_W, 56);
+    lv_obj_t * brand =
+        coffee_label_at(standby_layer, COFFEE_TXT_BRAND, COFFEE_FT_44B,
+                        COFFEE_GOLD, 0, 190, COFFEE_SCREEN_W, 56);
     lv_obj_set_style_text_align(brand, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_t * sub = coffee_label_at(standby_layer, COFFEE_TXT_BRAND_SUB,
-                                     COFFEE_FT_14, COFFEE_GOLD_DIM,
-                                     0, 252, COFFEE_SCREEN_W, 22);
+    lv_obj_t * sub =
+        coffee_label_at(standby_layer, COFFEE_TXT_BRAND_SUB, COFFEE_FT_14,
+                        COFFEE_GOLD_DIM, 0, 252, COFFEE_SCREEN_W, 22);
     lv_obj_set_style_text_align(sub, LV_TEXT_ALIGN_CENTER, 0);
 
-    standby_clock = coffee_label_at(standby_layer, "09:41:00",
-                                    COFFEE_FT_32B, COFFEE_CREAM,
-                                    0, 300, COFFEE_SCREEN_W, 42);
+    standby_clock = coffee_label_at(standby_layer, "09:41:00", COFFEE_FT_32B,
+                                    COFFEE_CREAM, 0, 300, COFFEE_SCREEN_W, 42);
     lv_obj_set_style_text_align(standby_clock, LV_TEXT_ALIGN_CENTER, 0);
 
-    lv_obj_t * hint = coffee_label_at(standby_layer, COFFEE_TXT_WAKE,
-                                      COFFEE_FT_14, COFFEE_MUTED,
-                                      0, 378, COFFEE_SCREEN_W, 22);
+    lv_obj_t * hint =
+        coffee_label_at(standby_layer, COFFEE_TXT_WAKE, COFFEE_FT_14,
+                        COFFEE_MUTED, 0, 378, COFFEE_SCREEN_W, 22);
     lv_obj_set_style_text_align(hint, LV_TEXT_ALIGN_CENTER, 0);
 
     coffee_hide(standby_layer, true);
@@ -323,8 +316,8 @@ void coffee_create(void)
     build_top_bar(screen);
     build_nav(screen);
 
-    page_host = coffee_box(screen, COFFEE_NAV_W, COFFEE_TOP_H,
-                           COFFEE_PAGE_W, COFFEE_PAGE_H);
+    page_host = coffee_box(screen, COFFEE_NAV_W, COFFEE_TOP_H, COFFEE_PAGE_W,
+                           COFFEE_PAGE_H);
     pages[COFFEE_PAGE_HOME] = coffee_home_create(page_host);
     pages[COFFEE_PAGE_FAVORITES] = coffee_favorites_create(page_host);
     pages[COFFEE_PAGE_MAINTENANCE] = coffee_maintenance_create(page_host);
@@ -333,8 +326,8 @@ void coffee_create(void)
     coffee_hide(pages[COFFEE_PAGE_MAINTENANCE], true);
     coffee_hide(pages[COFFEE_PAGE_SETTINGS], true);
 
-    lv_obj_t * modal = coffee_box(screen, 0, 0, COFFEE_SCREEN_W,
-                                  COFFEE_SCREEN_H);
+    lv_obj_t * modal =
+        coffee_box(screen, 0, 0, COFFEE_SCREEN_W, COFFEE_SCREEN_H);
     coffee_set_modal_host(modal);
     coffee_hide(modal, true);
 
@@ -354,4 +347,4 @@ void coffee_create(void)
     coffee_log("create drinks=%d", COFFEE_DRINK_COUNT);
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

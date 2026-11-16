@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -I scripts/lint.py check*)",
+      "Bash(python -I scripts/lint.py format*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -X utf8 -I \"${CLAUDE_PROJECT_DIR}/scripts/lint.py\" hook",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}

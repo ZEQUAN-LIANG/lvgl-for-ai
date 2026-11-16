@@ -25,8 +25,8 @@ HOST_DIR = Path(__file__).resolve().parent
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
-from config import ensure_runtime_dirs, load_config, public_base_url  # noqa: E402
-from jobs import TERMINAL_STATUSES  # noqa: E402
+from config import ensure_runtime_dirs, load_config, public_base_url
+from jobs import TERMINAL_STATUSES
 
 _CREATE_NO_WINDOW = (
     getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
@@ -73,7 +73,9 @@ class Client:
             raw = exc.read()
             try:
                 payload = json.loads(raw.decode("utf-8"))
-                message = payload.get("error") or raw.decode("utf-8", "replace")
+                message = payload.get("error") or raw.decode(
+                    "utf-8", "replace"
+                )
                 code = payload.get("code") or f"http_{exc.code}"
             except (UnicodeDecodeError, ValueError):
                 message = raw.decode("utf-8", "replace") or str(exc)
@@ -260,9 +262,6 @@ def _job_exit(
     return 0 if job["status"] == "ok" else 1
 
 
-# -- commands ----------------------------------------------------------
-
-
 def cmd_serve(args: argparse.Namespace, config: dict[str, Any]) -> int:
     from server import main as server_main
 
@@ -311,9 +310,9 @@ def cmd_open(args: argparse.Namespace, config: dict[str, Any]) -> int:
             "baud": args.baud or config["default_baud"],
         },
     )
-    _print_json(payload) if args.json else print(_human_status(
-        {"broker": payload["status"]}
-    ))
+    _print_json(payload) if args.json else print(
+        _human_status({"broker": payload["status"]})
+    )
     return 0
 
 
@@ -533,7 +532,9 @@ def cmd_suggest(args: argparse.Namespace, config: dict[str, Any]) -> int:
     return 0
 
 
-def cmd_auto_reconnect(args: argparse.Namespace, config: dict[str, Any]) -> int:
+def cmd_auto_reconnect(
+    args: argparse.Namespace, config: dict[str, Any]
+) -> int:
     client = ensure_server(args, config)
     enabled = args.state == "on"
     payload = client.post(
@@ -568,9 +569,6 @@ def cmd_events(args: argparse.Namespace, config: dict[str, Any]) -> int:
             time.sleep(0.35)
     except KeyboardInterrupt:
         return 0
-
-
-# -- parser ------------------------------------------------------------
 
 
 @dataclass(frozen=True)

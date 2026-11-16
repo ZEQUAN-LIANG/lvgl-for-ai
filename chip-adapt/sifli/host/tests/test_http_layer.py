@@ -11,10 +11,10 @@ HOST_DIR = Path(__file__).resolve().parents[1]
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
-import http_layer  # noqa: E402
-from broker import BrokerError  # noqa: E402
-from build_flash import BuildFlashError  # noqa: E402
-from serial_backend import SerialError  # noqa: E402
+import http_layer
+from broker import BrokerError
+from build_flash import BuildFlashError
+from serial_backend import SerialError
 
 
 class OriginTest(unittest.TestCase):
@@ -70,7 +70,9 @@ class SafeJoinTest(unittest.TestCase):
             )
             self.assertEqual(http_layer.safe_join(root, ""), root.resolve())
             self.assertIsNone(http_layer.safe_join(root, "../escape.txt"))
-            self.assertIsNone(http_layer.safe_join(root, "sub/../../escape.txt"))
+            self.assertIsNone(
+                http_layer.safe_join(root, "sub/../../escape.txt")
+            )
 
 
 class BodyTest(unittest.TestCase):
@@ -108,10 +110,14 @@ class MappingTest(unittest.TestCase):
             )
         )
         self.assertTrue(
-            http_layer.content_type_for(Path("style.css")).startswith("text/css")
+            http_layer.content_type_for(Path("style.css")).startswith(
+                "text/css"
+            )
         )
         self.assertTrue(
-            http_layer.content_type_for(Path("index.html")).startswith("text/html")
+            http_layer.content_type_for(Path("index.html")).startswith(
+                "text/html"
+            )
         )
         self.assertIn(
             http_layer.content_type_for(Path("firmware.zip")),

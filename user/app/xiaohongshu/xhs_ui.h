@@ -1,10 +1,3 @@
-/**
- * @file xhs_ui.h
- * Shared helpers and data for the Xiaohongshu replica.
- *
- * Only xhs_ui.c includes the generated asset headers, so the font and image
- * arrays exist exactly once even though several page modules draw them.
- */
 
 #ifndef XHS_UI_H
 #define XHS_UI_H
@@ -17,25 +10,25 @@
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
 
-#define XHS_SCREEN_W 304
-#define XHS_SCREEN_H 564
-#define XHS_STATUS_H 24
-#define XHS_NAV_H 46
+#define XHS_SCREEN_W   304
+#define XHS_SCREEN_H   564
+#define XHS_STATUS_H   24
+#define XHS_NAV_H      46
 #define XHS_TAB_HOST_H (XHS_SCREEN_H - XHS_STATUS_H - XHS_NAV_H)
-#define XHS_OVERLAY_H (XHS_SCREEN_H - XHS_STATUS_H)
-#define XHS_COVER_W 138
+#define XHS_OVERLAY_H  (XHS_SCREEN_H - XHS_STATUS_H)
+#define XHS_COVER_W    138
 
-#define XHS_RED 0xFF2442
+#define XHS_RED      0xFF2442
 #define XHS_DARK_RED 0xD91B37
-#define XHS_TEXT 0x1F1F21
-#define XHS_TITLE 0x262626
-#define XHS_MUTED 0x8A8A8E
-#define XHS_META 0x9A9A9E
-#define XHS_AUTHOR 0x747478
-#define XHS_LINE 0xF1F1F3
-#define XHS_SOFT 0xF6F6F8
-#define XHS_WHITE 0xFFFFFF
-#define XHS_YELLOW 0xF5B942
+#define XHS_TEXT     0x1F1F21
+#define XHS_TITLE    0x262626
+#define XHS_MUTED    0x8A8A8E
+#define XHS_META     0x9A9A9E
+#define XHS_AUTHOR   0x747478
+#define XHS_LINE     0xF1F1F3
+#define XHS_SOFT     0xF6F6F8
+#define XHS_WHITE    0xFFFFFF
+#define XHS_YELLOW   0xF5B942
 
 typedef enum {
     XHS_FT_11,
@@ -89,29 +82,27 @@ typedef struct {
 #define XHS_NOTE_COUNT 6
 extern xhs_note_t xhs_notes[XHS_NOTE_COUNT];
 
-/* Generated assets, reached through wrappers so only one TU owns them. */
 const lv_font_t * xhs_font(xhs_font_id_t id);
 const lv_image_dsc_t * xhs_icon(xhs_icon_id_t id);
 const lv_image_dsc_t * xhs_cover(int index);
 int xhs_cover_height(int index);
 
-/* Small builders shared by every page. */
 lv_obj_t * xhs_box(lv_obj_t * parent, int x, int y, int w, int h);
-lv_obj_t * xhs_label(lv_obj_t * parent, const char * text,
-                     xhs_font_id_t font, uint32_t color);
+lv_obj_t * xhs_label(lv_obj_t * parent, const char * text, xhs_font_id_t font,
+                     uint32_t color);
 lv_obj_t * xhs_label_at(lv_obj_t * parent, const char * text,
-                        xhs_font_id_t font, uint32_t color,
-                        int x, int y, int w, int h);
+                        xhs_font_id_t font, uint32_t color, int x, int y, int w,
+                        int h);
 lv_obj_t * xhs_image(lv_obj_t * parent, xhs_icon_id_t icon, int x, int y);
-lv_obj_t * xhs_cover_thumb(lv_obj_t * parent, int cover_index,
-                           int x, int y, int w, int h, int radius);
-lv_obj_t * xhs_cover_scaled(lv_obj_t * parent, int cover_index,
-                            int scale_pct, int center_x, int top_y);
-lv_obj_t * xhs_avatar(lv_obj_t * parent, int x, int y, int size,
-                      uint32_t color, const char * text, xhs_font_id_t font);
-lv_obj_t * xhs_pill(lv_obj_t * parent, int x, int y, int w, int h,
-                    uint32_t bg, const char * text, xhs_font_id_t font,
-                    uint32_t fg, int radius);
+lv_obj_t * xhs_cover_thumb(lv_obj_t * parent, int cover_index, int x, int y,
+                           int w, int h, int radius);
+lv_obj_t * xhs_cover_scaled(lv_obj_t * parent, int cover_index, int scale_pct,
+                            int center_x, int top_y);
+lv_obj_t * xhs_avatar(lv_obj_t * parent, int x, int y, int size, uint32_t color,
+                      const char * text, xhs_font_id_t font);
+lv_obj_t * xhs_pill(lv_obj_t * parent, int x, int y, int w, int h, uint32_t bg,
+                    const char * text, xhs_font_id_t font, uint32_t fg,
+                    int radius);
 lv_obj_t * xhs_page(lv_obj_t * parent);
 lv_obj_t * xhs_root_page(lv_obj_t * parent);
 lv_obj_t * xhs_scroll(lv_obj_t * parent, int x, int y, int w, int h);
@@ -119,13 +110,11 @@ void xhs_clickable(lv_obj_t * obj, const char * name);
 void xhs_set_hidden(lv_obj_t * obj, bool hidden);
 void xhs_back_event_cb(lv_event_t * event);
 
-/* Shell: root tabs and full-screen overlays. */
 void xhs_show_root(int index);
 void xhs_open_overlay(lv_obj_t * page);
 void xhs_close_overlay(void);
 lv_obj_t * xhs_overlay_host(void);
 
-/* Pages. */
 lv_obj_t * xhs_home_create(lv_obj_t * parent);
 lv_obj_t * xhs_market_create(lv_obj_t * parent);
 lv_obj_t * xhs_messages_create(lv_obj_t * parent);
@@ -134,6 +123,6 @@ void xhs_note_open(int index);
 void xhs_home_sync_likes(void);
 void xhs_publish_open(void);
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif
 
-#endif /* XHS_UI_H */
+#endif

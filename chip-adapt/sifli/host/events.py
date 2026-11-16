@@ -1,10 +1,3 @@
-"""Small in-process event bus for the web activity feed.
-
-Serial API calls and build/flash jobs publish here.  The browser subscribes
-with SSE, so a flash started by an AI/CLI command is visible in the page even
-when no human clicked anything.
-"""
-
 from __future__ import annotations
 
 import threading
@@ -17,7 +10,9 @@ from timeutil import now_iso
 
 class EventHub:
     def __init__(self, *, maxlen: int = 800) -> None:
-        self._events: deque[dict[str, Any]] = deque(maxlen=max(50, int(maxlen)))
+        self._events: deque[dict[str, Any]] = deque(
+            maxlen=max(50, int(maxlen))
+        )
         self._seq = 0
         self._lock = threading.RLock()
         self._cond = threading.Condition(self._lock)

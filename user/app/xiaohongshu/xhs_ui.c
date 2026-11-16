@@ -1,8 +1,3 @@
-/**
- * @file xhs_ui.c
- * The only translation unit that includes the generated Xiaohongshu assets;
- * everything else goes through the small wrappers below.
- */
 
 #include "xhs_ui.h"
 
@@ -192,8 +187,8 @@ lv_obj_t * xhs_box(lv_obj_t * parent, int x, int y, int w, int h)
     return obj;
 }
 
-lv_obj_t * xhs_label(lv_obj_t * parent, const char * text,
-                     xhs_font_id_t font, uint32_t color)
+lv_obj_t * xhs_label(lv_obj_t * parent, const char * text, xhs_font_id_t font,
+                     uint32_t color)
 {
     lv_obj_t * label = lv_label_create(parent);
     lv_label_set_text(label, text);
@@ -204,8 +199,8 @@ lv_obj_t * xhs_label(lv_obj_t * parent, const char * text,
 }
 
 lv_obj_t * xhs_label_at(lv_obj_t * parent, const char * text,
-                        xhs_font_id_t font, uint32_t color,
-                        int x, int y, int w, int h)
+                        xhs_font_id_t font, uint32_t color, int x, int y, int w,
+                        int h)
 {
     lv_obj_t * label = xhs_label(parent, text, font, color);
     lv_obj_set_pos(label, x, y);
@@ -223,8 +218,8 @@ lv_obj_t * xhs_image(lv_obj_t * parent, xhs_icon_id_t icon, int x, int y)
     return image;
 }
 
-lv_obj_t * xhs_cover_thumb(lv_obj_t * parent, int cover_index,
-                           int x, int y, int w, int h, int radius)
+lv_obj_t * xhs_cover_thumb(lv_obj_t * parent, int cover_index, int x, int y,
+                           int w, int h, int radius)
 {
     lv_obj_t * thumb = xhs_box(parent, x, y, w, h);
     lv_obj_set_style_radius(thumb, radius, 0);
@@ -248,8 +243,8 @@ lv_obj_t * xhs_cover_thumb(lv_obj_t * parent, int cover_index,
     return thumb;
 }
 
-lv_obj_t * xhs_cover_scaled(lv_obj_t * parent, int cover_index,
-                            int scale_pct, int center_x, int top_y)
+lv_obj_t * xhs_cover_scaled(lv_obj_t * parent, int cover_index, int scale_pct,
+                            int center_x, int top_y)
 {
     const lv_image_dsc_t * src = xhs_cover(cover_index);
     int src_w = (int)src->header.w;
@@ -265,8 +260,8 @@ lv_obj_t * xhs_cover_scaled(lv_obj_t * parent, int cover_index,
     return image;
 }
 
-lv_obj_t * xhs_avatar(lv_obj_t * parent, int x, int y, int size,
-                      uint32_t color, const char * text, xhs_font_id_t font)
+lv_obj_t * xhs_avatar(lv_obj_t * parent, int x, int y, int size, uint32_t color,
+                      const char * text, xhs_font_id_t font)
 {
     lv_obj_t * avatar = xhs_box(parent, x, y, size, size);
     lv_obj_set_style_radius(avatar, LV_RADIUS_CIRCLE, 0);
@@ -277,9 +272,9 @@ lv_obj_t * xhs_avatar(lv_obj_t * parent, int x, int y, int size,
     return avatar;
 }
 
-lv_obj_t * xhs_pill(lv_obj_t * parent, int x, int y, int w, int h,
-                    uint32_t bg, const char * text, xhs_font_id_t font,
-                    uint32_t fg, int radius)
+lv_obj_t * xhs_pill(lv_obj_t * parent, int x, int y, int w, int h, uint32_t bg,
+                    const char * text, xhs_font_id_t font, uint32_t fg,
+                    int radius)
 {
     lv_obj_t * pill = xhs_box(parent, x, y, w, h);
     lv_obj_set_style_radius(pill, radius, 0);
@@ -373,4 +368,4 @@ void xhs_home_sync_likes(void)
     }
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

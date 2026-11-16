@@ -1,7 +1,3 @@
-/**
- * @file panel.c
- * Second user TU: proves each user/app C file is compiled without a registry.
- */
 
 #include "app.h"
 

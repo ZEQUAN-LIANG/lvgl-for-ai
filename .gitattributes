@@ -5,3 +5,6 @@ patches/**/series text eol=lf
 # Launcher executables and icons are binary build outputs kept in the tree.
 *.exe binary
 *.ico binary
+
+# Git hooks must stay LF so the shebang works on every platform.
+.githooks/** text eol=lf

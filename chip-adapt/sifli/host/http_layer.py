@@ -1,10 +1,3 @@
-"""HTTP plumbing shared by the host server handler.
-
-JSON framing, request-body limits, origin checks, static-file resolution,
-SSE framing and the exception-to-status mapping live here so the handler can
-stay focused on routes and broker operations.
-"""
-
 from __future__ import annotations
 
 import json
@@ -94,8 +87,6 @@ def query_int(
 
 
 def error_response(exc: BaseException) -> tuple[int, dict[str, Any]]:
-    """Map an exception raised by a route to ``(status, JSON payload)``."""
-
     if isinstance(exc, (BrokerError, SerialError)):
         return 409, {"ok": False, "code": exc.code, "error": str(exc)}
     if isinstance(exc, BuildFlashError):
@@ -106,8 +97,6 @@ def error_response(exc: BaseException) -> tuple[int, dict[str, Any]]:
 
 
 class SseWriter:
-    """Write Server-Sent Event frames to a handler's response stream."""
-
     def __init__(self, stream: BinaryIO) -> None:
         self._stream = stream
 

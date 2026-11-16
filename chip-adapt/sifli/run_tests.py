@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Run the SiFli adapter tests (export, assets, layout)."""
 
 from __future__ import annotations
 
@@ -8,15 +7,17 @@ import unittest
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-if str(HERE) not in sys.path:
-    sys.path.insert(0, str(HERE))
+TESTS = HERE / "tests"
+for path in (HERE, TESTS):
+    text = str(path)
+    if text not in sys.path:
+        sys.path.insert(0, text)
 
 
 def main() -> int:
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
-    for name in ("test_layout", "test_asset_plan", "test_export"):
-        suite.addTests(loader.loadTestsFromName(name))
+    suite = unittest.defaultTestLoader.discover(
+        str(TESTS), pattern="test_*.py", top_level_dir=str(TESTS)
+    )
     result = unittest.TextTestRunner(verbosity=1).run(suite)
     return 0 if result.wasSuccessful() else 1
 

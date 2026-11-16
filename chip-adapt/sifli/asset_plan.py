@@ -20,21 +20,22 @@ from typing import Any, Sequence
 
 ADAPTER_DIR = Path(__file__).resolve().parent
 REPO_ROOT = ADAPTER_DIR.parents[1]
-CORE_ROOT = REPO_ROOT / "core"
-for _path in (CORE_ROOT, ADAPTER_DIR):
+CONSOLE_ROOT = REPO_ROOT / "console"
+for _path in (CONSOLE_ROOT, ADAPTER_DIR):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-import layout  # noqa: E402
-from lvgl_ai.apps import common  # noqa: E402
-ASSET_SCHEMA = "lvgl-ai-assets-v1"
+import layout
+from appmgr import common
+
+ASSET_SCHEMA = "lvgl-verify-loop-assets-v1"
 ASSET_MODES = {"ezip", "raw"}
 ASSET_PLACEMENTS = {"flash", "psram", "sram"}
 ASSET_TRANSFORMS = {"none", "rotate", "scale", "rotate_scale"}
 
 
 class ExportError(common.AppError):
-    """Domain error for export-specific failures."""
+    pass
 
 
 @dataclass(frozen=True)
@@ -140,7 +141,9 @@ def plan_assets(
             hot = spec["mode"] == "raw" and spec["placement"] != "flash"
             if hot:
                 text = _rename_dsc_symbol(text, name, f"{name}_raw")
-            target = f"src/{'ezip' if spec['mode'] == 'ezip' else 'raw'}/{name}.c"
+            target = (
+                f"src/{'ezip' if spec['mode'] == 'ezip' else 'raw'}/{name}.c"
+            )
             files[target] = text.encode("utf-8")
             records.append(
                 {
@@ -167,9 +170,7 @@ def plan_assets(
     )
 
 
-def _load_asset_manifest(
-    source_dir: Path, pngs: list[Path]
-) -> dict[str, Any]:
+def _load_asset_manifest(source_dir: Path, pngs: list[Path]) -> dict[str, Any]:
     manifest_path = source_dir / "assets.json"
     files = {path.name: path for path in pngs}
     if not manifest_path.is_file():
@@ -211,8 +212,6 @@ def _load_asset_manifest(
             detail={"file": str(manifest_path)},
         )
     if not raw_assets:
-        # A cache-only manifest lets canvas-only apps reserve the PSRAM cache
-        # pool without inventing a dummy image.
         if not isinstance(raw_cache, dict) or not raw_cache:
             raise ExportError(
                 "asset_manifest_invalid",
@@ -420,7 +419,9 @@ def _compute_cache(
     if isinstance(overrides.get("lv_cache_def_size"), int):
         cache["lv_cache_def_size"] = overrides["lv_cache_def_size"]
     if isinstance(overrides.get("lv_image_header_cache_cnt"), int):
-        cache["lv_image_header_cache_cnt"] = overrides["lv_image_header_cache_cnt"]
+        cache["lv_image_header_cache_cnt"] = overrides[
+            "lv_image_header_cache_cnt"
+        ]
 
     rotate_size = sum(
         record["size"] for record in hot if "rotate" in record["transform"]
@@ -456,16 +457,16 @@ def _generate_assets(
         f"#ifndef {guard}",
         f"#define {guard}",
         "",
-        '#include "lvgl_ai_sdk.h"',
+        '#include "lvgl_verify_loop_sdk.h"',
         '#include "lvgl.h"',
         "",
-        "#if defined(LVGL_AI_EZIP_ASSETS)",
+        "#if defined(LVGL_VERIFY_LOOP_EZIP_ASSETS)",
         "",
     ]
     body = [
-        '#include "lvgl_ai_sdk.h"',
+        '#include "lvgl_verify_loop_sdk.h"',
         "",
-        "#if defined(LVGL_AI_EZIP_ASSETS)",
+        "#if defined(LVGL_VERIFY_LOOP_EZIP_ASSETS)",
         "",
         '#include "lvgl.h"',
         '#include "app_mem.h"',
@@ -510,7 +511,9 @@ def _generate_assets(
         body.append("")
         body.append(f"const lv_image_dsc_t * app_asset_{name}(void)")
         body.append("{")
-        body.append(f"    return {name}_hot != NULL ? {name}_hot : &{name}_raw;")
+        body.append(
+            f"    return {name}_hot != NULL ? {name}_hot : &{name}_raw;"
+        )
         body.append("}")
         body.append("")
     body.append("void app_assets_init(void)")

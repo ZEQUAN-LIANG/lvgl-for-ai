@@ -12,8 +12,8 @@ HOST_DIR = Path(__file__).resolve().parents[1]
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
-from broker import SerialBroker  # noqa: E402
-from serial_backend import SerialError  # noqa: E402
+from broker import SerialBroker
+from serial_backend import SerialError
 
 
 class FakeBackend:

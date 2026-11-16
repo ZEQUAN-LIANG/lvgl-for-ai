@@ -1,0 +1,235 @@
+{
+  "assets": {
+    "probe_font_bpp1": {
+      "bitmap_bytes": 1210,
+      "generator": "lvgl-verify-loop 0.1.0",
+      "glyph_count": 109,
+      "kind": "font",
+      "name": "probe_font_bpp1",
+      "options": {
+        "bpp": 1,
+        "codepoints": 109,
+        "face_index": 0,
+        "metrics": "face",
+        "size": 16
+      },
+      "output": "probe_font_bpp1.h",
+      "source": "Deng.ttf",
+      "source_sha256": "e051009b42b454352a90ae0c9b8adb58bbdbcd168768750b35bc3357510de141",
+      "status": "generated",
+      "target_lvgl": "9.6"
+    },
+    "probe_font_bpp2": {
+      "bitmap_bytes": 2707,
+      "generator": "lvgl-verify-loop 0.1.0",
+      "glyph_count": 109,
+      "kind": "font",
+      "name": "probe_font_bpp2",
+      "options": {
+        "bpp": 2,
+        "codepoints": 109,
+        "face_index": 0,
+        "metrics": "face",
+        "size": 16
+      },
+      "output": "probe_font_bpp2.h",
+      "source": "Deng.ttf",
+      "source_sha256": "e051009b42b454352a90ae0c9b8adb58bbdbcd168768750b35bc3357510de141",
+      "status": "generated",
+      "target_lvgl": "9.6"
+    },
+    "probe_font_bpp4": {
+      "bitmap_bytes": 5398,
+      "generator": "lvgl-verify-loop 0.1.0",
+      "glyph_count": 109,
+      "kind": "font",
+      "name": "probe_font_bpp4",
+      "options": {
+        "bpp": 4,
+        "codepoints": 109,
+        "face_index": 0,
+        "metrics": "face",
+        "size": 16
+      },
+      "output": "probe_font_bpp4.h",
+      "source": "Deng.ttf",
+      "source_sha256": "e051009b42b454352a90ae0c9b8adb58bbdbcd168768750b35bc3357510de141",
+      "status": "generated",
+      "target_lvgl": "9.6"
+    },
+    "probe_font_bpp8": {
+      "bitmap_bytes": 10777,
+      "generator": "lvgl-verify-loop 0.2.0",
+      "glyph_count": 109,
+      "kind": "font",
+      "name": "probe_font_bpp8",
+      "options": {
+        "bpp": 8,
+        "codepoints": 109,
+        "face_index": 0,
+        "metrics": "face",
+        "size": 16
+      },
+      "output": "probe_font_bpp8.h",
+      "source": "Deng.ttf",
+      "source_sha256": "e051009b42b454352a90ae0c9b8adb58bbdbcd168768750b35bc3357510de141",
+      "status": "generated",
+      "target_lvgl": "9.6"
+    },
+    "probe_img_a8": {
+      "generator": "lvgl-verify-loop 0.1.0",
+      "height": 64,
+      "kind": "image",
+      "name": "probe_img_a8",
+      "options": {
+        "background": "0x000000",
+        "dither": false,
+        "effective_cf": "A8",
+        "requested_cf": "A8",
+        "storage_cf": "A8"
+      },
+      "output": "probe_img_a8.h",
+      "source": "probe_alpha.png",
+      "source_sha256": "a8ae57244fba24b3e8799f90a6aeab0aa67977cd898ffa5dffca2014af7dfa40",
+      "status": "generated",
+      "target_lvgl": "9.6",
+      "width": 64
+    },
+    "probe_img_a8_v8": {
+      "generator": "lvgl-verify-loop 0.1.0",
+      "height": 64,
+      "kind": "image",
+      "name": "probe_img_a8_v8",
+      "options": {
+        "background": "0x000000",
+        "dither": false,
+        "effective_cf": "LV_IMG_CF_ALPHA_8BIT",
+        "requested_cf": "A8",
+        "storage_cf": "A8"
+      },
+      "output": "probe_img_a8_v8.h",
+      "source": "probe_alpha.png",
+      "source_sha256": "a8ae57244fba24b3e8799f90a6aeab0aa67977cd898ffa5dffca2014af7dfa40",
+      "status": "generated",
+      "target_lvgl": "8.4",
+      "width": 64
+    },
+    "probe_img_argb": {
+      "generator": "lvgl-verify-loop 0.1.0",
+      "height": 64,
+      "kind": "image",
+      "name": "probe_img_argb",
+      "options": {
+        "background": "0x000000",
+        "dither": false,
+        "effective_cf": "ARGB8888",
+        "requested_cf": "ARGB8888",
+        "storage_cf": "ARGB8888"
+      },
+      "output": "probe_img_argb.h",
+      "source": "probe_alpha.png",
+      "source_sha256": "a8ae57244fba24b3e8799f90a6aeab0aa67977cd898ffa5dffca2014af7dfa40",
+      "status": "generated",
+      "target_lvgl": "9.6",
+      "width": 64
+    },
+    "probe_img_argb_v8": {
+      "generator": "lvgl-verify-loop 0.1.0",
+      "height": 64,
+      "kind": "image",
+      "name": "probe_img_argb_v8",
+      "options": {
+        "background": "0x000000",
+        "dither": false,
+        "effective_cf": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+        "requested_cf": "ARGB8888",
+        "storage_cf": "ARGB8888"
+      },
+      "output": "probe_img_argb_v8.h",
+      "source": "probe_alpha.png",
+      "source_sha256": "a8ae57244fba24b3e8799f90a6aeab0aa67977cd898ffa5dffca2014af7dfa40",
+      "status": "generated",
+      "target_lvgl": "8.4",
+      "width": 64
+    },
+    "probe_img_rgb565": {
+      "generator": "lvgl-verify-loop 0.1.0",
+      "height": 64,
+      "kind": "image",
+      "name": "probe_img_rgb565",
+      "options": {
+        "background": "0x1E242C",
+        "dither": false,
+        "effective_cf": "RGB565",
+        "requested_cf": "RGB565",
+        "storage_cf": "RGB565"
+      },
+      "output": "probe_img_rgb565.h",
+      "source": "probe_alpha.png",
+      "source_sha256": "a8ae57244fba24b3e8799f90a6aeab0aa67977cd898ffa5dffca2014af7dfa40",
+      "status": "generated",
+      "target_lvgl": "9.6",
+      "width": 64
+    },
+    "probe_img_rgb565_v8": {
+      "generator": "lvgl-verify-loop 0.1.0",
+      "height": 64,
+      "kind": "image",
+      "name": "probe_img_rgb565_v8",
+      "options": {
+        "background": "0x1E242C",
+        "dither": false,
+        "effective_cf": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+        "requested_cf": "RGB565",
+        "storage_cf": "ARGB8888"
+      },
+      "output": "probe_img_rgb565_v8.h",
+      "source": "probe_alpha.png",
+      "source_sha256": "a8ae57244fba24b3e8799f90a6aeab0aa67977cd898ffa5dffca2014af7dfa40",
+      "status": "generated",
+      "target_lvgl": "8.4",
+      "width": 64
+    },
+    "probe_img_rgb888": {
+      "generator": "lvgl-verify-loop 0.1.0",
+      "height": 64,
+      "kind": "image",
+      "name": "probe_img_rgb888",
+      "options": {
+        "background": "0x1E242C",
+        "dither": false,
+        "effective_cf": "RGB888",
+        "requested_cf": "RGB888",
+        "storage_cf": "RGB888"
+      },
+      "output": "probe_img_rgb888.h",
+      "source": "probe_alpha.png",
+      "source_sha256": "a8ae57244fba24b3e8799f90a6aeab0aa67977cd898ffa5dffca2014af7dfa40",
+      "status": "generated",
+      "target_lvgl": "9.6",
+      "width": 64
+    },
+    "probe_img_rgb888_v8": {
+      "generator": "lvgl-verify-loop 0.1.0",
+      "height": 64,
+      "kind": "image",
+      "name": "probe_img_rgb888_v8",
+      "options": {
+        "background": "0x1E242C",
+        "dither": false,
+        "effective_cf": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+        "requested_cf": "RGB888",
+        "storage_cf": "ARGB8888"
+      },
+      "output": "probe_img_rgb888_v8.h",
+      "source": "probe_alpha.png",
+      "source_sha256": "a8ae57244fba24b3e8799f90a6aeab0aa67977cd898ffa5dffca2014af7dfa40",
+      "status": "generated",
+      "target_lvgl": "8.4",
+      "width": 64
+    }
+  },
+  "generator": "lvgl-verify-loop 0.2.0",
+  "schema": "lvgl-verify-loop-assets-v1",
+  "target_lvgl": "9.6"
+}

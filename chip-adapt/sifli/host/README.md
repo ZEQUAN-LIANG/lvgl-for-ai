@@ -1,6 +1,6 @@
 # 黄山派串口与烧录上位机
 
-`chip-adapt/sifli/host/` 是黄山派（SiFli SF32LB52x）的串口 + 烧录上位机，独立于 `core/`
+`chip-adapt/sifli/host/` 是黄山派（SiFli SF32LB52x）的串口 + 烧录上位机，独立于 `console/`
 的 LVGL 会话工具。Python 3.9+，只用标准库和已 vendor 的 pyserial。
 
 ## 形态
@@ -36,8 +36,8 @@ python -I chip-adapt/sifli/host/server.py --open
 chip-adapt/sifli/tools/SiFli-Host.exe
 ```
 
-`SiFli-Host.exe` 由 `python -I core/tools/launchers/build.py` 生成，启动器源码与图标在
-`core/tools/launchers/`。默认 `http://127.0.0.1:8766/`。依赖清单和手工恢复见
+`SiFli-Host.exe` 由 `python -I scripts/launchers/build.py` 生成，启动器源码与图标在
+`scripts/launchers/`。默认 `http://127.0.0.1:8766/`。依赖清单和手工恢复见
 `ENVIRONMENT.md`；`bootstrap.ps1 -Check` 只检查、不安装。
 
 构建链路是 `user/app/<app>/` → `export.py` → `chip-adapt/exports/<app>/project` →

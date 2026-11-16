@@ -1,8 +1,3 @@
-/**
- * @file xhs_publish.c
- * The + publish overlay: mode tabs, a mock image picker, draft fields, options
- * and a success screen with a 完成 button.
- */
 
 #include "xhs_ui.h"
 
@@ -12,7 +7,9 @@
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
 
 static const char * const publish_modes[3] = {
-    XHS_TXT_PUBLISH_PHOTO, XHS_TXT_PUBLISH_VIDEO, XHS_TXT_PUBLISH_LIVE,
+    XHS_TXT_PUBLISH_PHOTO,
+    XHS_TXT_PUBLISH_VIDEO,
+    XHS_TXT_PUBLISH_LIVE,
 };
 
 static lv_obj_t * publish_overlay;
@@ -35,8 +32,8 @@ static void xhs_publish_done_cb(lv_event_t * event)
 static void xhs_publish_submit_cb(lv_event_t * event)
 {
     if(lv_event_get_code(event) != LV_EVENT_CLICKED) return;
-    printf("[xhs] publish submitted mode=%d public=%d\n",
-           publish_mode, publish_public ? 1 : 0);
+    printf("[xhs] publish submitted mode=%d public=%d\n", publish_mode,
+           publish_public ? 1 : 0);
 
     lv_obj_t * page = publish_overlay;
     lv_obj_clean(page);
@@ -44,9 +41,8 @@ static void xhs_publish_submit_cb(lv_event_t * event)
     lv_obj_t * title = xhs_label_at(page, XHS_TXT_PUBLISH_SUCCESS, XHS_FT_14B,
                                     XHS_TEXT, 0, 168, XHS_SCREEN_W, 24);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_t * sub = xhs_label_at(page, XHS_TXT_PUBLISH_SUCCESS_SUB,
-                                  XHS_FT_12, XHS_MUTED, 0, 200,
-                                  XHS_SCREEN_W, 20);
+    lv_obj_t * sub = xhs_label_at(page, XHS_TXT_PUBLISH_SUCCESS_SUB, XHS_FT_12,
+                                  XHS_MUTED, 0, 200, XHS_SCREEN_W, 20);
     lv_obj_set_style_text_align(sub, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t * ring = xhs_box(page, 120, 68, 64, 64);
@@ -57,8 +53,7 @@ static void xhs_publish_submit_cb(lv_event_t * event)
     lv_obj_center(mark);
 
     lv_obj_t * done = xhs_pill(page, 72, 252, 160, 40, XHS_RED,
-                               XHS_TXT_PUBLISH_DONE, XHS_FT_14B, XHS_WHITE,
-                               20);
+                               XHS_TXT_PUBLISH_DONE, XHS_FT_14B, XHS_WHITE, 20);
     xhs_clickable(done, "publish_done");
     lv_obj_add_event_cb(done, xhs_publish_done_cb, LV_EVENT_CLICKED, NULL);
 }
@@ -84,12 +79,12 @@ static void xhs_publish_mode_cb(lv_event_t * event)
     int index = (int)(intptr_t)lv_event_get_user_data(event);
     publish_mode = index;
     for(int i = 0; i < 3; i++) {
-        lv_obj_set_style_text_font(publish_mode_labels[i],
-                                   xhs_font(i == index ? XHS_FT_12B
-                                                       : XHS_FT_12), 0);
-        lv_obj_set_style_text_color(publish_mode_labels[i],
-                                    lv_color_hex(i == index ? XHS_TEXT
-                                                            : XHS_MUTED), 0);
+        lv_obj_set_style_text_font(
+            publish_mode_labels[i],
+            xhs_font(i == index ? XHS_FT_12B : XHS_FT_12), 0);
+        lv_obj_set_style_text_color(
+            publish_mode_labels[i],
+            lv_color_hex(i == index ? XHS_TEXT : XHS_MUTED), 0);
     }
     lv_obj_align_to(publish_underline, publish_mode_labels[index],
                     LV_ALIGN_OUT_BOTTOM_MID, 0, 1);
@@ -142,8 +137,8 @@ static void xhs_publish_option_row(lv_obj_t * page, int y, xhs_icon_id_t icon,
         xhs_image(row, icon, 16, 13);
     }
     else {
-        lv_obj_t * hash = xhs_label_at(row, "#", XHS_FT_12B, XHS_RED,
-                                       16, 11, 16, 18);
+        lv_obj_t * hash =
+            xhs_label_at(row, "#", XHS_FT_12B, XHS_RED, 16, 11, 16, 18);
         (void)hash;
     }
     xhs_label_at(row, text, XHS_FT_12, XHS_TEXT, 38, 11, 170, 18);
@@ -223,8 +218,8 @@ static void xhs_publish_build(lv_obj_t * page)
     xhs_clickable(title_field, "publish_title");
     lv_obj_add_event_cb(title_field, xhs_publish_field_cb, LV_EVENT_CLICKED,
                         (void *)"title");
-    xhs_label_at(title_field, XHS_TXT_PUBLISH_TITLE_HINT, XHS_FT_12,
-                 XHS_MUTED, 12, 11, 250, 18);
+    xhs_label_at(title_field, XHS_TXT_PUBLISH_TITLE_HINT, XHS_FT_12, XHS_MUTED,
+                 12, 11, 250, 18);
 
     lv_obj_t * body_field = xhs_box(page, 12, 240, 280, 96);
     lv_obj_set_style_radius(body_field, 8, 0);
@@ -234,26 +229,24 @@ static void xhs_publish_build(lv_obj_t * page)
     lv_obj_add_event_cb(body_field, xhs_publish_field_cb, LV_EVENT_CLICKED,
                         (void *)"body");
     lv_obj_t * hint = xhs_label_at(body_field, XHS_TXT_PUBLISH_BODY_HINT,
-                                   XHS_FT_12, XHS_MUTED,
-                                   12, 12, 252, 60);
+                                   XHS_FT_12, XHS_MUTED, 12, 12, 252, 60);
     lv_label_set_long_mode(hint, LV_LABEL_LONG_MODE_WRAP);
 
     xhs_publish_option_row(page, 348, XHS_ICON_LOCATION,
                            XHS_TXT_PUBLISH_LOCATION, "location",
                            xhs_publish_row_cb);
-    xhs_publish_option_row(page, 390, XHS_ICON_STAR,
-                           XHS_TXT_PUBLISH_TAG, "tag", xhs_publish_row_cb);
+    xhs_publish_option_row(page, 390, XHS_ICON_STAR, XHS_TXT_PUBLISH_TAG, "tag",
+                           xhs_publish_row_cb);
 
     lv_obj_t * visibility = xhs_box(page, 0, 432, XHS_SCREEN_W, 42);
     xhs_clickable(visibility, "visibility");
-    lv_obj_add_event_cb(visibility, xhs_publish_visibility_cb,
-                        LV_EVENT_CLICKED, NULL);
-    xhs_label_at(visibility, XHS_TXT_PUBLISH_VISIBLE, XHS_FT_12, XHS_TEXT,
-                 16, 11, 120, 18);
-    publish_visibility_label = xhs_label_at(visibility,
-                                            XHS_TXT_PUBLISH_PUBLIC,
-                                            XHS_FT_12, XHS_MUTED,
-                                            176, 11, 90, 18);
+    lv_obj_add_event_cb(visibility, xhs_publish_visibility_cb, LV_EVENT_CLICKED,
+                        NULL);
+    xhs_label_at(visibility, XHS_TXT_PUBLISH_VISIBLE, XHS_FT_12, XHS_TEXT, 16,
+                 11, 120, 18);
+    publish_visibility_label =
+        xhs_label_at(visibility, XHS_TXT_PUBLISH_PUBLIC, XHS_FT_12, XHS_MUTED,
+                     176, 11, 90, 18);
     lv_obj_set_style_text_align(publish_visibility_label, LV_TEXT_ALIGN_RIGHT,
                                 0);
     xhs_image(visibility, XHS_ICON_CHEVRON, 276, 15);
@@ -268,9 +261,9 @@ static void xhs_publish_build(lv_obj_t * page)
     lv_obj_set_style_bg_color(bar_line, lv_color_hex(XHS_LINE), 0);
     lv_obj_set_style_bg_opa(bar_line, LV_OPA_COVER, 0);
 
-    lv_obj_t * submit = xhs_pill(bar, 16, 6, 272, 40, XHS_RED,
-                                 XHS_TXT_PUBLISH_SUBMIT, XHS_FT_12B,
-                                 XHS_WHITE, 20);
+    lv_obj_t * submit =
+        xhs_pill(bar, 16, 6, 272, 40, XHS_RED, XHS_TXT_PUBLISH_SUBMIT,
+                 XHS_FT_12B, XHS_WHITE, 20);
     xhs_clickable(submit, "publish_submit");
     lv_obj_add_event_cb(submit, xhs_publish_submit_cb, LV_EVENT_CLICKED, NULL);
 
@@ -296,4 +289,4 @@ void xhs_publish_open(void)
     printf("[xhs] publish open\n");
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif

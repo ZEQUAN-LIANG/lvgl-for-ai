@@ -9,4 +9,4 @@ void sift_watch_create(void);
 
 #endif
 
-#endif /* SIFT_WATCH_H */
+#endif
