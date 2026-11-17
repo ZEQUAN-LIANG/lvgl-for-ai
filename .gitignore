@@ -30,6 +30,6 @@ sessions/
 /.test-sessions/
 /user/app/**/*.dump
 # Double-click launchers are build artifacts; regenerate with
-# scripts/launchers/build.py (MinGW gcc + windres).
-/bin/LVGL-AI-Viewer.exe
+# scripts/launchers/build.py (MinGW gcc + windres). The viewer launcher is
+# tracked so it can be downloaded from the repository.
 /bin/SiFli-Host.exe
