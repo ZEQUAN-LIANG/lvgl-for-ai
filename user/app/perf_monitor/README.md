@@ -102,6 +102,9 @@ else {
   可以自己调用它。
 - 同一路 USB Serial/JTAG 上，`PERF` 行和现有 `pages` / `page` / `wifi` 命令可以共存：
   壳先按前缀分流。
+- Arduino bring-up 固件同时监听 USB Serial 与 BLE（NUS）。命令从哪个通道来，ACK/READY/PONG
+  就回到哪个通道；host 默认 BLE 连上优先、否则回退 UART。BLE 回调只组行入队，`loop()`
+  才调用 `perf_monitor_ingest()`，因此 LVGL 仍只在主循环中访问。
 
 ## PC 端
 

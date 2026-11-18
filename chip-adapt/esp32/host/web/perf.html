@@ -716,7 +716,7 @@
       </div>
 
       <div class="panel">
-        <div class="panel-head"><span>Layout</span><span>串口切换</span></div>
+        <div class="panel-head"><span>Layout</span><span>链路切换</span></div>
         <div class="layout-grid">
           <button type="button" class="layout-option active" data-layout="portrait">
             <span class="glyph portrait"></span>
@@ -969,14 +969,24 @@
   function renderStatus(perf, serial) {
     const running = Boolean(perf && perf.running);
     local.running = running;
-    const port = serial && serial.serial ? serial.serial.port : "";
-    const open = Boolean(serial && serial.serial && serial.serial.open);
+    const info = (serial && serial.serial) || {};
+    const links = info.links || {};
+    const active = links.active || (info.open ? "serial" : "none");
+    const open = active !== "none";
     const fake = Boolean(serial && serial.fake);
     el.serialPill.classList.toggle("open", open);
     el.serialPill.classList.toggle("fake", fake);
-    el.serialText.textContent = open
-      ? `${fake ? "FAKE" : "SERIAL"} · ${port || "OPEN"}`
-      : "SERIAL · CLOSED";
+    let label = "LINK · CLOSED";
+    if (fake) {
+      label = `FAKE · ${info.port || "OPEN"}`;
+    } else if (active === "ble") {
+      const name = (links.ble && links.ble.name) || "LVGL-C6-PERF";
+      label = `BLE · ${name}`;
+    } else if (active === "serial") {
+      const port = (links.serial && links.serial.port) || info.port || "OPEN";
+      label = `UART · ${port}`;
+    }
+    el.serialText.textContent = label;
 
     if (!local.busy) {
       if (perf) {

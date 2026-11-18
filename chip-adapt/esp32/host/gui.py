@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import queue
+import sys
 import threading
 import time
 import tkinter as tk
@@ -17,7 +18,14 @@ import tkinter.font as tkfont
 import urllib.error
 import urllib.request
 import webbrowser
+from pathlib import Path
 from typing import Any, Callable, Optional
+
+HOST_DIR = Path(__file__).resolve().parent
+if str(HOST_DIR) not in sys.path:
+    sys.path.insert(0, str(HOST_DIR))
+
+from tray import TrayIcon  # noqa: E402
 
 DEFAULT_URL = "http://127.0.0.1:8767"
 POLL_MS = 300
@@ -50,7 +58,11 @@ class HostClient:
         self.timeout = timeout
 
     def _request(
-        self, path: str, payload: Optional[dict[str, Any]] = None
+        self,
+        path: str,
+        payload: Optional[dict[str, Any]] = None,
+        *,
+        timeout: Optional[float] = None,
     ) -> dict[str, Any]:
         data = None
         headers = {"Accept": "application/json"}
@@ -62,7 +74,8 @@ class HostClient:
         )
         try:
             with urllib.request.urlopen(
-                request, timeout=self.timeout
+                request,
+                timeout=self.timeout if timeout is None else timeout,
             ) as response:
                 raw = response.read()
         except urllib.error.HTTPError as exc:
@@ -102,6 +115,9 @@ class HostClient:
 
     def set_layout(self, layout: str) -> dict[str, Any]:
         return self._request("/api/perf/layout", {"layout": layout})
+
+    def close_link(self, timeout: float = 2.0) -> dict[str, Any]:
+        return self._request("/api/close", {}, timeout=timeout)
 
 
 def normalize_url(value: str) -> str:
@@ -232,10 +248,15 @@ class ScreenPainter:
 
 
 class PerfGui:
-    def __init__(self, root: tk.Tk, client: HostClient) -> None:
+    def __init__(
+        self, root: tk.Tk, client: HostClient, *, tray_enabled: bool = True
+    ) -> None:
         self.root = root
         self.client = client
         self.events: queue.Queue[tuple[Any, ...]] = queue.Queue()
+        self.tray_enabled = tray_enabled
+        self.tray: Optional[TrayIcon] = None
+        self.tray_events: queue.Queue[str] = queue.Queue()
         self.closing = False
         self.poll_inflight = False
         self.poll_token = 0
@@ -289,9 +310,11 @@ class PerfGui:
         self.append_log("python gui ready", "dim")
         self.append_log(f"host {self.client.base_url}", "dim")
 
-        self.root.protocol("WM_DELETE_WINDOW", self.close)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.drain_after = self.root.after(80, self.drain_events)
         self.root.after(120, self.poll)
+        if self.tray_enabled:
+            self.root.after(200, self.start_tray)
 
     # ------------------------------------------------------------------
     # window
@@ -958,14 +981,25 @@ class PerfGui:
             self.serial_dot.itemconfigure(1, fill=ACCENT)
             return
         info = serial.get("serial") or {}
+        links = info.get("links") or {}
+        active = links.get("active") or (
+            "serial" if info.get("open") else "none"
+        )
         fake = bool(serial.get("fake"))
-        if info.get("open"):
+        if fake:
             port = info.get("port") or "OPEN"
-            label = "FAKE" if fake else "SERIAL"
-            self.serial_var.set(f"{label} · {port}")
-            self.serial_dot.itemconfigure(1, fill=WARN if fake else OK)
+            self.serial_var.set(f"FAKE · {port}")
+            self.serial_dot.itemconfigure(1, fill=WARN)
+        elif active == "ble":
+            name = (links.get("ble") or {}).get("name") or "LVGL-C6-PERF"
+            self.serial_var.set(f"BLE · {name}")
+            self.serial_dot.itemconfigure(1, fill=OK)
+        elif active == "serial":
+            port = (links.get("serial") or {}).get("port") or "OPEN"
+            self.serial_var.set(f"UART · {port}")
+            self.serial_dot.itemconfigure(1, fill=OK)
         else:
-            self.serial_var.set("SERIAL · CLOSED")
+            self.serial_var.set("LINK · CLOSED")
             self.serial_dot.itemconfigure(1, fill=WARN)
 
     # ------------------------------------------------------------------
@@ -998,6 +1032,16 @@ class PerfGui:
     def drain_events(self) -> None:
         if self.closing:
             return
+        while True:
+            try:
+                action = self.tray_events.get_nowait()
+            except queue.Empty:
+                break
+            if action == "show":
+                self.show_window()
+            elif action == "exit":
+                self.quit()
+                return
         try:
             while True:
                 event = self.events.get_nowait()
@@ -1636,8 +1680,64 @@ class PerfGui:
     def open_web(self) -> None:
         webbrowser.open(self.client.base_url + "/perf/")
 
-    def close(self) -> None:
+    def start_tray(self) -> None:
+        if self.closing or self.tray is not None:
+            return
+        icon = (
+            HOST_DIR.parents[2]
+            / "scripts"
+            / "launchers"
+            / "icons"
+            / "lvgl-verify-loop-viewer.ico"
+        )
+        tray = TrayIcon(
+            "PERF TAPE · Python GUI",
+            icon_path=icon,
+            on_show=lambda: self.tray_events.put("show"),
+            on_exit=lambda: self.tray_events.put("exit"),
+        )
+        if tray.start():
+            self.tray = tray
+            self.append_log(
+                "tray icon ready; closing hides the window", "dim"
+            )
+        else:
+            self.append_log("tray icon unavailable; close exits", "dim")
+
+    def on_close(self) -> None:
+        if self.closing:
+            return
+        if self.tray is None:
+            self.quit()
+            return
+        self.root.withdraw()
+        self.append_log(
+            "window hidden to tray; double-click the tray icon to restore",
+            "dim",
+        )
+
+    def show_window(self) -> None:
+        if self.closing:
+            return
+        self.root.deiconify()
+        self.root.state("normal")
+        self.root.lift()
+        self.root.focus_force()
+        self.poll_now()
+
+    def quit(self, *, close_link: bool = True) -> None:
+        if self.closing:
+            return
         self.closing = True
+        if close_link:
+            try:
+                self.client.close_link()
+                self.append_log("link closed (BLE/UART released)", "dim")
+            except Exception as exc:  # noqa: BLE001 - best effort on exit
+                self.append_log(f"link close failed: {exc}", "err")
+        if self.tray is not None:
+            self.tray.stop()
+            self.tray = None
         for after_id in (self.poll_after, self.drain_after, self.resize_after):
             if after_id is not None:
                 try:
@@ -1736,15 +1836,22 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         default=0,
         help=argparse.SUPPRESS,
     )
+    parser.add_argument(
+        "--no-tray",
+        action="store_true",
+        help="close the window instead of hiding to the tray",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[list[str]] = None) -> int:
     args = parse_args(argv)
     root = tk.Tk()
-    app = PerfGui(root, HostClient(args.url))
+    app = PerfGui(
+        root, HostClient(args.url), tray_enabled=not args.no_tray
+    )
     if args.smoke_ms > 0:
-        root.after(args.smoke_ms, app.close)
+        root.after(args.smoke_ms, lambda: app.quit(close_link=False))
     root.mainloop()
     return 0
 

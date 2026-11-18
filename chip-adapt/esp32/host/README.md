@@ -1,9 +1,11 @@
 # ESP32-C6 Studio · 简单上位机
 
 这是 `chip-adapt/esp32/` 的可运行上位机切片：一个本地 broker + 好看的网页 + CLI，
-用串口做页面切换、Wi-Fi 配置、蓝牙配置和系统信息读取。它**复用**
-`chip-adapt/sifli/host/` 的 `SerialBroker`（同一个 COM 口 owner、同一份环形缓冲和
-`pyserial` vendor），没有第二套串口客户端。
+默认同时维护 **USB 串口（UART）与 BLE** 两条运行时链路，做页面切换、Wi-Fi 配置、
+蓝牙配置、系统信息读取和 perf 数据发送。BLE 连上时优先 BLE，否则自动回退 UART。
+它**复用** `chip-adapt/sifli/host/` 的 `SerialBroker`（同一个逻辑流 owner、同一份
+环形缓冲和日志），串口仍由 `pyserial` vendor 驱动，BLE 由 `bleak` 驱动；没有第二套
+协议客户端。
 
 ## 网页功能
 
@@ -17,7 +19,7 @@
 - **性能监控**：独立页面 `/perf/`；Demo / Live 采集、发送周期、启动/停止、竖版/横版串口切换、实时预览
 
 默认 `http://127.0.0.1:8767/`；`--fake` 模式用内存 backend 模拟固件，不需要板子。
-页面列表和无线状态都来自串口命令，前端不写死。
+页面列表和无线状态都来自设备链路命令（BLE 优先，UART 回退），前端不写死。
 
 ## 快速开始
 
@@ -25,11 +27,49 @@
 # 不需要板子：fake 串口，完整网页都能点
 python -I chip-adapt/esp32/host/host.py serve --fake --open
 
-# 真机：先选 COM 口，再打开网页
-python -I chip-adapt/esp32/host/host.py serve --port COMx --baud 115200 --open
+# 真机默认：自动选串口 + 扫描 BLE，BLE 优先，失败回退 UART
+python -I chip-adapt/esp32/host/host.py serve --open
+
+# 只走串口 / 只走 BLE
+python -I chip-adapt/esp32/host/host.py serve --transport serial --serial-port COMx --open
+python -I chip-adapt/esp32/host/host.py serve --transport ble --ble-name LVGL-C6-PERF --open
+
+# 安装 BLE 依赖（bleak）与 esptool
+powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/esp32/host/scripts/bootstrap.ps1
 ```
 
 选 8767 是为了避开 `console` 的 8765 和 SiFli host 的 8766。
+
+## UART + BLE 双链路
+
+- `DualBackend` 同时运行串口 supervisor 与 BLE supervisor，二者把字节写入同一个
+  `queue.Queue`；`SerialBroker` 仍然只有一个 ring buffer、一个日志、一个 seq。
+- 发送选路：BLE `ready` 时优先 BLE；BLE 未连接或写入失败则回退串口；两者都不可用
+  时报 `no_link`。
+- 串口自动选择优先匹配 Espressif / JTAG / CH340 / CP210x 描述；多个串口且无法判断时
+  用 `--serial-port COMx` 指定。
+- BLE 设备名默认 `LVGL-C6-PERF`，Service/RX/TX 使用 Nordic UART UUID；host 扫描时按
+  Service UUID 过滤，名称用于多设备时的优先选择。
+- 设备上电默认广播、等待连接；BLE 断开约 500 ms 后重新广播。
+- 依赖：`bleak==3.1.0` 安装到 `host/vendor/ble`；`python -I` 下由 `ble_link.py`
+  显式插入 `sys.path`。`bootstrap.ps1 -Check` 同时检查 esptool 与 bleak。
+
+实测（2026-11-19）：Windows 10 + `bleak 3.1.0`，设备 `14:C1:9F:05:7F:9A`，MTU 256；
+`/api/status` 返回 `active=ble`，`/api/pages`、`/api/ping`、`/api/perf/layout` 与
+`/api/perf/start` 均可用；BLE 断开后 `/api/open` 可重连，设备会重新广播。
+
+状态示例：
+
+```json
+{
+  "transport": "dual",
+  "links": {
+    "active": "ble",
+    "ble": {"ready": true, "name": "LVGL-C6-PERF", "mtu": 247},
+    "serial": {"open": true, "port": "COM13", "baud": 115200}
+  }
+}
+```
 
 ## 性能监控控制页
 
@@ -73,7 +113,12 @@ python -I chip-adapt/esp32/host/gui.py --url http://127.0.0.1:8767
 ```
 
 窗口标题是 `PERF TAPE · Python GUI`。左上角显示串口状态；右侧的 `WEB UI ↗`
-会打开同一个 host 的 `/perf/` 页面。GUI 使用标准库 tkinter，不需要额外安装。
+会打开同一个 host 的 `/perf/` 页面。GUI 使用标准库 tkinter + ctypes，不需要额外安装。
+
+关闭窗口不会退出进程：窗口隐藏到 Windows 通知区域，托盘图标双击可恢复；托盘菜单
+提供“显示窗口”和“退出”。**“退出”会先调用 host 的 `/api/close`，断开 BLE 并释放
+UART/COM 口，再退出 GUI**；host 进程本身可以继续留给网页端使用。如果不需要托盘，
+用 `--no-tray` 启动，关闭窗口即退出。
 
 ## 固件侧协议
 
@@ -143,14 +188,16 @@ host 的 `/flash/` 是同一份 `chip-adapt/host/flash_web/`，但后端不同�
 SiFli 那边显示 `sftool`。主页面左侧「烧录器」链接会新开该页。共享页的完整说明、API、
 排障和实机记录见 [`../../host/README.md`](../../host/README.md)。
 
-### 准备 esptool
+### 准备依赖（esptool + bleak）
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/esp32/host/scripts/bootstrap.ps1
 ```
 
-脚本用 `uv` 在 `chip-adapt/esp32/host/vendor/esptool/` 建 venv，固定安装 `esptool==4.8.1`
-（不进 Git）。host 的查找顺序：
+脚本用 `uv` 在 `chip-adapt/esp32/host/vendor/esptool/` 建 venv，固定安装 `esptool==4.8.1`；
+同时用当前系统 Python 把 `bleak==3.1.0` 及 WinRT 依赖安装到
+`chip-adapt/esp32/host/vendor/ble/`（两者都不进 Git）。`-Check` 会同时检查 esptool 与 bleak。
+host 的 esptool 查找顺序：
 
 1. `ESPTOOL_BIN` 或 `serve --esptool PATH`；
 2. 上面的 vendor venv（优先 `python -m esptool`，避免控制台启动器留下孤儿进程）；
@@ -211,10 +258,10 @@ BOOT 再上电进入下载模式。
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/api/health` | 健康检查 |
-| `GET` | `/api/status` | broker 状态 + `fake` 标记 |
-| `GET` | `/api/ports` | 串口列表；fake 模式返回 `COM99` |
-| `POST` | `/api/open` | `{port, baud}` |
-| `POST` | `/api/close` | 关闭串口 |
+| `GET` | `/api/status` | broker 状态 + 顶层 `transport` + `serial.links`（active/ble/serial）+ `fake` |
+| `GET` | `/api/ports` | UART 列表 + `kind=ble` 条目；fake 模式返回 `COM99` |
+| `POST` | `/api/open` | `{port?, baud?}`；dual/ble 下可省略 `port`，串口模式下用它覆盖自动选择 |
+| `POST` | `/api/close` | 关闭 UART 与 BLE 两条链路 |
 | `POST` | `/api/serial/auto_reconnect` | `{enabled}` |
 | `GET` | `/api/pages` | 发送 `pages` + `state` |
 | `POST` | `/api/page` | `{name}` |
@@ -235,7 +282,7 @@ BOOT 再上电进入下载模式。
 | `POST` | `/api/bt/discoverable` | `{enabled}` |
 | `POST` | `/api/brightness` | `{value}` |
 | `POST` | `/api/system/reset` | `sys reset` |
-| `GET` | `/api/stream?since=N` | SSE 串口流 |
+| `GET` | `/api/stream?since=N` | SSE 合并链路流（UART + BLE） |
 | `GET` | `/flash/`、`/flash/<asset>` | 独立烧录页（共享 `chip-adapt/host/flash_web/`） |
 | `GET` | `/api/flash/env` | 后端元数据、能力、默认波特率和建议固件 |
 | `POST` | `/api/flash/upload?name=...` | 原始文件字节上传，返回 `token` |
@@ -252,14 +299,18 @@ BOOT 再上电进入下载模式。
 python -I chip-adapt/esp32/host/tests/run_tests.py
 ```
 
-测试用 `FakeSerialBackend` 模拟页面、Wi-Fi、蓝牙和系统命令，不需要板子。
-`CommandSession` 用一把锁串行化所有 `send`/`expect`，页面命令和无线命令不会互相串线。
+测试用 `FakeSerialBackend` 模拟页面、Wi-Fi、蓝牙和系统命令，不需要板子；
+`test_ble_link` / `test_dual_backend` 用 fake scanner/client 覆盖 BLE 扫描、分块、
+断线回退与重连。`CommandSession` 用一把锁串行化所有 `send`/`expect`，页面命令和
+无线命令不会互相串线。
 
 ## 边界
 
 - 这是**原型**：网页/上位机已可跑；真实 Wi-Fi/BLE 驱动和 `esp_console` 命令要在 ESP-IDF
   固件壳里实现。构建仍用 ESP-IDF；烧录已接到 host（esptool），不再要求手动在 IDF 终端执行。
-- host 烧录时会释放串口；不要同时用 `idf.py flash` 或其它工具占用同一个 COM 口。
+- host 烧录时会关闭双链路并释放串口；不要同时用 `idf.py flash` 或其它工具占用同一个
+  COM 口。BLE 不能用于 esptool 烧录，烧录仍需 USB。
+- 默认 BLE 优先；没有 BLE 适配器、设备未广播或 `bleak` 未安装时，串口链路照常工作。
 - 网页不直接用 Web Serial 打开 COM 口；浏览器、CLI、AI 都走同一个 host，避免抢口。
 - Wi-Fi 密码通过串口发送，但 `SerialBroker` 的 TX 事件日志会标 `redacted: true`，不把密码
   写进 `events.ndjson`；串口 RX 日志仍保留设备输出。

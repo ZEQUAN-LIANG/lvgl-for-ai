@@ -105,6 +105,37 @@ C6 无 PSRAM，以上全部在 SRAM；如果以后加 Wi-Fi/蓝牙或更多 canv
 驱动本固件。应用启动先进入 `SIM` 演示；收到 `PERF DEMO`/`PERF LIVE` 和第一帧
 后切换状态。
 
+### 5.1 UART + BLE 双通道
+
+固件同时监听 USB Serial 与 BLE，回复发回命令来源通道：
+
+- BLE 使用 Nordic UART Service：Service `6E400001-B5A3-F393-E0A9-E50E24DCCA9E`，
+  RX `6E400002-...`，TX `6E400003-...`；设备名 `LVGL-C6-PERF`。
+- 上电后开始广播；连接后停止广播；断开约 500 ms 后重新广播。
+- BLE `onWrite` 只把字节拼成完整行放入 FreeRTOS 队列，`loop()` 才调用
+  `perf_monitor_ingest()`；BLE 任务不直接访问 LVGL。
+- 设备按 `peer MTU - 3` 分块 notify；host 写入也按 MTU 分块，两侧都按 `\n` 组行。
+- `PERF HELLO` 回复 `@PERF READY v=1 bars=16 mtu=<n>`；数据帧回复
+  `@PERF OK seq=<n>`；`PERF PING` 回复 `@PERF PONG`。
+- host 默认同时维护 UART 与 BLE：BLE 连上时优先 BLE，BLE 断开或未连接时自动
+  回退 UART；USB 串口仍可作为控制通道和日志通道。
+- BLE 依赖（`bleak`）由 `host/scripts/bootstrap.ps1` 安装到
+  `host/vendor/ble`；host 用 `python -I` 运行时通过显式 `sys.path` 注入。
+
+实机记录（2026-11-19）：板卡广播 `LVGL-C6-PERF`，Windows `bleak` 连接后 MTU 256，
+`PERF HELLO` 收到 `@PERF READY v=1 bars=16 mtu=256`；`/perf/` Demo 帧逐帧收到
+`@PERF OK seq=N`；启动日志 `heap after ble=157604`，`Global variables` 204796 B
+（62%），仍有约 122 KB 静态余量。
+
+排障：
+
+| 现象 | 优先检查 |
+| --- | --- |
+| host 显示 `active=none` | PC 蓝牙是否开启；设备是否在广播；`ble_name` 是否匹配 |
+| BLE 连上但命令超时 | 设备是否已订阅 TX；MTU 是否为 23；串口是否被其他程序占用 |
+| BLE 断开后不恢复 | 看 `links.ble.last_error`；设备是否重新广播；Windows 蓝牙缓存 |
+| 想强制走 UART | `serve --transport serial --serial-port COMx` 或 `--no-ble` |
+
 ## 6. 横竖切换
 
 应用侧命令：

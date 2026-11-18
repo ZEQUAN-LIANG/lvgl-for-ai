@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -30,8 +31,9 @@ from paths import ensure_import_paths
 ensure_import_paths()
 
 from broker import BrokerError, SerialBroker, ports as serial_ports  # noqa: E402
-from command_session import CommandSession  # noqa: E402
+from command_session import CommandError, CommandSession  # noqa: E402
 from device_control import DeviceController, DeviceError  # noqa: E402
+from dual_broker import DualBroker  # noqa: E402
 from fake_serial import FakeSerialBackend  # noqa: E402
 import flasher_web  # noqa: E402
 from flash_control import (  # noqa: E402
@@ -45,6 +47,8 @@ from perf_control import PerfController, PerfError  # noqa: E402
 
 DEFAULT_HTTP_PORT = 8767
 DEFAULT_BAUD = 115200
+DEFAULT_TRANSPORT = "dual"
+DEFAULT_BLE_NAME = "LVGL-C6-PERF"
 
 
 class HostError(RuntimeError):
@@ -63,6 +67,14 @@ def default_config() -> dict[str, Any]:
         "reconnect_interval_s": 0.8,
         "reconnect_max_delay_s": 5.0,
         "log_dir": str(HOST_DIR / "logs"),
+        "transport": DEFAULT_TRANSPORT,
+        "ble_enabled": True,
+        "ble_name": DEFAULT_BLE_NAME,
+        "ble_scan_timeout_s": 5.0,
+        "ble_connect_timeout_s": 12.0,
+        "serial_enabled": True,
+        "serial_port": "",
+        "link_wait_s": 0.5,
         "flash_baud": DEFAULT_FLASH_BAUD,
         "flash_timeout_s": 300,
         "flash_max_upload_bytes": 128 * 1024 * 1024,
@@ -83,12 +95,28 @@ class HostState:
         if config:
             self.config.update(config)
         Path(self.config["log_dir"]).mkdir(parents=True, exist_ok=True)
+        transport = str(self.config.get("transport") or DEFAULT_TRANSPORT)
+        if fake:
+            transport = "fake"
+        if transport not in ("fake", "dual", "ble", "serial"):
+            raise HostError(
+                f"unknown transport: {transport}",
+                code="transport_invalid",
+            )
+        if transport == "ble":
+            self.config["serial_enabled"] = False
+        self.transport = transport
+        self.ble_name = str(
+            self.config.get("ble_name") or DEFAULT_BLE_NAME
+        )
         if fake:
             self.broker = SerialBroker(
                 self.config, backend_factory=lambda: FakeSerialBackend()
             )
-        else:
+        elif transport == "serial":
             self.broker = SerialBroker(self.config)
+        else:
+            self.broker = DualBroker(self.config)
         self.session = CommandSession(self.broker, timeout_ms=4000)
         self.pages = PageController(self.session)
         self.device = DeviceController(self.session)
@@ -106,9 +134,61 @@ class HostState:
                     "device": "COM99",
                     "description": "Fake ESP32-C6 (demo)",
                     "hwid": "FAKE",
+                    "kind": "serial",
                 }
             ]
-        return serial_ports()
+        ports = [
+            {**item, "kind": "serial"} for item in serial_ports()
+        ]
+        if self.transport in ("dual", "ble"):
+            ports.insert(
+                0,
+                {
+                    "port": "ble",
+                    "device": self.ble_name,
+                    "description": f"BLE · {self.ble_name}",
+                    "hwid": "BLE",
+                    "kind": "ble",
+                },
+            )
+        return ports
+
+    def auto_connect(self) -> None:
+        if self.fake:
+            return
+        thread = threading.Thread(
+            target=self._auto_connect,
+            name="host-auto-connect",
+            daemon=True,
+        )
+        thread.start()
+
+    def _auto_connect(self) -> None:
+        try:
+            self.broker.open()
+        except BrokerError as exc:
+            print(f"link open failed: {exc}")
+            return
+        if self.transport == "serial":
+            return
+        active = "none"
+        for _ in range(20):
+            status = self.broker.status()
+            links = status.get("links") or {}
+            active = str(links.get("active") or "none")
+            if active != "none":
+                break
+            time.sleep(0.25)
+        if active == "none":
+            return
+        try:
+            self.session.exchange(
+                "PERF HELLO",
+                r"@PERF READY [^\r\n]*",
+                timeout_ms=2000,
+            )
+        except (CommandError, BrokerError):
+            pass
 
 
 class HostServer(ThreadingHTTPServer):
@@ -447,7 +527,14 @@ class HostHandler(BaseHTTPRequestHandler):
             if path == "/api/status":
                 state = self.server.state
                 status = state.broker.status()
-                self._json({"ok": True, "fake": state.fake, "serial": status})
+                self._json(
+                    {
+                        "ok": True,
+                        "fake": state.fake,
+                        "transport": state.transport,
+                        "serial": status,
+                    }
+                )
                 return
             if path == "/api/perf/status":
                 self._json({"ok": True, **self.server.state.perf.status()})
@@ -547,11 +634,19 @@ class HostHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/open":
                 port = str(body.get("port") or "")
+                baud = int(body.get("baud") or DEFAULT_BAUD)
+                if state.transport in ("dual", "ble"):
+                    if port and port != "ble":
+                        state.config["serial_port"] = port
+                    status = state.broker.open(
+                        None if port in ("", "ble") else port, baud
+                    )
+                    self._json({"ok": True, "status": status})
+                    return
                 if state.fake and not port:
                     port = "COM99"
                 if not port:
                     raise HostError("port is required", code="port_required")
-                baud = int(body.get("baud") or DEFAULT_BAUD)
                 status = state.broker.open(port, baud)
                 self._json({"ok": True, "status": status})
                 return
@@ -790,9 +885,19 @@ def cmd_flash(args: argparse.Namespace) -> int:
         return 0
     status = request_json("GET", f"{base}/api/status")
     serial = status.get("serial") or {}
-    port = args.port or str(serial.get("port") or "")
+    transport = str(status.get("transport") or serial.get("transport") or "")
+    candidate = args.port
+    if not candidate:
+        if transport in ("", "serial"):
+            candidate = str(serial.get("port") or "")
+        else:
+            links = serial.get("links") or {}
+            candidate = str((links.get("serial") or {}).get("port") or "")
+    if candidate in ("dual", "ble"):
+        candidate = ""
+    port = candidate
     if not port:
-        print("choose a serial port with --port or open it in the web UI")
+        print("choose a serial port with --port; BLE cannot be used for flashing")
         return 1
     payload = request_json(
         "POST",
@@ -827,20 +932,41 @@ def serve(args: argparse.Namespace) -> int:
         config["esptool"] = args.esptool
     if args.flash_baud:
         config["flash_baud"] = args.flash_baud
+    transport = args.transport or (
+        "serial" if args.port else DEFAULT_TRANSPORT
+    )
+    serial_port = args.serial_port or args.port
+    config.update(
+        {
+            "transport": transport,
+            "ble_name": args.ble_name,
+            "serial_port": serial_port,
+            "ble_enabled": not args.no_ble,
+            "serial_enabled": not args.no_serial,
+            "link_wait_s": args.link_wait,
+        }
+    )
     state = HostState(fake=args.fake, config=config)
     if args.fake:
         state.broker.open("COM99", args.baud)
-    elif args.port:
+    elif transport == "serial" and serial_port:
         try:
-            state.broker.open(args.port, args.baud)
+            state.broker.open(serial_port, args.baud)
         except BrokerError as exc:
             print(f"serial open failed: {exc}")
+    else:
+        state.auto_connect()
     server = HostServer((args.host, args.http_port), HostHandler, state)
     url = f"http://{args.host}:{args.http_port}/"
     print(f"ESP32-C6 host: {url}")
     print(f"flasher: {url}flash/")
     print(f"perf: {url}perf/")
-    print(f"mode: {'fake (COM99)' if args.fake else 'serial'}")
+    print(f"mode: {'fake (COM99)' if args.fake else state.transport}")
+    if state.transport in ("dual", "ble"):
+        print(
+            f"ble: {state.ble_name}  "
+            f"serial: {serial_port or 'auto'}"
+        )
     environment = state.flash.environment()
     esptool = environment["esptool"]
     if args.fake:
@@ -881,8 +1007,27 @@ def main(argv: list[str] | None = None) -> int:
     serve_parser.add_argument(
         "--http-port", type=int, default=DEFAULT_HTTP_PORT
     )
-    serve_parser.add_argument("--port", default="")
+    serve_parser.add_argument(
+        "--transport",
+        choices=("dual", "ble", "serial"),
+        default="",
+        help="runtime links (default: dual; --port implies serial)",
+    )
+    serve_parser.add_argument(
+        "--serial-port",
+        default="",
+        help="UART port for dual/serial (empty = auto-detect)",
+    )
+    serve_parser.add_argument("--port", default="", help="alias for --serial-port")
     serve_parser.add_argument("--baud", type=int, default=DEFAULT_BAUD)
+    serve_parser.add_argument("--ble-name", default=DEFAULT_BLE_NAME)
+    serve_parser.add_argument("--link-wait", type=float, default=0.5)
+    serve_parser.add_argument(
+        "--no-ble", action="store_true", help="disable the BLE link"
+    )
+    serve_parser.add_argument(
+        "--no-serial", action="store_true", help="disable the UART link"
+    )
     serve_parser.add_argument(
         "--fake", action="store_true", help="use the in-memory demo backend"
     )
