@@ -26,6 +26,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+HOST_DIR = Path(__file__).resolve().parents[1]
+
 CHIP = "esp32c6"
 DEFAULT_FLASH_BAUD = 460800
 MAX_UPLOAD_BYTES = 128 * 1024 * 1024
@@ -138,7 +140,7 @@ def _esptool_candidates(config: dict[str, Any]) -> Iterable[tuple[tuple[str, ...
         else:
             yield from add((str(path),), str(path))
 
-    vendor = Path(__file__).resolve().parent / "vendor" / "esptool"
+    vendor = HOST_DIR / "vendor" / "esptool"
     if os.name == "nt":
         vendor_python = vendor / "Scripts" / "python.exe"
         vendor_exes = (
@@ -699,7 +701,7 @@ def plan_from_path(
 
 
 def _default_work_root() -> Path:
-    return Path(__file__).resolve().parent / ".cache" / "flash" / "work"
+    return HOST_DIR / ".cache" / "flash" / "work"
 
 
 # ----------------------------------------------------------------- progress --

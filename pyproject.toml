@@ -9,6 +9,8 @@ src = [
     "scripts",
     "user",
     "chip-adapt/sifli",
+    "chip-adapt/host",
+    "chip-adapt/esp32/host",
 ]
 respect-gitignore = true
 extend-exclude = [
@@ -25,6 +27,8 @@ extend-exclude = [
     "chip-adapt/exports",
     "chip-adapt/sifli/host/vendor",
     "chip-adapt/sifli/host/.cache",
+    "chip-adapt/esp32/host/vendor",
+    "chip-adapt/esp32/host/.cache",
     ".test-tmp",
     ".test-sessions",
 ]

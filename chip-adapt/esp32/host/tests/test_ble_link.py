@@ -11,6 +11,10 @@ TESTS_DIR = Path(__file__).resolve().parent
 if str(TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(TESTS_DIR))
 
+from paths import ensure_import_paths  # noqa: E402
+
+ensure_import_paths()
+
 from ble_link import BleLink  # noqa: E402
 from fake_ble import FakeAdv, FakeClient, FakeDevice, FakeScanner  # noqa: E402
 from serial_backend import SerialError  # noqa: E402

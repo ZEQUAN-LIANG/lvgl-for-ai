@@ -10,10 +10,10 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 APP_DIR = REPO_ROOT / "user" / "app" / "perf_monitor"
-HOST_DIR = REPO_ROOT / "chip-adapt" / "esp32" / "host"
+PERF_DIR = REPO_ROOT / "chip-adapt" / "esp32" / "host" / "perf"
 
-if str(HOST_DIR) not in sys.path:
-    sys.path.insert(0, str(HOST_DIR))
+if str(PERF_DIR) not in sys.path:
+    sys.path.insert(0, str(PERF_DIR))
 
 from perf_protocol import PerfSample, encode  # noqa: E402
 

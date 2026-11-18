@@ -5,8 +5,10 @@ import unittest
 from pathlib import Path
 
 HOST_DIR = Path(__file__).resolve().parents[1]
-if str(HOST_DIR) not in sys.path:
-    sys.path.insert(0, str(HOST_DIR))
+PERF_DIR = HOST_DIR / "perf"
+for path in (HOST_DIR, PERF_DIR):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 from perf_protocol import (  # noqa: E402
     PERF_BARS,

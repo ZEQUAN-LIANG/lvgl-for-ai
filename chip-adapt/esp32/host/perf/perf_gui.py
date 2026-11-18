@@ -21,9 +21,10 @@ import webbrowser
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-HOST_DIR = Path(__file__).resolve().parent
-if str(HOST_DIR) not in sys.path:
-    sys.path.insert(0, str(HOST_DIR))
+PERF_DIR = Path(__file__).resolve().parent
+HOST_DIR = PERF_DIR.parent
+if str(PERF_DIR) not in sys.path:
+    sys.path.insert(0, str(PERF_DIR))
 
 from tray import TrayIcon  # noqa: E402
 

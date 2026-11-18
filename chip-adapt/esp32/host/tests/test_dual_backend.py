@@ -10,6 +10,10 @@ HOST_DIR = Path(__file__).resolve().parents[1]
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
+from paths import ensure_import_paths  # noqa: E402
+
+ensure_import_paths()
+
 from dual_backend import DualBackend  # noqa: E402
 from serial_backend import SerialBackend, SerialError  # noqa: E402
 
