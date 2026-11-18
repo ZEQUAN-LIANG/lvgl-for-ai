@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 import urllib.error
 import urllib.request
 import webbrowser
@@ -32,6 +33,13 @@ from broker import BrokerError, SerialBroker, ports as serial_ports  # noqa: E40
 from command_session import CommandSession  # noqa: E402
 from device_control import DeviceController, DeviceError  # noqa: E402
 from fake_serial import FakeSerialBackend  # noqa: E402
+import flasher_web  # noqa: E402
+from flash_control import (  # noqa: E402
+    DEFAULT_FLASH_BAUD,
+    FlashController,
+    FlashError,
+)
+from jobs import TERMINAL_STATUSES, JobManager  # noqa: E402
 from page_control import PageController, PageError  # noqa: E402
 
 DEFAULT_HTTP_PORT = 8767
@@ -54,13 +62,25 @@ def default_config() -> dict[str, Any]:
         "reconnect_interval_s": 0.8,
         "reconnect_max_delay_s": 5.0,
         "log_dir": str(HOST_DIR / "logs"),
+        "flash_baud": DEFAULT_FLASH_BAUD,
+        "flash_timeout_s": 300,
+        "flash_max_upload_bytes": 128 * 1024 * 1024,
+        "flash_cache_dir": str(HOST_DIR / ".cache" / "flash"),
+        "esptool": "",
     }
 
 
 class HostState:
-    def __init__(self, *, fake: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        fake: bool = False,
+        config: dict[str, Any] | None = None,
+    ) -> None:
         self.fake = fake
         self.config = default_config()
+        if config:
+            self.config.update(config)
         Path(self.config["log_dir"]).mkdir(parents=True, exist_ok=True)
         if fake:
             self.broker = SerialBroker(
@@ -71,6 +91,10 @@ class HostState:
         self.session = CommandSession(self.broker, timeout_ms=4000)
         self.pages = PageController(self.session)
         self.device = DeviceController(self.session)
+        self.jobs = JobManager(keep=20)
+        self.flash = FlashController(
+            HOST_DIR, self.config, self.broker, fake=fake
+        )
 
     def port_list(self) -> list[dict[str, Any]]:
         if self.fake:
@@ -131,13 +155,57 @@ class HostHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def _error(self, code: str, message: str, status: int = 400) -> None:
-        self._json({"ok": False, "error": code, "message": message}, status)
+    def _error(
+        self,
+        code: str,
+        message: str,
+        status: int = 400,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        payload: dict[str, Any] = {
+            "ok": False,
+            "error": code,
+            "message": message,
+        }
+        if extra:
+            payload.update(extra)
+        self._json(payload, status)
+
+    def _since(self) -> int:
+        query = parse_qs(urlparse(self.path).query)
+        try:
+            return int(query.get("since", ["0"])[0])
+        except ValueError:
+            return 0
 
     def _index(self) -> None:
         data = (HOST_DIR / "web" / "index.html").read_bytes()
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _flash_page(self) -> None:
+        target = flasher_web.asset_path("index.html")
+        if target is None:
+            self._error("not_found", "flasher page is missing", 404)
+            return
+        self._flash_file(target)
+
+    def _flash_asset(self, path: str) -> None:
+        relative = path[len("/flash/") :]
+        target = flasher_web.asset_path(relative)
+        if target is None:
+            self._error("not_found", f"unknown flasher asset: {relative}", 404)
+            return
+        self._flash_file(target)
+
+    def _flash_file(self, target: Path) -> None:
+        data = target.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", flasher_web.content_type(target))
+        self.send_header("Cache-Control", "no-cache")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -175,6 +243,177 @@ class HostHandler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError, OSError):
             return
 
+    # ---------------------------------------------------------------- flash
+
+    def _origin_allowed(self) -> bool:
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        parsed = urlparse(origin)
+        return parsed.hostname in ("127.0.0.1", "localhost", "::1")
+
+    def _upload_firmware(self) -> None:
+        if not self._origin_allowed():
+            raise HostError("cross-origin upload rejected", code="forbidden", status=403)
+        state = self.server.state
+        query = parse_qs(urlparse(self.path).query)
+        name = (query.get("name") or ["firmware.bin"])[0]
+        length = int(self.headers.get("Content-Length") or 0)
+        limit = int(state.config["flash_max_upload_bytes"])
+        if length <= 0:
+            raise HostError("uploaded file is empty", code="empty_upload")
+        if length > limit:
+            self.close_connection = True
+            raise HostError(
+                f"upload is larger than {limit} bytes",
+                code="upload_too_large",
+                status=413,
+            )
+        try:
+            self.connection.settimeout(120)
+            data = self.rfile.read(length)
+        except TimeoutError as exc:
+            raise HostError(
+                "upload timed out",
+                code="upload_timeout",
+                status=400,
+            ) from exc
+        finally:
+            try:
+                self.connection.settimeout(None)
+            except OSError:
+                pass
+        if len(data) != length:
+            raise HostError(
+                "upload was truncated",
+                code="upload_truncated",
+                status=400,
+            )
+        self._json({"ok": True, **state.flash.save_upload(name, data)})
+
+    def _flash_source(self, body: dict[str, Any]) -> dict[str, Any]:
+        source: dict[str, Any] = {}
+        for key in ("token", "path", "build_dir"):
+            if body.get(key):
+                source[key] = body[key]
+        if body.get("files"):
+            source["files"] = body["files"]
+        if body.get("address") is not None:
+            source["address"] = body["address"]
+        return source
+
+    def _plan_firmware(self, body: dict[str, Any]) -> None:
+        if not self._origin_allowed():
+            raise HostError(
+                "cross-origin plan rejected",
+                code="forbidden",
+                status=403,
+            )
+        state = self.server.state
+        plan = state.flash.plan(self._flash_source(body))
+        self._json({"ok": True, **plan})
+
+    def _start_flash(self, body: dict[str, Any]) -> None:
+        if not self._origin_allowed():
+            raise HostError(
+                "cross-origin flash rejected",
+                code="forbidden",
+                status=403,
+            )
+        state = self.server.state
+        if body.get("plan_id"):
+            plan = state.flash.get_plan(str(body["plan_id"]))
+        else:
+            preview = state.flash.plan(self._flash_source(body))
+            plan = state.flash.get_plan(preview["plan_id"])
+        options = {
+            "port": str(body.get("port") or ""),
+            "baud": int(body.get("baud") or 0) or None,
+            "erase_all": bool(body.get("erase_all")),
+            "verify": body.get("verify", True) is not False,
+            "after": str(body.get("after") or "hard_reset"),
+            "before": str(body.get("before") or "default_reset"),
+            "reconnect": body.get("reconnect", True) is not False,
+        }
+        job = state.jobs.create("flash", "flash", actor="web")
+        try:
+            state.flash.start(job, plan, options)
+        except FlashError as exc:
+            job.finish(ok=False, error=str(exc))
+            raise
+        self._json({"ok": True, "job_id": job.id}, 202)
+
+    def _get_jobs(self) -> None:
+        jobs = self.server.state.jobs.list()
+        self._json({"ok": True, "jobs": jobs})
+
+    def _get_job(self, path: str) -> None:
+        parts = path.strip("/").split("/")
+        job_id = parts[2] if len(parts) >= 3 else ""
+        job = self.server.state.jobs.get(job_id)
+        if job is None:
+            self._error("job_not_found", "job not found", 404)
+            return
+        if len(parts) >= 4 and parts[3] == "stream":
+            self._serve_job_stream(job)
+            return
+        self._json({"ok": True, "job": job.snapshot(self._since())})
+
+    def _serve_job_stream(self, job: Any) -> None:
+        since = self._since()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "close")
+        self.send_header("X-Accel-Buffering", "no")
+        self.end_headers()
+        self.close_connection = True
+        try:
+            self.wfile.write(b"retry: 1000\n\n")
+            self.wfile.flush()
+            while True:
+                job.wait(since, 10.0)
+                snapshot = job.snapshot(since)
+                events = snapshot["events"]
+                if events:
+                    since = snapshot["next"]
+                    payload = json.dumps(
+                        {
+                            "id": job.id,
+                            "status": snapshot["status"],
+                            "percent": snapshot["percent"],
+                            "events": events,
+                            "next": since,
+                        },
+                        ensure_ascii=False,
+                    )
+                    self.wfile.write(f"data: {payload}\n\n".encode("utf-8"))
+                    self.wfile.flush()
+                if snapshot["status"] in TERMINAL_STATUSES:
+                    done = json.dumps(snapshot, ensure_ascii=False)
+                    self.wfile.write(
+                        f"event: done\ndata: {done}\n\n".encode("utf-8")
+                    )
+                    self.wfile.flush()
+                    return
+                if not events:
+                    self.wfile.write(b": ping\n\n")
+                    self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            return
+
+    def _cancel_job(self, path: str) -> None:
+        parts = path.strip("/").split("/")
+        if len(parts) < 4 or parts[3] != "cancel":
+            self._error("not_found", "unknown path", 404)
+            return
+        job = self.server.state.jobs.get(parts[2])
+        if job is None:
+            self._error("job_not_found", "job not found", 404)
+            return
+        job.cancel()
+        self._json({"ok": True, "job_id": job.id})
+
     # ------------------------------------------------------------------- GET
 
     def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
@@ -182,6 +421,12 @@ class HostHandler(BaseHTTPRequestHandler):
         try:
             if path in ("/", "/index.html"):
                 self._index()
+                return
+            if path in ("/flash", "/flash/", "/flash.html"):
+                self._flash_page()
+                return
+            if path.startswith("/flash/"):
+                self._flash_asset(path)
                 return
             if path == "/api/health":
                 self._json({"ok": True})
@@ -226,7 +471,23 @@ class HostHandler(BaseHTTPRequestHandler):
             if path == "/api/stream":
                 self._stream()
                 return
+            if path == "/api/flash/env":
+                self._json(
+                    {
+                        "ok": True,
+                        "env": self.server.state.flash.environment(),
+                    }
+                )
+                return
+            if path == "/api/jobs":
+                self._get_jobs()
+                return
+            if path.startswith("/api/jobs/"):
+                self._get_job(path)
+                return
             self._error("not_found", f"unknown path: {path}", 404)
+        except FlashError as exc:
+            self._error(exc.code, str(exc), exc.status, exc.extra)
         except BrokerError as exc:
             self._error(exc.code, str(exc), 409)
         except PageError as exc:
@@ -241,8 +502,31 @@ class HostHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
         path = urlparse(self.path).path
         try:
+            if path == "/api/flash/upload":
+                self._upload_firmware()
+                return
             body = self._body()
             state = self.server.state
+            if (
+                state.flash.busy()
+                and path
+                not in ("/api/flash", "/api/flash/start", "/api/flash/plan")
+                and not path.startswith("/api/jobs/")
+            ):
+                raise HostError(
+                    "flash is running; the serial port is released",
+                    code="flash_busy",
+                    status=409,
+                )
+            if path == "/api/flash/plan":
+                self._plan_firmware(body)
+                return
+            if path in ("/api/flash", "/api/flash/start"):
+                self._start_flash(body)
+                return
+            if path.startswith("/api/jobs/"):
+                self._cancel_job(path)
+                return
             if path == "/api/open":
                 port = str(body.get("port") or "")
                 if state.fake and not port:
@@ -345,6 +629,8 @@ class HostHandler(BaseHTTPRequestHandler):
             self._error("not_found", f"unknown path: {path}", 404)
         except HostError as exc:
             self._error(exc.code, str(exc), exc.status)
+        except FlashError as exc:
+            self._error(exc.code, str(exc), exc.status, exc.extra)
         except BrokerError as exc:
             self._error(exc.code, str(exc), 409)
         except PageError as exc:
@@ -384,6 +670,33 @@ def request_json(
         raise SystemExit(f"host not reachable at {url}: {exc.reason}") from exc
 
 
+def wait_job(
+    base_url: str,
+    job_id: str,
+    *,
+    as_json: bool = False,
+) -> dict[str, Any]:
+    since = 0
+    while True:
+        payload = request_json(
+            "GET", f"{base_url}/api/jobs/{job_id}?since={since}"
+        )
+        job = payload.get("job") or {}
+        for event in job.get("events") or []:
+            text = str(event.get("text") or "")
+            if as_json or not text:
+                continue
+            stream = event.get("stream")
+            print(
+                text,
+                file=sys.stderr if stream == "stderr" else sys.stdout,
+            )
+        since = int(job.get("next") or since)
+        if job.get("status") in TERMINAL_STATUSES:
+            return job
+        time.sleep(0.2)
+
+
 def print_result(payload: dict[str, Any], *, as_json: bool) -> None:
     if as_json:
         print(json.dumps(payload, ensure_ascii=False))
@@ -409,8 +722,76 @@ def print_result(payload: dict[str, Any], *, as_json: bool) -> None:
         print(json.dumps(payload, ensure_ascii=False))
 
 
+def cmd_flash(args: argparse.Namespace) -> int:
+    base = args.url.rstrip("/")
+    if args.file:
+        entry: dict[str, Any] = {"path": str(Path(args.file).resolve())}
+        if args.address:
+            entry["address"] = args.address
+        source: dict[str, Any] = {"files": [entry]}
+    elif args.zip:
+        source = {"path": str(Path(args.zip).resolve())}
+        if args.address:
+            source["address"] = args.address
+    else:
+        source = {"path": str(Path(args.build_dir).resolve())}
+        if args.address:
+            source["address"] = args.address
+    plan = request_json("POST", f"{base}/api/flash/plan", source)
+    if not plan.get("ok"):
+        print_result(plan, as_json=args.json)
+        return 1
+    if args.plan_only:
+        if args.json:
+            print(json.dumps(plan, ensure_ascii=False))
+        else:
+            print(f"source: {plan.get('notes') or plan.get('source')}")
+            for entry in plan.get("entries") or []:
+                print(
+                    f"  {entry.get('address')}  {entry.get('name')}"
+                    f"  ({entry.get('size')} bytes)"
+                )
+        return 0
+    status = request_json("GET", f"{base}/api/status")
+    serial = status.get("serial") or {}
+    port = args.port or str(serial.get("port") or "")
+    if not port:
+        print("choose a serial port with --port or open it in the web UI")
+        return 1
+    payload = request_json(
+        "POST",
+        f"{base}/api/flash",
+        {
+            "plan_id": plan["plan_id"],
+            "port": port,
+            "baud": args.baud,
+            "erase_all": args.erase_all,
+            "verify": not args.no_verify,
+            "after": args.after,
+            "before": args.before,
+            "reconnect": not args.no_reconnect,
+        },
+    )
+    if not payload.get("ok"):
+        print_result(payload, as_json=args.json)
+        return 1
+    job = wait_job(base, payload["job_id"], as_json=args.json)
+    if args.json:
+        print(json.dumps(job, ensure_ascii=False))
+    elif job.get("status") == "ok":
+        print("flash ok")
+    else:
+        print(f"flash {job.get('status')}: {job.get('error') or ''}")
+    return 0 if job.get("status") == "ok" else 1
+
+
 def serve(args: argparse.Namespace) -> int:
-    state = HostState(fake=args.fake)
+    config: dict[str, Any] = {}
+    if args.esptool:
+        config["esptool"] = args.esptool
+    if args.flash_baud:
+        config["flash_baud"] = args.flash_baud
+    state = HostState(fake=args.fake, config=config)
     if args.fake:
         state.broker.open("COM99", args.baud)
     elif args.port:
@@ -421,7 +802,16 @@ def serve(args: argparse.Namespace) -> int:
     server = HostServer((args.host, args.http_port), HostHandler, state)
     url = f"http://{args.host}:{args.http_port}/"
     print(f"ESP32-C6 host: {url}")
+    print(f"flasher: {url}flash/")
     print(f"mode: {'fake (COM99)' if args.fake else 'serial'}")
+    environment = state.flash.environment()
+    esptool = environment["esptool"]
+    if args.fake:
+        print("esptool: fake backend")
+    elif esptool["found"]:
+        print(f"esptool: {esptool['version']} ({esptool['label']})")
+    else:
+        print(f"esptool: not found ({environment.get('hint')})")
     print("press Ctrl+C to stop")
     if args.open:
         webbrowser.open(url)
@@ -461,6 +851,49 @@ def main(argv: list[str] | None = None) -> int:
     serve_parser.add_argument(
         "--open", action="store_true", help="open the browser"
     )
+    serve_parser.add_argument(
+        "--esptool", default="", help="path to esptool.exe or esptool.py"
+    )
+    serve_parser.add_argument(
+        "--flash-baud", type=int, default=0, help="default flash baud rate"
+    )
+
+    flash_parser = sub.add_parser(
+        "flash", help="flash firmware through the host (esptool)"
+    )
+    add_common(flash_parser)
+    source_group = flash_parser.add_mutually_exclusive_group(required=True)
+    source_group.add_argument("--file", help="a single .bin image")
+    source_group.add_argument("--zip", help="ZIP with flash_args or one BIN")
+    source_group.add_argument(
+        "--build-dir", help="ESP-IDF build directory with flash_args"
+    )
+    flash_parser.add_argument(
+        "--address", default="", help="address for --file (default 0x0)"
+    )
+    flash_parser.add_argument("--port", default="")
+    flash_parser.add_argument("--baud", type=int, default=0)
+    flash_parser.add_argument(
+        "--erase-all", action="store_true", dest="erase_all"
+    )
+    flash_parser.add_argument("--no-verify", action="store_true")
+    flash_parser.add_argument(
+        "--after",
+        choices=("hard_reset", "soft_reset", "no_reset"),
+        default="hard_reset",
+    )
+    flash_parser.add_argument(
+        "--before",
+        choices=(
+            "default_reset",
+            "usb_reset",
+            "no_reset",
+            "no_reset_no_sync",
+        ),
+        default="default_reset",
+    )
+    flash_parser.add_argument("--no-reconnect", action="store_true")
+    flash_parser.add_argument("--plan-only", action="store_true")
 
     pages_parser = sub.add_parser("pages", help="list firmware pages")
     add_common(pages_parser)
@@ -494,6 +927,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "serve":
         return serve(args)
+    if args.command == "flash":
+        return cmd_flash(args)
 
     base = args.url.rstrip("/")
     if args.command == "pages":

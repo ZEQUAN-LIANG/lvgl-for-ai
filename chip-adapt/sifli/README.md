@@ -23,6 +23,8 @@ SDK、工具链、sftool 和可选的 Web Flasher 资源都是外部下载物，
 独占 COM 口，网页、CLI、AI 读同一份带序号的字节流；人类和 AI/CLI 共用 `/api/flash` job，
 底层官方 `sftool.exe`。用法、依赖、CLI/HTTP API 见
 [`host/README.md`](host/README.md) 和 [`host/ENVIRONMENT.md`](host/ENVIRONMENT.md)。
+独立共享烧录页 `/flash/`（ESP32 用 esptool、SiFli 用 sftool）的完整说明、API 与排障见
+[`../host/README.md`](../host/README.md)。
 
 ## 共享源码与目标专属生成层
 

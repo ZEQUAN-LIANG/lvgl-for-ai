@@ -29,6 +29,8 @@ from broker import SerialBroker, ports
 from build_flash import (
     environment,
     find_build_dir,
+    flash_environment,
+    flash_plan,
     flasher_page_url,
     package_firmware,
     resolve_project_dir,
@@ -38,6 +40,7 @@ from config import (
     load_config,
     public_base_url,
 )
+import flasher_web
 from events import EventHub
 from http_layer import (
     SseWriter,
@@ -70,6 +73,8 @@ class HostServer(ThreadingHTTPServer):
         self.broker = SerialBroker(config)
         self.jobs = JobManager(publisher=self.events.publish)
         self.runner = JobRunner(config, self.broker, self.state_store)
+        self.flash_plans = flasher_web.PlanStore()
+        self.flash_gate = threading.Lock()
         self.started_at = time.time()
         self.base_url = public_base_url(config)
         self.web_dir = HOST_DIR / "web"
@@ -80,6 +85,13 @@ class HostServer(ThreadingHTTPServer):
     @property
     def uptime_s(self) -> float:
         return round(time.time() - self.started_at, 3)
+
+    def run_flash_job(self, job: Job, request: FlashRequest) -> None:
+        """Run a flash job and release the flash gate when it ends."""
+        try:
+            self.runner.flash(job, request)
+        finally:
+            self.flash_gate.release()
 
 
 class HostHandler(BaseHTTPRequestHandler):
@@ -100,6 +112,10 @@ class HostHandler(BaseHTTPRequestHandler):
         "/api/stream": "_get_stream",
         "/api/jobs": "_get_jobs",
         "/api/logs": "_get_logs",
+        "/api/flash/env": "_get_flash_env",
+        "/flash": "_get_flash_index",
+        "/flash/": "_get_flash_index",
+        "/flash.html": "_get_flash_index",
         "/firmware": "_get_firmware",
         "/tools/sftool": "_get_flasher_redirect",
         "/tools/sftool/": "_get_flasher_index",
@@ -110,6 +126,7 @@ class HostHandler(BaseHTTPRequestHandler):
         ("/api/jobs/", "_get_job"),
         ("/api/logs/", "_get_log"),
         ("/firmware/", "_get_firmware"),
+        ("/flash/", "_get_flash_asset"),
         ("/tools/sftool/", "_get_flasher_asset"),
         ("/vendor/", "_get_vendor_asset"),
     )
@@ -123,6 +140,8 @@ class HostHandler(BaseHTTPRequestHandler):
         "/api/reset": "_post_reset",
         "/api/build": "_post_build",
         "/api/flash": "_post_flash",
+        "/api/flash/plan": "_post_flash_plan",
+        "/api/flash/start": "_post_flash_start",
         "/api/shutdown": "_post_shutdown",
         "/api/flasher/prepare": "_post_flasher_prepare",
     }
@@ -324,6 +343,60 @@ class HostHandler(BaseHTTPRequestHandler):
     def _get_index(self, path: str, query: dict[str, list[str]]) -> None:
         self._send_file(self.server.web_dir / "index.html")
 
+    def _get_flash_index(
+        self,
+        path: str,
+        query: dict[str, list[str]],
+    ) -> None:
+        self._send_file(flasher_web.WEB_DIR / "index.html")
+
+    def _get_flash_asset(
+        self,
+        path: str,
+        query: dict[str, list[str]],
+    ) -> None:
+        relative = path[len("/flash/") :]
+        target = flasher_web.asset_path(relative)
+        if target is None:
+            self._send_json(404, {"ok": False, "error": "not found"})
+            return
+        self._send_file(target)
+
+    def _get_flash_env(
+        self,
+        path: str,
+        query: dict[str, list[str]],
+    ) -> None:
+        payload = flash_environment(self.server.config)
+        advice = suggest(self.server.config, self.server.state_store)
+        suggestions = [
+            {
+                "label": (
+                    f"{item.get('app') or 'build'} · "
+                    f"{Path(item['build_dir']).name}"
+                ),
+                "build_dir": item["build_dir"],
+            }
+            for item in advice.get("builds", [])
+        ]
+        if advice.get("app") and advice.get("project_dir"):
+            suggestions.append(
+                {
+                    "label": f"{advice['app']} · 工程",
+                    "app": advice["app"],
+                    "project_dir": advice["project_dir"],
+                }
+            )
+        payload["defaults"] = {
+            "app": advice.get("app", ""),
+            "project_dir": advice.get("project_dir", ""),
+            "build_dir": advice.get("build_dir", ""),
+            "port": advice.get("port", ""),
+            "baud": advice.get("baud") or payload["default_baud"],
+        }
+        payload["suggestions"] = suggestions
+        self._send_json(200, {"ok": True, "env": payload})
+
     def _get_favicon(self, path: str, query: dict[str, list[str]]) -> None:
         self.send_response(204)
         self.send_header("Content-Length", "0")
@@ -357,7 +430,8 @@ class HostHandler(BaseHTTPRequestHandler):
                     "version": VERSION,
                     "uptime_s": self.server.uptime_s,
                     "base_url": self.server.base_url,
-                    "flasher_page": "/tools/sftool/",
+                    "flasher_page": "/flash/",
+                    "official_flasher_page": "/tools/sftool/",
                 },
             },
         )
@@ -746,25 +820,141 @@ class HostHandler(BaseHTTPRequestHandler):
         path: str,
         query: dict[str, list[str]],
     ) -> None:
-        request = FlashRequest.from_body(body)
-        job = self.server.jobs.create(
-            "flash",
-            "flash",
-            actor=self._actor(),
-        )
+        if not self.server.flash_gate.acquire(blocking=False):
+            self._send_json(
+                409,
+                {
+                    "ok": False,
+                    "code": "flash_busy",
+                    "error": "another flash job is already running",
+                },
+            )
+            return
+        started = False
+        try:
+            request = FlashRequest.from_body(body)
+            job = self.server.jobs.create(
+                "flash",
+                "flash",
+                actor=self._actor(),
+            )
+            self._event(
+                "job.request",
+                "flash requested",
+                {
+                    "job_id": job.id,
+                    "kind": "flash",
+                    "app": request.app,
+                    "project_dir": request.project_dir or "",
+                    "build_dir": request.build_dir or "",
+                },
+            )
+            self._start_job_thread(
+                self.server.run_flash_job,
+                job,
+                request,
+            )
+            started = True
+            self._send_json(202, {"ok": True, "job_id": job.id})
+        finally:
+            if not started:
+                self.server.flash_gate.release()
+
+    def _post_flash_plan(
+        self,
+        body: dict[str, Any],
+        path: str,
+        query: dict[str, list[str]],
+    ) -> None:
+        source = {
+            key: body[key]
+            for key in ("app", "project_dir", "build_dir", "board")
+            if body.get(key)
+        }
+        plan = flash_plan(self.server.config, **source)
+        plan_id = self.server.flash_plans.put(plan)
+        payload = flasher_web.public_plan({**plan, "plan_id": plan_id})
         self._event(
-            "job.request",
-            "flash requested",
+            "flasher.plan",
+            "resolved sftool_param.json",
             {
-                "job_id": job.id,
-                "kind": "flash",
-                "app": request.app,
-                "project_dir": request.project_dir or "",
-                "build_dir": request.build_dir or "",
+                "plan_id": plan_id,
+                "build_dir": plan["build_dir"],
+                "entries": len(plan["entries"]),
             },
         )
-        self._start_job_thread(self.server.runner.flash, job, request)
-        self._send_json(202, {"ok": True, "job_id": job.id})
+        self._send_json(200, {"ok": True, **payload})
+
+    def _post_flash_start(
+        self,
+        body: dict[str, Any],
+        path: str,
+        query: dict[str, list[str]],
+    ) -> None:
+        plan_id = str(body.get("plan_id") or "")
+        plan = self.server.flash_plans.get(plan_id)
+        if plan is None:
+            self._send_json(
+                404,
+                {
+                    "ok": False,
+                    "code": "plan_not_found",
+                    "error": "firmware plan expired; resolve it again",
+                },
+            )
+            return
+        if not self.server.flash_gate.acquire(blocking=False):
+            self._send_json(
+                409,
+                {
+                    "ok": False,
+                    "code": "flash_busy",
+                    "error": "another flash job is already running",
+                },
+            )
+            return
+        started = False
+        try:
+            request = FlashRequest(
+                app=str(plan.get("app") or ""),
+                project_dir=plan.get("project_dir") or None,
+                build_dir=plan.get("build_dir") or None,
+                board=plan.get("board") or None,
+                build=False,
+                port=str(body["port"]) if body.get("port") else None,
+                baud=int(body["baud"]) if body.get("baud") else None,
+                verify=body.get("verify"),
+                erase_all=body.get("erase_all"),
+                after=body.get("after") or None,
+                reconnect=body.get("reconnect", True) is not False,
+            )
+            job = self.server.jobs.create(
+                "flash",
+                "flash",
+                actor=self._actor(),
+            )
+            self._event(
+                "job.request",
+                "flash requested",
+                {
+                    "job_id": job.id,
+                    "kind": "flash",
+                    "app": request.app,
+                    "project_dir": request.project_dir or "",
+                    "build_dir": request.build_dir or "",
+                    "plan_id": plan_id,
+                },
+            )
+            self._start_job_thread(
+                self.server.run_flash_job,
+                job,
+                request,
+            )
+            started = True
+            self._send_json(202, {"ok": True, "job_id": job.id})
+        finally:
+            if not started:
+                self.server.flash_gate.release()
 
     def _post_job_action(
         self,
@@ -943,6 +1133,7 @@ def main(argv: list[str] | None = None) -> int:
     config["port"] = int(actual_port)
     url = server.base_url
     print(f"[sifli-host] serving {url}", file=sys.stderr)
+    print(f"[sifli-host] flasher {url}/flash/", file=sys.stderr)
     print(
         f"[sifli-host] config {config.get('config_path')} "
         f"(exists={config.get('config_exists')})",

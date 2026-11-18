@@ -12,11 +12,13 @@ from pathlib import Path
 
 HOST_DIR = Path(__file__).resolve().parent
 REPO_ROOT = HOST_DIR.parents[2]
-SIFLI_HOST_DIR = REPO_ROOT / "chip-adapt" / "sifli" / "host"
+CHIP_ADAPT_DIR = REPO_ROOT / "chip-adapt"
+SIFLI_HOST_DIR = CHIP_ADAPT_DIR / "sifli" / "host"
+SHARED_HOST_DIR = CHIP_ADAPT_DIR / "host"
 
 
 def ensure_import_paths() -> None:
-    for path in (HOST_DIR, SIFLI_HOST_DIR):
+    for path in (HOST_DIR, SIFLI_HOST_DIR, SHARED_HOST_DIR):
         value = str(path)
         if value not in sys.path:
             sys.path.insert(0, value)

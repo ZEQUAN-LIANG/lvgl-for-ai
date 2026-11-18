@@ -221,6 +221,7 @@ On Windows, MSYS2 UCRT64 is recommended. Full installation steps, PATH setup, fi
 - `user/app/GUIDE.md`: writing user apps.
 - `docs/skill/`: the skill contract (`SKILL.md`) and per-version `api-nav/`.
 - `chip-adapt/sifli/README.md` / `chip-adapt/docs/sifli.html`: SiFli adaptation layer and capabilities.
+- `chip-adapt/host/README.md`: standalone flasher page shared by the ESP32 (esptool) and SiFli (sftool) hosts, including the HTTP contract, firmware sources and troubleshooting.
 - `CONTEXT.md`: domain glossary.
 - `CLAUDE.md`: repository working notes for AI coding agents.
 - `SKILL.md` at the release package root (source: `docs/skill/SKILL.md`): the AI entry contract and agent workflow for the installed skill.

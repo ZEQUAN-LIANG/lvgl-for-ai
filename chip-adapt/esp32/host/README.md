@@ -13,6 +13,7 @@
 - **蓝牙**：启用/关闭、广播名称、允许发现、连接数、重新广播
 - **串口**：端口/波特率、连接/断开、自动重连、行尾、原始命令、SSE 日志、清空/下载
 - **系统**：芯片/Flash/内存/uptime/app/当前页面/串口状态、重置
+- **烧录器**：独立页面 `/flash/`（不在主 UI 的 tab 里）；esptool 后端、固件计划、实时进度
 
 默认 `http://127.0.0.1:8767/`；`--fake` 模式用内存 backend 模拟固件，不需要板子。
 页面列表和无线状态都来自串口命令，前端不写死。
@@ -87,6 +88,79 @@ python -I chip-adapt/esp32/host/host.py status --json
 
 `send` 默认用 LF；如果调试别的行协议，用 `--line-ending none|lf|cr|crlf`。
 
+## 烧录（esptool）
+
+烧录后端是乐鑫官方 `esptool`，不是 SiFli 的 `sftool`。host 负责解析固件、释放串口、调用
+esptool 并回传进度；ESP32 的 ROM bootloader 协议不在 Python 里重写。
+
+烧录器是**独立网页** `http://127.0.0.1:8767/flash/`，不在设备控制页里。页面和 SiFli
+host 的 `/flash/` 是同一份 `chip-adapt/host/flash_web/`，但后端不同：这里显示 `esptool`，
+SiFli 那边显示 `sftool`。主页面左侧「烧录器」链接会新开该页。共享页的完整说明、API、
+排障和实机记录见 [`../../host/README.md`](../../host/README.md)。
+
+### 准备 esptool
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/esp32/host/scripts/bootstrap.ps1
+```
+
+脚本用 `uv` 在 `chip-adapt/esp32/host/vendor/esptool/` 建 venv，固定安装 `esptool==4.8.1`
+（不进 Git）。host 的查找顺序：
+
+1. `ESPTOOL_BIN` 或 `serve --esptool PATH`；
+2. 上面的 vendor venv（优先 `python -m esptool`，避免控制台启动器留下孤儿进程）；
+3. PATH 上的 `esptool` / `esptool.py`；
+4. `IDF_PYTHON_ENV_PATH` 或 `~/.espressif/python_env/*` 里的 Python；
+5. 当前解释器 `python -m esptool`。
+
+同时支持 esptool 4.x 与 5.x：命令名、`--verify`、`--after` 与 `--flash_mode` 的写法按主版本
+自动切换；5.x 始终校验，网页会禁用“校验”勾选。
+
+### 网页流程
+
+1. 打开 `http://127.0.0.1:8767/flash/`（主页面「烧录器」链接）。选择 `.bin` / `.zip`
+   （上传到 host），或填写本机路径；ESP-IDF build 目录会读取
+   `flash_args` / `flasher_args.json`，Waveshare demo zip 会自动取
+   `Firmware/*.bin @ 0x0`。ZIP 只解压被引用的 BIN，不展开整个 260 MB 目录。
+2. 确认计划表里的文件/地址，选择端口与烧录波特率（默认 460800）。页面会自动
+   优先选 USB JTAG / USB 串行 / CH340 / CP210x 端口；没有把握时显示「选择串口」，
+   不会默认拿 COM1 开烧。
+3. 开始烧录：host 先释放串口，esptool 独占 COM 口；完成后按需重连
+   （`no_reset` 时不重连，避免打开没有固件输出的串口）。
+4. 取消/失败会结束 esptool 进程树；设备可能停在 bootloader，需复位后重试。
+
+页面右侧「后端」卡显示当前工具、版本、路径和芯片；这是 `esptool` 后端与 SiFli
+`sftool` 后端的对照展示。
+
+`--fake` 模式不调用 esptool，用模拟进度，便于无板演示和测试。
+
+### CLI
+
+```bash
+python -I chip-adapt/esp32/host/host.py flash --file fw.bin --plan-only
+python -I chip-adapt/esp32/host/host.py flash --zip chip-adapt/vendor/esp32/demo/ESP32-C6-LCD-1.47-Demo.zip --port COMx
+python -I chip-adapt/esp32/host/host.py flash --build-dir path/to/build --port COMx --json
+```
+
+`--address` 只对单个 `.bin` 生效，默认 `0x0`；`--erase-all`、`--no-verify`、
+`--after hard_reset|soft_reset|no_reset`、`--before default_reset|usb_reset`、
+`--no-reconnect` 与网页选项对应。
+
+如果 esptool 连不上 C6 的 USB Serial/JTAG，先用 `--before usb_reset` 重试；仍失败时按住
+BOOT 再上电进入下载模式。
+
+### 真机记录（2026-11-18）
+
+- 设备：ESP32-C6FH4，USB JTAG/serial 在 `COM13`；`esptool flash_id` 报 **8 MB Flash**
+  （官方文档写 4 MB，按实际批次确认）。
+- 固件：微雪 demo `Firmware/ESP32-C6-LCD-1.47-Test.bin`，4 MB @ `0x0`。
+- 网页 `/flash/` 自动选中 `COM13`，烧录 14.7 s，进度 100%；esptool 输出
+  `Hash of data verified` 与 `-- verify OK (digest matched)`。
+- 烧录时串口已打开的场景会先释放、结束后 `serial reconnected`；串口读取确认 demo
+  正在跑 BLE/Wi-Fi/RAM 测试。
+- SiFli 的 sftool 后端未做真机烧录：当前机器只检测到 ESP32 板卡，没有 SiFli CH340
+  串口。
+
 ## HTTP API
 
 | 方法 | 路径 | 说明 |
@@ -117,6 +191,15 @@ python -I chip-adapt/esp32/host/host.py status --json
 | `POST` | `/api/brightness` | `{value}` |
 | `POST` | `/api/system/reset` | `sys reset` |
 | `GET` | `/api/stream?since=N` | SSE 串口流 |
+| `GET` | `/flash/`、`/flash/<asset>` | 独立烧录页（共享 `chip-adapt/host/flash_web/`） |
+| `GET` | `/api/flash/env` | 后端元数据、能力、默认波特率和建议固件 |
+| `POST` | `/api/flash/upload?name=...` | 原始文件字节上传，返回 `token` |
+| `POST` | `/api/flash/plan` | `{token\|path\|files\|build_dir, address?}` → `plan_id` + entries |
+| `POST` | `/api/flash/start` | `{plan_id, port?, baud?, erase_all?, verify?, after?, before?, reconnect?}` → 202 `job_id` |
+| `POST` | `/api/flash` | 旧入口，参数同 `/api/flash/start` |
+| `GET` | `/api/jobs`、`/api/jobs/<id>` | 任务列表 / 快照（`since` 增量） |
+| `GET` | `/api/jobs/<id>/stream?since=N` | SSE 任务进度，终态发 `event: done` |
+| `POST` | `/api/jobs/<id>/cancel` | 取消烧录任务 |
 
 ## 测试
 
@@ -130,8 +213,8 @@ python -I chip-adapt/esp32/host/tests/run_tests.py
 ## 边界
 
 - 这是**原型**：网页/上位机已可跑；真实 Wi-Fi/BLE 驱动和 `esp_console` 命令要在 ESP-IDF
-  固件壳里实现。构建/烧录先用 ESP-IDF 终端手动执行。
-- `idf.py flash` 期间不要同时开 host，同一个 USB Serial/JTAG 口只能有一个 owner。
+  固件壳里实现。构建仍用 ESP-IDF；烧录已接到 host（esptool），不再要求手动在 IDF 终端执行。
+- host 烧录时会释放串口；不要同时用 `idf.py flash` 或其它工具占用同一个 COM 口。
 - 网页不直接用 Web Serial 打开 COM 口；浏览器、CLI、AI 都走同一个 host，避免抢口。
 - Wi-Fi 密码通过串口发送，但 `SerialBroker` 的 TX 事件日志会标 `redacted: true`，不把密码
   写进 `events.ndjson`；串口 RX 日志仍保留设备输出。

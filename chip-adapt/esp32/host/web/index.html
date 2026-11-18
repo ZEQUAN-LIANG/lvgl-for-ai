@@ -66,6 +66,7 @@
         display: flex; align-items: center; gap: 10px; width: 100%;
         padding: 10px 12px; border: 1px solid transparent; border-radius: 11px;
         background: transparent; color: var(--muted); text-align: left;
+        text-decoration: none;
       }
       .nav-item svg { width: 18px; height: 18px; flex: 0 0 auto; opacity: .85; }
       .nav-item:hover { color: var(--text); background: rgba(56, 189, 248, 0.06); }
@@ -298,6 +299,7 @@
       .protocol th { color: var(--muted); font-weight: 500; }
       .protocol code { color: var(--cyan); }
 
+
       .toast {
         position: fixed; right: 22px; bottom: 22px; z-index: 60;
         max-width: 380px; padding: 11px 14px; border-radius: 11px;
@@ -364,6 +366,11 @@
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8.4 4.6l1.7 1.3-2 3.4-2-.8a7.7 7.7 0 0 1-1.5.9l-.3 2.2h-4l-.3-2.2a7.7 7.7 0 0 1-1.5-.9l-2 .8-2-3.4 1.7-1.3a7.3 7.3 0 0 1 0-1.6L2.8 10l2-3.4 2 .8a7.7 7.7 0 0 1 1.5-.9L8.6 4h4l.3 2.2c.5.2 1 .5 1.5.9l2-.8 2 3.4-1.7 1.3c.1.5.1 1.1 0 1.6z"/></svg>
             系统
           </button>
+          <a class="nav-item" href="/flash/" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+            烧录器
+            <span class="tag" style="margin-left:auto">独立页</span>
+          </a>
         </nav>
 
         <div class="sidebar-foot">
@@ -670,6 +677,7 @@
             </article>
           </div>
         </section>
+
       </main>
     </div>
 
@@ -952,7 +960,12 @@
         try {
           const data = await api("/api/ports");
           const select = $("portSelect");
-          const previous = select.value;
+          const previous = select.value || (state.status || {}).port || "";
+          const preferred = data.ports.find((item) =>
+            /usb|jtag|ch340|cp210|ftdi|silicon labs/i.test(
+              `${item.description || ""} ${item.hwid || ""}`,
+            ),
+          );
           select.innerHTML = "";
           if (!data.ports.length) {
             select.add(new Option("未发现串口", ""));
@@ -963,6 +976,8 @@
           }
           if (previous && [...select.options].some((option) => option.value === previous)) {
             select.value = previous;
+          } else if (preferred) {
+            select.value = preferred.port;
           }
         } catch (error) {
           toast(error.message, "error");
@@ -1271,7 +1286,7 @@
       }
 
       function bindEvents() {
-        document.querySelectorAll(".nav-item").forEach((item) => {
+        document.querySelectorAll(".nav-item[data-view]").forEach((item) => {
           item.addEventListener("click", () => switchView(item.dataset.view));
         });
         $("refreshPorts").addEventListener("click", loadPorts);
@@ -1356,6 +1371,10 @@
       async function boot() {
         bindEvents();
         const params = new URLSearchParams(location.search);
+        if (params.get("view") === "flash") {
+          location.replace("/flash/");
+          return;
+        }
         if (!params.has("no-stream")) {
           startStream();
         }

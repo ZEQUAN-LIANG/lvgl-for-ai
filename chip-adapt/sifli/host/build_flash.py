@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -936,3 +937,161 @@ def environment(config: dict[str, Any]) -> dict[str, Any]:
         "export_ps1_exists": Path(config.get("export_ps1", "")).is_file(),
         "build_command": config.get("build_command") or [],
     }
+
+
+def probe_sftool_version(sftool: Path | None) -> str:
+    """Return ``sftool --version`` as a short string, or ``""``."""
+    if sftool is None:
+        return ""
+    try:
+        result = subprocess.run(
+            [str(sftool), "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            creationflags=_CREATE_NO_WINDOW,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    output = (result.stdout or "") + (result.stderr or "")
+    match = re.search(r"\b(\d+\.\d+(?:\.\d+)?)\b", output)
+    return match.group(1) if match else ""
+
+
+def flash_plan(
+    config: dict[str, Any],
+    *,
+    app: str | None = None,
+    project_dir: str | Path | None = None,
+    build_dir: str | Path | None = None,
+    board: str | None = None,
+) -> dict[str, Any]:
+    """Resolve ``sftool_param.json`` into the shared flasher plan shape."""
+    board_name = str(board or config.get("board") or "sf32lb52-lchspi-ulp")
+    project: Path | None = None
+    if build_dir:
+        build = Path(str(build_dir))
+        if not build.is_absolute():
+            build = Path(config["repo_root"]) / build
+        project = build.parent
+    else:
+        project = resolve_project_dir(project_dir, config)
+        if app:
+            exports = Path(
+                str(
+                    config.get("exports_root")
+                    or Path(config["repo_root"]) / "chip-adapt" / "exports"
+                )
+            )
+            candidate = exports / str(app) / "project"
+            if candidate.is_dir():
+                project = candidate
+        if project is None:
+            raise BuildFlashError(
+                "build_dir, project_dir or app is required",
+                code="project_missing",
+            )
+        build = find_build_dir(project, board_name)
+
+    parsed = read_sftool_param(build)
+    entries: list[dict[str, Any]] = []
+    for item in parsed["entries"]:
+        file_path = Path(item["path"])
+        entries.append(
+            {
+                "name": file_path.name,
+                "path": str(file_path),
+                "address": item.get("address") or "",
+                "size": file_path.stat().st_size,
+            }
+        )
+    app_name = str(app or "")
+    if not app_name and project is not None:
+        app_name = _app_from_exports(project, config)
+    return {
+        "build_dir": str(build.resolve()),
+        "project_dir": str(project.resolve()) if project else "",
+        "chip": parsed["chip"],
+        "memory": parsed["memory"],
+        "entries": entries,
+        "source": "sftool_param.json",
+        "notes": f"sftool_param.json · {build.name}",
+        "verify": parsed["verify"],
+        "app": app_name,
+        "board": board_name,
+    }
+
+
+def _app_from_exports(
+    project: str | Path,
+    config: dict[str, Any],
+) -> str:
+    exports = Path(
+        str(
+            config.get("exports_root")
+            or Path(config["repo_root"]) / "chip-adapt" / "exports"
+        )
+    ).resolve()
+    try:
+        relative = Path(project).resolve().relative_to(exports)
+    except ValueError:
+        return ""
+    parts = relative.parts
+    if len(parts) >= 2 and parts[1] == "project":
+        return parts[0]
+    return ""
+
+
+def flash_environment(config: dict[str, Any]) -> dict[str, Any]:
+    """Backend metadata consumed by the shared flasher page."""
+    payload = environment(config)
+    label = str(payload.get("sftool_found") or "")
+    sftool = Path(label) if label else None
+    version = probe_sftool_version(sftool)
+    found = bool(label)
+    board = str(config.get("board") or "sf32lb52-lchspi-ulp")
+    chip = "SF32LB52" if "SF32LB52" in board.upper() else "SF32"
+    payload.update(
+        {
+            "backend": {
+                "kind": "sftool",
+                "name": "sftool",
+                "found": found,
+                "label": label,
+                "version": version,
+                "chip": chip,
+                "board": board,
+                "detail": (
+                    f"sftool {version} · {label}"
+                    if found
+                    else "未找到 sftool"
+                ),
+            },
+            "default_baud": int(
+                config.get("flash_baud") or 1_000_000
+            ),
+            "baud_rates": list(
+                config.get("baud_rates")
+                or [1_000_000, 921_600, 460_800, 230_400, 115_200]
+            ),
+            "sources": ["build_dir", "project"],
+            "source_hint": (
+                "选择构建目录，或填工程目录/应用名；"
+                "地址来自 sftool_param.json。"
+            ),
+            "options": {
+                "verify": True,
+                "verify_supported": True,
+                "erase_all": True,
+                "after": ["soft_reset", "hard_reset", "no_reset"],
+                "before": [],
+                "reconnect": True,
+            },
+        }
+    )
+    if not found:
+        payload["hint"] = (
+            "sftool not found; install the SiFli SDK tools "
+            "or set SFTOOL_BIN"
+        )
+    return payload
