@@ -1,10 +1,21 @@
 # ESP32-C6 适配区
 
 目标板：微雪 **ESP32-C6-LCD-1.47（无触摸，172×320，ST7789，4 MB Flash，无 PSRAM）**。
-软件基线：ESP-IDF 5.5.x / LVGL 9.6 / `esp_lvgl_port` 2.9。
+目标软件基线：ESP-IDF 5.5.x / LVGL 9.6 / `esp_lvgl_port` 2.9；当前可烧录的
+`perf_monitor` bring-up 使用 Arduino-ESP32 3.3.10-cn + LVGL 9.6。
 
 > 实机记录：当前开发板为 ESP32-C6FH4，`esptool flash_id` 报 **8 MB Flash**（官方文档
 > 写 4 MB，微雪 demo 也打印 `Flash size: 8 MB`）。做分区表前先按实际批次确认容量。
+
+## 演示
+
+`perf_monitor` 在 172×320 / 320×172 之间串口切换；host 的 `/perf/` 页面和 tkinter GUI
+都可以控制 Demo/Live、发送周期（默认 0.3 秒）和横竖版。下面是实机拍摄（无音频，
+不是 headless 预览）：
+
+<p align="center"><video src="../../docs/media/esp32-c6-perf-monitor.mp4" controls width="260"></video></p>
+
+[打开视频](../../docs/media/esp32-c6-perf-monitor.mp4)
 
 ## 当前状态
 
@@ -12,7 +23,8 @@
 | --- | --- | --- |
 | `host/` | 可运行原型 | 复用 SiFli host 的 `SerialBroker`；页面 + Wi-Fi + 蓝牙 + 串口 + 系统网页；独立烧录页 `/flash/`，CLI + fake backend |
 | LVGL demo | 可运行 | `user/app/c6_demo/`，3 页，172×320，headless 场景 `user/scenarios/c6_demo.json` |
-| 性能监控器 | 可运行（演示数据） | `user/app/perf_monitor/`，172×320 / 320×172 串口切换；协议与 PC 发送端见其 README |
+| 性能监控器 | 可运行（真机已验证） | `user/app/perf_monitor/`，172×320 / 320×172 串口切换；host `/perf/` + tkinter GUI；协议与 PC 发送端见其 README |
+| 桌面控制 GUI | 可运行 | `host/gui.py`，走 host HTTP API，不直接占用 COM 口 |
 | Wi-Fi / 蓝牙配置 UI | 已实现 | 网页扫描/连接/开关/改名/可发现；串口协议见 `host/README.md` |
 | 官方文档镜像 | 已抓取 | `docs/ESP32-C6-LCD-1.47/`，7 个页面 + 本地截图（2026-11-18） |
 | Arduino 演示固件 | 可运行（已烧录验证） | `arduino/build.py` + `arduino/templates/`；LVGL 9.6 + ST7789，临时 bring-up；见 `docs/arduino-perf-monitor.md` |
@@ -33,8 +45,8 @@ python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/perf_m
 # 性能监控器演示帧（不发串口）
 python -I chip-adapt/esp32/host/perf_agent.py --demo --dry-run --once
 
-# 临时 Arduino 演示固件（先启动 host 再烧录）
-python -I chip-adapt/esp32/arduino/build.py build --force
+# 临时 Arduino 演示固件（先启动 host 再烧录；默认增量编译）
+python -I chip-adapt/esp32/arduino/build.py build
 python -I chip-adapt/esp32/arduino/build.py flash --port COMx
 
 # 上位机（fake 串口，不需要板子）
@@ -43,6 +55,9 @@ python -I chip-adapt/esp32/host/tests/run_tests.py
 
 # 上位机（真机）
 python -I chip-adapt/esp32/host/host.py serve --port COMx --baud 115200 --open
+
+# 桌面 GUI（host 已启动）
+python -I chip-adapt/esp32/host/gui.py
 
 # 烧录（先装 esptool；不加 --fake 时走真机）
 powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/esp32/host/scripts/bootstrap.ps1
@@ -75,6 +90,14 @@ python -I chip-adapt/esp32/host/host.py flash \
   LVGL 同时开要先用 `idf.py size` 和实测 heap 评估。
 - **真实驱动**：网页和 host 协议已就绪；Wi-Fi 用 `esp_wifi`，蓝牙用 NimBLE
   (`esp_nimble`) 在 ESP-IDF 固件壳里实现，下一阶段做。
+
+## 已完成（perf_monitor）
+
+- 172×320 / 320×172 布局与 `PERF PORTRAIT` / `PERF LANDSCAPE` 串口切换；
+- 默认 0.3 秒监控周期，底栏显示实测周期；
+- ST7789 软件旋转 flush，修复横版花屏；
+- host `/perf/` 控制页、`perf_control.py`、`perf_agent.py` 与 tkinter GUI；
+- Arduino 固件真机烧录，`SHOT` 4 bpp 帧缓冲自检。
 
 ## 固件侧待做
 

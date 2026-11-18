@@ -84,6 +84,11 @@ class PerfControllerTest(unittest.TestCase):
         with self.assertRaises(PerfError):
             self.controller.set_layout("diagonal")
 
+    def test_default_interval_is_300ms(self) -> None:
+        self.controller.start("demo")
+        self.assertEqual(self.controller.status()["interval_s"], 0.3)
+        self.controller.stop()
+
     def test_bad_interval_rejected(self) -> None:
         with self.assertRaises(PerfError):
             self.controller.start("demo", 0.01)

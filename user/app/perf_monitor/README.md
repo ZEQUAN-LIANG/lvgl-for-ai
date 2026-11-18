@@ -2,12 +2,12 @@
 
 `perf_monitor` 把 `chip-adapt/esp32/design/perf-monitor.html` 的设计落成 LVGL 9.6
 应用：暖色磷光仪器风格，CPU 60 个采样的步进负载带、内存/GPU 双轨、网络上下行镜像
-波形、最多 16 条线程柱、PC 时钟与链路状态。演示数据按 1 秒节拍、8 条线程柱生成；
+波形、最多 16 条线程柱、PC 时钟与链路状态。演示数据按 0.3 秒节拍、8 条线程柱生成；
 真实帧用 `thn` 告诉屏幕实际逻辑核数，柱宽与数量会自适应。负载带的横轴窗口按实测
-采样周期换算：1 秒节拍显示 `-60S`，采集慢到 3.3 秒时显示 `-198S`。
+采样周期换算：0.3 秒节拍显示 `-18S`，采集慢到 3.3 秒时显示 `-198S`。
 
 应用有竖版 172×320 与横版 320×172 两套布局，用串口 `PERF PORTRAIT` /
-`PERF LANDSCAPE` 切换。横版把 CPU 放左侧，MEM/GPU/NET 并排成仪表头，60 秒负载带
+`PERF LANDSCAPE` 切换。横版把 CPU 放左侧，MEM/GPU/NET 并排成仪表头，18 秒负载带
 横贯底部；竖版保持原来的纵向构图。
 
 物理屏幕固定 172×320（Waveshare ESP32-C6-LCD-1.47，ST7789）。应用进入前 5 秒没有数据时
@@ -32,7 +32,7 @@ LVGL 应用已同时实现两套布局。
 ## 串口协议
 
 一条帧 = 一行 ASCII + LF。最大 320 字节。建议 115200 8N1，走 USB Serial/JTAG
-或同一路 UART。PC 端按 1 秒节拍发送；采集变慢时应用会在底栏显示实测周期
+或同一路 UART。PC 端按 0.3 秒节拍发送；采集变慢时应用会在底栏显示实测周期
 （`USB · 3.3S`）。应用不要求 ACK，但固件壳可以回。
 
 ### 数据帧
@@ -119,8 +119,8 @@ python -I chip-adapt/esp32/host/host.py serve --port COMx --baud 115200
 # 打印演示帧，不发送
 python -I chip-adapt/esp32/host/perf_agent.py --demo --dry-run --once
 
-# 真实 Windows 采集，每秒发送；先让屏幕切到横版
-python -I chip-adapt/esp32/host/perf_agent.py --layout landscape --live --interval 1.0
+# 真实 Windows 采集，默认每 0.3 秒发送；先让屏幕切到横版
+python -I chip-adapt/esp32/host/perf_agent.py --layout landscape --live
 
 # 没有板子/上位机时，只打印模拟帧
 python -I chip-adapt/esp32/host/perf_agent.py --demo --dry-run
@@ -130,7 +130,7 @@ Windows 采集使用 PowerShell/WMI 读取 CPU、内存、频率、每逻辑核�
 GPU 优先 `nvidia-smi`，否则尝试 `Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine`。
 CPU 温度没有稳定免依赖来源，通常显示 `--`。采集失败时 `--live` 会报错退出，不回退成
 假数据。WMI 首次查询可能要几秒，之后每帧大约 3–4 秒；屏幕底栏会显示实测周期，
-不是固定 1.0S。
+不是固定 0.3S。
 
 ## 本地 headless 验证
 
@@ -141,7 +141,7 @@ python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/perf_m
 ```
 
 竖版场景按 172×320 启动应用，横版场景按 320×172 启动；应用按显示方向选择布局，各等
-两秒截两张图。应用没有触摸交互；画面变化来自 1 秒一次的演示数据和虚拟时钟。
+两秒截两张图。应用没有触摸交互；画面变化来自 0.3 秒一次的演示数据和虚拟时钟。
 `PERF PORTRAIT` / `PERF LANDSCAPE` 会重建布局并调整 logical resolution；headless engine
 的 full-frame 缓冲不适合在 172×320 场景里预览旋转后的像素，横版请用 320×172 场景。
 

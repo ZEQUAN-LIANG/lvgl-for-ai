@@ -20,11 +20,11 @@
 ## 命令
 
 ```bash
-# 只生成 chip-adapt/exports/esp32/perf_monitor_arduino/
-python -I chip-adapt/esp32/arduino/build.py export --force
+# 只生成 chip-adapt/exports/esp32/perf_monitor_arduino/（默认增量）
+python -I chip-adapt/esp32/arduino/build.py export
 
-# 生成 + 编译；默认输出完整 4 MB merged bin
-python -I chip-adapt/esp32/arduino/build.py build --force
+# 生成 + 编译；默认复用 build/ 缓存，只重编改动文件
+python -I chip-adapt/esp32/arduino/build.py build
 
 # host 正在运行、串口已打开：通过 host 释放 COM 后烧录
 python -I chip-adapt/esp32/arduino/build.py flash --port COM13
@@ -39,6 +39,7 @@ python -I chip-adapt/esp32/arduino/build.py all --port COM13
 - `--dry-run`：只打印将写入的文件/将执行的命令
 - `--json`：单行 JSON，便于 AI/CI 读取
 - `--no-export`：`build` 时复用已有 sketch
+- `--force`：清理 `perf_c6/`、`libraries/lvgl/`、`build/` 后全量重导/重编；默认不使用
 - `--host-url`：host 地址，默认 `http://127.0.0.1:8767`
 - `--fqbn`：默认 `esp32:esp32:esp32c6:CDCOnBoot=cdc,PartitionScheme=huge_app`
 
@@ -60,7 +61,8 @@ chip-adapt/exports/esp32/perf_monitor_arduino/
 
 `perf_c6/lv_conf.h` 使用 16 bpp、96 KB LVGL heap、partial render；`perf_c6.ino`
 负责 172×320 ST7789 初始化、LVGL tick、USB Serial 行组装、软件旋转 flush 和
-`SHOT` 灰度快照。
+`SHOT` 灰度快照。源码内容未变时不会重写文件，`arduino-cli` 的 `build/` 缓存也保留，
+所以默认路径是增量的。
 
 ## 边界
 

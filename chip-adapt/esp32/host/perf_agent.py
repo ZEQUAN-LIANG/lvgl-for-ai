@@ -6,7 +6,7 @@ The host owns the serial port.  This agent sends through the existing
 
 Examples:
   python -I chip-adapt/esp32/host/perf_agent.py --demo --dry-run --once
-  python -I chip-adapt/esp32/host/perf_agent.py --live --interval 1.0
+  python -I chip-adapt/esp32/host/perf_agent.py --live --interval 0.3
   python -I chip-adapt/esp32/host/perf_agent.py --layout landscape --live
 """
 
@@ -282,7 +282,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         default="http://127.0.0.1:8767",
         help="ESP32-C6 host base URL (default: %(default)s)",
     )
-    parser.add_argument("--interval", type=float, default=1.0)
+    parser.add_argument("--interval", type=float, default=0.3)
     parser.add_argument(
         "--once", action="store_true", help="send one frame and exit"
     )

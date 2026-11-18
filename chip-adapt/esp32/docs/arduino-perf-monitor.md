@@ -4,6 +4,8 @@
 无触摸）上的临时 Arduino 适配。它是可烧录的 bring-up 固件，不是正式的 ESP-IDF
 固件壳；正式壳仍按 `esp_lvgl_port` / `esp_console` 规划。
 
+实机演示视频（无音频）：[`../../../docs/media/esp32-c6-perf-monitor.mp4`](../../../docs/media/esp32-c6-perf-monitor.mp4)。
+
 生成与烧录入口：`chip-adapt/esp32/arduino/build.py`。
 
 ## 1. 硬件与引脚
@@ -31,7 +33,7 @@
 | 颜色格式 | 显示端 `LV_COLOR_FORMAT_RGB565` | ST7789 16-bit |
 | 渲染模式 | `LV_DISPLAY_RENDER_MODE_PARTIAL` | 不分配 110 KB 全屏缓冲 |
 | 绘制缓冲 | `172 × 40 × 2 = 13,760 B` | 单缓冲，SPI 发送完再 `flush_ready` |
-| `LV_DEF_REFR_PERIOD` | 33 ms | 1 Hz 数据足够 |
+| `LV_DEF_REFR_PERIOD` | 33 ms | 屏幕刷新；数据 0.3 秒一帧 |
 | `LV_USE_OS` | `LV_OS_NONE` | Arduino `loop()` 单线程 |
 | 默认字体 | Montserrat 14 | 只是 LVGL 兜底；应用标签全部显式设字体 |
 | `LV_USE_OBJ_NAME` | 0 | Arduino 适配层把 `app_obj_set_name()` 置空 |
@@ -131,11 +133,11 @@ SHOT END
 ## 8. 构建与烧录
 
 ```bash
-# 生成
-python -I chip-adapt/esp32/arduino/build.py export --force
+# 生成（默认增量：只更新变化的文件）
+python -I chip-adapt/esp32/arduino/build.py export
 
-# 编译
-python -I chip-adapt/esp32/arduino/build.py build --force
+# 编译（默认增量：复用 build/ 缓存）
+python -I chip-adapt/esp32/arduino/build.py build
 
 # host 已运行并占用 COM13 时，走 host 释放串口 -> esptool -> 重连
 python -I chip-adapt/esp32/arduino/build.py flash --port COM13
@@ -143,6 +145,10 @@ python -I chip-adapt/esp32/arduino/build.py flash --port COM13
 # 或一步完成
 python -I chip-adapt/esp32/arduino/build.py all --port COM13
 ```
+
+默认是增量构建：导出只改写内容变化的源码，`build/` 缓存会保留，`arduino-cli` 只重编
+改动的文件。只有显式加 `--force` 才会清理 `perf_c6/`、`libraries/lvgl/` 和 `build/`，
+做一次全量编译。
 
 输出：
 

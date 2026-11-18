@@ -57,7 +57,7 @@ class PerfController:
         self._runner: Optional[threading.Thread] = None
         self._state = "idle"
         self._mode = "demo"
-        self._interval = 1.0
+        self._interval = 0.3
         self._layout = "portrait"
         self._seq = 0
         self._sent = 0
@@ -124,7 +124,7 @@ class PerfController:
     def start(
         self,
         mode: str = "demo",
-        interval: float = 1.0,
+        interval: float = 0.3,
         layout: Optional[str] = None,
     ) -> Dict[str, Any]:
         mode = str(mode or "").lower()

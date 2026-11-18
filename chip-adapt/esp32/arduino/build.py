@@ -7,12 +7,15 @@ self-contained Arduino sketch so the board, display, LVGL 9.6 rotation and the
 serial protocol can be exercised now.
 
 It never writes into ``user/app`` or ``engine/lvgl``.  Sources are copied to
-``chip-adapt/exports/esp32/perf_monitor_arduino/`` (git-ignored).
+``chip-adapt/exports/esp32/perf_monitor_arduino/`` (git-ignored).  By default
+only changed files are rewritten and the Arduino build cache is preserved, so
+repeat builds are incremental; ``--force`` cleans and rebuilds everything.
 """
 
 from __future__ import annotations
 
 import argparse
+import filecmp
 import json
 import os
 import shutil
@@ -134,55 +137,67 @@ def _display_sources(vendor_zip: Path) -> dict[str, bytes]:
     return files
 
 
+def _copy_if_changed(source: Path, target: Path) -> bool:
+    if target.is_file():
+        if target.stat().st_size == source.stat().st_size and filecmp.cmp(
+            source, target, shallow=False
+        ):
+            return False
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, target)
+    return True
+
+
 def _copy_lvgl(lvgl_dir: Path, destination: Path, *, dry_run: bool) -> list[str]:
     if not lvgl_dir.is_dir():
         raise AdapterError("lvgl_missing", f"LVGL source not found: {lvgl_dir}")
-    copied: list[str] = []
+    found: list[str] = []
+    changed: list[str] = []
     for item in LVGL_ITEMS:
         source = lvgl_dir / item
         if not source.exists():
             continue
         target = destination / item
-        copied.append(str(target))
+        found.append(str(target))
         if dry_run:
+            changed.append(str(target))
             continue
-        target.parent.mkdir(parents=True, exist_ok=True)
         if source.is_dir():
-            if target.exists():
-                if target.is_dir():
-                    shutil.rmtree(target)
-                else:
-                    target.unlink()
-            shutil.copytree(source, target)
+            for child in source.rglob("*"):
+                relative = child.relative_to(source)
+                child_target = target / relative
+                if child.is_dir():
+                    child_target.mkdir(parents=True, exist_ok=True)
+                    continue
+                if _copy_if_changed(child, child_target):
+                    changed.append(str(child_target))
         else:
-            shutil.copy2(source, target)
-    if not copied:
+            if _copy_if_changed(source, target):
+                changed.append(str(target))
+    if not found:
         raise AdapterError(
             "lvgl_missing", f"no LVGL library files found in {lvgl_dir}"
         )
-    return copied
+    return changed
 
 
 def _write_plan(
     out_dir: Path,
     files: dict[str, bytes],
     *,
-    force: bool,
     dry_run: bool,
 ) -> list[str]:
-    if out_dir.exists() and any(out_dir.iterdir()) and not force:
-        raise AdapterError(
-            "output_exists",
-            f"output directory is not empty: {out_dir} (use --force)",
-        )
     written: list[str] = []
     for relative, data in sorted(files.items()):
         target = out_dir / relative
-        written.append(str(target))
         if dry_run:
+            written.append(str(target))
+            continue
+        if target.is_file() and target.read_bytes() == data:
             continue
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(data)
+        written.append(str(target))
     return written
 
 
@@ -219,9 +234,20 @@ def prepare_workspace(
     for name, data in _display_sources(vendor_zip).items():
         files[f"{SKETCH_NAME}/{name}"] = data
 
-    written_files = _write_plan(
-        out_dir, files, force=force, dry_run=dry_run
-    )
+    written_files = _write_plan(out_dir, files, dry_run=dry_run)
+    if not dry_run:
+        expected = {
+            Path(relative).name
+            for relative in files
+            if relative.startswith(SKETCH_NAME + "/")
+        }
+        for path in sketch_dir.iterdir():
+            if (
+                path.is_file()
+                and path.suffix in {".c", ".h", ".ino"}
+                and path.name not in expected
+            ):
+                path.unlink()
     lvgl_files = _copy_lvgl(
         lvgl_dir, libraries_dir / "lvgl", dry_run=dry_run
     )

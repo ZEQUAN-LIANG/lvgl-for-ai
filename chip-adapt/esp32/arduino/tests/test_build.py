@@ -112,11 +112,26 @@ class ExportTest(AdapterFixture):
         self.export(force=True)
         self.assertFalse(stale.exists())
 
-    def test_existing_output_requires_force(self) -> None:
+    def test_existing_output_updates_in_place(self) -> None:
         self.export(force=True)
-        with self.assertRaises(build.AdapterError) as context:
-            self.export(force=False)
-        self.assertEqual(context.exception.code, "output_exists")
+        app_file = self.out_dir / build.SKETCH_NAME / "perf_monitor.c"
+        app_file.write_text("stale\n", encoding="utf-8")
+        result = self.export(force=False)
+        self.assertIn("int app(void)", app_file.read_text(encoding="utf-8"))
+        self.assertTrue(result["files"])
+
+    def test_incremental_export_keeps_unchanged_files(self) -> None:
+        self.export(force=True)
+        app_file = self.out_dir / build.SKETCH_NAME / "perf_monitor.c"
+        before = app_file.stat().st_mtime_ns
+        build_dir = self.out_dir / "build"
+        build_dir.mkdir()
+        marker = build_dir / "keep.txt"
+        marker.write_text("keep\n", encoding="utf-8")
+        result = self.export(force=False)
+        self.assertEqual(app_file.stat().st_mtime_ns, before)
+        self.assertTrue(marker.is_file())
+        self.assertEqual(result["files"], [])
 
     def test_dry_run_does_not_create_output(self) -> None:
         result = self.export(force=True, dry_run=True)

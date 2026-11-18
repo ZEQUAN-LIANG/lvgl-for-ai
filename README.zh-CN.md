@@ -4,7 +4,7 @@
 
 **AI 写 LVGL，AI 自己验证；人只提供意图与反馈。**
 
-一个 AI-first 的 LVGL 开发与验证平台：真实 headless LVGL 宿主、虚拟输入与虚拟时间、逐帧会话证据、网页检视台，以及一条通向 SiFli 真机的导出链路。
+一个 AI-first 的 LVGL 开发与验证平台：真实 headless LVGL 宿主、虚拟输入与虚拟时间、逐帧会话证据、网页检视台，以及通向 SiFli 与 ESP32-C6 真机的适配链路。
 
 ## 为什么 AI-first
 
@@ -62,12 +62,16 @@ AI 直接读这些材料：
 
 同一份 `apps` 与同一个场景，可以跑在 LVGL 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3 上，用 `--lvgl <version>` 选择。跨版本比较事件语义与会话文件集合，不比较像素。
 
-设备应用按 LVGL 9.4 基线编写；导出时只做兼容性检查并拒绝 9.5/9.6-only API。
+SiFli 导出链路的设备应用按 LVGL 9.4 基线编写，导出时只做兼容性检查并拒绝
+9.5/9.6-only API；ESP32-C6 的 Arduino 链路使用 LVGL 9.6。
 
-### 真机链路：宿主验证，SiFli 导出 → 构建 → 烧录
+### 真机链路：宿主验证，SiFli 导出或 ESP32-C6 bring-up
+
+目前接通两块板：黄山派（SiFli SF32LB52x）走 SiFli 导出链路，微雪
+ESP32-C6-LCD-1.47 走 Arduino bring-up 链路。
 
 ```bash
-python -I chip-adapt/sifli/export.py sift_watch --dry-run --force
+python -I chip-adapt/sifli/export.py sift_watch --dry-run
 python -I chip-adapt/sifli/host/cli.py build --app sift_watch --actor ai --json
 python -I chip-adapt/sifli/host/cli.py flash --app sift_watch --actor ai --json
 ```
@@ -79,6 +83,24 @@ python -I chip-adapt/sifli/host/cli.py flash --app sift_watch --actor ai --json
 <p align="center"><video src="docs/media/huangshanpai.mp4" controls width="280"></video></p>
 
 [打开视频](docs/media/huangshanpai.mp4)
+
+ESP32-C6 通过 `chip-adapt/esp32/` 的 Arduino bring-up 链路支持。`perf_monitor` 已跑在微雪
+ESP32-C6-LCD-1.47（172×320 ST7789）上：串口切换竖/横版，host 提供 `/perf/` 控制页和
+tkinter 桌面面板。默认每 0.3 秒监控一次，导出/编译默认走增量：
+
+```bash
+python -I chip-adapt/esp32/arduino/build.py build
+python -I chip-adapt/esp32/arduino/build.py flash --port COMx
+python -I chip-adapt/esp32/host/host.py serve --port COMx --baud 115200 --open
+python -I chip-adapt/esp32/host/gui.py
+```
+
+实机已验证 USB Serial/JTAG、esptool 烧录和 `SHOT` 帧缓冲抓取。正式 ESP-IDF 导出器仍在
+规划中，详见 `chip-adapt/esp32/README.md` 与 `chip-adapt/esp32/docs/arduino-perf-monitor.md`。
+
+<p align="center"><video src="docs/media/esp32-c6-perf-monitor.mp4" controls width="260"></video></p>
+
+[打开视频](docs/media/esp32-c6-perf-monitor.mp4)
 
 另外两点：预编译 LVGL 库让本地只有 GCC 也能跑（`--prebuilt`）；工具与 Claude Code、Cursor 等 harness 无关，本身不绑定模型。
 
@@ -196,6 +218,8 @@ AI 的结论必须指向这些文件。`status: ok` 表示会话正常结束；�
 - SiFli 只在 `full-sifli` 里：自研导出/上位机层、`SiFli-Host.exe`、pyserial/xterm、
   `sift_watch` 源码和导出示例；不包含 SiFli SDK、ARM 工具链、sftool 或固件。
   SDK、工具链与 sftool 安装见 `chip-adapt/vendor/README.md`。
+- ESP32-C6 支持位于开发仓库 `chip-adapt/esp32/`；当前发布包不带 Arduino 导出器、
+  host 或固件。
 
 ## 环境依赖
 
@@ -216,6 +240,8 @@ Windows 推荐 MSYS2 UCRT64。完整安装步骤、PATH 配置、首次运行说
 - `user/app/GUIDE.md`：写用户应用。
 - `docs/skill/`：skill 入口契约 `SKILL.md` 与各版本 `api-nav/`。
 - `chip-adapt/sifli/README.md` / `chip-adapt/docs/sifli.html`：SiFli 适配层与能力边界。
+- `chip-adapt/esp32/README.md`：ESP32-C6 板级说明、host 控制页、桌面 GUI 与 Arduino bring-up。
+- `chip-adapt/esp32/docs/arduino-perf-monitor.md`：ST7789 + LVGL 旋转、烧录与 `SHOT` 验证说明。
 - `CONTEXT.md`：领域术语表。
 - `CLAUDE.md`：AI 编码代理的仓库工作说明。
 - 发布包根目录的 `SKILL.md`（源码仓库里是 `docs/skill/SKILL.md`）：已安装 skill 的 AI 入口契约与 agent 工作流。

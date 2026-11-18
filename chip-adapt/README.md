@@ -2,8 +2,8 @@
 
 SiFli 黄山派（SF32LB52x）与 ESP32-C6 的适配层与 PC 侧上位机。它和 `console/` 的
 LVGL headless 宿主分开：`console/` 负责预览/取证，本目录负责把 `user/app` 导出成
-目标工程（SiFli 已实现；ESP32-C6 有临时 Arduino bring-up，正式 ESP-IDF 导出器仍规划中），
-并提供串口、构建和烧录入口。
+目标工程（SiFli 已实现；ESP32-C6 已打通 Arduino bring-up、host 控制页和真机烧录，
+正式 ESP-IDF 导出器仍规划中），并提供串口、构建和烧录入口。
 
 ## 先看三个区
 
@@ -20,8 +20,8 @@ LVGL headless 宿主分开：`console/` 负责预览/取证，本目录负责把
 
 - `chip-adapt/docs/sifli.html`：SDK 图形能力知识索引，不是操作手册。
 - `chip-adapt/sifli/`：SiFli 自研代码，唯一可直接改 SiFli 导出逻辑的区域。
-- `chip-adapt/esp32/`：ESP32-C6 上位机与网页原型；导出器和固件壳待补，见
-  `esp32/README.md`。
+- `chip-adapt/esp32/`：ESP32-C6 板级适配、host 控制页、桌面 GUI 与 Arduino bring-up；
+  见 `esp32/README.md`，演示视频 `../docs/media/esp32-c6-perf-monitor.mp4`。
 - `chip-adapt/host/`：独立烧录页、esptool/sftool 双后端契约、排障与实机记录，见
   `host/README.md`。
 - `chip-adapt/vendor/`：SDK 与可选外部资源；**只读**，升级按清单重下。
@@ -31,14 +31,14 @@ LVGL headless 宿主分开：`console/` 负责预览/取证，本目录负责把
 
 | 我要… | 从这里开始 | 关键命令/文件 |
 | --- | --- | --- |
-| 导出应用到 SDK 工程 | `sifli/README.md` | `python -I chip-adapt/sifli/export.py <app> --dry-run --force` |
+| 导出应用到 SDK 工程 | `sifli/README.md` | `python -I chip-adapt/sifli/export.py <app> --dry-run`（默认增量） |
 | 构建 / 烧录 / 看串口 | `sifli/host/README.md` | `python -I chip-adapt/sifli/host/server.py --open` |
 | 直接点开上位机 / 重建启动器 | `sifli/tools/` | 双击 `SiFli-Host.exe`；`python -I scripts/launchers/build.py` |
 | 改导出规则或模板 | `sifli/export.py`、`sifli/asset_plan.py`、`sifli/templates/` | `python -I chip-adapt/sifli/run_tests.py` |
 | 改 SiFli 上位机 | `sifli/host/` | `python -I chip-adapt/sifli/host/tests/run_tests.py` |
 | ESP32-C6 页面 / Wi-Fi / 蓝牙 / 串口 | `esp32/host/README.md` | `python -I chip-adapt/esp32/host/host.py serve --fake --open` |
 | 烧录器（独立网页，两个后端） | `host/README.md` | ESP32 `:8767/flash/`（esptool）；SiFli `:8766/flash/`（sftool） |
-| ESP32-C6 现状与后续 | `esp32/README.md` | 正式导出器 / ESP-IDF 壳待补；烧录器已接 esptool |
+| ESP32-C6 现状与后续 | `esp32/README.md` | perf_monitor 已真机验证；host + `/perf/` + GUI；正式 ESP-IDF 导出器/壳待补 |
 | ESP32-C6 Arduino 演示固件 | `esp32/arduino/README.md` | `python -I chip-adapt/esp32/arduino/build.py all --port COMx`；原理见 `esp32/docs/arduino-perf-monitor.md` |
 | 下载/升级 SDK、工具链、sftool | `vendor/README.md` | `host/scripts/install-toolchain.ps1`（国内网络默认镜像）；不在仓库内改 SDK |
 | 查 SDK 图形能力 | `docs/sifli.html` | 以链接的 SDK v2.5.1 真源为准 |
@@ -69,8 +69,10 @@ LVGL headless 宿主分开：`console/` 负责预览/取证，本目录负责把
 
 路径只从 `sifli/layout.py` 取：不要在新代码里硬编码导出目录或 SDK 目录。
 
-> ESP32-C6 目前有 `esp32/host/` 上位机、独立的 `/flash/` 烧录器（esptool 后端）
-> 和临时的 Arduino bring-up（`esp32/arduino/`）；正式 ESP-IDF 导出器和固件壳
+> SiFli 与 ESP32 的导出/构建默认都是增量的：只更新变化的源码，复用 SDK/Arduino
+> 构建缓存；`--force` 仅用于清理后重导。ESP32-C6 已跑通 `perf_monitor` 真机链路：
+> Arduino bring-up、host 串口/烧录、`/perf/` 控制页、tkinter GUI 和横竖版串口切换；
+> 视频见 `../docs/media/esp32-c6-perf-monitor.mp4`。正式 ESP-IDF 导出器和固件壳
 > 尚未实现，见 `esp32/README.md`。
 
 ## 从 user/app 到 SDK 编译

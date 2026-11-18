@@ -1143,8 +1143,8 @@
 <body data-orient="landscape">
 
 <div class="margin-note">
-  <span class="for-portrait">PERF TAPE · DESKTOP VITALS · 1.0 S</span>
-  <span class="for-landscape">PERF TAPE · LANDSCAPE CUT · 1.0 S</span>
+  <span class="for-portrait">PERF TAPE · DESKTOP VITALS · 0.3 S</span>
+  <span class="for-landscape">PERF TAPE · LANDSCAPE CUT · 0.3 S</span>
 </div>
 
 <div class="shell">
@@ -1183,11 +1183,11 @@
               </div>
             </section>
 
-            <section class="scr-tape" aria-label="CPU 60 秒负载带">
+            <section class="scr-tape" aria-label="CPU 18 秒负载带">
               <canvas id="cpu-chart" width="516" height="102" aria-hidden="true"></canvas>
-              <span class="tape-tag for-landscape">CPU · 60S</span>
+              <span class="tape-tag for-landscape">CPU · 18S</span>
               <span class="tape-th">80</span>
-              <div class="tape-foot"><span>−60S</span><span>NOW</span></div>
+              <div class="tape-foot"><span>−18S</span><span>NOW</span></div>
             </section>
 
             <section class="scr-metric scr-mem" aria-label="内存">
@@ -1224,7 +1224,7 @@
 
             <div class="scr-foot">
               <span class="live"><i class="pulse"></i>Live</span>
-              <span>USB · 1.0S</span>
+              <span>USB · 0.3S</span>
               <span>C6/01</span>
             </div>
 
@@ -1263,8 +1263,8 @@
         <span class="script">tape<em>.</em></span>
       </h1>
 
-      <p class="lede for-portrait">把桌面上的 CPU、内存、GPU 与网络读数，每秒一次收进 <strong>1.47 英寸</strong>的竖屏。不是仪表盘，是一条每秒推进的性能磁带。</p>
-      <p class="lede for-landscape">同一卷性能磁带，横过来读。320 × 172 里，CPU 居左、内存 / GPU 与网络并排成仪表头，一条 <strong>60 秒</strong>步进负载带横贯底部——竖屏里向下流动的数据，在这里沿水平方向推进。</p>
+      <p class="lede for-portrait">把桌面上的 CPU、内存、GPU 与网络读数，每 0.3 秒一次收进 <strong>1.47 英寸</strong>的竖屏。不是仪表盘，是一条每 0.3 秒推进的性能磁带。</p>
+      <p class="lede for-landscape">同一卷性能磁带，横过来读。320 × 172 里，CPU 居左、内存 / GPU 与网络并排成仪表头，一条 <strong>18 秒</strong>步进负载带横贯底部——竖屏里向下流动的数据，在这里沿水平方向推进。</p>
 
       <div class="chain" aria-label="数据链路：PC 经 USB 串口发送到 ESP32-C6，再经 SPI 驱动屏幕">
         <b>PC Agent</b>
@@ -1302,8 +1302,8 @@
 
       <dl class="specs">
         <div><dt>Display</dt><dd><span class="for-portrait">172 × 320 · 1.47″</span><span class="for-landscape">320 × 172 · 1.47″</span></dd></div>
-        <div><dt>Refresh</dt><dd>1.0 s</dd></div>
-        <div><dt>History</dt><dd>60 s</dd></div>
+        <div><dt>Refresh</dt><dd>0.3 s</dd></div>
+        <div><dt>History</dt><dd>18 s</dd></div>
         <div><dt>Link</dt><dd>USB Serial</dd></div>
         <div><dt>Target</dt><dd>ESP32-C6</dd></div>
         <div><dt>Color</dt><dd>RGB565</dd></div>
@@ -1729,7 +1729,7 @@
   setInterval(() => {
     tick();
     tickClock();
-  }, 1000);
+  }, 300);
 })();
 </script>
 </body>

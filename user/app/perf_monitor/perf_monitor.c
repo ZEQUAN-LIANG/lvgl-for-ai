@@ -93,7 +93,7 @@ static lv_obj_t * s_screen;
 static lv_timer_t * s_timer;
 static uint32_t s_tick;
 static uint32_t s_last_live_ms;
-static uint32_t s_live_period_ms = 1000u;
+static uint32_t s_live_period_ms = 300u;
 static uint32_t s_rng = 0x13579BDFu;
 static uint32_t s_demo_seq;
 static uint32_t s_demo_tick;
@@ -492,7 +492,7 @@ static void build_cpu(lv_obj_t * screen)
     lv_obj_set_style_pad_hor(label, 1, 0);
     app_obj_set_name(label, "perf_cpu_threshold");
 
-    s_ui.cpu_axis_start = make_label(screen, "-60S", &perf_font_mono_8, COL_DIM,
+    s_ui.cpu_axis_start = make_label(screen, "-18S", &perf_font_mono_8, COL_DIM,
                                      6, 136, 0, LV_TEXT_ALIGN_LEFT, 1);
     app_obj_set_name(s_ui.cpu_axis_start, "perf_cpu_axis_start");
     label = make_label(screen, "NOW", &perf_font_mono_8, COL_DIM, 144, 136, 22,
@@ -646,7 +646,7 @@ static void build_footer(lv_obj_t * screen)
                             303, 34, LV_TEXT_ALIGN_LEFT, 1);
     app_obj_set_name(s_ui.state, "perf_state");
 
-    s_ui.footer_mid = make_label(screen, "SIM · 1.0S", &perf_font_mono_8,
+    s_ui.footer_mid = make_label(screen, "SIM · 0.3S", &perf_font_mono_8,
                                  COL_DIM, 52, 303, 70, LV_TEXT_ALIGN_CENTER, 1);
     app_obj_set_name(s_ui.footer_mid, "perf_footer_mid");
 
@@ -744,7 +744,7 @@ static void build_cpu_landscape(lv_obj_t * screen)
         make_canvas(screen, 0, 91, PERF_LAND_W, PERF_LAND_CPU_CHART_H, s_cpu_fb,
                     "perf_cpu_chart");
 
-    s_ui.tape_tag = make_label(screen, "CPU · 60S", &perf_font_mono_8, COL_DIM,
+    s_ui.tape_tag = make_label(screen, "CPU · 18S", &perf_font_mono_8, COL_DIM,
                                4, 92, 0, LV_TEXT_ALIGN_LEFT, 1);
     lv_obj_set_style_bg_color(s_ui.tape_tag, lv_color_hex(COL_TAPE), 0);
     lv_obj_set_style_bg_opa(s_ui.tape_tag, LV_OPA_COVER, 0);
@@ -758,7 +758,7 @@ static void build_cpu_landscape(lv_obj_t * screen)
     lv_obj_set_style_pad_hor(label, 1, 0);
     app_obj_set_name(label, "perf_cpu_threshold");
 
-    s_ui.cpu_axis_start = make_label(screen, "-60S", &perf_font_mono_8, COL_DIM,
+    s_ui.cpu_axis_start = make_label(screen, "-18S", &perf_font_mono_8, COL_DIM,
                                      8, 121, 0, LV_TEXT_ALIGN_LEFT, 1);
     app_obj_set_name(s_ui.cpu_axis_start, "perf_cpu_axis_start");
     label = make_label(screen, "NOW", &perf_font_mono_8, COL_DIM, 290, 121, 24,
@@ -920,7 +920,7 @@ static void build_footer_landscape(lv_obj_t * screen)
     app_obj_set_name(s_ui.state, "perf_state");
 
     s_ui.footer_mid =
-        make_label(screen, "SIM · 1.0S", &perf_font_mono_8, COL_DIM, 120, 161,
+        make_label(screen, "SIM · 0.3S", &perf_font_mono_8, COL_DIM, 120, 161,
                    80, LV_TEXT_ALIGN_CENTER, 1);
     app_obj_set_name(s_ui.footer_mid, "perf_footer_mid");
 
@@ -977,7 +977,7 @@ static void update_state_labels(void)
 
     if(s_demo) {
         state = "SIM";
-        snprintf(middle, sizeof(middle), "SIM · 1.0S");
+        snprintf(middle, sizeof(middle), "SIM · 0.3S");
         state_color = COL_MUTED;
         dot_color = COL_MUTED;
     }
@@ -1177,9 +1177,9 @@ static void update_ui(void)
                       s_sample.host[0] != '\0' ? s_sample.host : "DESKTOP");
 
     unsigned window_s = 60;
-    if(!s_demo && s_have_live && s_live_period_ms > 0) {
+    if(s_live_period_ms > 0) {
         window_s = (unsigned)((PERF_HISTORY * s_live_period_ms + 500u) / 1000u);
-        if(window_s < 60) window_s = 60;
+        if(window_s < 10) window_s = 10;
         if(window_s > 999) window_s = 999;
     }
     snprintf(text, sizeof(text), "-%uS", window_s);
@@ -1334,7 +1334,7 @@ void perf_monitor_create(void)
     s_demo = true;
     s_have_live = false;
     s_link_lost = false;
-    s_live_period_ms = 1000u;
+    s_live_period_ms = 300u;
     s_last_seq = 0;
     s_demo_seq = 0;
     s_demo_tick = 0;
@@ -1378,7 +1378,7 @@ void perf_monitor_create(void)
     update_ui();
 
     if(s_timer == NULL) {
-        s_timer = lv_timer_create(monitor_timer_cb, 1000, NULL);
+        s_timer = lv_timer_create(monitor_timer_cb, 300, NULL);
     }
 
     printf("[perf_monitor] created %s %dx%d demo=1\n",
@@ -1438,7 +1438,7 @@ perf_parse_result_t perf_monitor_ingest(const char * line, size_t len)
             s_demo = true;
             s_have_live = false;
             s_link_lost = false;
-            s_live_period_ms = 1000u;
+            s_live_period_ms = 300u;
             printf("[perf_monitor] demo mode\n");
             fflush(stdout);
             seed_history();
@@ -1449,7 +1449,7 @@ perf_parse_result_t perf_monitor_ingest(const char * line, size_t len)
             s_demo = false;
             s_have_live = false;
             s_link_lost = false;
-            s_live_period_ms = 1000u;
+            s_live_period_ms = 300u;
             printf("[perf_monitor] live mode waiting for data\n");
             fflush(stdout);
             update_state_labels();

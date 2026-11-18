@@ -562,7 +562,7 @@ class HostHandler(BaseHTTPRequestHandler):
             if path == "/api/perf/start":
                 result = state.perf.start(
                     str(body.get("mode") or "demo"),
-                    body.get("interval", 1.0),
+                    body.get("interval", 0.3),
                     body.get("layout") or None,
                 )
                 self._json(result)

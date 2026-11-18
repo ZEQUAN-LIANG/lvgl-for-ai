@@ -20,7 +20,7 @@ import webbrowser
 from typing import Any, Callable, Optional
 
 DEFAULT_URL = "http://127.0.0.1:8767"
-POLL_MS = 1000
+POLL_MS = 300
 
 BG = "#080705"
 PANEL = "#0d0b08"
@@ -243,7 +243,7 @@ class PerfGui:
         self.initialized = False
         self.host_seen = False
         self.mode = "demo"
-        self.interval = 1.0
+        self.interval = 0.3
         self.layout = "portrait"
         self.running = False
         self.last_perf: Optional[dict[str, Any]] = None
@@ -1038,7 +1038,7 @@ class PerfGui:
             try:
                 self.interval = float(perf.get("interval_s", self.interval))
             except (TypeError, ValueError):
-                self.interval = 1.0
+                self.interval = 0.3
             self.interval_var.set(f"{self.interval:.1f}")
         layout = str(perf.get("layout") or self.layout)
         if layout in ("portrait", "landscape"):
@@ -1413,7 +1413,7 @@ class PerfGui:
         p.text(116, 59, "°C", 8, MUTED, self.mono)
 
         p.line(0, 90, 320, 90, LINE)
-        self.draw_tape(p, 0, 91, 320, 30, 8, 121, tag="CPU · 60S")
+        self.draw_tape(p, 0, 91, 320, 30, 8, 121, tag="CPU · 18S")
 
         p.line(136, 28, 136, 82, LINE_SOFT)
         p.line(192, 28, 192, 82, LINE_SOFT)
@@ -1526,7 +1526,7 @@ class PerfGui:
             self.mono,
             anchor="ne",
         )
-        p.text(x + 6, bottom_label_y, "-60S", 8, DIM, self.mono)
+        p.text(x + 6, bottom_label_y, "-18S", 8, DIM, self.mono)
         p.text(x + width - 6, bottom_label_y, "NOW", 8, DIM, self.mono,
                anchor="ne")
 

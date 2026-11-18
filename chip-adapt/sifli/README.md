@@ -158,9 +158,12 @@ while (1) {
 适配层自带的脚本：
 
 ```bash
-python -I chip-adapt/sifli/export.py sift_watch --dry-run --force
-python -I chip-adapt/sifli/export.py sift_watch --force
+python -I chip-adapt/sifli/export.py sift_watch --dry-run
+python -I chip-adapt/sifli/export.py sift_watch
 ```
+
+默认是增量导出/构建：已有导出目录只更新变化的源码，`scons` 也复用构建缓存。只有显式
+加 `--force` 才会清理后重导，不是日常命令。
 
 导出、源码复制和 EZIP 转换全部在适配脚本里，`console/` 不包含芯片导出逻辑。导出的
 README 和返回的验证命令使用 `adapter.json` 的 `lvgl_version`（当前 9.4）：导出工程跟随

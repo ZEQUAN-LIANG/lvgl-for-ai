@@ -38,7 +38,7 @@ python -I chip-adapt/esp32/host/host.py serve --port COMx --baud 115200 --open
 
 页面可以：
 
-- 选择 **Demo** 或 **Live (Windows)**，设置 0.2–60 秒发送周期，启动/停止采集；
+- 选择 **Demo** 或 **Live (Windows)**，设置 0.2–60 秒发送周期（默认 0.3 秒），启动/停止采集；
 - 立即发送 `PERF PORTRAIT` / `PERF LANDSCAPE`，运行中也能切换，不停止采集；
 - 实时显示最新一帧的 CPU / MEM / GPU / NET、线程柱和 seq，并在页面内切换竖/横预览。
 
@@ -47,7 +47,7 @@ python -I chip-adapt/esp32/host/host.py serve --port COMx --baud 115200 --open
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/perf/status` | 运行状态、当前布局、seq、周期、最新采样 |
-| POST | `/api/perf/start` | `{"mode": "demo" 或 "live", "interval": 1.0, "layout": "portrait" 或 "landscape"}` |
+| POST | `/api/perf/start` | `{"mode": "demo" 或 "live", "interval": 0.3, "layout": "portrait" 或 "landscape"}` |
 | POST | `/api/perf/stop` | 停止采集线程 |
 | POST | `/api/perf/layout` | `{"layout": "portrait" 或 "landscape"}`，发一帧布局命令 |
 
@@ -55,7 +55,7 @@ Live 采集复用 `perf_agent.py` 的 Windows 采集逻辑；单帧通常需要 
 `period` 是实测帧间隔。`perf_agent.py` 仍可用于不开网页的 CLI 场景：
 
 ```bash
-python -I chip-adapt/esp32/host/perf_agent.py --layout landscape --live --interval 1.0
+python -I chip-adapt/esp32/host/perf_agent.py --layout landscape --live
 ```
 
 ## Python GUI
