@@ -41,6 +41,7 @@ from flash_control import (  # noqa: E402
 )
 from jobs import TERMINAL_STATUSES, JobManager  # noqa: E402
 from page_control import PageController, PageError  # noqa: E402
+from perf_control import PerfController, PerfError  # noqa: E402
 
 DEFAULT_HTTP_PORT = 8767
 DEFAULT_BAUD = 115200
@@ -95,6 +96,7 @@ class HostState:
         self.flash = FlashController(
             HOST_DIR, self.config, self.broker, fake=fake
         )
+        self.perf = PerfController(self.broker)
 
     def port_list(self) -> list[dict[str, Any]]:
         if self.fake:
@@ -180,6 +182,14 @@ class HostHandler(BaseHTTPRequestHandler):
 
     def _index(self) -> None:
         data = (HOST_DIR / "web" / "index.html").read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _perf_page(self) -> None:
+        data = (HOST_DIR / "web" / "perf.html").read_bytes()
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
@@ -422,6 +432,9 @@ class HostHandler(BaseHTTPRequestHandler):
             if path in ("/", "/index.html"):
                 self._index()
                 return
+            if path in ("/perf", "/perf/", "/perf.html"):
+                self._perf_page()
+                return
             if path in ("/flash", "/flash/", "/flash.html"):
                 self._flash_page()
                 return
@@ -435,6 +448,9 @@ class HostHandler(BaseHTTPRequestHandler):
                 state = self.server.state
                 status = state.broker.status()
                 self._json({"ok": True, "fake": state.fake, "serial": status})
+                return
+            if path == "/api/perf/status":
+                self._json({"ok": True, **self.server.state.perf.status()})
                 return
             if path == "/api/ports":
                 self._json(
@@ -496,6 +512,8 @@ class HostHandler(BaseHTTPRequestHandler):
         except DeviceError as exc:
             status = 504 if exc.code == "device_timeout" else 400
             self._error(exc.code, str(exc), status)
+        except PerfError as exc:
+            self._error(exc.code, str(exc), exc.status)
 
     # ------------------------------------------------------------------ POST
 
@@ -540,6 +558,22 @@ class HostHandler(BaseHTTPRequestHandler):
             if path == "/api/close":
                 status = state.broker.close()
                 self._json({"ok": True, "status": status})
+                return
+            if path == "/api/perf/start":
+                result = state.perf.start(
+                    str(body.get("mode") or "demo"),
+                    body.get("interval", 1.0),
+                    body.get("layout") or None,
+                )
+                self._json(result)
+                return
+            if path == "/api/perf/stop":
+                self._json(state.perf.stop())
+                return
+            if path == "/api/perf/layout":
+                self._json(
+                    state.perf.set_layout(str(body.get("layout") or ""))
+                )
                 return
             if path == "/api/page":
                 name = str(body.get("name") or "")
@@ -639,6 +673,8 @@ class HostHandler(BaseHTTPRequestHandler):
         except DeviceError as exc:
             status = 504 if exc.code == "device_timeout" else 400
             self._error(exc.code, str(exc), status)
+        except PerfError as exc:
+            self._error(exc.code, str(exc), exc.status)
 
 
 # --------------------------------------------------------------------- HTTP CLI
@@ -803,6 +839,7 @@ def serve(args: argparse.Namespace) -> int:
     url = f"http://{args.host}:{args.http_port}/"
     print(f"ESP32-C6 host: {url}")
     print(f"flasher: {url}flash/")
+    print(f"perf: {url}perf/")
     print(f"mode: {'fake (COM99)' if args.fake else 'serial'}")
     environment = state.flash.environment()
     esptool = environment["esptool"]
@@ -820,6 +857,7 @@ def serve(args: argparse.Namespace) -> int:
     except KeyboardInterrupt:
         pass
     finally:
+        state.perf.stop()
         server.server_close()
         state.broker.close()
     return 0

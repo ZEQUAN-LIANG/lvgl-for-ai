@@ -14,6 +14,7 @@
 - **串口**：端口/波特率、连接/断开、自动重连、行尾、原始命令、SSE 日志、清空/下载
 - **系统**：芯片/Flash/内存/uptime/app/当前页面/串口状态、重置
 - **烧录器**：独立页面 `/flash/`（不在主 UI 的 tab 里）；esptool 后端、固件计划、实时进度
+- **性能监控**：独立页面 `/perf/`；Demo / Live 采集、发送周期、启动/停止、竖版/横版串口切换、实时预览
 
 默认 `http://127.0.0.1:8767/`；`--fake` 模式用内存 backend 模拟固件，不需要板子。
 页面列表和无线状态都来自串口命令，前端不写死。
@@ -29,6 +30,33 @@ python -I chip-adapt/esp32/host/host.py serve --port COMx --baud 115200 --open
 ```
 
 选 8767 是为了避开 `console` 的 8765 和 SiFli host 的 8766。
+
+## 性能监控控制页
+
+`http://127.0.0.1:8767/perf/` 是 `perf_monitor` 的专用控制页。它不直接打开 COM 口，
+所有帧和布局命令都走同一个 `SerialBroker`，因此串口仍然只有一个 owner。
+
+页面可以：
+
+- 选择 **Demo** 或 **Live (Windows)**，设置 0.2–60 秒发送周期，启动/停止采集；
+- 立即发送 `PERF PORTRAIT` / `PERF LANDSCAPE`，运行中也能切换，不停止采集；
+- 实时显示最新一帧的 CPU / MEM / GPU / NET、线程柱和 seq，并在页面内切换竖/横预览。
+
+对应的本地 API：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/perf/status` | 运行状态、当前布局、seq、周期、最新采样 |
+| POST | `/api/perf/start` | `{"mode": "demo" 或 "live", "interval": 1.0, "layout": "portrait" 或 "landscape"}` |
+| POST | `/api/perf/stop` | 停止采集线程 |
+| POST | `/api/perf/layout` | `{"layout": "portrait" 或 "landscape"}`，发一帧布局命令 |
+
+Live 采集复用 `perf_agent.py` 的 Windows 采集逻辑；单帧通常需要 3–4 秒，页面显示的
+`period` 是实测帧间隔。`perf_agent.py` 仍可用于不开网页的 CLI 场景：
+
+```bash
+python -I chip-adapt/esp32/host/perf_agent.py --layout landscape --live --interval 1.0
+```
 
 ## 固件侧协议
 

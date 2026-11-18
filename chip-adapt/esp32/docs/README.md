@@ -18,6 +18,12 @@
 | `ESP32-C6-LCD-1.47/05-faq.md` | 产品 FAQ |
 | `ESP32-C6-LCD-1.47/06-technical-support.md` | 技术支持联系方式 |
 
+补充文档：
+
+- [`arduino-perf-monitor.md`](arduino-perf-monitor.md)：PERF TAPE 在 ESP32-C6 上的
+  临时 Arduino 适配，含 ST7789 引脚、LVGL 9.6 配置、partial buffer、软件旋转
+  flush、内存/Flash 数字和排障。
+
 说明：
 
 - 正文由 Docusaurus 页面 HTML 转换而来，标题、表格、代码、列表、提示框保持原结构；

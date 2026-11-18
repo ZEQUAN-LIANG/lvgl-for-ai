@@ -12,9 +12,11 @@
 | --- | --- | --- |
 | `host/` | 可运行原型 | 复用 SiFli host 的 `SerialBroker`；页面 + Wi-Fi + 蓝牙 + 串口 + 系统网页；独立烧录页 `/flash/`，CLI + fake backend |
 | LVGL demo | 可运行 | `user/app/c6_demo/`，3 页，172×320，headless 场景 `user/scenarios/c6_demo.json` |
+| 性能监控器 | 可运行（演示数据） | `user/app/perf_monitor/`，172×320 / 320×172 串口切换；协议与 PC 发送端见其 README |
 | Wi-Fi / 蓝牙配置 UI | 已实现 | 网页扫描/连接/开关/改名/可发现；串口协议见 `host/README.md` |
 | 官方文档镜像 | 已抓取 | `docs/ESP32-C6-LCD-1.47/`，7 个页面 + 本地截图（2026-11-18） |
-| 导出器 | 未实现 | 导出器与模板待补；见下方“固件侧待做” |
+| Arduino 演示固件 | 可运行（已烧录验证） | `arduino/build.py` + `arduino/templates/`；LVGL 9.6 + ST7789，临时 bring-up；见 `docs/arduino-perf-monitor.md` |
+| 导出器 | 未实现 | ESP-IDF 导出器与模板待补；见下方“固件侧待做” |
 | ESP-IDF 固件壳 | 未实现 | 需要 `app_main.c` + ST7789 + `esp_lvgl_port` + `esp_console` 胶水 |
 | 烧录器（esptool） | 可运行（真机已验证） | 独立网页 `/flash/`（与 SiFli host 共用同一套页面，后端不同）+ CLI；解析 `.bin`、`.zip`、ESP-IDF build 目录；释放串口后调用 esptool；`host/scripts/bootstrap.ps1` 装 `esptool==4.8.1`。真机：ESP32-C6FH4 / COM13，微雪 demo 4 MB @ `0x0`，verify OK |
 
@@ -24,6 +26,16 @@
 # LVGL demo（headless，不需要板子）
 python -I console/entrypoints/cli.py --lvgl 9.6 \
   --scenario user/scenarios/c6_demo.json --json
+python -I console/entrypoints/cli.py --lvgl 9.6 \
+  --scenario user/scenarios/perf_monitor.json --json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/perf_monitor_landscape.json --json
+
+# 性能监控器演示帧（不发串口）
+python -I chip-adapt/esp32/host/perf_agent.py --demo --dry-run --once
+
+# 临时 Arduino 演示固件（先启动 host 再烧录）
+python -I chip-adapt/esp32/arduino/build.py build --force
+python -I chip-adapt/esp32/arduino/build.py flash --port COMx
 
 # 上位机（fake 串口，不需要板子）
 python -I chip-adapt/esp32/host/host.py serve --fake --open
@@ -39,7 +51,7 @@ python -I chip-adapt/esp32/host/host.py flash \
 ```
 
 网页默认 `http://127.0.0.1:8767/`；烧录器是独立页 `http://127.0.0.1:8767/flash/`，
-页面列表来自固件，不在前端写死。
+性能监控控制页是 `http://127.0.0.1:8767/perf/`。页面列表来自固件，不在前端写死。
 
 ## 文档资料
 
