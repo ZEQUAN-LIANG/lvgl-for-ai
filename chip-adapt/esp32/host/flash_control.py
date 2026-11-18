@@ -977,8 +977,22 @@ class FlashController:
             self.config.get("flash_baud") or DEFAULT_FLASH_BAUD
         )
         try:
-            current_port = str(self.broker.status().get("port") or "")
+            status = self.broker.status()
         except Exception:  # noqa: BLE001 - status is best effort
+            status = {}
+        transport = str(status.get("transport") or "")
+        links = status.get("links") or {}
+        if transport == "serial":
+            current_port = str(status.get("port") or "")
+        else:
+            current_port = str(
+                (links.get("serial") or {}).get("port") or ""
+            )
+        if (
+            os.name == "nt"
+            and current_port
+            and not current_port.upper().startswith("COM")
+        ):
             current_port = ""
         if not current_port:
             current_port = "COM99" if self.fake else preferred_flash_port()
@@ -1337,11 +1351,21 @@ class FlashController:
         if saved.get("was_open"):
             job.append(
                 "status",
-                f"serial released ({saved.get('port')} @ {saved.get('baud')})",
+                "serial released "
+                f"({saved.get('serial_port') or saved.get('port')} "
+                f"@ {saved.get('baud')})",
             )
             time.sleep(0.25)
         try:
-            port = str(options.get("port") or saved.get("port") or "")
+            candidate = str(
+                options.get("port")
+                or saved.get("serial_port")
+                or saved.get("port")
+                or ""
+            )
+            if candidate in ("dual", "ble"):
+                candidate = ""
+            port = candidate or preferred_flash_port()
             if not port:
                 raise FlashError(
                     "choose a serial port before flashing",

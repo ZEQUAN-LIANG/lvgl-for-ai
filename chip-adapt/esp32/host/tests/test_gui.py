@@ -71,6 +71,21 @@ class HostClientTest(unittest.TestCase):
         self.assertEqual(request.get_method(), "GET")
         self.assertIsNone(request.data)
 
+    def test_close_link_posts_with_short_timeout(self) -> None:
+        response = FakeResponse({"ok": True})
+        with mock.patch(
+            "gui.urllib.request.urlopen", return_value=response
+        ) as urlopen:
+            client = gui.HostClient("http://127.0.0.1:8767")
+            result = client.close_link()
+        self.assertTrue(result["ok"])
+        request = urlopen.call_args[0][0]
+        self.assertEqual(
+            request.full_url, "http://127.0.0.1:8767/api/close"
+        )
+        self.assertEqual(request.get_method(), "POST")
+        self.assertEqual(urlopen.call_args[1]["timeout"], 2.0)
+
     def test_error_payload_raises(self) -> None:
         response = FakeResponse(
             {"ok": False, "error": "serial_not_open", "message": "no port"}

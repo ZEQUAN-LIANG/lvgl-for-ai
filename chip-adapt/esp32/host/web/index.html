@@ -719,6 +719,7 @@
       const state = {
         view: "dashboard",
         status: null,
+        transport: "dual",
         fake: false,
         sys: {},
         pages: [],
@@ -866,29 +867,54 @@
         $("sysUptime").textContent = formatUptime(sys.uptime_s);
         $("sysApp").textContent = sys.app || "—";
         $("sysPage").textContent = sys.page || "—";
-        $("sysSerial").textContent = state.status?.open ? `${state.status.port} · ${state.status.baud}` : "未连接";
-        $("sysFake").textContent = state.fake ? "fake backend" : "serial";
+        $("sysSerial").textContent = activeLinkLabel(state.status || {});
+        $("sysFake").textContent = state.fake ? "fake backend" : (state.transport || "dual");
 
         if (sys.brightness !== undefined) setBrightness(Number(sys.brightness));
         if (sys.page) setCurrentPage(sys.page);
       }
 
+      function activeLinkLabel(status = state.status || {}) {
+        const links = status.links || {};
+        const active = links.active || (status.open ? "serial" : "none");
+        if (active === "ble") {
+          const name = (links.ble && links.ble.name) || "LVGL-C6-PERF";
+          return `BLE · ${name}`;
+        }
+        if (active === "serial") {
+          const port = (links.serial && links.serial.port) || status.port || "COM";
+          return `UART · ${port}`;
+        }
+        return "未连接";
+      }
+
       function renderStatus() {
         const status = state.status || {};
-        const open = Boolean(status.open);
-        $("statusDot").className = `dot ${open ? "on" : ""}`;
-        $("statusText").textContent = open ? `${status.port} · ${state.fake ? "fake" : "serial"}` : "未连接";
-        $("statusPill").classList.toggle("open", open);
-        $("sideDot").className = `dot ${open ? "on" : ""}`;
-        $("sideStatus").textContent = open ? `${status.port} 已连接` : "串口未连接";
+        const links = status.links || {};
+        const active = links.active || (status.open ? "serial" : "none");
+        const connected = active !== "none";
+        const label = activeLinkLabel(status);
+        const serialControls = state.transport !== "ble" || state.fake;
+        $("statusDot").className = `dot ${connected ? "on" : ""}`;
+        $("statusText").textContent = connected
+          ? `${label}${state.fake ? " · fake" : ""}`
+          : "未连接";
+        $("statusPill").classList.toggle("open", connected);
+        $("sideDot").className = `dot ${connected ? "on" : ""}`;
+        $("sideStatus").textContent = connected ? `${label} 已连接` : "设备链路未连接";
         $("fakeBadge").classList.toggle("hidden", !state.fake);
-        $("connectBtn").disabled = open;
-        $("disconnectBtn").disabled = !open;
-        $("serialState").textContent = open ? "已连接" : "未连接";
-        $("serialPort").textContent = status.port || "—";
-        $("serialBaud").textContent = status.baud || "—";
+        $("connectBtn").disabled = connected;
+        $("disconnectBtn").disabled = !(status.open || status.wanted || status.reconnecting);
+        $("serialState").textContent = connected ? label : "未连接";
+        $("serialPort").textContent = active === "ble"
+          ? (((links.ble || {}).name) || "—")
+          : (((links.serial || {}).port) || status.port || "—");
+        $("serialBaud").textContent = active === "ble" ? "—" : (status.baud || "—");
         $("serialAutoReconnect").checked = Boolean(status.auto_reconnect);
-        if (!open) {
+        $("portSelect").closest("label").classList.toggle("hidden", !serialControls);
+        $("refreshPorts").classList.toggle("hidden", !serialControls);
+        $("baudInput").closest("label").classList.toggle("hidden", !serialControls);
+        if (!connected) {
           state.pages = [];
           state.currentPage = "";
           renderPages();
@@ -953,6 +979,7 @@
         try {
           const data = await api("/api/status");
           state.status = data.serial;
+          state.transport = data.transport || "serial";
           state.fake = Boolean(data.fake);
           renderStatus();
           return data;
@@ -972,15 +999,22 @@
             ),
           );
           select.innerHTML = "";
-          if (!data.ports.length) {
+          const autoBle = data.ports.some((item) => item.kind === "ble");
+          if (autoBle) {
+            select.add(new Option("自动 · BLE 优先", "ble"));
+          }
+          const serialOnly = data.ports.filter((item) => item.kind !== "ble");
+          if (!serialOnly.length) {
             select.add(new Option("未发现串口", ""));
           }
-          for (const item of data.ports) {
+          for (const item of serialOnly) {
             const label = `${item.port}${item.description ? " · " + item.description : ""}`;
             select.add(new Option(label, item.port));
           }
           if (previous && [...select.options].some((option) => option.value === previous)) {
             select.value = previous;
+          } else if (autoBle) {
+            select.value = "ble";
           } else if (preferred) {
             select.value = preferred.port;
           }
@@ -1062,6 +1096,25 @@
       }
 
       async function connectSerial() {
+        if (state.transport !== "serial" && !state.fake) {
+          const selected = $("portSelect").value;
+          const payload = selected && selected !== "ble" ? { port: selected } : {};
+          let linked = false;
+          await withBusy($("connectBtn"), async () => {
+            try {
+              await post("/api/open", payload);
+              linked = true;
+            } catch (error) {
+              toast(error.message, "error");
+            }
+          });
+          if (linked) {
+            toast("已重新连接 UART/BLE");
+            await loadStatus(true);
+            await refreshView();
+          }
+          return;
+        }
         const port = $("portSelect").value;
         const baud = Number($("baudInput").value) || 115200;
         if (!port) { toast("请选择串口", "error"); return; }

@@ -139,6 +139,15 @@ class SerialBroker:
                 ),
             }
 
+    def _resolve_port(self, port: str | None) -> str:
+        """Map a caller-supplied port to the backend's device id.
+
+        Serial brokers keep the historical COM-port behavior; transports such
+        as BLE can override this without changing ``open()``.
+        """
+
+        return pick_port(port)
+
     def open(
         self,
         port: str | None = None,
@@ -147,7 +156,7 @@ class SerialBroker:
         with self._lifecycle:
             self._wanted = True
             self.close(manual=False)
-            selected = pick_port(port)
+            selected = self._resolve_port(port)
             rate = int(
                 baud
                 or self._baud

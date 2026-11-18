@@ -82,7 +82,7 @@ class PerfController:
     def _send(self, line: str) -> Dict[str, Any]:
         if not self._broker.is_open:
             raise PerfError(
-                "serial port is not open; open a port in the Studio first",
+                "no active UART or BLE link; connect a device first",
                 code="serial_not_open",
                 status=409,
             )
@@ -147,7 +147,7 @@ class PerfController:
             )
         if not self._broker.is_open:
             raise PerfError(
-                "serial port is not open; open a port in the Studio first",
+                "no active UART or BLE link; connect a device first",
                 code="serial_not_open",
                 status=409,
             )

@@ -226,6 +226,8 @@ def prepare_workspace(
 
     files: dict[str, bytes] = {
         f"{SKETCH_NAME}/perf_c6.ino": _load_template("perf_c6.ino"),
+        f"{SKETCH_NAME}/ble_uart.h": _load_template("ble_uart.h"),
+        f"{SKETCH_NAME}/ble_uart.cpp": _load_template("ble_uart.cpp"),
         f"{SKETCH_NAME}/lv_conf.h": _load_template("lv_conf.h"),
         f"{SKETCH_NAME}/app.h": _load_template("app.h"),
     }

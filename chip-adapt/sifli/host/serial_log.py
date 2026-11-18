@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, BinaryIO, TextIO
@@ -52,7 +53,11 @@ class SerialLog:
         root = Path(root)
         root.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        base = f"{stamp}-{port or 'serial'}"
+        safe_port = (
+            re.sub(r"[^A-Za-z0-9._-]+", "-", str(port or "")).strip("-")
+            or "serial"
+        )
+        base = f"{stamp}-{safe_port}"
         target = root / base
         suffix = 1
         while target.exists():

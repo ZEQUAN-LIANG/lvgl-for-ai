@@ -27,7 +27,8 @@
 | 桌面控制 GUI | 可运行 | `host/gui.py`，走 host HTTP API，不直接占用 COM 口 |
 | Wi-Fi / 蓝牙配置 UI | 已实现 | 网页扫描/连接/开关/改名/可发现；串口协议见 `host/README.md` |
 | 官方文档镜像 | 已抓取 | `docs/ESP32-C6-LCD-1.47/`，7 个页面 + 本地截图（2026-11-18） |
-| Arduino 演示固件 | 可运行（已烧录验证） | `arduino/build.py` + `arduino/templates/`；LVGL 9.6 + ST7789，临时 bring-up；见 `docs/arduino-perf-monitor.md` |
+| Arduino 演示固件 | 可运行（已烧录验证） | `arduino/build.py` + `arduino/templates/`；LVGL 9.6 + ST7789，临时 bring-up；**UART + BLE 双通道**；见 `docs/arduino-perf-monitor.md` |
+| UART + BLE 运行时 | 已实现 | host 同时维护 USB 串口与 BLE（NUS），BLE 连上优先，否则回退 UART；`host.py serve` 默认 `dual`；BLE 依赖用 `host/scripts/bootstrap.ps1` 安装 |
 | 导出器 | 未实现 | ESP-IDF 导出器与模板待补；见下方“固件侧待做” |
 | ESP-IDF 固件壳 | 未实现 | 需要 `app_main.c` + ST7789 + `esp_lvgl_port` + `esp_console` 胶水 |
 | 烧录器（esptool） | 可运行（真机已验证） | 独立网页 `/flash/`（与 SiFli host 共用同一套页面，后端不同）+ CLI；解析 `.bin`、`.zip`、ESP-IDF build 目录；释放串口后调用 esptool；`host/scripts/bootstrap.ps1` 装 `esptool==4.8.1`。真机：ESP32-C6FH4 / COM13，微雪 demo 4 MB @ `0x0`，verify OK |
@@ -53,13 +54,17 @@ python -I chip-adapt/esp32/arduino/build.py flash --port COMx
 python -I chip-adapt/esp32/host/host.py serve --fake --open
 python -I chip-adapt/esp32/host/tests/run_tests.py
 
-# 上位机（真机）
-python -I chip-adapt/esp32/host/host.py serve --port COMx --baud 115200 --open
+# 上位机（默认 UART + BLE，BLE 连上优先，否则 UART）
+python -I chip-adapt/esp32/host/host.py serve --open
+
+# 只走串口 / 只走 BLE
+python -I chip-adapt/esp32/host/host.py serve --transport serial --serial-port COMx --open
+python -I chip-adapt/esp32/host/host.py serve --transport ble --ble-name LVGL-C6-PERF --open
 
 # 桌面 GUI（host 已启动）
 python -I chip-adapt/esp32/host/gui.py
 
-# 烧录（先装 esptool；不加 --fake 时走真机）
+# 烧录（先装 esptool 与 bleak；不加 --fake 时走真机）
 powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/esp32/host/scripts/bootstrap.ps1
 python -I chip-adapt/esp32/host/host.py flash \
   --zip chip-adapt/vendor/esp32/demo/ESP32-C6-LCD-1.47-Demo.zip --port COMx
