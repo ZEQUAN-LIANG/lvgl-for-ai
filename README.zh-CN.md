@@ -92,7 +92,7 @@ tkinter 桌面面板。默认每 0.3 秒监控一次，导出/编译默认走增
 python -I chip-adapt/esp32/arduino/build.py build
 python -I chip-adapt/esp32/arduino/build.py flash --port COMx
 python -I chip-adapt/esp32/host/host.py serve --port COMx --baud 115200 --open
-python -I chip-adapt/esp32/host/gui.py
+python -I chip-adapt/esp32/host/perf/perf_gui.py
 ```
 
 实机已验证 USB Serial/JTAG、esptool 烧录和 `SHOT` 帧缓冲抓取。正式 ESP-IDF 导出器仍在

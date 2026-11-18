@@ -11,7 +11,7 @@ LVGL headless 宿主分开：`console/` 负责预览/取证，本目录负责把
 | --- | --- | --- | --- | --- |
 | 自研 | `chip-adapt/sifli/`（除 host 的 vendor/cache/logs） | 是 | 是 | 人 / AI |
 | 自研 | `chip-adapt/esp32/` | 是 | 是 | 人 / AI |
-| 自研 | `chip-adapt/host/`（共享烧录页与计划缓存） | 是 | 是 | 人 / AI |
+| 自研 | `chip-adapt/host/`（共享 Job/HTTP/时间戳与烧录页） | 是 | 是 | 人 / AI |
 | 外部大件 | `chip-adapt/vendor/` | 否（仅 README） | 否 | 按 `vendor/README.md` 下载 |
 | 上位机运行时依赖 | `chip-adapt/sifli/host/vendor/`、`host/web/vendor/` | 否 | 否 | `bootstrap.ps1` |
 | 生成物 | `chip-adapt/exports/`、`host/.cache/`、`host/logs/` | 否 | 否 | `export.py`（SiFli）/ `arduino/build.py`（ESP32）/ host 运行 |
@@ -22,8 +22,8 @@ LVGL headless 宿主分开：`console/` 负责预览/取证，本目录负责把
 - `chip-adapt/sifli/`：SiFli 自研代码，唯一可直接改 SiFli 导出逻辑的区域。
 - `chip-adapt/esp32/`：ESP32-C6 板级适配、host 控制页、桌面 GUI 与 Arduino bring-up；
   见 `esp32/README.md`，演示视频 `../docs/media/esp32-c6-perf-monitor.mp4`。
-- `chip-adapt/host/`：独立烧录页、esptool/sftool 双后端契约、排障与实机记录，见
-  `host/README.md`。
+- `chip-adapt/host/`：共享 `jobs.py` / `http_layer.py` / `timeutil.py`，以及独立烧录页、
+  esptool/sftool 双后端契约、排障与实机记录，见 `host/README.md`。
 - `chip-adapt/vendor/`：SDK 与可选外部资源；**只读**，升级按清单重下。
 - `chip-adapt/exports/`：导出副本；**只能由导出脚本生成**（SiFli `export.py`、ESP32 `arduino/build.py`），手改会丢。
 
@@ -38,6 +38,7 @@ LVGL headless 宿主分开：`console/` 负责预览/取证，本目录负责把
 | 改 SiFli 上位机 | `sifli/host/` | `python -I chip-adapt/sifli/host/tests/run_tests.py` |
 | ESP32-C6 页面 / Wi-Fi / 蓝牙 / 串口 | `esp32/host/README.md` | `python -I chip-adapt/esp32/host/host.py serve --fake --open` |
 | 烧录器（独立网页，两个后端） | `host/README.md` | ESP32 `:8767/flash/`（esptool）；SiFli `:8766/flash/`（sftool） |
+| 改共享 Job / HTTP / 计划缓存 | `host/README.md` | `jobs.py`、`http_layer.py`、`timeutil.py`、`flasher_web.py` |
 | ESP32-C6 现状与后续 | `esp32/README.md` | perf_monitor 已真机验证；host + `/perf/` + GUI；正式 ESP-IDF 导出器/壳待补 |
 | ESP32-C6 Arduino 演示固件 | `esp32/arduino/README.md` | `python -I chip-adapt/esp32/arduino/build.py all --port COMx`；原理见 `esp32/docs/arduino-perf-monitor.md` |
 | 下载/升级 SDK、工具链、sftool | `vendor/README.md` | `host/scripts/install-toolchain.ps1`（国内网络默认镜像）；不在仓库内改 SDK |
@@ -61,7 +62,7 @@ LVGL headless 宿主分开：`console/` 负责预览/取证，本目录负责把
 | 改导出逻辑 | `sifli/export.py`、`sifli/asset_plan.py` | 适配器测试、`sifli/README.md` | 改 `vendor/`、`exports/` |
 | 改导出模板 | `sifli/templates/` | 测试、导出 dry-run | 在导出副本里手改 |
 | 改上位机 | `sifli/host/` | host 测试、host README/API 表 | 另起协议客户端 |
-| 改共享烧录页 | `host/flash_web/`、`host/flasher_web.py` | 两边 host 的 env/plan 测试、两份 README | 在页面写死某个芯片或工具 |
+| 改共享 host 层/烧录页 | `host/jobs.py`、`host/http_layer.py`、`host/timeutil.py`、`host/flash_web/`、`host/flasher_web.py` | 两边 host 的测试、README | 在共享层依赖某个芯片的板级模块 |
 | 改启动器或图标 | `scripts/launchers/` | 重建 exe、`scripts/tests/tools/test_launchers.py` | 手改 exe/ico；启动器掺端口/URL/协议 |
 | 升级 SDK | `vendor/README.md` + 重下 | 路径、链接、API 复核 | 直接改 SDK 源码 |
 | 新增/修改应用 | `user/app/<app>/` | 场景、`assets.json`、`apps[]` 注册 | 改 `exports/<app>/` |
@@ -148,6 +149,6 @@ LVGL_VERIFY_LOOP_USER_APP_DIR="$PWD/chip-adapt/exports/sift_watch/src/app" \
 - 不把 SDK、工具链、sftool、官方 skills 提交进 Git。
 - 不让启动器探测端口、拼 URL 或直接碰串口；它只负责拉起 `pythonw` / `pyw`。
 - 不手改 `vendor/` 或 `exports/`。
-- 不为多芯片做统一板级抽象；只共享烧录前端/HTTP 契约（`host/`），SiFli 导出在
+- 不为多芯片做统一板级抽象；只共享 host 基础模块与烧录前端（`host/`），SiFli 导出在
   `exports/<app>`，ESP32 规划在 `exports/esp32/<app>`，各自保留 board 后端与 profile。
 - 不引入第二套协议客户端；网页、CLI、AI 共用 host 的 broker 和 job。

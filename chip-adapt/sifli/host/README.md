@@ -16,8 +16,8 @@ CLI / AI ───────── HTTP JSON ───┼── broker（独�
   `/api/events` 和 `/api/jobs/<id>/stream` 显示进度与操作者（WEB/AI/CLI）。
 - 网页是终端优先的 Tabby 风格：顶部只有「终端 / 活动」标签；烧录 dock 位于终端上方。
 - 另外提供独立烧录页 `/flash/`（与 ESP32 host 共用 `chip-adapt/host/flash_web/`，
-  这里后端是 `sftool`）；主 UI 标签栏的「烧录器」会新开该页。共享页的完整说明、API、
-  排障与实机记录见 [`../../host/README.md`](../../host/README.md)。
+  这里后端是 `sftool`）；主 UI 标签栏的「烧录器」会新开该页。共享 host 模块、烧录页
+  API、排障与实机记录见 [`../../host/README.md`](../../host/README.md)。
 - 终端直接键盘输入，无发送栏；默认关闭本地回显（板端 finsh 已回显），标签栏「回显」
   可开；Enter 发 CR（RT-Thread finsh 用 CR 结束行，发 CRLF 会打印两次 `msh />`），
   Ctrl+L 清屏。
@@ -221,19 +221,16 @@ skill；本仓库不重复教学。
 ```
 host/
   server.py           HTTP 路由 + 静态页 + API
-  http_layer.py       JSON/SSE/静态文件/错误状态映射
   cli.py              CLI（--json、自动拉起 broker）
   runner.py           build/flash job 编排（释放串口、重连、记录状态）
   broker.py           串口所有权、游标、自动重连
   ring_buffer.py      带序号的接收环形缓冲
   serial_log.py       串口日志目录与 NDJSON 事件
-  jobs.py             构建/烧录 job
   events.py           AI/CLI/WEB 活动事件总线
   state.py            上次构建/打开记录与自动填充
   build_flash.py      export.py / scons / sftool / Web Flasher ZIP
   serial_backend.py   pyserial 封装（vendor/pyserial）
   config.py           路径与默认配置
-  timeutil.py         统一 ISO 时间戳
   scripts/            bootstrap.ps1、install-toolchain.ps1、build-current.ps1、flash-current.ps1、suggest.ps1
   web/                xterm 终端、烧录 dock、活动流；web/vendor/xterm/
   vendor/serial/      pyserial 3.5（BSD-3-Clause）
@@ -241,6 +238,9 @@ host/
   logs/               串口日志（运行时）
   .cache/             状态与固件 ZIP 缓存（运行时）
 ```
+
+`jobs.py`、`http_layer.py`、`timeutil.py` 已移到 `chip-adapt/host/`，与 ESP32 host
+共用；HTTP API 不变。
 
 ## 测试
 
