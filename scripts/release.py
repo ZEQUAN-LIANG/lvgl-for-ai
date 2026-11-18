@@ -80,7 +80,7 @@ PACKAGE_TOOLS_FILES = (
 )
 RELEASE_ENGINE_CACHE_DIR = Path("dist") / "release"
 RELEASE_ENGINE_SCHEMA = "lvgl-verify-loop-release-engine-v1"
-RELEASE_ENGINE_SOURCE_SUFFIXES = frozenset({".c", ".h"})
+RELEASE_ENGINE_SOURCE_SUFFIXES = frozenset({".c", ".h", ".json", ".inc"})
 RELEASE_VIEWER = "LVGL-AI-Viewer.exe"
 RELEASE_VIEWER_PATH = Path("bin") / RELEASE_VIEWER
 RELEASE_META_DIR = Path("scripts") / "meta"
@@ -403,6 +403,20 @@ def ensure_release_engine(
     }
 
 
+def _mark_release_default(path: Path) -> None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        payload = {"entry": f"{RELEASE_INTRO_APP}_create"}
+    if not isinstance(payload, dict):
+        payload = {"entry": f"{RELEASE_INTRO_APP}_create"}
+    payload["default"] = True
+    path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
 def stage_user_tree(repo_root: Path, package: Path) -> None:
     app_source = repo_root / "user" / "app"
     app_target = package / "user" / "app"
@@ -430,6 +444,7 @@ def stage_user_tree(repo_root: Path, package: Path) -> None:
     intro_readme = app_target / RELEASE_INTRO_APP / "README.md"
     if intro_readme.is_file():
         intro_readme.unlink()
+    _mark_release_default(app_target / RELEASE_INTRO_APP / "app.json")
     release_app = SCRIPTS_DIR / "release_app.c"
     if not release_app.is_file():
         raise BuildError("release: scripts/release_app.c is missing")

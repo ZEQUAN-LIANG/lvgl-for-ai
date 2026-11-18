@@ -88,6 +88,12 @@ class PrebuiltCase(unittest.TestCase):
         (self.user_app / "app.h").write_text(
             "#define APP_OK 1\n", encoding="utf-8"
         )
+        hello = self.user_app / "hello"
+        hello.mkdir()
+        (hello / "app.json").write_text(
+            json.dumps({"entry": "hello_create", "default": True}),
+            encoding="utf-8",
+        )
         self.engine_dir = self.root / "core" / "engine"
         (self.engine_dir / "core").mkdir(parents=True)
         (self.engine_dir / "core" / "main.c").write_text(
@@ -408,6 +414,20 @@ class CommandTest(PrebuiltCase):
         compiled = runner.compile_calls()
         self.assertEqual(len(compiled), 1)
         self.assertTrue(compiled[0][2].endswith("app.c"))
+
+    def test_app_metadata_change_invalidates_app_object(self) -> None:
+        self.plan(WritingRunner()).execute(build=True)
+        second = self.user_app / "second"
+        second.mkdir()
+        (second / "app.json").write_text(
+            '{"entry": "second_create"}\n', encoding="utf-8"
+        )
+        runner = WritingRunner()
+        self.plan(runner).execute(build=True)
+        compiled = runner.compile_calls()
+        self.assertTrue(
+            any(call[2].endswith("app.c") for call in compiled)
+        )
 
     def test_source_build_removes_the_prebuilt_engine(self) -> None:
         self.plan(WritingRunner()).execute(build=True)

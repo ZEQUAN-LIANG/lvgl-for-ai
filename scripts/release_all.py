@@ -119,6 +119,16 @@ def _stage_intro_app(repo: Path, target: Path) -> None:
     for name in ("app.h", "lvgl_compat.h"):
         shutil.copy2(source / name, target / name)
     shutil.copytree(source / "intro", target / "intro")
+    intro_meta = target / "intro" / "app.json"
+    try:
+        payload = json.loads(intro_meta.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        payload = {"entry": "intro_create"}
+    payload["default"] = True
+    intro_meta.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
     shutil.copy2(repo / "scripts" / "release_app.c", target / "app.c")
 
 

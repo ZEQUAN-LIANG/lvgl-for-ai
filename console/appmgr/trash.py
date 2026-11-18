@@ -1,8 +1,9 @@
 """App trash lifecycle: soft delete, restore and permanent delete.
 
-A delete removes the ``apps[]`` row, moves the app directory and its scenarios
-under ``user/.trash/apps/<trash-id>/`` and writes ``meta.json``; restore
-re-registers and moves them back; purge removes the entry for good.
+A delete moves the app directory and its scenarios under
+``user/.trash/apps/<trash-id>/`` and writes ``meta.json``; restore moves them
+back; purge removes the entry for good.  No shared registry is edited because
+the next build rediscovers apps from ``user/app/<name>/app.json``.
 """
 
 from __future__ import annotations
@@ -14,8 +15,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from . import common, policy, registry, views
-from .common import AppCChanged, AppError
+from . import common, discovery, policy, views
+from .common import AppError
 
 
 class InvalidTrashId(AppError):
@@ -25,47 +26,32 @@ class InvalidTrashId(AppError):
 def delete_app(repo_root: str | Path, name: str) -> dict[str, Any]:
     root = common.resolve_repo_root(repo_root)
     common._require_plain_name(name)
-    if policy.is_protected_name(name):
-        raise AppError("protected_app", f'app "{name}" is protected')
-    app_c = common._app_c(root)
-    if not app_c.is_file():
-        raise AppError("app_c_missing", f"app.c not found: {app_c}")
-
-    original_bytes, text, bom, eol = common._read_source(app_c)
-    entries = registry.parse_app_entries(text)
-    matches = [
-        (entry_name, symbol)
-        for entry_name, symbol in entries
-        if entry_name == name
-    ]
-    if not matches:
-        raise AppError("unknown_app", f'app "{name}" is not registered')
-    if len(matches) > 1:
+    if policy.is_protected_name(root, name):
         raise AppError(
-            "app_conflict", f'app "{name}" is registered more than once'
+            "protected_app",
+            f'app "{name}" is the default app and cannot be deleted',
         )
-    symbol = matches[0][1]
-    if symbol != f"{name}_create":
-        raise AppError(
-            "app_conflict",
-            f'app "{name}" uses non-standard symbol {symbol}; manage it manually',
-        )
+    entries, issues = discovery.scan_apps(common._user_app(root))
+    match = next((entry for entry in entries if entry.name == name), None)
+    if match is None:
+        if issues:
+            issue = issues[0]
+            raise AppError(
+                "app_metadata_invalid",
+                f"{common._relative(issue.path, root)}: {issue.message}",
+            )
+        raise AppError("unknown_app", f'app "{name}" is not discovered')
 
     scenarios = views.scenarios_for_app(root, name)
-    for path in scenarios:
-        if policy.is_protected_scenario(path.name):
-            raise AppError(
-                "protected_scenario",
-                f"scenario {path.name} is protected",
-            )
-
-    new_text, info = registry.unregister_app(text, name)
     app_dir = common._app_dir(root, name)
     if app_dir.is_symlink():
         raise AppError("unsafe_path", f"{app_dir} must not be a symlink")
     if app_dir.exists() and not app_dir.is_dir():
         raise AppError("app_conflict", f"{app_dir} is not a directory")
     app_present = app_dir.is_dir()
+    if not app_present and not scenarios:
+        raise AppError("unknown_app", f'app "{name}" has no files to delete')
+
     trash_root = common._trash_root(root)
     trash_root.mkdir(parents=True, exist_ok=True)
     trash_id = _new_trash_id(trash_root)
@@ -73,8 +59,6 @@ def delete_app(repo_root: str | Path, name: str) -> dict[str, Any]:
     moved_app = False
     moved_scenarios: list[tuple[Path, Path]] = []
     try:
-        common._ensure_unchanged(app_c, original_bytes)
-        common._replace_bytes(app_c, common._encode_source(new_text, bom, eol))
         trash_dir.mkdir()
         if app_present:
             common._move_path(app_dir, trash_dir / "app")
@@ -89,7 +73,7 @@ def delete_app(repo_root: str | Path, name: str) -> dict[str, Any]:
             "schema": common.TRASH_SCHEMA,
             "trash_id": trash_id,
             "name": name,
-            "symbol": symbol,
+            "symbol": match.entry,
             "deleted_at": common._now_iso(),
             "scenarios": [path.name for path in scenarios],
             "app_present": moved_app,
@@ -97,12 +81,9 @@ def delete_app(repo_root: str | Path, name: str) -> dict[str, Any]:
         common._write_json(trash_dir / "meta.json", meta)
     except BaseException as exc:
         warnings = _rollback_transaction(
-            app_c=app_c,
-            original_bytes=original_bytes,
             app_move_back=(trash_dir / "app", app_dir) if moved_app else None,
             moved_scenarios=moved_scenarios,
             app_first=False,
-            restore_app_c=not isinstance(exc, AppCChanged),
         )
         shutil.rmtree(trash_dir, ignore_errors=True)
         if isinstance(exc, AppError):
@@ -124,9 +105,9 @@ def delete_app(repo_root: str | Path, name: str) -> dict[str, Any]:
         "app_moved": moved_app,
         "scenarios": [common._relative(path, root) for path in scenarios],
         "scenario_files": [path.name for path in scenarios],
-        "app_c": common._relative(app_c, root),
-        "registration_removed": bool(info.get("changed")),
-        "warnings": info.get("warnings", []),
+        "app_c": common._relative(common._app_c(root), root),
+        "registration_removed": False,
+        "warnings": [],
         "build_required": True,
     }
 
@@ -136,17 +117,7 @@ def restore_app(repo_root: str | Path, trash_id: str) -> dict[str, Any]:
     trash_dir = _trash_dir(root, trash_id)
     meta = _read_trash_meta(trash_dir)
     name = common._require_plain_name(meta.get("name"))
-    if policy.is_protected_name(name):
-        raise AppError("protected_app", f'app "{name}" is protected')
     scenarios = _meta_scenarios(meta)
-    for basename in scenarios:
-        if policy.is_protected_scenario(basename):
-            raise AppError(
-                "protected_scenario", f"scenario {basename} is protected"
-            )
-    app_c = common._app_c(root)
-    if not app_c.is_file():
-        raise AppError("app_c_missing", f"app.c not found: {app_c}")
     app_dir = common._app_dir(root, name)
     targets = [common._scenario_path(root, basename) for basename in scenarios]
     conflicts = [path for path in [app_dir, *targets] if path.exists()]
@@ -167,12 +138,6 @@ def restore_app(repo_root: str | Path, trash_id: str) -> dict[str, Any]:
             "unknown_trash", f"trash entry {trash_id} has no application data"
         )
 
-    original_bytes, text, bom, eol = common._read_source(app_c)
-    new_text, registered = registry.register_app(text, name)
-    if not registered:
-        raise AppError(
-            "restore_conflict", f'app "{name}" is already registered'
-        )
     moved_scenarios: list[tuple[Path, Path]] = []
     moved_app = False
     try:
@@ -191,16 +156,11 @@ def restore_app(repo_root: str | Path, trash_id: str) -> dict[str, Any]:
         if app_present:
             common._move_path(app_src, app_dir)
             moved_app = True
-        common._ensure_unchanged(app_c, original_bytes)
-        common._replace_bytes(app_c, common._encode_source(new_text, bom, eol))
     except BaseException as exc:
         warnings = _rollback_transaction(
-            app_c=app_c,
-            original_bytes=original_bytes,
             app_move_back=(app_dir, app_src) if moved_app else None,
             moved_scenarios=moved_scenarios,
             app_first=True,
-            restore_app_c=not isinstance(exc, AppCChanged),
         )
         if isinstance(exc, AppError):
             raise
@@ -221,8 +181,8 @@ def restore_app(repo_root: str | Path, trash_id: str) -> dict[str, Any]:
         "app_restored": moved_app,
         "scenarios": [common._relative(path, root) for path in targets],
         "scenario_files": scenarios,
-        "app_c": common._relative(app_c, root),
-        "registered": True,
+        "app_c": common._relative(common._app_c(root), root),
+        "registered": moved_app,
         "build_required": True,
     }
 
@@ -313,12 +273,9 @@ def list_trash(repo_root: str | Path) -> list[dict[str, Any]]:
 
 def _rollback_transaction(
     *,
-    app_c: Path,
-    original_bytes: bytes,
     app_move_back: tuple[Path, Path] | None,
     moved_scenarios: list[tuple[Path, Path]],
     app_first: bool,
-    restore_app_c: bool = True,
 ) -> list[str]:
     warnings: list[str] = []
 
@@ -344,11 +301,6 @@ def _rollback_transaction(
     else:
         undo_scenarios()
         undo_app()
-    if restore_app_c:
-        try:
-            common._replace_bytes(app_c, original_bytes)
-        except OSError as exc:
-            warnings.append(str(exc))
     return warnings
 
 

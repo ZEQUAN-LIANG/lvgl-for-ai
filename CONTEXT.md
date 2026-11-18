@@ -9,7 +9,7 @@
 _Avoid_: 场景真源、UI 文件
 
 **应用变体（App variant）**：
-同一个 engine 入口 `app_create` 下由 `apps[]` 表映射的用户界面实现，每个变体暴露 `void <name>_create(void)`。
+同一个 engine 入口 `app_create` 下由 `user/app/<name>/app.json` 自动发现的用户界面实现，每个变体暴露 `void <name>_create(void)`；构建生成 `app_registry.inc`，不维护中心注册表。
 _Avoid_: 页面、demo
 
 **场景（Scenario）**：

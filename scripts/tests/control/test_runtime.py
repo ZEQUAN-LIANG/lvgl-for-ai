@@ -151,7 +151,14 @@ class RuntimeIntegrationTest(unittest.TestCase):
         rt.start()
 
         log_text = (rt.session_dir / "engine.log").read_text(encoding="utf-8")
-        self.assertIn("[app] apps=coffee,xiaohongshu,spectrum", log_text)
+        app_line = next(
+            line
+            for line in log_text.splitlines()
+            if line.startswith("[app] apps=")
+        )
+        names = app_line.removeprefix("[app] apps=").split(",")
+        for name in ("coffee", "xiaohongshu", "spectrum"):
+            self.assertIn(name, names)
         self.assertIn("[app] app=xiaohongshu", log_text)
         manifest = json.loads(
             (rt.session_dir / "manifest.json").read_text(encoding="utf-8")

@@ -266,6 +266,7 @@ class BuildPlan:
         parts: list[str] = ["# build mode: source"]
         with build_lock(self.build_dir):
             try:
+                self._write_app_registry()
                 ensure_engine_stopped(self.build_dir / paths.engine_filename())
                 marker = self.build_dir / PREBUILT_MARKER
                 if marker.is_file():
@@ -321,6 +322,9 @@ class BuildPlan:
         return self._prebuilt
 
     def _run_prebuilt(self) -> str:
+        self._write_app_registry()
+        if self._prebuilt is not None:
+            self._prebuilt.refresh_dependencies()
         plan = self._resolve_prebuilt()
         plan.preflight()
         parts: list[str] = [plan.log_header()]
@@ -343,6 +347,17 @@ class BuildPlan:
             plan.prune_objects()
             plan.write_marker()
         return "\n".join(parts)
+
+    def _write_app_registry(self) -> None:
+        from appmgr import discovery
+
+        try:
+            discovery.write_registry(self.user_app_dir)
+        except discovery.DiscoveryError as exc:
+            raise BuildError(
+                f"app discovery failed: {exc}",
+                command=list(self.configure_command),
+            ) from exc
 
     def _run_command(self, command: Sequence[str], phase: str) -> str:
         runner = self._runner if self._runner is not None else run_capture

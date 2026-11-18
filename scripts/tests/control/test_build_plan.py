@@ -64,6 +64,12 @@ class BuildPlanCase(unittest.TestCase):
             self.libpng_src,
         ):
             path.mkdir(parents=True, exist_ok=True)
+        hello = self.user_app_dir / "hello"
+        hello.mkdir()
+        (hello / "app.json").write_text(
+            '{"entry": "hello_create", "default": true}\n',
+            encoding="utf-8",
+        )
 
     def plan(self, runner=None, **overrides) -> BuildPlan:
         options = {

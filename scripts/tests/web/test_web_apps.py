@@ -25,6 +25,16 @@ class WebAppsTest(unittest.TestCase):
         (self.root / "user" / "app").mkdir(parents=True)
         (self.root / "user" / "scenarios").mkdir(parents=True)
         shutil.copy2(APP_C, self.root / "user" / "app" / "app.c")
+        for name, entry, default in (
+            ("coffee", "coffee_create", True),
+            ("spectrum", "spectrum_create", False),
+        ):
+            app_dir = self.root / "user" / "app" / name
+            app_dir.mkdir()
+            (app_dir / "app.json").write_text(
+                json.dumps({"entry": entry, "default": default}),
+                encoding="utf-8",
+            )
         self.sessions = Path(self._tmp.name) / "sessions"
         self.sessions.mkdir()
         self.harness = WebHarness(

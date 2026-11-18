@@ -1166,29 +1166,19 @@ def _write_repo(root: Path) -> None:
     (root / "user" / "app" / "coffee" / "coffee.c").write_text(
         "/* coffee */\n", encoding="utf-8"
     )
+    (root / "user" / "app" / "coffee" / "app.json").write_text(
+        json.dumps({"entry": "coffee_create", "default": True}),
+        encoding="utf-8",
+    )
     (root / "user" / "app" / "alpha" / "alpha.c").write_text(
         "/* alpha */\n", encoding="utf-8"
     )
+    (root / "user" / "app" / "alpha" / "app.json").write_text(
+        json.dumps({"entry": "alpha_create"}),
+        encoding="utf-8",
+    )
     (root / "user" / "app" / "app.c").write_text(
         """#include "lvgl.h"
-
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
-#include "coffee/coffee.h"
-#include "alpha/alpha.h"
-#endif
-
-typedef void (* app_create_fn)(lv_obj_t * screen);
-typedef struct {
-    const char * name;
-    app_create_fn create;
-} app_entry_t;
-
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
-static const app_entry_t apps[] = {
-    {"coffee", coffee_create},
-    {"alpha", alpha_create},
-};
-#endif
 
 void app_create(void) {}
 """,

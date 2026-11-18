@@ -17,7 +17,7 @@
 | 工具自测应用 | `asset_probe`、`textarea_evidence`、`demo/` | 资源转换探针、文本输入证据与旧版本 harness；集成测试依赖，不要随意改 |
 | 发布应用 | `intro` | 发布包唯一应用，同时是默认介绍页与模板 |
 
-`demo/` 不在 `apps[]` 表里：它由 `app_create` 在 LVGL 9.1 / 8.x 或集成测试路径下直接挂载。
+`demo/` 没有 `app.json`，不会被应用发现；它由 `app_create` 在 LVGL 9.1 / 8.x 或集成测试路径下直接挂载。
 
 ## 应用变体（app）
 
@@ -86,16 +86,19 @@ void <name>_create(void);
 
 入口内部用 `lv_screen_active()` 取活动屏幕；应用根用 `app_set_name("<name>")` 命名，控件用 `app_obj_set_name(obj, "...")` 命名。
 
-`app.c` 用 `apps[]` 表把名字映射到函数：
+每个应用在自己的目录里用 `app.json` 声明入口，构建时自动生成 `app_registry.inc`：
 
-```c
-static const app_entry_t apps[] = {
-    {"coffee", coffee_create},
-    {"xiaohongshu", xhs_page_create},
-};
+```json
+{
+  "entry": "coffee_create",
+  "aliases": [],
+  "default": true
+}
 ```
 
-`apps=...` 日志由这张表生成，查找、默认值和未知值处理也只走这一处。
+`app.c` 只包含生成文件并做查找，不再维护中心 `apps[]` 表。目录名就是应用名；
+`"default": true` 只有一个，未设置时按应用名排序取第一个。别名（例如 `xhs`）
+也写在该应用的 `app.json` 里。
 
 ## 新增一个应用
 
@@ -105,24 +108,24 @@ static const app_entry_t apps[] = {
 
 ```bash
 python -I scripts/new_app.py <name> --dry-run   # 先看计划
-python -I scripts/new_app.py <name>             # 生成并注册
+python -I scripts/new_app.py <name>             # 生成目录、app.json 和场景
 ```
 
-脚本会创建源文件、头文件、场景，并在 `user/app/app.c` 加上 include 和 `apps[]` 一行。
-生成后仍需源码构建；预编译 engine 不含新应用。
+脚本只写应用自己的目录和场景，不改 `app.c` 或其他共享文件。生成后仍需源码构建；
+预编译 engine 不含新应用。
 
-网页端也可以从顶部「应用管理」完成新建、预览、删除和恢复。删除会先把应用目录、
-所有关联场景和注册移出，放进 `.trash/user/app/<trash-id>/`；回收站里可以恢复，
-再次确认后才会永久删除。`coffee`、`xiaohongshu`、`spectrum` 等内置应用受保护。
+网页端也可以从顶部「应用管理」完成新建、预览、删除和恢复。删除会把应用目录和
+所有关联场景移进 `user/.trash/apps/<trash-id>/`；回收站里可以恢复，再次确认后
+才会永久删除。只有 `app.json` 标记为 `default` 的应用受保护。
 
 手工步骤：
 
 1. 新建 `user/app/<name>/`，实现 `void <name>_create(void)`；入口内用 `lv_screen_active()` 取屏幕。
-2. 在 `app.c` 的 `apps[]` 中加一行 `{"<name>", <name>_create}`。
+2. 在同目录写 `app.json`，至少包含 `{"entry": "<name>_create"}`；需要别名或默认应用时再加 `aliases` / `default`。
 3. 在 `user/scenarios/<name>.json` 顶层写 `"app": "<name>"`。
 4. 需要非默认分辨率时，再写可选 `"display": {"width": W, "height": H}`（`1..4096`）；
    省略时使用引擎默认 800×600。尺寸在 engine 启动时传入，不需要重新编译。
-5. 不需要改 `console/`：CLI、web 下拉和 manifest 都按这些字段工作。
+5. 不需要改 `console/` 或 `user/app/app.c`：CLI、web 下拉和构建都按目录自动发现。
 
 ## 证据
 

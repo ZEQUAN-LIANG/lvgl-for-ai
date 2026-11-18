@@ -31,8 +31,9 @@ SDK、工具链、sftool 和可选的 Web Flasher 资源都是外部下载物，
 `user/app/sift_watch` 是唯一源码真源：本地 headless（LVGL 9.6）直接编译它，导出时按
 LVGL 9.4 基线原样复制到 `<app>/src/app/sift_watch/`，只在每个 `.c` 顶部插入
 `#include "lvgl_verify_loop_sdk.h"`。共享应用只暴露 `void sift_watch_create(void)`；
-headless 的 `app_create`、SDK 的 `app_create` / `main.c` 和 `user/app/app.c` 的注册表
-都属于目标侧，不进入共享源码。
+headless 的 `app_create`、SDK 的 `app_create` / `main.c` 和 `user/app/<name>/app.json`
+的应用元数据都属于目标侧，不进入共享源码；导出器用同一份 `app.json` 找入口符号，
+不再读 `user/app/app.c` 的注册表。
 
 导出目录完全自包含，只依赖 SiFli SDK；`chip-adapt/exports/<app>/` 是生成物，已被
 `.gitignore` 忽略，不进入版本库。

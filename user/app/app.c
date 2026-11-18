@@ -4,19 +4,6 @@
 #include "app.h"
 #include "asset_probe/asset_probe.h"
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
-#include "coffee/coffee_ui.h"
-#include "xiaohongshu/xhs_page.h"
-#include "spectrum/spectrum.h"
-#include "textarea_evidence/textarea_evidence.h"
-#include "sift_watch/sift_watch.h"
-#include "zombie_cannon/zombie_cannon.h"
-#include "intro/intro.h"
-#include "demo_feedback/demo_feedback.h"
-#include "c6_demo/c6_demo.h"
-#include "perf_monitor/perf_monitor.h"
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,25 +16,27 @@ typedef struct {
     app_create_fn create;
 } app_entry_t;
 
-static const app_entry_t apps[] = {
-    {"coffee", coffee_create},
-    {"xiaohongshu", xhs_page_create},
-    {"spectrum", spectrum_create},
-    {"textarea_evidence", textarea_evidence_create},
-    {"sift_watch", sift_watch_create},
-    {"zombie_cannon", zombie_cannon_create},
-    {"intro", intro_create},
-    {"demo_feedback", demo_feedback_create},
-    {"c6_demo", c6_demo_create},
-    {"perf_monitor", perf_monitor_create},
-    {"asset_probe", asset_probe_create},
-};
+typedef struct {
+    const char * alias;
+    const char * name;
+} app_alias_t;
+
+/* The build writes app_registry.inc from user/app/<name>/app.json. */
+#include "app_registry.inc"
 
 #define APP_COUNT (sizeof(apps) / sizeof(apps[0]))
 
 static const char * app_canonical(const char * name)
 {
-    return strcmp(name, "xhs") == 0 ? "xiaohongshu" : name;
+#if APP_ALIAS_COUNT > 0
+    size_t index;
+    for(index = 0; index < APP_ALIAS_COUNT; index++) {
+        if(strcmp(name, app_aliases[index].alias) == 0) {
+            return app_aliases[index].name;
+        }
+    }
+#endif
+    return name;
 }
 
 static const app_entry_t * app_find(const char * name)

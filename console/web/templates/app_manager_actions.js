@@ -90,8 +90,8 @@
     if (managerRoots) {
       const roots = data.roots || {};
       managerRoots.textContent =
-        "应用代码 " + (roots.app || "apps") + "/<应用>/ · 场景 " +
-        (roots.scenarios || "scenarios") + " · 注册 " +
+        "应用 " + (roots.app || "user/app") + "/<应用>/app.json · 场景 " +
+        (roots.scenarios || "scenarios") + " · 入口 " +
         (roots.app_c || "user/app/app.c") + " · 回收站 " +
         (roots.trash || ".trash/apps") + "/<id>/";
     }
@@ -138,7 +138,7 @@
       const item = makeNode("div", "manager-item");
       const head = makeNode("div", "manager-item-head");
       head.appendChild(makeNode("span", "manager-name", orphan.name || "未知"));
-      addBadge(head, "未注册", "is-warn");
+      addBadge(head, "缺少 app.json", "is-warn");
       item.appendChild(head);
       item.appendChild(makeNode("div", "manager-meta", orphan.path || ""));
       managerList.appendChild(item);
@@ -259,7 +259,7 @@
     const data = result.data;
     managerTree.appendChild(makeNode(
       "div", "manager-meta",
-      (data.registered ? "已注册 " + (data.symbol || "") : "未注册") +
+      (data.registered ? "入口 " + (data.symbol || "") : "未发现 app.json") +
       " · " + (data.app_dir || "")
     ));
     if (data.tree) {
@@ -276,7 +276,7 @@
       managerTree.appendChild(ul);
     }
     if (data.app_c) {
-      managerTree.appendChild(makeNode("div", "manager-meta", "注册表"));
+      managerTree.appendChild(makeNode("div", "manager-meta", "入口文件"));
       const ul = document.createElement("ul");
       ul.appendChild(renderTreeNode(data.app_c));
       managerTree.appendChild(ul);
@@ -341,7 +341,7 @@
       setManagerStatus("测试或录制运行中不能修改应用；停止后再试。");
       return;
     }
-    if (!window.confirm("将 \"" + name + "\" 移到 .trash/user/app/？可从回收站恢复。")) {
+    if (!window.confirm("将 \"" + name + "\" 移到 user/.trash/apps/？可从回收站恢复。")) {
       return;
     }
     const result = await managerCall("POST", "/api/apps/delete", { name: name });

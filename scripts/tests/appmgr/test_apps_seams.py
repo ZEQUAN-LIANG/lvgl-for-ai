@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 import appmgr as app_domain
-from appmgr import common, policy, registry, scaffold, trash, views
+from appmgr import common, discovery, policy, scaffold, trash, views
 from scenario import scenario_index
 from scripts.tests.support import symlinked_file
 
@@ -35,6 +35,22 @@ class _TempRepo(unittest.TestCase):
     def _app_c_text(self) -> str:
         return self.app_c.read_text(encoding="utf-8")
 
+    def _add_app(
+        self, name: str, entry: str | None = None, *, default: bool = False
+    ) -> Path:
+        app_dir = self.root / "user" / "app" / name
+        app_dir.mkdir(exist_ok=True)
+        (app_dir / discovery.METADATA_NAME).write_text(
+            json.dumps(
+                {
+                    "entry": entry or f"{name}_create",
+                    "default": default,
+                }
+            ),
+            encoding="utf-8",
+        )
+        return app_dir
+
     def _write_scenario(self, name: str, app: str) -> Path:
         path = self.root / "user" / "scenarios" / f"{name}.json"
         path.write_text(
@@ -56,9 +72,6 @@ class PublicSurfaceTest(unittest.TestCase):
         self.assertIs(app_domain.AppError, common.AppError)
         self.assertIs(app_domain.resolve_repo_root, common.resolve_repo_root)
         self.assertIs(app_domain.is_protected_name, policy.is_protected_name)
-        self.assertIs(app_domain.parse_app_entries, registry.parse_app_entries)
-        self.assertIs(app_domain.register_app, registry.register_app)
-        self.assertIs(app_domain.unregister_app, registry.unregister_app)
         self.assertIs(app_domain.scaffold_app, scaffold.scaffold_app)
         self.assertIs(app_domain.list_apps, views.list_apps)
         self.assertIs(app_domain.app_tree, views.app_tree)
@@ -76,180 +89,132 @@ class PublicSurfaceTest(unittest.TestCase):
         self.assertFalse(hasattr(error, "status"))
 
 
-class RegistrySeamTest(_TempRepo):
-    def test_register_is_idempotent(self) -> None:
-        original = self._app_c_text()
-        first, changed = registry.register_app(original, "hello")
-        self.assertTrue(changed)
-        second, changed_again = registry.register_app(first, "hello")
-        self.assertFalse(changed_again)
-        self.assertEqual(second, first)
-
-    def test_unregister_missing_is_ok_only_when_requested(self) -> None:
-        with self.assertRaises(common.AppError) as raised:
-            registry.unregister_app(self._app_c_text(), "hello")
-        self.assertEqual(raised.exception.code, "unknown_app")
-
-        text, info = registry.unregister_app(
-            self._app_c_text(), "hello", missing_ok=True
+class DiscoverySeamTest(_TempRepo):
+    def test_directories_without_metadata_are_not_apps(self) -> None:
+        self._add_app("hello")
+        helper = self.root / "user" / "app" / "demo"
+        helper.mkdir()
+        (helper / "panel.c").write_text(
+            "void app_panel_create(void) {}\n", encoding="utf-8"
         )
-        self.assertFalse(info["changed"])
-        self.assertEqual(text, self._app_c_text())
-        self.assertEqual(info["warnings"], ['app "hello" was not registered'])
+        entries, issues = discovery.scan_apps(self.root / "user" / "app")
+        self.assertEqual([entry.name for entry in entries], ["hello"])
+        self.assertEqual(issues, [])
 
-    def test_invalid_registry_reports_domain_error(self) -> None:
-        with self.assertRaises(common.AppError) as raised:
-            registry.register_app("void app_create(void) {}\n", "hello")
-        self.assertEqual(raised.exception.code, "app_registry_invalid")
-
-    def test_duplicate_entry_conflict(self) -> None:
-        text = self._app_c_text().replace(
-            '    {"spectrum", spectrum_create},\n',
-            '    {"spectrum", spectrum_create},\n'
-            '    {"spectrum", spectrum_create},\n',
-        )
-        with self.assertRaises(common.AppError) as raised:
-            registry.unregister_app(text, "spectrum")
-        self.assertEqual(raised.exception.code, "app_conflict")
-
-    def test_empty_apps_table_allows_the_first_registration(self) -> None:
-        text = self._app_c_text()
-        for name, symbol in registry.parse_app_entries(text):
-            text = text.replace(f'    {{"{name}", {symbol}}},\n', "")
-        registered, changed = registry.register_app(text, "hello")
-        self.assertTrue(changed)
-        self.assertEqual(
-            registry.parse_app_entries(registered),
-            [("hello", "hello_create")],
-        )
-
-    def test_first_entry_is_recorded_and_compared_not_hardcoded(self) -> None:
-        original = self._app_c_text()
-        self.assertEqual(registry.parse_app_entries(original)[0][0], "coffee")
-        registered, _ = registry.register_app(original, "hello")
-        self.assertEqual(
-            registry.parse_app_entries(registered)[0][0], "coffee"
-        )
-        restored, _ = registry.unregister_app(registered, "hello")
-        self.assertEqual(restored, original)
-
-        renamed = original.replace(
-            '    {"coffee", coffee_create},\n'
-            '    {"xiaohongshu", xhs_page_create},',
-            '    {"espresso", coffee_create},\n'
-            '    {"xiaohongshu", xhs_page_create},',
-        )
-        escalated, changed = registry.register_app(renamed, "hello")
-        self.assertTrue(changed)
-        self.assertEqual(
-            registry.parse_app_entries(escalated)[0][0], "espresso"
-        )
-        with self.assertRaises(common.AppError) as raised:
-            registry.unregister_app(escalated, "espresso")
-        self.assertIn("espresso must stay the first", raised.exception.message)
-
-
-class ScaffoldSeamTest(_TempRepo):
-    def test_dry_run_reports_without_writing(self) -> None:
-        original = self._app_c_text()
-        result = scaffold.scaffold_app(self.root, "hello", dry_run=True)
-        self.assertTrue(result["dry_run"])
-        self.assertEqual(
-            result["created"],
-            [
-                "user/app/hello/hello.h",
-                "user/app/hello/hello.c",
-                "user/scenarios/hello.json",
-            ],
-        )
-        self.assertFalse((self.root / "user/app/hello").exists())
-        self.assertEqual(self._app_c_text(), original)
-
-    def test_force_keeps_existing_extra_files(self) -> None:
-        app_dir = self.root / "user/app/hello"
+    def test_invalid_metadata_is_reported(self) -> None:
+        app_dir = self.root / "user" / "app" / "broken"
         app_dir.mkdir()
-        (app_dir / "keep.txt").write_text("keep\n", encoding="utf-8")
-        scaffold.scaffold_app(self.root, "hello", force=True)
-        self.assertTrue((app_dir / "keep.txt").is_file())
-        self.assertTrue((app_dir / "hello.c").is_file())
+        (app_dir / discovery.METADATA_NAME).write_text(
+            '{"entry": "not valid"}', encoding="utf-8"
+        )
+        entries, issues = discovery.scan_apps(self.root / "user" / "app")
+        self.assertEqual(entries, [])
+        self.assertEqual(len(issues), 1)
+        self.assertIn("C identifier", issues[0].message)
+        with self.assertRaises(discovery.DiscoveryError):
+            discovery.discover_apps(self.root / "user" / "app")
+
+    def test_registry_is_generated_from_metadata(self) -> None:
+        self._add_app("coffee", default=True)
+        self._add_app("hello")
+        apps_dir = self.root / "user" / "app"
+        target = discovery.write_registry(apps_dir)
+        first = target.read_bytes()
+        self.assertIn(
+            b'{"coffee", coffee_create}', first
+        )
+        self.assertIn(b'{"hello", hello_create}', first)
+        self.assertLess(
+            first.index(b'{"coffee"'), first.index(b'{"hello"')
+        )
+        before = target.stat().st_mtime_ns
+        discovery.write_registry(apps_dir)
+        self.assertEqual(target.stat().st_mtime_ns, before)
+        self._add_app("later")
+        discovery.write_registry(apps_dir)
+        self.assertIn(b'{"later", later_create}', target.read_bytes())
+
+    def test_default_and_alias_conflicts_are_rejected(self) -> None:
+        self._add_app("one", default=True)
+        self._add_app("two", default=True)
+        with self.assertRaises(discovery.DiscoveryError) as raised:
+            discovery.discover_apps(self.root / "user" / "app")
+        self.assertEqual(raised.exception.code, "app_default_conflict")
+
+        (self.root / "user" / "app" / "two" / "app.json").write_text(
+            json.dumps({"entry": "two_create", "aliases": ["one"]}),
+            encoding="utf-8",
+        )
+        with self.assertRaises(discovery.DiscoveryError) as raised:
+            discovery.discover_apps(self.root / "user" / "app")
+        self.assertEqual(raised.exception.code, "app_alias_conflict")
 
 
 class PolicySeamTest(_TempRepo):
-    def test_derived_reserved_names_cover_all_sources(self) -> None:
-        (self.root / "user/app/gamma").mkdir()
-        self._write_scenario("promo", "promo")
-        self.app_c.write_text(
-            self._app_c_text()
-            + 'static const char * url = "http://example.test/x";\n'
-            + 'static const char * alias = "latte";\n'
-            + '/* "mocha" is only mentioned in a comment */\n',
+    def test_default_app_follows_metadata(self) -> None:
+        self._add_app("coffee", default=True)
+        self._add_app("spectrum")
+        self.assertTrue(policy.is_protected_name(self.root, "coffee"))
+        self.assertFalse(policy.is_protected_name(self.root, "spectrum"))
+
+        (self.root / "user" / "app" / "coffee" / "app.json").write_text(
+            json.dumps({"entry": "coffee_create"}), encoding="utf-8"
+        )
+        (self.root / "user" / "app" / "spectrum" / "app.json").write_text(
+            json.dumps({"entry": "spectrum_create", "default": True}),
             encoding="utf-8",
         )
-        names, _targets = policy._reserved_state(self.root)
-        for expected in (
-            "coffee",
-            "xiaohongshu",
-            "spectrum",
-            "xhs",
-            "gamma",
-            "promo",
-            "latte",
-        ):
-            self.assertIn(expected, names)
-        self.assertNotIn("mocha", names)
+        self.assertTrue(policy.is_protected_name(self.root, "spectrum"))
+        self.assertFalse(policy.is_protected_name(self.root, "coffee"))
 
-    def test_reserved_check_keeps_existing_create_paths(self) -> None:
-        (self.root / "user/app/gamma").mkdir()
-        self._write_scenario("promo", "promo")
-        self.app_c.write_text(
-            self._app_c_text() + 'static const char * alias = "latte";\n',
-            encoding="utf-8",
-        )
-        self.assertTrue(policy.is_reserved_create_name(self.root, "coffee"))
-        self.assertTrue(policy.is_reserved_create_name(self.root, "xhs"))
-        self.assertFalse(policy.is_reserved_create_name(self.root, "gamma"))
-        self.assertFalse(policy.is_reserved_create_name(self.root, "promo"))
-        self.assertTrue(policy.is_reserved_create_name(self.root, "latte"))
-
-    def test_scenario_declared_names_keep_the_existing_create_path(
-        self,
-    ) -> None:
-        path = self.root / "user/scenarios/custom.json"
-        path.write_text(
+    def test_reserved_names_cover_all_sources(self) -> None:
+        self._add_app("coffee", default=True)
+        self._add_app("alias_owner")
+        app_json = self.root / "user" / "app" / "alias_owner" / "app.json"
+        app_json.write_text(
             json.dumps(
-                {
-                    "schema": "lvgl-verify-loop-scenario-v1",
-                    "name": "promo",
-                    "app": "coffee",
-                    "steps": [{"type": "wait", "ms": 16}],
-                }
+                {"entry": "alias_owner_create", "aliases": ["latte"]}
             ),
             encoding="utf-8",
         )
-        self.assertIn("promo", policy._reserved_state(self.root)[0])
+        (self.root / "user" / "app" / "gamma").mkdir()
+        self._write_scenario("promo", "promo")
+        names, _targets = policy._reserved_state(self.root)
+        for expected in (
+            "coffee",
+            "alias_owner",
+            "latte",
+            "gamma",
+            "promo",
+            "app",
+        ):
+            self.assertIn(expected, names)
+
+    def test_reserved_check_keeps_existing_create_paths(self) -> None:
+        self._add_app("coffee", default=True)
+        self._add_app("alias_owner")
+        app_json = self.root / "user" / "app" / "alias_owner" / "app.json"
+        app_json.write_text(
+            json.dumps(
+                {"entry": "alias_owner_create", "aliases": ["latte"]}
+            ),
+            encoding="utf-8",
+        )
+        (self.root / "user" / "app" / "gamma").mkdir()
+        self._write_scenario("promo", "promo")
+        self.assertTrue(policy.is_reserved_create_name(self.root, "coffee"))
+        self.assertTrue(policy.is_reserved_create_name(self.root, "latte"))
+        self.assertFalse(policy.is_reserved_create_name(self.root, "gamma"))
         self.assertFalse(policy.is_reserved_create_name(self.root, "promo"))
 
 
 class PolicyScopeDocumentationTest(unittest.TestCase):
-    def test_module_docstring_marks_the_console_only_policy(self) -> None:
+    def test_module_docstring_marks_derived_policy(self) -> None:
         doc = policy.__doc__ or ""
-        self.assertIn("management-console", doc)
-        self.assertIn("not the build layer's app discovery", doc)
-        self.assertIn("PROTECTED_APPS", doc)
-        self.assertIn("PROTECTED_SCENARIOS", doc)
-
-    def test_protected_scenarios_exist_in_the_development_repo(self) -> None:
-        import paths
-
-        scenarios = paths.REPO_ROOT / "user" / "scenarios"
-        if not scenarios.is_dir():
-            self.skipTest("not the development repository")
-        missing = [
-            name
-            for name in policy.PROTECTED_SCENARIOS
-            if not (scenarios / name).is_file()
-        ]
-        self.assertEqual(missing, [])
+        self.assertIn("no hand-maintained app registry", doc)
+        self.assertIn("discovered default app", doc)
+        self.assertNotIn("PROTECTED_APPS", doc)
+        self.assertNotIn("PROTECTED_SCENARIOS", doc)
 
 
 class ScaffoldPolicyTest(_TempRepo):
@@ -259,22 +224,35 @@ class ScaffoldPolicyTest(_TempRepo):
         return raised.exception
 
     def test_reserved_names_keep_exact_code_and_message(self) -> None:
-        for name in (
-            "coffee",
-            "xiaohongshu",
-            "spectrum",
-            "demo",
-            "app",
-            "settings",
-            "xhs",
-        ):
+        self._add_app("coffee", default=True)
+        self._add_app("alias_owner")
+        app_json = self.root / "user" / "app" / "alias_owner" / "app.json"
+        app_json.write_text(
+            json.dumps(
+                {"entry": "alias_owner_create", "aliases": ["xhs"]}
+            ),
+            encoding="utf-8",
+        )
+        (self.root / "user" / "scenarios" / "settings.json").write_text(
+            json.dumps(
+                {
+                    "schema": "lvgl-verify-loop-scenario-v1",
+                    "name": "settings",
+                    "steps": [{"type": "wait", "ms": 16}],
+                }
+            ),
+            encoding="utf-8",
+        )
+        for name in ("coffee", "app", "settings", "xhs"):
             with self.subTest(name=name):
                 error = self._error(name)
                 self.assertEqual(error.code, "name_reserved")
                 self.assertEqual(error.message, f'name "{name}" is reserved')
 
     def test_duplicate_and_force_keep_existing_results(self) -> None:
+        original = self.app_c.read_bytes()
         scaffold.scaffold_app(self.root, "hello")
+        self.assertEqual(self.app_c.read_bytes(), original)
         error = self._error("hello")
         self.assertEqual(error.code, "app_exists")
         scaffold.scaffold_app(self.root, "hello", force=True)
@@ -287,89 +265,33 @@ class ScaffoldPolicyTest(_TempRepo):
         self.assertIn(
             "hello",
             [
-                name
-                for name, _ in registry.parse_app_entries(self._app_c_text())
+                entry.name
+                for entry in discovery.scan_apps(
+                    self.root / "user" / "app"
+                )[0]
             ],
         )
-
-    def test_literal_alias_is_reserved_without_a_static_list(self) -> None:
-        self.app_c.write_text(
-            self._app_c_text() + 'static const char * alias = "latte";\n',
-            encoding="utf-8",
-        )
-        error = self._error("latte")
-        self.assertEqual(error.code, "name_reserved")
 
 
 class GuardSeamTest(_TempRepo):
-    def test_scaffold_aborts_when_app_c_changes_before_write(self) -> None:
-        original = self.app_c.read_bytes()
-        real_register = registry.register_app
-
-        def tamper(text: str, name: str):
-            result = real_register(text, name)
-            self.app_c.write_bytes(self.app_c.read_bytes() + b"// external\n")
-            return result
-
-        with mock.patch.object(registry, "register_app", side_effect=tamper):
-            with self.assertRaises(common.AppError) as raised:
-                scaffold.scaffold_app(self.root, "hello")
-        self.assertEqual(raised.exception.code, "app_conflict")
-        self.assertIsInstance(raised.exception, common.AppCChanged)
-        self.assertIn("changed on disk", raised.exception.message)
-        self.assertFalse((self.root / "user/app/hello").exists())
-        self.assertFalse((self.root / "user/scenarios/hello.json").exists())
-        self.assertEqual(self.app_c.read_bytes(), original + b"// external\n")
-
-    def test_delete_aborts_and_rolls_back_when_app_c_changes(self) -> None:
+    def test_delete_rolls_back_when_a_move_fails(self) -> None:
         scaffold.scaffold_app(self.root, "hello")
-        real_unregister = registry.unregister_app
+        scenario = self.root / "user/scenarios/hello.json"
+        real_move = common._move_path
+        calls = {"count": 0}
 
-        def tamper(text: str, name: str, **kwargs):
-            result = real_unregister(text, name, **kwargs)
-            self.app_c.write_bytes(self.app_c.read_bytes() + b"// external\n")
-            return result
+        def flaky(source: Path, destination: Path) -> None:
+            calls["count"] += 1
+            if calls["count"] == 2:
+                raise OSError("simulated move failure")
+            real_move(source, destination)
 
-        with mock.patch.object(registry, "unregister_app", side_effect=tamper):
+        with mock.patch.object(common, "_move_path", side_effect=flaky):
             with self.assertRaises(common.AppError) as raised:
                 trash.delete_app(self.root, "hello")
-        self.assertEqual(raised.exception.code, "app_conflict")
-        self.assertIsInstance(raised.exception, common.AppCChanged)
+        self.assertEqual(raised.exception.code, "app_io_error")
         self.assertTrue((self.root / "user/app/hello/hello.c").is_file())
-        self.assertIn(b"// external", self.app_c.read_bytes())
-        self.assertIn(
-            "hello",
-            [
-                name
-                for name, _ in registry.parse_app_entries(self._app_c_text())
-            ],
-        )
-
-    def test_restore_aborts_and_rolls_back_when_app_c_changes(self) -> None:
-        scaffold.scaffold_app(self.root, "hello")
-        deleted = trash.delete_app(self.root, "hello")
-        real_move = common._move_path
-
-        def tamper(source: Path, destination: Path) -> None:
-            real_move(source, destination)
-            self.app_c.write_bytes(self.app_c.read_bytes() + b"// external\n")
-
-        with mock.patch.object(common, "_move_path", side_effect=tamper):
-            with self.assertRaises(common.AppError) as raised:
-                trash.restore_app(self.root, deleted["trash_id"])
-        self.assertEqual(raised.exception.code, "app_conflict")
-        self.assertIsInstance(raised.exception, common.AppCChanged)
-        trash_dir = self.root / deleted["trash_dir"]
-        self.assertTrue((trash_dir / "app/hello.c").is_file())
-        self.assertFalse((self.root / "user/app/hello").exists())
-        self.assertIn(b"// external", self.app_c.read_bytes())
-        self.assertNotIn(
-            "hello",
-            [
-                name
-                for name, _ in registry.parse_app_entries(self._app_c_text())
-            ],
-        )
+        self.assertTrue(scenario.is_file())
 
 
 class TrashSeamTest(_TempRepo):
@@ -477,7 +399,7 @@ class ViewsSeamTest(_TempRepo):
         )
         recent = views.recent_apps(self.root, limit=50)
         kinds = {entry["path"]: entry["kind"] for entry in recent}
-        self.assertEqual(kinds["user/app/app.c"], "registration")
+        self.assertEqual(kinds["user/app/app.c"], "entrypoint")
         self.assertEqual(kinds["user/app/hello/hello.c"], "app")
         self.assertEqual(kinds["user/scenarios/hello.json"], "scenario")
 
