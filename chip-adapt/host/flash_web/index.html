@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>烧录器 · 多后端</title>
+    <link rel="stylesheet" href="/flash/flasher.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow">FLASHER · 独立烧录台</span>
+          <h1>烧录器</h1>
+          <p id="heroSub">正在读取后端环境…</p>
+        </div>
+        <div class="hero-side">
+          <div class="backend-chip" id="backendChip" title="当前 host 决定烧录后端">
+            <span class="dot" id="backendDot"></span>
+            <span id="backendName">检测后端…</span>
+            <span class="backend-version" id="backendVersion"></span>
+          </div>
+          <div class="hero-actions">
+            <a class="ghost link-button" href="/">← 设备控制</a>
+            <button id="envRefresh" class="ghost" type="button">刷新环境</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="banner hidden" id="banner" role="status"></div>
+
+      <main class="layout">
+        <section class="card span-7" id="sourceCard">
+          <div class="card-head">
+            <div class="card-title">
+              <span class="step">01</span>
+              <h2>固件来源</h2>
+            </div>
+            <span class="tag" id="sourceTag">检测中</span>
+          </div>
+
+          <div id="uploadBlock" class="source-block hidden">
+            <div
+              class="drop-zone"
+              id="dropZone"
+              tabindex="0"
+              role="button"
+              aria-label="选择或拖入固件文件"
+            >
+              <input id="fileInput" type="file" accept=".bin,.zip" hidden />
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 3l5 5h-3v6h-4V8H7l5-5zm-7 13h2v3h10v-3h2v5H5v-5z" />
+              </svg>
+              <div class="drop-title">拖入 .bin / .zip <span>或点击选择</span></div>
+              <div class="drop-hint" id="dropHint">
+                ESP-IDF zip 会读取 flash_args；微雪 demo 会自动取 Firmware/*.bin。
+              </div>
+            </div>
+            <div class="upload-progress hidden" id="uploadWrap">
+              <div id="uploadBar"></div>
+            </div>
+            <div class="micro" id="uploadHint"></div>
+          </div>
+
+          <div id="pathBlock" class="source-block hidden">
+            <label class="field">
+              <span>服务器路径</span>
+              <div class="input-row">
+                <input
+                  id="pathInput"
+                  placeholder=".../build 或 .../firmware.zip 或 .../app.bin"
+                />
+                <button id="pathPlan" class="secondary" type="button">解析路径</button>
+              </div>
+            </label>
+          </div>
+
+          <div id="buildBlock" class="source-block hidden">
+            <label class="field">
+              <span>构建目录</span>
+              <div class="input-row">
+                <input
+                  id="buildInput"
+                  placeholder=".../build 或 .../build_<board>"
+                />
+                <button id="buildPlan" class="secondary" type="button">
+                  解析构建目录
+                </button>
+              </div>
+            </label>
+          </div>
+
+          <div id="projectBlock" class="source-block hidden">
+            <div class="grid-2">
+              <label class="field">
+                <span>应用（可选）</span>
+                <input id="appInput" placeholder="sift_watch" />
+              </label>
+              <label class="field">
+                <span>工程目录</span>
+                <input
+                  id="projectInput"
+                  placeholder="chip-adapt/exports/<app>/project"
+                />
+              </label>
+            </div>
+            <button id="projectPlan" class="secondary" type="button">
+              解析工程
+            </button>
+          </div>
+
+          <div id="suggestions" class="suggestions"></div>
+          <p class="hint" id="sourceHint">
+            解析后会在下方显示文件与地址；烧录期间 host 会释放串口。
+          </p>
+        </section>
+
+        <section class="card span-5" id="paramCard">
+          <div class="card-head">
+            <div class="card-title">
+              <span class="step">02</span>
+              <h2>烧录参数</h2>
+            </div>
+            <span class="tag" id="chipTag">—</span>
+          </div>
+
+          <div class="grid-2">
+            <label class="field">
+              <span>端口</span>
+              <div class="input-row">
+                <select id="portSelect"></select>
+                <button
+                  id="portRefresh"
+                  class="icon-button"
+                  type="button"
+                  title="刷新串口"
+                >
+                  ↻
+                </button>
+              </div>
+            </label>
+            <label class="field">
+              <span>波特率</span>
+              <select id="baudSelect"></select>
+            </label>
+          </div>
+
+          <div class="switch-grid">
+            <label class="switch" id="eraseRow">
+              <input id="eraseAll" type="checkbox" />
+              <span class="track"></span>擦除整片
+            </label>
+            <label class="switch" id="verifyRow">
+              <input id="verify" type="checkbox" checked />
+              <span class="track"></span>校验
+            </label>
+            <label class="switch" id="reconnectRow">
+              <input id="reconnect" type="checkbox" checked />
+              <span class="track"></span>完成后重连
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label class="field" id="afterRow">
+              <span>烧录后</span>
+              <select id="afterSelect"></select>
+            </label>
+            <label class="field" id="beforeRow">
+              <span>进入方式</span>
+              <select id="beforeSelect"></select>
+            </label>
+          </div>
+
+          <div class="run-row">
+            <button id="startBtn" class="primary" type="button" disabled>
+              开始烧录
+            </button>
+            <button id="cancelBtn" class="ghost" type="button" disabled>
+              取消
+            </button>
+            <span class="status-tag" id="jobStatus">空闲</span>
+          </div>
+
+          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+            <div id="progressBar"></div>
+          </div>
+          <div class="progress-meta">
+            <span id="progressText">等待开始</span>
+            <strong id="percentText">0%</strong>
+          </div>
+        </section>
+
+        <section class="card span-12" id="planCard">
+          <div class="card-head">
+            <div class="card-title">
+              <span class="step">03</span>
+              <h2>烧录计划</h2>
+            </div>
+            <span class="tag" id="planTag">未选择</span>
+          </div>
+          <div class="table-wrap">
+            <table class="plan-table">
+              <thead>
+                <tr>
+                  <th>文件</th>
+                  <th>地址</th>
+                  <th>大小</th>
+                </tr>
+              </thead>
+              <tbody id="planBody">
+                <tr>
+                  <td colspan="3" class="empty">尚未解析固件</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="plan-foot">
+            <span id="planHint">选择固件后会显示地址映射。</span>
+            <span id="planTotal"></span>
+          </div>
+        </section>
+
+        <section class="card span-7" id="logCard">
+          <div class="card-head">
+            <div class="card-title">
+              <span class="step">04</span>
+              <h2>烧录日志</h2>
+            </div>
+            <div class="log-tools">
+              <label class="check">
+                <input id="autoscroll" type="checkbox" checked />自动滚动
+              </label>
+              <button id="logClear" class="ghost small" type="button">清空</button>
+              <button id="logDownload" class="ghost small" type="button">
+                下载
+              </button>
+            </div>
+          </div>
+          <pre id="log" class="log" aria-live="polite"></pre>
+        </section>
+
+        <section class="card span-5 backend-card" id="backendCard">
+          <div class="card-head">
+            <div class="card-title">
+              <span class="step">05</span>
+              <h2>后端</h2>
+            </div>
+            <span class="tag" id="backendTag">—</span>
+          </div>
+          <div class="backend-hero">
+            <div class="backend-mark" id="backendMark">?</div>
+            <div class="backend-copy">
+              <div class="backend-title" id="backendTitle">检测中…</div>
+              <div class="micro" id="backendMeta">—</div>
+            </div>
+          </div>
+          <dl class="kv-list" id="backendKv"></dl>
+          <p class="hint" id="backendHint">
+            同一个烧录页由不同 host 提供不同后端：ESP32 host 用 esptool，SiFli host
+            用 sftool。
+          </p>
+        </section>
+      </main>
+
+      <footer class="foot">
+        <span>烧录期间串口由后端独占；取消后设备可能停在 bootloader，需要复位。</span>
+        <span id="footMeta"></span>
+      </footer>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+    <script src="/flash/flasher.js"></script>
+  </body>
+</html>

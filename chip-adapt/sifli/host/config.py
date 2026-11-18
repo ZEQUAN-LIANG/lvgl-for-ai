@@ -18,8 +18,10 @@ HOST_DIR = Path(__file__).resolve().parent
 SIFLI_DIR = HOST_DIR.parent
 CHIP_ADAPT_DIR = SIFLI_DIR.parent
 REPO_ROOT = CHIP_ADAPT_DIR.parent
-if str(SIFLI_DIR) not in sys.path:
-    sys.path.insert(0, str(SIFLI_DIR))
+SHARED_HOST_DIR = CHIP_ADAPT_DIR / "host"
+for _path in (SIFLI_DIR, SHARED_HOST_DIR):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
 
 import layout
 

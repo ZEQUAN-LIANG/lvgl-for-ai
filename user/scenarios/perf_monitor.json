@@ -1,0 +1,35 @@
+{
+  "schema": "lvgl-verify-loop-scenario-v1",
+  "name": "perf_monitor",
+  "app": "perf_monitor",
+  "display": {
+    "width": 172,
+    "height": 320
+  },
+  "steps": [
+    {
+      "type": "wait",
+      "ms": 1200
+    },
+    {
+      "type": "mark",
+      "id": "running"
+    },
+    {
+      "type": "snapshot",
+      "label": "running"
+    },
+    {
+      "type": "wait",
+      "ms": 1800
+    },
+    {
+      "type": "mark",
+      "id": "later"
+    },
+    {
+      "type": "snapshot",
+      "label": "later"
+    }
+  ]
+}

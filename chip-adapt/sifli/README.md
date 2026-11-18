@@ -23,6 +23,8 @@ SDK、工具链、sftool 和可选的 Web Flasher 资源都是外部下载物，
 独占 COM 口，网页、CLI、AI 读同一份带序号的字节流；人类和 AI/CLI 共用 `/api/flash` job，
 底层官方 `sftool.exe`。用法、依赖、CLI/HTTP API 见
 [`host/README.md`](host/README.md) 和 [`host/ENVIRONMENT.md`](host/ENVIRONMENT.md)。
+独立共享烧录页 `/flash/`（ESP32 用 esptool、SiFli 用 sftool）的完整说明、API 与排障见
+[`../host/README.md`](../host/README.md)。
 
 ## 共享源码与目标专属生成层
 
@@ -156,9 +158,12 @@ while (1) {
 适配层自带的脚本：
 
 ```bash
-python -I chip-adapt/sifli/export.py sift_watch --dry-run --force
-python -I chip-adapt/sifli/export.py sift_watch --force
+python -I chip-adapt/sifli/export.py sift_watch --dry-run
+python -I chip-adapt/sifli/export.py sift_watch
 ```
+
+默认是增量导出/构建：已有导出目录只更新变化的源码，`scons` 也复用构建缓存。只有显式
+加 `--force` 才会清理后重导，不是日常命令。
 
 导出、源码复制和 EZIP 转换全部在适配脚本里，`console/` 不包含芯片导出逻辑。导出的
 README 和返回的验证命令使用 `adapter.json` 的 `lvgl_version`（当前 9.4）：导出工程跟随

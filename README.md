@@ -4,7 +4,7 @@ English | [简体中文](README.zh-CN.md)
 
 **AI writes LVGL. AI verifies it. Humans only provide intent and feedback.**
 
-An AI-first development and verification platform for LVGL: a real headless LVGL host, virtual input and virtual time, frame-by-frame session evidence, a web inspector, and an export path to real SiFli hardware.
+An AI-first development and verification platform for LVGL: a real headless LVGL host, virtual input and virtual time, frame-by-frame session evidence, a web inspector, and device paths for real SiFli and ESP32-C6 hardware.
 
 ## Why AI-first
 
@@ -62,12 +62,14 @@ With the three aligned, AI can tell which code created a widget, which callback 
 
 The same `apps` and the same scenario run on LVGL 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3, selected with `--lvgl <version>`. Cross-version comparison covers event semantics and the set of session files, not pixels.
 
-Device apps are written against the LVGL 9.4 baseline; export only checks compatibility and rejects 9.5/9.6-only APIs.
+Device apps for the SiFli export path are written against the LVGL 9.4 baseline; that export only checks compatibility and rejects 9.5/9.6-only APIs. The ESP32-C6 Arduino path uses LVGL 9.6.
 
-### Real hardware: verify on the host, then SiFli export → build → flash
+### Real hardware: host verification, then SiFli export or ESP32-C6 bring-up
+
+Two boards are wired today: Huangshan Pai (SiFli SF32LB52x) through the SiFli export chain, and Waveshare ESP32-C6-LCD-1.47 through the Arduino bring-up path.
 
 ```bash
-python -I chip-adapt/sifli/export.py sift_watch --dry-run --force
+python -I chip-adapt/sifli/export.py sift_watch --dry-run
 python -I chip-adapt/sifli/host/cli.py build --app sift_watch --actor ai --json
 python -I chip-adapt/sifli/host/cli.py flash --app sift_watch --actor ai --json
 ```
@@ -79,6 +81,21 @@ Huangshan Pai (SiFli SF32LB52x, board `sf32lb52-lchspi-ulp`) in real use; the de
 <p align="center"><video src="docs/media/huangshanpai.mp4" controls width="280"></video></p>
 
 [Open the video](docs/media/huangshanpai.mp4)
+
+ESP32-C6 is supported through the Arduino bring-up path in `chip-adapt/esp32/`. The `perf_monitor` app runs on a Waveshare ESP32-C6-LCD-1.47 (172×320 ST7789) with serial portrait/landscape switching, a host control page at `/perf/`, and a tkinter desktop panel. Monitoring defaults to 0.3 s, and the exporter/compiler paths are incremental:
+
+```bash
+python -I chip-adapt/esp32/arduino/build.py build
+python -I chip-adapt/esp32/arduino/build.py flash --port COMx
+python -I chip-adapt/esp32/host/host.py serve --port COMx --baud 115200 --open
+python -I chip-adapt/esp32/host/gui.py
+```
+
+The board is verified on hardware (USB Serial/JTAG, esptool flash, and a `SHOT` framebuffer dump). The formal ESP-IDF exporter is still on the roadmap; see `chip-adapt/esp32/README.md` and `chip-adapt/esp32/docs/arduino-perf-monitor.md`.
+
+<p align="center"><video src="docs/media/esp32-c6-perf-monitor.mp4" controls width="260"></video></p>
+
+[Open the video](docs/media/esp32-c6-perf-monitor.mp4)
 
 Two more points: prebuilt LVGL libraries let you run with just GCC installed (`--prebuilt`); the tools are independent of harnesses like Claude Code and Cursor and are not tied to any model.
 
@@ -199,8 +216,10 @@ AI conclusions must point at these files. `status: ok` means the session ended n
   `--lvgl` wins over the scenario, then `LVGL_VERIFY_LOOP_LVGL_VERSION`.
 - SiFli is only in `full-sifli`: the self-developed export/host layer,
   `SiFli-Host.exe`, pyserial/xterm, `sift_watch` source and an exported example.
-  It does not include the SiFli SDK, ARM toolchain, sftool or firmware. SDK,
-  toolchain and sftool installation are in `chip-adapt/vendor/README.md`.
+  It does not include the SiFli SDK, ARM toolchain, sftool or firmware.
+  SDK, toolchain and sftool installation are in `chip-adapt/vendor/README.md`.
+- ESP32-C6 support lives in the development tree (`chip-adapt/esp32/`); the
+  current release zips do not bundle the Arduino exporter, host or firmware.
 
 ## Requirements
 
@@ -221,6 +240,9 @@ On Windows, MSYS2 UCRT64 is recommended. Full installation steps, PATH setup, fi
 - `user/app/GUIDE.md`: writing user apps.
 - `docs/skill/`: the skill contract (`SKILL.md`) and per-version `api-nav/`.
 - `chip-adapt/sifli/README.md` / `chip-adapt/docs/sifli.html`: SiFli adaptation layer and capabilities.
+- `chip-adapt/esp32/README.md`: ESP32-C6 board setup, host control page, desktop GUI and Arduino bring-up.
+- `chip-adapt/esp32/docs/arduino-perf-monitor.md`: ST7789 + LVGL rotation, flashing and `SHOT` verification notes.
+- `chip-adapt/host/README.md`: standalone flasher page shared by the ESP32 (esptool) and SiFli (sftool) hosts, including the HTTP contract, firmware sources and troubleshooting.
 - `CONTEXT.md`: domain glossary.
 - `CLAUDE.md`: repository working notes for AI coding agents.
 - `SKILL.md` at the release package root (source: `docs/skill/SKILL.md`): the AI entry contract and agent workflow for the installed skill.

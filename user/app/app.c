@@ -13,6 +13,8 @@
 #include "zombie_cannon/zombie_cannon.h"
 #include "intro/intro.h"
 #include "demo_feedback/demo_feedback.h"
+#include "c6_demo/c6_demo.h"
+#include "perf_monitor/perf_monitor.h"
 #endif
 
 #include <stdio.h>
@@ -36,6 +38,8 @@ static const app_entry_t apps[] = {
     {"zombie_cannon", zombie_cannon_create},
     {"intro", intro_create},
     {"demo_feedback", demo_feedback_create},
+    {"c6_demo", c6_demo_create},
+    {"perf_monitor", perf_monitor_create},
     {"asset_probe", asset_probe_create},
 };
 

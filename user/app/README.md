@@ -4,8 +4,8 @@
 递归收集并全部编译，不需要注册表，也不需要写 `main`。
 
 > 发布包只带 `intro/` 一个应用；它同时是默认介绍页和默认模板。下表中的 coffee、
-> xiaohongshu、spectrum、sift_watch、zombie_cannon、textarea_evidence 仅存在于
-> 开发仓库。
+> xiaohongshu、spectrum、sift_watch、zombie_cannon、c6_demo、perf_monitor、
+> textarea_evidence 仅存在于开发仓库。
 
 ## 应用分类
 
@@ -13,7 +13,7 @@
 
 | 类别 | 应用 | 用途 |
 |---|---|---|
-| 示例应用 | `coffee`、`xiaohongshu`、`spectrum`、`sift_watch`、`zombie_cannon` | 演示完整界面与交互；优先从这里学写法 |
+| 示例应用 | `coffee`、`xiaohongshu`、`spectrum`、`sift_watch`、`zombie_cannon`、`c6_demo`、`perf_monitor` | 演示完整界面与交互；优先从这里学写法 |
 | 工具自测应用 | `asset_probe`、`textarea_evidence`、`demo/` | 资源转换探针、文本输入证据与旧版本 harness；集成测试依赖，不要随意改 |
 | 发布应用 | `intro` | 发布包唯一应用，同时是默认介绍页与模板 |
 
@@ -30,6 +30,8 @@
 | `spectrum` | ORBITAL 频谱播放器，`spectrum/` | LVGL 9.6 |
 | `sift_watch` | 390x450 像素手表 OS，含 ZOMBIE 无尽尸潮应用，`sift_watch/` | LVGL 9.6 / 导出 9.4 |
 | `zombie_cannon` | 390x460 无尽尸潮独立预览，`zombie_cannon/` | LVGL 9.6 |
+| `c6_demo` | 172x320 ESP32-C6 无触摸板三页演示，`c6_demo/` | LVGL 9.6 |
+| `perf_monitor` | 172x320 / 320x172 桌面性能监控器 + 串口布局切换，`perf_monitor/` | LVGL 9.6 |
 | `asset_probe` | 资源转换探针（工具自测），`asset_probe/` | 9.6 / 9.1 / 8.x |
 | `textarea_evidence` | 文本输入证据应用（工具自测），`textarea_evidence/` | LVGL 9.6 |
 | `intro` | 项目介绍页，发布包唯一应用与默认模板，`intro/` | 发布包 9.4+ / 开发仓库 9.6 |
@@ -51,6 +53,9 @@ python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/sift_w
 python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/sift_watch_zombie.json
 python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/zombie_cannon.json
 python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/zombie_cannon_ai.json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/c6_demo.json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/perf_monitor.json
+python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/perf_monitor_landscape.json
 ```
 
 没有 scenario 时用 `--app`；`--idle` 保持会话直到 Ctrl+C（headless）：
@@ -62,6 +67,7 @@ python -I console/entrypoints/cli.py --lvgl 9.6 --app xiaohongshu --idle
 python -I console/entrypoints/cli.py --lvgl 9.6 --app spectrum --idle
 python -I console/entrypoints/cli.py --lvgl 9.6 --app sift_watch --idle
 python -I console/entrypoints/cli.py --lvgl 9.6 --app zombie_cannon --idle
+python -I console/entrypoints/cli.py --lvgl 9.6 --app perf_monitor --idle
 ```
 
 网页端顶部「应用」下拉会列出 `user/scenarios/*.json` 中声明了 `app` 的选项；

@@ -28,6 +28,8 @@ PROTECTED_APPS = frozenset(
         "demo",
         "app",
         "settings",
+        "c6_demo",
+        "perf_monitor",
     }
 )
 PROTECTED_LOWER = frozenset(name.lower() for name in PROTECTED_APPS)
@@ -37,6 +39,9 @@ PROTECTED_SCENARIOS = frozenset(
         "xiaohongshu.json",
         "spectrum.json",
         "settings.json",
+        "c6_demo.json",
+        "perf_monitor.json",
+        "perf_monitor_landscape.json",
     }
 )
 

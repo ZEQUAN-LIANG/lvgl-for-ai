@@ -410,6 +410,23 @@ static void put_px(int32_t x, int32_t y, uint16_t color)
     s_fb[y * SIFT_W + x] = color;
 }
 
+/* alpha is 0..32; 32 keeps the source, 0 keeps the destination. */
+static uint16_t blend565(uint16_t src, uint16_t dst, uint32_t alpha)
+{
+    if(alpha >= 32U) return src;
+    if(alpha == 0U) return dst;
+    const uint32_t sr = (src >> 11) & 0x1FU;
+    const uint32_t sg = (src >> 5) & 0x3FU;
+    const uint32_t sb = src & 0x1FU;
+    const uint32_t dr = (dst >> 11) & 0x1FU;
+    const uint32_t dg = (dst >> 5) & 0x3FU;
+    const uint32_t db = dst & 0x1FU;
+    const uint32_t r = (sr * alpha + dr * (32U - alpha)) >> 5;
+    const uint32_t g = (sg * alpha + dg * (32U - alpha)) >> 5;
+    const uint32_t b = (sb * alpha + db * (32U - alpha)) >> 5;
+    return (uint16_t)((r << 11) | (g << 5) | b);
+}
+
 static void fill_rect(int32_t x, int32_t y, int32_t w, int32_t h,
                       uint16_t color)
 {
@@ -517,6 +534,9 @@ static void draw_text(const char * text, int32_t x, int32_t y, int32_t scale,
         x -= width;
     size_t len = strlen(text);
     for(size_t i = 0; i < len; i++) {
+        /* The loop is bounded by strlen; cppcheck pairs the parameter with a
+         * short string literal such as ":" and reports a false overflow. */
+        // cppcheck-suppress arrayIndexOutOfBounds
         const uint8_t * glyph = font_for(text[i]);
         draw_glyph(glyph, x, y, scale, color);
         x += 6 * scale;
@@ -1078,11 +1098,6 @@ static int32_t map_local_y(float local_y, const orbit_m_t * m)
     return round_f32((float)SIFT_HG_CY + (local_y - (float)SIFT_HG_CY) * k);
 }
 
-static int32_t map_local_x(float x, float local_y, const orbit_m_t * m)
-{
-    return round_f32(x + (local_y - (float)SIFT_HG_CY) * flip_sin() * m->sy);
-}
-
 static void project3(int32_t x, int32_t y, int32_t z, const orbit_m_t * m,
                      int32_t * out_x, int32_t * out_y, int32_t * out_depth)
 {
@@ -1097,21 +1112,6 @@ static void project3(int32_t x, int32_t y, int32_t z, const orbit_m_t * m,
     *out_x = round_f32(px);
     *out_y = round_f32(py);
     *out_depth = round_f32(pd * 100.0f);
-}
-
-static void ellipse_arc(int32_t cx, int32_t cy, int32_t rx, int32_t ry,
-                        int32_t start_deg, int32_t end_deg, uint16_t color,
-                        int32_t size)
-{
-    int32_t steps = 48;
-    for(int32_t i = 0; i <= steps; i++) {
-        float a = ((float)start_deg +
-                   (float)(end_deg - start_deg) * (float)i / (float)steps) *
-                  SIFT_PI / 180.0f;
-        int32_t x = cx + round_f32((float)rx * cosf(a));
-        int32_t y = cy + round_f32((float)ry * sinf(a));
-        fill_rect(x - size / 2, y - size / 2, size, size, color);
-    }
 }
 
 static void fill_quad(const int32_t * xs, const int32_t * ys, uint16_t color)
@@ -1148,6 +1148,59 @@ static void fill_quad(const int32_t * xs, const int32_t * ys, uint16_t color)
     }
 }
 
+/* Scanline fill of a convex polygon, blended once per pixel. Used for the
+ * glass end caps, whose 16 projected points form a convex ring; filling it as
+ * one polygon avoids the double blend that per-triangle fans produce on the
+ * shared edges. */
+static void fill_poly_blend(const int32_t * xs, const int32_t * ys, int32_t n,
+                            uint16_t color, uint32_t alpha)
+{
+    int32_t min_y = ys[0];
+    int32_t max_y = ys[0];
+    for(int32_t i = 1; i < n; i++) {
+        if(ys[i] < min_y) min_y = ys[i];
+        if(ys[i] > max_y) max_y = ys[i];
+    }
+    if(min_y < 0) min_y = 0;
+    if(max_y >= SIFT_H) max_y = SIFT_H - 1;
+    for(int32_t y = min_y; y <= max_y; y++) {
+        int32_t lo = 0x7FFFFFFF;
+        int32_t hi = -0x7FFFFFFF;
+        for(int32_t i = 0; i < n; i++) {
+            const int32_t j = (i + 1) % n;
+            if((ys[i] <= y && ys[j] > y) || (ys[j] <= y && ys[i] > y)) {
+                const int32_t x =
+                    xs[i] + (int32_t)(((int64_t)(y - ys[i]) * (xs[j] - xs[i])) /
+                                      (ys[j] - ys[i]));
+                if(x < lo) lo = x;
+                if(x > hi) hi = x;
+            }
+        }
+        if(lo > hi) continue;
+        if(lo < 0) lo = 0;
+        if(hi >= SIFT_W) hi = SIFT_W - 1;
+        uint16_t * row = s_fb + y * SIFT_W;
+        for(int32_t x = lo; x <= hi; x++) {
+            row[x] = blend565(color, row[x], alpha);
+        }
+    }
+}
+
+static void blend_rect(int32_t x, int32_t y, int32_t w, int32_t h,
+                       uint16_t color, uint32_t alpha)
+{
+    const int32_t x0 = x < 0 ? 0 : x;
+    const int32_t y0 = y < 0 ? 0 : y;
+    const int32_t x1 = x + w > SIFT_W ? SIFT_W : x + w;
+    const int32_t y1 = y + h > SIFT_H ? SIFT_H : y + h;
+    for(int32_t yy = y0; yy < y1; yy++) {
+        uint16_t * row = s_fb + yy * SIFT_W;
+        for(int32_t xx = x0; xx < x1; xx++) {
+            row[xx] = blend565(color, row[xx], alpha);
+        }
+    }
+}
+
 static void draw_box3(int32_t cx, int32_t cy, int32_t cz, int32_t hx,
                       int32_t hy, int32_t hz, const orbit_m_t * m, bool back)
 {
@@ -1172,6 +1225,18 @@ static void draw_box3(int32_t cx, int32_t cy, int32_t cz, int32_t hx,
     float fc = flip_cos();
     float fs = flip_sin();
 
+    /* Classify the whole box by its centre, not by its nearest corner. A post
+     * spans the full hourglass height, so its corner depths straddle the glass
+     * plane; classifying per corner would flip the back posts into the near
+     * batch at high elevation and let them paint over the sand. The centre of
+     * a post only depends on its x/z position, and the centre of a cap only on
+     * its y, which is exactly the far/near split we want. */
+    int32_t center_px;
+    int32_t center_py;
+    int32_t center_depth;
+    project3(cx, cy, cz, m, &center_px, &center_py, &center_depth);
+    if((center_depth > 0) != back) return;
+
     for(int32_t f = 0; f < 6; f++) {
         float nx = (float)face_n[f][0];
         float ny = (float)face_n[f][1] * fc - (float)face_n[f][2] * fs;
@@ -1186,7 +1251,6 @@ static void draw_box3(int32_t cx, int32_t cy, int32_t cz, int32_t hx,
             depth += d;
         }
         face.depth = depth / 4;
-        if((face.depth > 0) != back) continue;
         float lum = nx * -0.35f + ny * 0.8f + nz * 0.45f;
         face.color =
             lum > 0.5f ? COL_WOOD_HI : (lum > 0.05f ? COL_WOOD : COL_WOOD_DARK);
@@ -1231,23 +1295,33 @@ static void draw_frame3d(const orbit_m_t * m, bool back)
               SIFT_FRAME_CAP_HALF_Y, SIFT_FRAME_CAP_HALF_Z, m, back);
 }
 
-static void draw_cap_details(const orbit_m_t * m)
+/* Draw only the cap face that is visible from this elevation, and only one
+ * side of the hourglass at a time. The far cap must be painted before the
+ * glass and sand, otherwise its grain strokes cut across them while the view
+ * rotates; the near cap is painted after the frame front.
+ *
+ * Which cap face is visible depends on the flip as well: a cap shows its top
+ * face when that face still points at the camera after the X-axis flip, and
+ * its bottom face otherwise. The batch is picked by the cap centre, the same
+ * rule draw_box3 uses, so the two always agree. */
+static void draw_cap_details(const orbit_m_t * m, bool back)
 {
-    int32_t faces[2];
-    if(m->se > 0.05f) {
-        faces[0] = SIFT_FRAME_CAP_Y + SIFT_FRAME_CAP_HALF_Y;
-        faces[1] = -SIFT_FRAME_CAP_Y + SIFT_FRAME_CAP_HALF_Y;
-    }
-    else if(m->se < -0.05f) {
-        faces[0] = SIFT_FRAME_CAP_Y - SIFT_FRAME_CAP_HALF_Y;
-        faces[1] = -SIFT_FRAME_CAP_Y - SIFT_FRAME_CAP_HALF_Y;
-    }
-    else {
-        return;
-    }
+    const float fc = flip_cos();
+    const float fs = flip_sin();
+    /* Top-face normal after flip is (0, fc, fs); the view ray is
+     * cam = (-ce*sy, -se, -ce*cy), so the dot is -(se*fc + ce*cy*fs). */
+    const bool show_top = (-(m->se * fc + m->ce * m->cy * fs)) < 0.0f;
 
-    for(int32_t f = 0; f < 2; f++) {
-        int32_t face_y = faces[f];
+    for(int32_t sign = -1; sign <= 1; sign += 2) {
+        int32_t px;
+        int32_t py;
+        int32_t cd;
+        project3(0, sign * SIFT_FRAME_CAP_Y, 0, m, &px, &py, &cd);
+        if((cd > 0) != back) continue;
+        const int32_t face_y =
+            sign * SIFT_FRAME_CAP_Y +
+            (show_top ? SIFT_FRAME_CAP_HALF_Y : -SIFT_FRAME_CAP_HALF_Y);
+
         for(int32_t i = -1; i <= 1; i++) {
             int32_t ax, ay, bx, by, d;
             project3(-78, face_y, i * 44, m, &ax, &ay, &d);
@@ -1256,75 +1330,268 @@ static void draw_cap_details(const orbit_m_t * m)
         }
         for(int32_t sx = -1; sx <= 1; sx += 2) {
             for(int32_t sz = -1; sz <= 1; sz += 2) {
-                int32_t px, py, d;
-                project3(sx * 96, face_y, sz * 64, m, &px, &py, &d);
-                fill_rect(px - 1, py - 1, 3, 3, COL_SAND_DIM);
+                int32_t px2, py2, d;
+                project3(sx * 96, face_y, sz * 64, m, &px2, &py2, &d);
+                fill_rect(px2 - 1, py2 - 1, 3, 3, COL_SAND_DIM);
             }
         }
     }
 }
 
-static void draw_orbit_rims(const orbit_m_t * m)
+/* The glass is a surface of revolution. Every circular cross-section is
+ * projected point by point: an axis-aligned ellipse cannot represent the real
+ * projection once flip and yaw are both non-zero, because the projected
+ * ellipse tilts (measured up to 83 degrees), which is exactly the warp that
+ * showed up while orbiting.
+ *
+ * Neighbouring rows are joined into quads. Each quad is classified by its
+ * average depth and drawn either before the sand (far half) or after it (near
+ * half). That is what makes the sand read as if it sits inside a translucent
+ * shell instead of on top of a flat outline. */
+static const float s_glass_cos16[16] = {
+    1.0000f,  0.9239f,  0.7071f,  0.3827f,  0.0000f,  -0.3827f,
+    -0.7071f, -0.9239f, -1.0000f, -0.9239f, -0.7071f, -0.3827f,
+    0.0000f,  0.3827f,  0.7071f,  0.9239f,
+};
+static const float s_glass_sin16[16] = {
+    0.0000f,  0.3827f,  0.7071f,  0.9239f,  1.0000f,  0.9239f,
+    0.7071f,  0.3827f,  0.0000f,  -0.3827f, -0.7071f, -0.9239f,
+    -1.0000f, -0.9239f, -0.7071f, -0.3827f,
+};
+
+static void glass_row_geom(int32_t row, int32_t * y_model, int32_t * r)
 {
-    static const int16_t ring_y[2] = {120, -120};
-    static const int16_t ring_r[2] = {80, 80};
-    float fc = flip_cos();
-    float fs = flip_sin();
-    for(int32_t i = 0; i < 2; i++) {
-        int32_t cx =
-            round_f32((float)SIFT_HG_CX - (float)ring_y[i] * fs * m->sy);
-        int32_t cy =
-            round_f32((float)SIFT_HG_CY - (float)ring_y[i] * fc * m->ce +
-                      (float)ring_y[i] * fs * m->cy * m->se);
-        int32_t ry = round_f32((float)ring_r[i] *
-                               fabsf(fs * m->ce + fc * m->cy * m->se));
-        if(ry < 1) ry = 1;
-        ellipse_arc(cx, cy, ring_r[i], ry, 180, 360, COL_MINT_DIM, 2);
-        ellipse_arc(cx, cy, ring_r[i], ry, 0, 180, COL_MINT_HI, 2);
+    const float local_y = (float)SIFT_HG_TOP + (float)row * (float)SIFT_CELL;
+    *y_model = round_f32(-(local_y - (float)SIFT_HG_CY));
+    *r = hg_half_width(row < SIFT_NECK_ROW ? row : SIFT_ROWS - 1 - row) + 7;
+}
+
+static void draw_glass_disc(const orbit_m_t * m, int32_t y_model, int32_t r,
+                            bool near_pass)
+{
+    int32_t cx;
+    int32_t cy;
+    int32_t cd;
+    project3(0, y_model, 0, m, &cx, &cy, &cd);
+    if((cd > 0) == near_pass) return;
+
+    int32_t xs[16];
+    int32_t ys[16];
+    for(int32_t k = 0; k < 16; k++) {
+        int32_t d;
+        project3(round_f32((float)r * s_glass_sin16[k]), y_model,
+                 round_f32((float)r * s_glass_cos16[k]), m, &xs[k], &ys[k], &d);
+    }
+    const float fc = flip_cos();
+    const float fs = flip_sin();
+    const float sign = (y_model > 0) ? 1.0f : -1.0f;
+    const float nd = -sign * (m->se * fc + m->ce * m->cy * fs);
+    const float fres = 1.0f - nd * nd;
+    fill_poly_blend(xs, ys, 16, COL_GLASS,
+                    4U + (uint32_t)round_f32(18.0f * fres));
+}
+
+/* Only the end caps are filled. The cylindrical wall stays transparent: a quad
+ * mesh over it collapses and self-intersects at the neck (radius drops from 82
+ * to 17 over a few rows), and any scanline or triangle fill of that mesh leaves
+ * seams or double blends that read as combs of lines. Thin glass is mostly
+ * visible through its silhouette and highlights anyway, which draw_glass_edges
+ * and draw_glass_highlights provide. */
+static void draw_glass_surface(const orbit_m_t * m, bool near_pass)
+{
+    int32_t y_model;
+    int32_t r;
+    glass_row_geom(0, &y_model, &r);
+    draw_glass_disc(m, y_model, r, near_pass);
+    glass_row_geom(SIFT_ROWS - 1, &y_model, &r);
+    draw_glass_disc(m, y_model, r, near_pass);
+}
+
+/* Re-draw only the left and right silhouette after the sand, so the bottle
+ * still reads on top of the sand without wrapping rings around it. */
+static void draw_glass_edges(const orbit_m_t * m)
+{
+    int32_t prev_lx = 0;
+    int32_t prev_ly = 0;
+    int32_t prev_hx = 0;
+    int32_t prev_hy = 0;
+    bool have_prev = false;
+    for(int32_t row = 0; row < SIFT_ROWS; row += 2) {
+        const float local_y =
+            (float)SIFT_HG_TOP + (float)row * (float)SIFT_CELL;
+        const int32_t r =
+            hg_half_width(row < SIFT_NECK_ROW ? row : SIFT_ROWS - 1 - row) + 7;
+        const int32_t y_model = round_f32(-(local_y - (float)SIFT_HG_CY));
+        int32_t lx = 0;
+        int32_t ly = 0;
+        int32_t hx = 0;
+        int32_t hy = 0;
+        bool first = true;
+        for(int32_t k = 0; k < 16; k++) {
+            int32_t px;
+            int32_t py;
+            int32_t depth;
+            project3(round_f32((float)r * s_glass_sin16[k]), y_model,
+                     round_f32((float)r * s_glass_cos16[k]), m, &px, &py,
+                     &depth);
+            if(first || px < lx) {
+                lx = px;
+                ly = py;
+            }
+            if(first || px > hx) {
+                hx = px;
+                hy = py;
+            }
+            first = false;
+        }
+        if(have_prev) {
+            draw_line(prev_lx, prev_ly, lx, ly, COL_MINT_DIM, 1);
+            draw_line(prev_hx, prev_hy, hx, hy, COL_MINT_DIM, 1);
+            /* A second line two pixels inside the rim gives the wall visible
+             * thickness; skip it when the tube is edge-on and the two sides
+             * would cross. */
+            if(hx - lx > 10) {
+                draw_line(prev_lx + 2, prev_ly, lx + 2, ly, COL_LINE, 1);
+                draw_line(prev_hx - 2, prev_hy, hx - 2, hy, COL_LINE, 1);
+            }
+
+            /* Very light haze over the silhouette. Without it the wall is
+             * fully transparent and the sand looks scattered in the frame
+             * rather than held inside something. One scanline at a time keeps
+             * this free of the mesh seams that a quad fill would bring, and
+             * alpha 4 is low enough that the double blend on the row shared by
+             * two row-pairs is invisible. */
+            int32_t ya = prev_ly;
+            int32_t yb = ly;
+            int32_t ax0 = prev_lx;
+            int32_t ax1 = lx;
+            int32_t bx0 = prev_hx;
+            int32_t bx1 = hx;
+            if(ya > yb) {
+                const int32_t t = ya;
+                ya = yb;
+                yb = t;
+                const int32_t u = ax0;
+                ax0 = ax1;
+                ax1 = u;
+                const int32_t v = bx0;
+                bx0 = bx1;
+                bx1 = v;
+            }
+            const int32_t span = yb - ya;
+            if(span > 0) {
+                for(int32_t yy = ya; yy <= yb; yy++) {
+                    const int32_t t = yy - ya;
+                    int32_t xa = ax0 + (ax1 - ax0) * t / span;
+                    int32_t xb = bx0 + (bx1 - bx0) * t / span;
+                    if(xa > xb) {
+                        const int32_t u = xa;
+                        xa = xb;
+                        xb = u;
+                    }
+                    blend_rect(xa, yy, xb - xa + 1, 1, COL_GLASS, 4U);
+                }
+            }
+        }
+        prev_lx = lx;
+        prev_ly = ly;
+        prev_hx = hx;
+        prev_hy = hy;
+        have_prev = true;
+    }
+
+    /* Close the tube with projected rim rings. The old code drew an
+     * axis-aligned ellipse here; that ellipse only matches the real projection
+     * when flip is zero, and tilted by up to 83 degrees otherwise. */
+    for(int32_t cap = 0; cap < 2; cap++) {
+        int32_t y_model;
+        int32_t r;
+        glass_row_geom(cap == 0 ? 0 : SIFT_ROWS - 1, &y_model, &r);
+        int32_t prev_x = 0;
+        int32_t prev_y = 0;
+        for(int32_t k = 0; k <= 16; k++) {
+            const int32_t kk = k & 15;
+            int32_t px;
+            int32_t py;
+            int32_t depth;
+            project3(round_f32((float)r * s_glass_sin16[kk]), y_model,
+                     round_f32((float)r * s_glass_cos16[kk]), m, &px, &py,
+                     &depth);
+            if(k > 0) draw_line(prev_x, prev_y, px, py, COL_MINT_DIM, 1);
+            prev_x = px;
+            prev_y = py;
+        }
     }
 }
 
-static void draw_glass_3d(const orbit_m_t * m)
+/* The specular band is the set of surface points whose screen normal lines up
+ * with the light (upper left). Solving d/dtheta of (N . L) gives
+ * theta = atan2(A.L, B.L) analytically, so the highlight slides along the
+ * shell as the view turns instead of being glued to fixed body coordinates. */
+static void draw_glass_highlights(const orbit_m_t * m)
 {
-    float k = flip_cos() * m->ce - flip_sin() * m->cy * m->se;
-    if(fabsf(k) < 0.02f) return;
-    int32_t rh = round_f32((float)SIFT_CELL * fabsf(k));
-    if(rh < 1) rh = 1;
-    for(int32_t row = 0; row < SIFT_ROWS; row++) {
-        float local_y = (float)SIFT_HG_TOP + (float)row * (float)SIFT_CELL;
-        int32_t y = map_local_y(local_y, m);
-        int32_t cx = map_local_x((float)SIFT_HG_CX, local_y, m);
-        int32_t half = hg_half_width(row < 40 ? row : 79 - row) + 7;
-        fill_rect(cx - half, y, half * 2, rh, COL_GLASS);
-        uint16_t edge = (row < 4 || row > 75) ? COL_MINT : COL_MINT_DIM;
-        fill_rect(cx - half, y, 2, rh, edge);
-        fill_rect(cx + half - 2, y, 2, rh, edge);
-        if((row % 7) == 0 || row < 8 || row > 71) {
-            fill_rect(cx - half + 2, y, 1, rh, COL_MINT_HI);
-            fill_rect(cx + half - 3, y, 1, rh, COL_MINT_HI);
+    const float fc = flip_cos();
+    const float fs = flip_sin();
+    const float lx = -0.62f;
+    const float ly = -0.78f;
+    /* N(theta) = A*sin(theta) + B*cos(theta) in screen space. */
+    const float ad = m->cy * lx + m->sy * m->se * ly;
+    const float bd = -m->sy * fc * lx + (m->ce * fs + m->cy * m->se * fc) * ly;
+    const float energy = ad * ad + bd * bd;
+    if(energy > 0.03f) {
+        const float th = atan2f(ad, bd);
+        const float st = sinf(th);
+        const float ct = cosf(th);
+        const uint32_t alpha = 10U + (uint32_t)round_f32(8.0f * energy);
+        for(int32_t row = 0; row < SIFT_ROWS; row += 4) {
+            int32_t y_model;
+            int32_t r;
+            glass_row_geom(row, &y_model, &r);
+            int32_t px;
+            int32_t py;
+            int32_t d;
+            project3(round_f32((float)r * st), y_model,
+                     round_f32((float)r * ct), m, &px, &py, &d);
+            if(d > 0) continue;
+            int32_t ta;
+            int32_t tb;
+            int32_t tay;
+            int32_t tby;
+            project3(round_f32((float)r * st), y_model + 6,
+                     round_f32((float)r * ct), m, &ta, &tay, &d);
+            project3(round_f32((float)r * st), y_model - 6,
+                     round_f32((float)r * ct), m, &tb, &tby, &d);
+            int32_t h = tay > tby ? tay - tby : tby - tay;
+            h = clamp_i32(h, 1, 16);
+            blend_rect(px - 1, py - h / 2, 2, h, COL_MINT_HI, alpha);
         }
     }
 
-    static const int16_t hi_x[5] = {144, 150, 157, 231, 237};
-    static const int16_t hi_top[5] = {133, 145, 157, 281, 292};
-    static const int16_t hi_h[5] = {18, 11, 8, 8, 19};
-    for(int32_t i = 0; i < 5; i++) {
-        float center = (float)hi_top[i] + (float)hi_h[i] * 0.5f;
-        int32_t cy = map_local_y(center, m);
-        int32_t cx = map_local_x((float)hi_x[i], center, m);
-        int32_t hh = round_f32((float)hi_h[i] * fabsf(k));
-        if(hh < 1) hh = 1;
-        fill_rect(cx, cy - hh / 2, 3, hh, i < 3 ? COL_MINT_HI : COL_MINT);
-    }
-    int32_t neck_y = map_local_y((float)(SIFT_NECK_Y - 4), m);
+    /* Neck wall: the inner surface is a real part of the solid, so keep it at
+     * its projected position, but only on the near half. */
+    const float neck_r = 17.0f;
+    const float neck_x = 14.0f;
+    const float neck_z = sqrtf(neck_r * neck_r - neck_x * neck_x);
+    const float k = fc * m->ce - fs * m->cy * m->se;
     int32_t neck_h = round_f32(8.0f * fabsf(k));
     if(neck_h < 1) neck_h = 1;
-    int32_t neck_cx1 =
-        map_local_x((float)(SIFT_HG_CX - 14 + 1), (float)(SIFT_NECK_Y - 4), m);
-    int32_t neck_cx2 =
-        map_local_x((float)(SIFT_HG_CX + 14 - 3), (float)(SIFT_NECK_Y - 4), m);
-    fill_rect(neck_cx1, neck_y - neck_h / 2, 2, neck_h, COL_MINT_DIM);
-    fill_rect(neck_cx2, neck_y - neck_h / 2, 2, neck_h, COL_MINT_DIM);
+    for(int32_t sz = -1; sz <= 1; sz += 2) {
+        for(int32_t sx = -1; sx <= 1; sx += 2) {
+            int32_t nx;
+            int32_t ny;
+            int32_t nd;
+            project3(sx * round_f32(neck_x), 4, sz * round_f32(neck_z), m, &nx,
+                     &ny, &nd);
+            if(nd > 0) continue;
+            blend_rect(nx - 1, ny - neck_h / 2, 2, neck_h, COL_MINT_DIM, 14U);
+        }
+    }
+}
+
+static void draw_glass_3d(const orbit_m_t * m, bool near_pass)
+{
+    draw_glass_surface(m, near_pass);
+    if(near_pass) draw_glass_highlights(m);
 }
 
 static inline bool vox_solid(int32_t ix, int32_t iy, int32_t iz)
@@ -1353,6 +1620,22 @@ static void draw_voxels(const orbit_m_t * m)
 {
     if(!s_vox_sprites_ready) build_vox_sprites();
     memset(s_vbins, 0, sizeof(s_vbins));
+
+    /* A voxel's screen footprint changes with yaw/elev/flip. Scale the grain
+     * sprite with the widest projected cell axis so neighbouring grains still
+     * meet instead of leaving blocky gaps. Round up: a sprite even one pixel
+     * narrower than the projected spacing leaves a black dot between grains
+     * (visible around 7.2 px while flipping). */
+    const float fc = flip_cos();
+    const float fs = flip_sin();
+    const float axis_x =
+        sqrtf(m->cy * m->cy + (m->sy * m->se) * (m->sy * m->se));
+    const float axis_z = sqrtf((fc * m->sy) * (fc * m->sy) +
+                               (fs * m->ce + fc * m->cy * m->se) *
+                                   (fs * m->ce + fc * m->cy * m->se));
+    int32_t grain =
+        (int32_t)ceilf((float)SIFT_VCELL * (axis_x > axis_z ? axis_x : axis_z));
+    grain = clamp_i32(grain, 4, 10);
 
     for(int32_t iy = 0; iy < SIFT_VY; iy++) {
         for(int32_t ix = 0; ix < SIFT_VX; ix++) {
@@ -1397,9 +1680,10 @@ static void draw_voxels(const orbit_m_t * m)
             const int32_t px = s_vpx[base + k];
             const int32_t py = s_vpy[base + k];
             const uint16_t (*sprite)[8] = s_vox_sprite[s_vpc[base + k]];
-            for(int32_t r = 0; r < 8; r++) {
-                for(int32_t c = 0; c < 8; c++) {
-                    put_px(px - 4 + c, py - 4 + r, sprite[r][c]);
+            for(int32_t r = 0; r < grain; r++) {
+                for(int32_t c = 0; c < grain; c++) {
+                    put_px(px - grain / 2 + c, py - grain / 2 + r,
+                           sprite[r * 8 / grain][c * 8 / grain]);
                 }
             }
         }
@@ -1423,20 +1707,23 @@ static void draw_hourglass(void)
     orbit_matrix(&m);
 
     draw_frame3d(&m, true);
-    draw_glass_3d(&m);
+    draw_cap_details(&m, true);
+    /* Far glass, sand, then near glass: the near panes tint the sand instead
+     * of the sand covering the whole shell. */
+    draw_glass_3d(&m, false);
     draw_voxels(&m);
-    draw_orbit_rims(&m);
-    draw_frame3d(&m, false);
-    draw_cap_details(&m);
-
     bool nearly_empty =
         s.stats.total > 0 && (s.stats.top * 100U / s.stats.total) < 5U;
     if(!nearly_empty && s.stats.flow > 2U) {
         int32_t glow_y = map_local_y((float)SIFT_NECK_Y, &m);
-        fill_rect(181, glow_y - 2, 28, 3, COL_SAND);
-        fill_rect(188, glow_y - 6, 2, 9, COL_SAND_HI);
-        fill_rect(200, glow_y - 4, 2, 7, COL_SAND_HI);
+        blend_rect(181, glow_y - 2, 28, 3, COL_SAND, 18U);
+        blend_rect(188, glow_y - 6, 2, 9, COL_SAND_HI, 20U);
+        blend_rect(200, glow_y - 4, 2, 7, COL_SAND_HI, 20U);
     }
+    draw_glass_3d(&m, true);
+    draw_glass_edges(&m);
+    draw_frame3d(&m, false);
+    draw_cap_details(&m, false);
 }
 
 static void draw_button(int32_t x, int32_t y, int32_t w, int32_t h,
@@ -1499,7 +1786,7 @@ static void draw_app_header(const char * title, const char * subtitle)
     char time_text[8];
     snprintf(time_text, sizeof(time_text), "%02d:%02d", clock_hour(),
              s.clock.minute);
-    draw_back_chevron(22, 22);
+    draw_back_chevron(22, 26);
     draw_text(title, 48, 16, 3, COL_PAPER, 0);
     draw_text(time_text, 368, 18, 2, COL_PAPER, 2);
     if(!s.h24) draw_text(clock_ampm(), 368, 34, 1, COL_SAND, 2);
@@ -2113,9 +2400,11 @@ static bool point_in_rect(int32_t x, int32_t y, int32_t rx, int32_t ry,
     return x >= rx && x < rx + rw && y >= ry && y < ry + rh;
 }
 
+/* Keep the orbit zone close to the visible bottle so the screen edges stay
+ * available for page swipes and the app drawer gesture. */
 static bool inside_orbit_zone(int32_t x, int32_t y)
 {
-    return x > 36 && x < 354 && y > 74 && y < 372;
+    return x > 70 && x < 320 && y > 92 && y < 352;
 }
 
 static void sift_game_enter(void)
@@ -2234,7 +2523,9 @@ static void sift_handle_tap(int x, int y)
         return;
     }
 
-    if(point_in_rect(x, y, 14, 12, 38, 42)) {
+    /* The back chevron sits near the rounded panel corner, so make the hit
+     * area much larger than the drawn arrow. */
+    if(point_in_rect(x, y, 8, 8, 80, 68)) {
         go_back();
         return;
     }

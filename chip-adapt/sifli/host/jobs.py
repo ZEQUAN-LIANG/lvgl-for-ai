@@ -67,7 +67,13 @@ class Job:
             },
         )
 
-    def append(self, stream: str, text: str) -> dict[str, Any]:
+    def append(
+        self,
+        stream: str,
+        text: str,
+        *,
+        percent: int | None = None,
+    ) -> dict[str, Any]:
         previous = self.percent
         with self._cond:
             self._seq += 1
@@ -78,10 +84,13 @@ class Job:
                 "text": text,
             }
             self._events.append(event)
-            match = _PROGRESS_RE.match(text)
-            if match:
-                value = min(100, max(0, int(match.group(1))))
-                self.percent = value
+            if percent is not None:
+                self.percent = min(100, max(0, int(percent)))
+            else:
+                match = _PROGRESS_RE.match(text)
+                if match:
+                    value = min(100, max(0, int(match.group(1))))
+                    self.percent = value
             self._cond.notify_all()
         if stream == "status" or self.percent != previous:
             self._publish(

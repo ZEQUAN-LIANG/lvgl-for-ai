@@ -1,0 +1,159 @@
+{
+  "assets": {
+    "perf_font_mono_10": {
+      "bitmap_bytes": 1487,
+      "generator": "lvgl-verify-loop 0.2.2",
+      "glyph_count": 99,
+      "kind": "font",
+      "name": "perf_font_mono_10",
+      "options": {
+        "bpp": 4,
+        "codepoints": 99,
+        "face_index": 0,
+        "metrics": "face",
+        "size": 10
+      },
+      "output": "perf_font_mono_10.h",
+      "source": "consola.ttf",
+      "source_sha256": "c6e6ce8119fdd47ec6a5449a08e2d2ad7f41ea03143aae193068ed9fa58eaebc",
+      "status": "generated",
+      "target_lvgl": "9.6"
+    },
+    "perf_font_mono_8": {
+      "bitmap_bytes": 1032,
+      "generator": "lvgl-verify-loop 0.2.2",
+      "glyph_count": 99,
+      "kind": "font",
+      "name": "perf_font_mono_8",
+      "options": {
+        "bpp": 4,
+        "codepoints": 99,
+        "face_index": 0,
+        "metrics": "face",
+        "size": 8
+      },
+      "output": "perf_font_mono_8.h",
+      "source": "consola.ttf",
+      "source_sha256": "c6e6ce8119fdd47ec6a5449a08e2d2ad7f41ea03143aae193068ed9fa58eaebc",
+      "status": "generated",
+      "target_lvgl": "9.6"
+    },
+    "perf_font_num_14": {
+      "bitmap_bytes": 2813,
+      "generator": "lvgl-verify-loop 0.2.2",
+      "glyph_count": 95,
+      "kind": "font",
+      "name": "perf_font_num_14",
+      "options": {
+        "bpp": 4,
+        "codepoints": 95,
+        "face_index": 0,
+        "metrics": "face",
+        "size": 14
+      },
+      "output": "perf_font_num_14.h",
+      "source": "bahnschrift.ttf",
+      "source_sha256": "bff1ca87ea35e376691498c618556411f0ee71784b32aa351e6e8f9e8bd609dd",
+      "status": "generated",
+      "target_lvgl": "9.6"
+    },
+    "perf_font_num_22": {
+      "bitmap_bytes": 6414,
+      "generator": "lvgl-verify-loop 0.2.2",
+      "glyph_count": 95,
+      "kind": "font",
+      "name": "perf_font_num_22",
+      "options": {
+        "bpp": 4,
+        "codepoints": 95,
+        "face_index": 0,
+        "metrics": "face",
+        "size": 22
+      },
+      "output": "perf_font_num_22.h",
+      "source": "bahnschrift.ttf",
+      "source_sha256": "bff1ca87ea35e376691498c618556411f0ee71784b32aa351e6e8f9e8bd609dd",
+      "status": "generated",
+      "target_lvgl": "9.6"
+    },
+    "perf_font_num_26": {
+      "bitmap_bytes": 9294,
+      "generator": "lvgl-verify-loop 0.2.2",
+      "glyph_count": 95,
+      "kind": "font",
+      "name": "perf_font_num_26",
+      "options": {
+        "bpp": 4,
+        "codepoints": 95,
+        "face_index": 0,
+        "metrics": "face",
+        "size": 26
+      },
+      "output": "perf_font_num_26.h",
+      "source": "bahnschrift.ttf",
+      "source_sha256": "bff1ca87ea35e376691498c618556411f0ee71784b32aa351e6e8f9e8bd609dd",
+      "status": "generated",
+      "target_lvgl": "9.6"
+    },
+    "perf_font_num_46": {
+      "bitmap_bytes": 27477,
+      "generator": "lvgl-verify-loop 0.2.2",
+      "glyph_count": 95,
+      "kind": "font",
+      "name": "perf_font_num_46",
+      "options": {
+        "bpp": 4,
+        "codepoints": 95,
+        "face_index": 0,
+        "metrics": "face",
+        "size": 46
+      },
+      "output": "perf_font_num_46.h",
+      "source": "bahnschrift.ttf",
+      "source_sha256": "bff1ca87ea35e376691498c618556411f0ee71784b32aa351e6e8f9e8bd609dd",
+      "status": "generated",
+      "target_lvgl": "9.6"
+    },
+    "perf_font_num_52": {
+      "bitmap_bytes": 34479,
+      "generator": "lvgl-verify-loop 0.2.2",
+      "glyph_count": 95,
+      "kind": "font",
+      "name": "perf_font_num_52",
+      "options": {
+        "bpp": 4,
+        "codepoints": 95,
+        "face_index": 0,
+        "metrics": "face",
+        "size": 52
+      },
+      "output": "perf_font_num_52.h",
+      "source": "bahnschrift.ttf",
+      "source_sha256": "bff1ca87ea35e376691498c618556411f0ee71784b32aa351e6e8f9e8bd609dd",
+      "status": "generated",
+      "target_lvgl": "9.6"
+    },
+    "perf_font_num_60": {
+      "bitmap_bytes": 45919,
+      "generator": "lvgl-verify-loop 0.2.2",
+      "glyph_count": 95,
+      "kind": "font",
+      "name": "perf_font_num_60",
+      "options": {
+        "bpp": 4,
+        "codepoints": 95,
+        "face_index": 0,
+        "metrics": "face",
+        "size": 60
+      },
+      "output": "perf_font_num_60.h",
+      "source": "bahnschrift.ttf",
+      "source_sha256": "bff1ca87ea35e376691498c618556411f0ee71784b32aa351e6e8f9e8bd609dd",
+      "status": "generated",
+      "target_lvgl": "9.6"
+    }
+  },
+  "generator": "lvgl-verify-loop 0.2.2",
+  "schema": "lvgl-verify-loop-assets-v1",
+  "target_lvgl": "9.6"
+}

@@ -15,6 +15,9 @@ CLI / AI ───────── HTTP JSON ───┼── broker（独�
 - 人类和 AI/CLI 走同一个 `/api/flash` job，底层官方 `sftool.exe`；页面通过
   `/api/events` 和 `/api/jobs/<id>/stream` 显示进度与操作者（WEB/AI/CLI）。
 - 网页是终端优先的 Tabby 风格：顶部只有「终端 / 活动」标签；烧录 dock 位于终端上方。
+- 另外提供独立烧录页 `/flash/`（与 ESP32 host 共用 `chip-adapt/host/flash_web/`，
+  这里后端是 `sftool`）；主 UI 标签栏的「烧录器」会新开该页。共享页的完整说明、API、
+  排障与实机记录见 [`../../host/README.md`](../../host/README.md)。
 - 终端直接键盘输入，无发送栏；默认关闭本地回显（板端 finsh 已回显），标签栏「回显」
   可开；Enter 发 CR（RT-Thread finsh 用 CR 结束行，发 CRLF 会打印两次 `msh />`），
   Ctrl+L 清屏。
@@ -123,6 +126,17 @@ AI 烧录不需要人工确认；不传 `--port` 时只有唯一候选口才自�
   `POST /api/flasher/prepare` 准备 ZIP，再 `POST /api/serial/handoff` 交接
   （`cli.py flasher` 会一次完成），交接期间 broker 不抢串口。
 
+## 共享烧录页 `/flash/`
+
+`/flash/` 是同一套前端在 SiFli host 上的实例，后端显示为 `sftool`：
+
+1. 选构建目录，或填工程目录/应用名（`/api/suggest` 给默认值）。
+2. `POST /api/flash/plan` 读取 `sftool_param.json`，返回文件/地址/大小，不启动 sftool。
+3. `POST /api/flash/start` 用 plan 创建 `/api/jobs/<id>`；`JobRunner` 释放串口、
+   调 `sftool ... write_flash`、结束后按 `reconnect` 重连。
+4. 同一时间只允许一个烧录 job；第二个请求返回 409 `flash_busy`。
+5. 页面右侧「后端」卡显示 sftool 路径/版本/芯片，与 ESP32 host 的 esptool 后端对照。
+
 ## 构建环境
 
 `build` 的命令选择顺序：
@@ -191,13 +205,16 @@ skill；本仓库不重复教学。
 | POST | `/api/serial/handoff` | 释放串口给官方页 |
 | POST | `/api/build` | 创建构建 job |
 | POST | `/api/flash` | 创建烧录 job（人类/AI 共用） |
+| GET | `/api/flash/env` | 共享烧录页的后端元数据（sftool/能力/默认值） |
+| POST | `/api/flash/plan` | `{build_dir\|project_dir\|app}` → `plan_id` + entries |
+| POST | `/api/flash/start` | `{plan_id, port?, baud?, erase_all?, verify?, after?, reconnect?}` → 202 `job_id` |
 | GET | `/api/jobs/<id>?since=` | job 快照 |
 | GET | `/api/jobs/<id>/stream?since=` | SSE job 流 |
 | POST | `/api/jobs/<id>/cancel` | 取消 job |
 | POST | `/api/flasher/prepare` | `{build_dir}` → ZIP + 官方页 URL |
 | GET | `/api/logs` | 串口日志列表 |
 | POST | `/api/shutdown` | 停止 broker |
-| GET | `/`、`/vendor/*`、`/tools/sftool/*`、`/firmware/*` | 页面、vendor 资源、官方页、固件 ZIP |
+| GET | `/`、`/flash/*`、`/vendor/*`、`/tools/sftool/*`、`/firmware/*` | 主页面、共享烧录页、vendor 资源、官方页、固件 ZIP |
 
 ## 目录
 
