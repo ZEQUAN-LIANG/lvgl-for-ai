@@ -104,6 +104,33 @@ git -C chip-adapt/vendor/sifli-wiki sparse-checkout set source/_static/sftool
 - pyserial 3.5 → `sifli/host/vendor/`，许可证 `pyserial-3.5.LICENSE.txt`。
 - xterm.js 5.3.0 → `sifli/host/web/vendor/xterm/`（JS/CSS/LICENSE 缺一不可）。
 
+## ESP32-C6-LCD-1.47 资料
+
+微雪产品页与文档页链接的附件，2026-11-18 下载；只作本地参考，不参与构建。
+示例程序包内含 `Arduino/`、`ESP-IDF/` 和 `Firmware/ESP32-C6-LCD-1.47-Test.bin`。
+
+| 文件 | 来源 | 落点 | 大小 | SHA256 |
+| --- | --- | --- | --- | --- |
+| 示例程序包 | `https://files.waveshare.net/wiki/ESP32-C6-LCD-1.47/ESP32-C6-LCD-1.47-Demo.zip` | `esp32/demo/ESP32-C6-LCD-1.47-Demo.zip` | 62,844,090 | `4B960E8CCD58E54E60494A2A6DA62531695C9152C9950153CAD34ACC496C4EE4` |
+| 原理图 | `https://www.waveshare.net/w/upload/c/c3/ESP32-C6-LCD-1.47_schemetics.pdf` | `esp32/hardware/ESP32-C6-LCD-1.47_schemetics.pdf` | 387,049 | `D8DED2DA08268E27148C700B38C2B1BA62BCA2B734153C7C6E88ECC5E5C72E51` |
+| 3D 工程图纸 | `https://www.waveshare.net/w/upload/9/9f/ESP32-C6-LCD-1.47-3D_Drawing.rar` | `esp32/hardware/ESP32-C6-LCD-1.47-3D_Drawing.rar` | 1,988,484 | `55F999CCEC3BA41E38DA8893AFBE2137D75BD82B0E1B06EA96808C5AC33A7037` |
+| 数据手册（中文） | `https://documentation.espressif.com/esp32-c6_datasheet_cn.pdf` | `esp32/manuals/esp32-c6_datasheet_cn.pdf` | 1,564,663 | `467C5306994F4E752C27BD195FECAB7D861AA2CF678E6A7DFE4B3E8982F5A876` |
+| 数据手册（英文） | `https://documentation.espressif.com/esp32-c6_datasheet_en.pdf` | `esp32/manuals/esp32-c6_datasheet_en.pdf` | 1,003,247 | `C9BF7ECE109859A93BE2B4D780370478655A7830C0C171CEA6670CAF8AB3C339` |
+| 技术参考手册（中文） | `https://documentation.espressif.com/esp32-c6_technical_reference_manual_cn.pdf` | `esp32/manuals/esp32-c6_technical_reference_manual_cn.pdf` | 12,929,803 | `8FD50AA490CFF1A8FF35CDA8EA143B8A04B9A166A2E6E0AB0C4E15850490FF88` |
+| 技术参考手册（英文） | `https://documentation.espressif.com/esp32-c6_technical_reference_manual_en.pdf` | `esp32/manuals/esp32-c6_technical_reference_manual_en.pdf` | 12,683,821 | `E08D5B61EBCFA2A78F9735E3F721817CB1DC2DF9CF05096D2F0399EABA9F1734` |
+| Flash Download Tool | `https://dl.espressif.com/public/flash_download_tool.zip` | `esp32/tools/flash_download_tool.zip` | 25,943,693 | `C1FBF280AA04CD8FBE725BFF74360FB0A7C83FBD49AFCAF37F6C14A6575EA9BC` |
+| 串口调试助手 Sscom 5.13.1 | `https://www.waveshare.net/w/upload/b/b3/Sscom5.13.1.zip` | `esp32/tools/Sscom5.13.1.zip` | 420,199 | `D85CCE9C2494EC7DE0163410F45D998C03ED181F01536979A3E0A0DD1256AA07` |
+| 蓝牙调试助手 | `https://www.waveshare.net/w/upload/2/2e/ESP32-C6_TO_BLEAssist.zip` | `esp32/tools/ESP32-C6_TO_BLEAssist.zip` | 4,748,243 | `5FDCE249ECB351F44AC396B77E2F52C34E65310C713DA0F23307DA04EB9B7FD2` |
+| CH34x macOS 驱动 | `https://www.waveshare.net/w/upload/0/04/CH34XSER_MAC.7z` | `esp32/drivers/CH34XSER_MAC.7z` | 4,123,873 | `C041275B27906B6BEEA109C0D73F937B48E09894373FF4D34D2011A0AEE3DC7E` |
+| LVGL 视频教程 | `https://files.waveshare.net/wiki/ESP32-C6-LCD-1.47/ESP32-C6-LVGL-Video.mp4` | `esp32/video/ESP32-C6-LVGL-Video.mp4` | 210,623,798 | `4D6B42B0B8AB9910E0812FCED62E7A749F65B5C35D4AC05290C3D63949135488` |
+
+校验方式（Git Bash）：
+
+```bash
+cd chip-adapt/vendor/esp32
+sha256sum demo/ESP32-C6-LCD-1.47-Demo.zip   # 与上表逐项对照
+```
+
 ## 升级流程
 
 1. 修改本文件的版本/commit/校验值。
