@@ -35,6 +35,8 @@ from timeutil import now_iso as _now_iso
 
 
 class BrokerError(RuntimeError):
+    status = 409
+
     def __init__(self, message: str, *, code: str = "broker_error") -> None:
         super().__init__(message)
         self.code = code

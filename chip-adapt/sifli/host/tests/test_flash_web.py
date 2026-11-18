@@ -13,8 +13,8 @@ HOST_DIR = Path(__file__).resolve().parents[1]
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
-import build_flash
 from config import ensure_runtime_dirs, load_config
+import build_flash
 from server import HostHandler, HostServer
 
 

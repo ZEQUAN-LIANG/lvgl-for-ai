@@ -25,6 +25,11 @@ HOST_DIR = Path(__file__).resolve().parent
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
+from config import (
+    ensure_runtime_dirs,
+    load_config,
+    public_base_url,
+)
 from broker import SerialBroker, ports
 from build_flash import (
     environment,
@@ -34,11 +39,6 @@ from build_flash import (
     flasher_page_url,
     package_firmware,
     resolve_project_dir,
-)
-from config import (
-    ensure_runtime_dirs,
-    load_config,
-    public_base_url,
 )
 import flasher_web
 from events import EventHub
