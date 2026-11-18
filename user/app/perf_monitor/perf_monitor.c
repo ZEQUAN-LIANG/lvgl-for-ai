@@ -860,7 +860,7 @@ static void build_threads_landscape(lv_obj_t * screen)
     lv_obj_t * label;
 
     s_ui.thread_x = 8;
-    s_ui.thread_y = 146;
+    s_ui.thread_y = 143;
     s_ui.thread_span = 304;
     s_ui.thread_gap = 4;
     s_ui.thread_bar_h = 12;

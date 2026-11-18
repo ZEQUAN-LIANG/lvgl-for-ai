@@ -58,6 +58,23 @@ Live 采集复用 `perf_agent.py` 的 Windows 采集逻辑；单帧通常需要 
 python -I chip-adapt/esp32/host/perf_agent.py --layout landscape --live --interval 1.0
 ```
 
+## Python GUI
+
+`gui.py` 是 `perf_monitor` 的 tkinter 桌面控制面板，功能和 `/perf/` 页一致：
+Demo/Live、发送周期、Start/Stop、竖/横串口切换、实时预览和事件日志。它只调用
+上面的 host HTTP API，不直接打开 COM 口，串口仍然只有 `SerialBroker` 一个 owner。
+
+```bash
+# host 已启动时打开
+python -I chip-adapt/esp32/host/gui.py
+
+# 自定义 host 地址
+python -I chip-adapt/esp32/host/gui.py --url http://127.0.0.1:8767
+```
+
+窗口标题是 `PERF TAPE · Python GUI`。左上角显示串口状态；右侧的 `WEB UI ↗`
+会打开同一个 host 的 `/perf/` 页面。GUI 使用标准库 tkinter，不需要额外安装。
+
 ## 固件侧协议
 
 命令统一用 LF (`\n`) 结尾，回复行以 `@` 开头。SSID、密码、蓝牙名称在 `connect` / `name`

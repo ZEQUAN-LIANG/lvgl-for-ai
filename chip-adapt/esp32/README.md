@@ -51,7 +51,9 @@ python -I chip-adapt/esp32/host/host.py flash \
 ```
 
 网页默认 `http://127.0.0.1:8767/`；烧录器是独立页 `http://127.0.0.1:8767/flash/`，
-性能监控控制页是 `http://127.0.0.1:8767/perf/`。页面列表来自固件，不在前端写死。
+性能监控控制页是 `http://127.0.0.1:8767/perf/`；桌面版是
+`python -I chip-adapt/esp32/host/gui.py`（tkinter，走同一套 host API）。页面列表来自
+固件，不在前端写死。
 
 ## 文档资料
 
