@@ -1,15 +1,23 @@
-# 烧录器（共享网页 + 多后端）
+# 共享 host 层与烧录器（多后端）
 
-`chip-adapt/host/` 提供一套独立烧录网页。同一个页面由不同 host 提供时，使用该 host
-自己的烧录后端：
+`chip-adapt/host/` 提供两个 host 共用的基础设施，以及一套独立烧录网页。
+
+| 模块 | 作用 |
+| --- | --- |
+| `jobs.py` | `Job` / `JobManager`，构建与烧录任务、事件和 SSE 快照 |
+| `http_layer.py` | JSON body、SSE writer、来源校验、静态文件与错误状态映射 |
+| `timeutil.py` | 统一 ISO 时间戳 |
+| `flasher_web.py` + `flash_web/` | 共享烧录页、能力渲染和计划缓存 |
+
+同一个烧录页由不同 host 提供时，使用该 host 自己的烧录后端：
 
 | host | 页面 | 后端 | 串口/协议 | 默认波特率 |
 | --- | --- | --- | --- | --- |
-| ESP32-C6 | `http://127.0.0.1:8767/flash/` | `esptool` | ROM bootloader / USB Serial-JTAG | 460800 |
+| ESP32-C6 | `http://127.0.0.1:8767/flash/` | `esptool` | ROM bootloader / USB Serial-JTAG / BLE NUS | 460800 |
 | SiFli 黄山派 | `http://127.0.0.1:8766/flash/` | `sftool` | SF32 UART | 1000000 |
 
-这里只共享**网页 + HTTP 契约 + 计划缓存**，不共享板级后端。ESP32 仍由
-`chip-adapt/esp32/host/flash_control.py` 解析固件并调用 esptool；SiFli 仍由
+这里共享 **host 基础模块 + 烧录前端 + HTTP 契约 + 计划缓存**，不共享板级后端。ESP32
+仍由 `chip-adapt/esp32/host/flash/flash_control.py` 解析固件并调用 esptool；SiFli 仍由
 `chip-adapt/sifli/host/build_flash.py` 读取 `sftool_param.json` 并调用 sftool。
 
 烧录页不是设备控制页里的 tab：ESP32 主页面左侧「烧录器」和 SiFli 标签栏「烧录器」
@@ -204,13 +212,16 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 共享层测试在两边都有：静态路径穿越、`PlanStore`、`/flash/` 渲染、env/plan 形状、
 端口偏好；ESP32 的 fake 后端和 SiFli 的临时 `sftool_param.json` 都不需要板子。
 
-2026-11-18 记录：ESP32 host 49 个测试、SiFli host 99 个测试通过；`scripts/lint.py`
+2026-11-19 记录：ESP32 host 85 个测试、SiFli host 99 个测试通过；`scripts/lint.py`
 0 findings。
 
 ## 目录
 
 ```text
 chip-adapt/host/
+  jobs.py              Job / JobManager，构建与烧录任务
+  http_layer.py        JSON/SSE/静态文件/来源校验
+  timeutil.py          ISO 时间戳
   flasher_web.py       安全静态路径、MIME、PlanStore（10 分钟 / 20 份）
   flash_web/
     index.html         独立烧录页（不是主 UI 的 tab）

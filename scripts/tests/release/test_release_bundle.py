@@ -156,6 +156,44 @@ class ManifestContractTest(unittest.TestCase):
             self.assertEqual(manifest, payload)
 
 
+class SifliOverlayTest(unittest.TestCase):
+    def test_shared_host_modules_are_copied(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            repo = Path(raw)
+            shared = repo / "chip-adapt" / "host"
+            shared.mkdir(parents=True)
+            for name in ("jobs.py", "http_layer.py", "timeutil.py", "flasher_web.py"):
+                (shared / name).write_text("# shared\n", encoding="utf-8")
+            (shared / "flash_web").mkdir()
+            (shared / "flash_web" / "index.html").write_text(
+                "<!doctype html>\n", encoding="utf-8"
+            )
+            (shared / "docs").mkdir()
+            (shared / "docs" / "shot.png").write_bytes(b"png")
+
+            sifli_host = repo / "chip-adapt" / "sifli" / "host"
+            sifli_host.mkdir(parents=True)
+            (sifli_host / "server.py").write_text("# server\n", encoding="utf-8")
+            (repo / "chip-adapt" / "README.md").write_text(
+                "# chip-adapt\n", encoding="utf-8"
+            )
+            package = repo / "package"
+            (package / "bin").mkdir(parents=True)
+
+            with mock.patch.object(
+                release_bundle, "run_command", return_value=mock.Mock(returncode=1)
+            ):
+                release_all._overlay_sifli(package, repo, "0.2.0")
+
+            target = package / "chip-adapt" / "host"
+            self.assertTrue((target / "jobs.py").is_file())
+            self.assertTrue((target / "http_layer.py").is_file())
+            self.assertTrue((target / "timeutil.py").is_file())
+            self.assertTrue((target / "flasher_web.py").is_file())
+            self.assertTrue((target / "flash_web" / "index.html").is_file())
+            self.assertFalse((target / "docs").exists())
+
+
 class ReleaseAllArtifactsTest(unittest.TestCase):
     def test_each_zip_gets_checksum_manifest_and_summary(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

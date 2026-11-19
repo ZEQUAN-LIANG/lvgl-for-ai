@@ -354,6 +354,14 @@ def _overlay_sifli(package: Path, repo: Path, tool_version: str) -> None:
             dirs_exist_ok=True,
             ignore=shutil.ignore_patterns(*HOST_IGNORE),
         )
+    shared = chip / "host"
+    if shared.is_dir():
+        shutil.copytree(
+            shared,
+            target_root / "host",
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns(*HOST_IGNORE, "docs"),
+        )
     vendor_readme = chip / "vendor" / "README.md"
     if vendor_readme.is_file():
         target = target_root / "vendor" / "README.md"

@@ -24,7 +24,7 @@
 | `host/` | 可运行原型 | 复用 SiFli host 的 `SerialBroker`；页面 + Wi-Fi + 蓝牙 + 串口 + 系统网页；独立烧录页 `/flash/`，CLI + fake backend |
 | LVGL demo | 可运行 | `user/app/c6_demo/`，3 页，172×320，headless 场景 `user/scenarios/c6_demo.json` |
 | 性能监控器 | 可运行（真机已验证） | `user/app/perf_monitor/`，172×320 / 320×172 串口切换；host `/perf/` + tkinter GUI；协议与 PC 发送端见其 README |
-| 桌面控制 GUI | 可运行 | `host/gui.py`，走 host HTTP API，不直接占用 COM 口 |
+| 桌面控制 GUI | 可运行 | `host/perf/perf_gui.py`，走 host HTTP API，不直接占用 COM 口 |
 | Wi-Fi / 蓝牙配置 UI | 已实现 | 网页扫描/连接/开关/改名/可发现；串口协议见 `host/README.md` |
 | 官方文档镜像 | 已抓取 | `docs/ESP32-C6-LCD-1.47/`，7 个页面 + 本地截图（2026-11-18） |
 | Arduino 演示固件 | 可运行（已烧录验证） | `arduino/build.py` + `arduino/templates/`；LVGL 9.6 + ST7789，临时 bring-up；**UART + BLE 双通道**；见 `docs/arduino-perf-monitor.md` |
@@ -44,7 +44,7 @@ python -I console/entrypoints/cli.py --lvgl 9.6 \
 python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/perf_monitor_landscape.json --json
 
 # 性能监控器演示帧（不发串口）
-python -I chip-adapt/esp32/host/perf_agent.py --demo --dry-run --once
+python -I chip-adapt/esp32/host/perf/perf_agent.py --demo --dry-run --once
 
 # 临时 Arduino 演示固件（先启动 host 再烧录；默认增量编译）
 python -I chip-adapt/esp32/arduino/build.py build
@@ -62,7 +62,7 @@ python -I chip-adapt/esp32/host/host.py serve --transport serial --serial-port C
 python -I chip-adapt/esp32/host/host.py serve --transport ble --ble-name LVGL-C6-PERF --open
 
 # 桌面 GUI（host 已启动）
-python -I chip-adapt/esp32/host/gui.py
+python -I chip-adapt/esp32/host/perf/perf_gui.py
 
 # 烧录（先装 esptool 与 bleak；不加 --fake 时走真机）
 powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/esp32/host/scripts/bootstrap.ps1
@@ -72,7 +72,7 @@ python -I chip-adapt/esp32/host/host.py flash \
 
 网页默认 `http://127.0.0.1:8767/`；烧录器是独立页 `http://127.0.0.1:8767/flash/`，
 性能监控控制页是 `http://127.0.0.1:8767/perf/`；桌面版是
-`python -I chip-adapt/esp32/host/gui.py`（tkinter，走同一套 host API）。页面列表来自
+`python -I chip-adapt/esp32/host/perf/perf_gui.py`（tkinter，走同一套 host API）。页面列表来自
 固件，不在前端写死。
 
 ## 文档资料
@@ -101,7 +101,7 @@ python -I chip-adapt/esp32/host/host.py flash \
 - 172×320 / 320×172 布局与 `PERF PORTRAIT` / `PERF LANDSCAPE` 串口切换；
 - 默认 0.3 秒监控周期，底栏显示实测周期；
 - ST7789 软件旋转 flush，修复横版花屏；
-- host `/perf/` 控制页、`perf_control.py`、`perf_agent.py` 与 tkinter GUI；
+- host `/perf/` 控制页、`perf/perf_control.py`、`perf/perf_agent.py` 与 `perf/perf_gui.py`；
 - Arduino 固件真机烧录，`SHOT` 4 bpp 帧缓冲自检。
 
 ## 固件侧待做

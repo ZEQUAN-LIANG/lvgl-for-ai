@@ -6,10 +6,6 @@ from pathlib import Path
 from typing import Any, BinaryIO
 from urllib.parse import urlparse
 
-from broker import BrokerError
-from build_flash import BuildFlashError
-from serial_backend import SerialError
-
 MAX_BODY = 4 * 1024 * 1024
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 ACTORS = {"web", "cli", "ai", "system", "external"}
@@ -87,10 +83,10 @@ def query_int(
 
 
 def error_response(exc: BaseException) -> tuple[int, dict[str, Any]]:
-    if isinstance(exc, (BrokerError, SerialError)):
-        return 409, {"ok": False, "code": exc.code, "error": str(exc)}
-    if isinstance(exc, BuildFlashError):
-        return 400, {"ok": False, "code": exc.code, "error": str(exc)}
+    code = getattr(exc, "code", None)
+    status = getattr(exc, "status", None)
+    if isinstance(code, str) and isinstance(status, int):
+        return status, {"ok": False, "code": code, "error": str(exc)}
     if isinstance(exc, (ValueError, KeyError)):
         return 400, {"ok": False, "code": "bad_request", "error": str(exc)}
     return 500, {"ok": False, "code": "internal_error", "error": str(exc)}

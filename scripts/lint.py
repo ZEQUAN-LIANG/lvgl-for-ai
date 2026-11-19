@@ -53,6 +53,8 @@ PYTHON_ROOTS = (
     "scripts",
     "user",
     "chip-adapt/sifli",
+    "chip-adapt/host",
+    "chip-adapt/esp32/host",
 )
 C_ROOTS = ("engine", "user", "chip-adapt/sifli")
 

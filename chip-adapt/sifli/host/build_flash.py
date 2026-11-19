@@ -36,6 +36,8 @@ _CHINA_MIRROR_TRUTHY = {"1", "true", "yes", "on"}
 
 
 class BuildFlashError(RuntimeError):
+    status = 400
+
     def __init__(
         self, message: str, *, code: str = "build_flash_error"
     ) -> None:

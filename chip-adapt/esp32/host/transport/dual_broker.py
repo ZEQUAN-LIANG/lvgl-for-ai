@@ -6,9 +6,11 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
-HOST_DIR = Path(__file__).resolve().parent
-if str(HOST_DIR) not in sys.path:
-    sys.path.insert(0, str(HOST_DIR))
+TRANSPORT_DIR = Path(__file__).resolve().parent
+HOST_DIR = TRANSPORT_DIR.parent
+for _path in (TRANSPORT_DIR, HOST_DIR):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
 
 from paths import ensure_import_paths
 

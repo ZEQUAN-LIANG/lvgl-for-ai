@@ -108,7 +108,7 @@ else {
 
 ## PC 端
 
-`chip-adapt/esp32/host/perf_agent.py` 是协议发送端。它**不直接打开 COM 口**，而是
+`chip-adapt/esp32/host/perf/perf_agent.py` 是协议发送端。它**不直接打开 COM 口**，而是
 走现有 ESP32 上位机的 `POST /api/send`，保持“一个串口 owner”的约束。
 
 上位机还提供专用控制页 `http://127.0.0.1:8767/perf/`：可以在网页里启动/停止
@@ -120,13 +120,13 @@ Demo/Live 采集、调整发送周期、切换竖版/横版，并实时预览最
 python -I chip-adapt/esp32/host/host.py serve --port COMx --baud 115200
 
 # 打印演示帧，不发送
-python -I chip-adapt/esp32/host/perf_agent.py --demo --dry-run --once
+python -I chip-adapt/esp32/host/perf/perf_agent.py --demo --dry-run --once
 
 # 真实 Windows 采集，默认每 0.3 秒发送；先让屏幕切到横版
-python -I chip-adapt/esp32/host/perf_agent.py --layout landscape --live
+python -I chip-adapt/esp32/host/perf/perf_agent.py --layout landscape --live
 
 # 没有板子/上位机时，只打印模拟帧
-python -I chip-adapt/esp32/host/perf_agent.py --demo --dry-run
+python -I chip-adapt/esp32/host/perf/perf_agent.py --demo --dry-run
 ```
 
 Windows 采集使用 PowerShell/WMI 读取 CPU、内存、频率、每逻辑核负载与网卡累计字节；

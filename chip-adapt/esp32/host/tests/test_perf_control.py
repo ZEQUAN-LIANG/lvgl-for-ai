@@ -15,6 +15,10 @@ HOST_DIR = Path(__file__).resolve().parents[1]
 if str(HOST_DIR) not in sys.path:
     sys.path.insert(0, str(HOST_DIR))
 
+from paths import ensure_import_paths  # noqa: E402
+
+ensure_import_paths()
+
 from host import HostHandler, HostServer, HostState  # noqa: E402
 from perf_control import PerfController, PerfError  # noqa: E402
 from perf_protocol import demo_sample  # noqa: E402

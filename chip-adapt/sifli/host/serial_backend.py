@@ -32,6 +32,8 @@ except ImportError as exc:
 
 
 class SerialError(RuntimeError):
+    status = 409
+
     def __init__(self, message: str, *, code: str = "serial_error") -> None:
         super().__init__(message)
         self.code = code

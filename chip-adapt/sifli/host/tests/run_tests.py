@@ -7,8 +7,10 @@ import unittest
 from pathlib import Path
 
 HOST_DIR = Path(__file__).resolve().parents[1]
-if str(HOST_DIR) not in sys.path:
-    sys.path.insert(0, str(HOST_DIR))
+SHARED_HOST_DIR = HOST_DIR.parents[1] / "host"
+for path in (HOST_DIR, SHARED_HOST_DIR):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 if __name__ == "__main__":
     suite = unittest.defaultTestLoader.discover(

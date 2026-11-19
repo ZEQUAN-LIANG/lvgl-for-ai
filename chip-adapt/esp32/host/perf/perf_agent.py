@@ -5,9 +5,9 @@ The host owns the serial port.  This agent sends through the existing
 ``POST /api/send`` endpoint instead of opening COM itself.
 
 Examples:
-  python -I chip-adapt/esp32/host/perf_agent.py --demo --dry-run --once
-  python -I chip-adapt/esp32/host/perf_agent.py --live --interval 0.3
-  python -I chip-adapt/esp32/host/perf_agent.py --layout landscape --live
+  python -I chip-adapt/esp32/host/perf/perf_agent.py --demo --dry-run --once
+  python -I chip-adapt/esp32/host/perf/perf_agent.py --live --interval 0.3
+  python -I chip-adapt/esp32/host/perf/perf_agent.py --layout landscape --live
 """
 
 from __future__ import annotations
@@ -23,9 +23,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib import error, request
 
-HOST_DIR = Path(__file__).resolve().parent
-if str(HOST_DIR) not in sys.path:
-    sys.path.insert(0, str(HOST_DIR))
+PERF_DIR = Path(__file__).resolve().parent
+if str(PERF_DIR) not in sys.path:
+    sys.path.insert(0, str(PERF_DIR))
 
 from perf_protocol import (  # noqa: E402
     PERF_BARS,

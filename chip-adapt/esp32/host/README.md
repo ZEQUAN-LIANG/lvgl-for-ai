@@ -40,6 +40,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/esp32/host/script
 
 选 8767 是为了避开 `console` 的 8765 和 SiFli host 的 8766。
 
+## 目录
+
+```text
+chip-adapt/esp32/host/
+  host.py            HTTP server / CLI / 路由
+  paths.py           共享、transport、device、perf、flash 的 sys.path
+  transport/         ble_link.py、dual_backend.py、dual_broker.py
+  device/            page_control.py、device_control.py、command_session.py、fake_serial.py
+  perf/              perf_control.py、perf_agent.py、perf_protocol.py、perf_gui.py、tray.py
+  flash/             flash_control.py
+  web/               index.html、perf.html
+  scripts/           bootstrap.ps1（同时安装 esptool 与 bleak）
+  tests/             单元测试
+```
+
 ## UART + BLE 双链路
 
 - `DualBackend` 同时运行串口 supervisor 与 BLE supervisor，二者把字节写入同一个
@@ -95,21 +110,22 @@ Live 采集复用 `perf_agent.py` 的 Windows 采集逻辑；单帧通常需要 
 `period` 是实测帧间隔。`perf_agent.py` 仍可用于不开网页的 CLI 场景：
 
 ```bash
-python -I chip-adapt/esp32/host/perf_agent.py --layout landscape --live
+python -I chip-adapt/esp32/host/perf/perf_agent.py --layout landscape --live
 ```
 
 ## Python GUI
 
-`gui.py` 是 `perf_monitor` 的 tkinter 桌面控制面板，功能和 `/perf/` 页一致：
+`perf/perf_gui.py` 是 `perf_monitor` 的 tkinter 桌面控制面板，功能和 `/perf/` 页一致：
 Demo/Live、发送周期、Start/Stop、竖/横串口切换、实时预览和事件日志。它只调用
 上面的 host HTTP API，不直接打开 COM 口，串口仍然只有 `SerialBroker` 一个 owner。
+托盘图标在同目录的 `perf/tray.py`。
 
 ```bash
 # host 已启动时打开
-python -I chip-adapt/esp32/host/gui.py
+python -I chip-adapt/esp32/host/perf/perf_gui.py
 
 # 自定义 host 地址
-python -I chip-adapt/esp32/host/gui.py --url http://127.0.0.1:8767
+python -I chip-adapt/esp32/host/perf/perf_gui.py --url http://127.0.0.1:8767
 ```
 
 窗口标题是 `PERF TAPE · Python GUI`。左上角显示串口状态；右侧的 `WEB UI ↗`
@@ -315,4 +331,5 @@ python -I chip-adapt/esp32/host/tests/run_tests.py
 - Wi-Fi 密码通过串口发送，但 `SerialBroker` 的 TX 事件日志会标 `redacted: true`，不把密码
   写进 `events.ndjson`；串口 RX 日志仍保留设备输出。
 - 只返回命令响应、串口日志和页面状态，不输出 pass/fail、baseline、approval、acceptance。
-- 后续把 broker / SSE / job 抽到 `chip-adapt/host/`，SiFli 和 ESP32 只保留 board 后端。
+- `jobs.py` / `http_layer.py` / `timeutil.py` 已移到 `chip-adapt/host/` 共享；`broker.py`
+  仍在 SiFli host，后续可再评估是否上移。

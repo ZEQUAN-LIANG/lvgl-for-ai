@@ -88,7 +88,7 @@ ESP32-C6 is supported through the Arduino bring-up path in `chip-adapt/esp32/`. 
 python -I chip-adapt/esp32/arduino/build.py build
 python -I chip-adapt/esp32/arduino/build.py flash --port COMx
 python -I chip-adapt/esp32/host/host.py serve --port COMx --baud 115200 --open
-python -I chip-adapt/esp32/host/gui.py
+python -I chip-adapt/esp32/host/perf/perf_gui.py
 ```
 
 The board is verified on hardware (USB Serial/JTAG, esptool flash, and a `SHOT` framebuffer dump). The formal ESP-IDF exporter is still on the roadmap; see `chip-adapt/esp32/README.md` and `chip-adapt/esp32/docs/arduino-perf-monitor.md`.
@@ -242,7 +242,7 @@ On Windows, MSYS2 UCRT64 is recommended. Full installation steps, PATH setup, fi
 - `chip-adapt/sifli/README.md` / `chip-adapt/docs/sifli.html`: SiFli adaptation layer and capabilities.
 - `chip-adapt/esp32/README.md`: ESP32-C6 board setup, host control page, desktop GUI and Arduino bring-up.
 - `chip-adapt/esp32/docs/arduino-perf-monitor.md`: ST7789 + LVGL rotation, flashing and `SHOT` verification notes.
-- `chip-adapt/host/README.md`: standalone flasher page shared by the ESP32 (esptool) and SiFli (sftool) hosts, including the HTTP contract, firmware sources and troubleshooting.
+- `chip-adapt/host/README.md`: shared host layer (jobs, HTTP/SSE, time helpers) and the standalone flasher page used by the ESP32 (esptool) and SiFli (sftool) hosts, including the HTTP contract, firmware sources and troubleshooting.
 - `CONTEXT.md`: domain glossary.
 - `CLAUDE.md`: repository working notes for AI coding agents.
 - `SKILL.md` at the release package root (source: `docs/skill/SKILL.md`): the AI entry contract and agent workflow for the installed skill.
