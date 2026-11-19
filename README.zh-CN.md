@@ -80,9 +80,7 @@ python -I chip-adapt/sifli/host/cli.py flash --app sift_watch --actor ai --json
 
 黄山派（SiFli SF32LB52x，板名 `sf32lb52-lchspi-ulp`）实拍，桌面串口与烧录上位机在 `chip-adapt/sifli/host/`。黄山派实际屏幕 390×450，其他尺寸的应用需要自行适配布局：
 
-<p align="center"><video src="docs/media/huangshanpai.mp4" controls width="280"></video></p>
-
-[打开视频](docs/media/huangshanpai.mp4)
+<p align="center"><img src="docs/media/huangshanpai.gif" width="280"></p>
 
 ESP32-C6 通过 `chip-adapt/esp32/` 的 Arduino bring-up 链路支持。`perf_monitor` 已跑在微雪
 ESP32-C6-LCD-1.47（172×320 ST7789）上：串口切换竖/横版，host 提供 `/perf/` 控制页和
@@ -98,9 +96,7 @@ python -I chip-adapt/esp32/host/perf/perf_gui.py
 实机已验证 USB Serial/JTAG、esptool 烧录和 `SHOT` 帧缓冲抓取。正式 ESP-IDF 导出器仍在
 规划中，详见 `chip-adapt/esp32/README.md` 与 `chip-adapt/esp32/docs/arduino-perf-monitor.md`。
 
-<p align="center"><video src="docs/media/esp32-c6-perf-monitor.mp4" controls width="260"></video></p>
-
-[打开视频](docs/media/esp32-c6-perf-monitor.mp4)
+<p align="center"><img src="docs/media/esp32-c6-perf-monitor.gif" width="260"></p>
 
 另外两点：预编译 LVGL 库让本地只有 GCC 也能跑（`--prebuilt`）；工具与 Claude Code、Cursor 等 harness 无关，本身不绑定模型。
 

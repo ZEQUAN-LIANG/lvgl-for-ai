@@ -23,8 +23,8 @@
 - [`arduino-perf-monitor.md`](arduino-perf-monitor.md)：PERF TAPE 在 ESP32-C6 上的
   临时 Arduino 适配，含 ST7789 引脚、LVGL 9.6 配置、partial buffer、软件旋转
   flush、内存/Flash 数字和排障。
-- [`../../../docs/media/esp32-c6-perf-monitor.mp4`](../../../docs/media/esp32-c6-perf-monitor.mp4)：
-  `perf_monitor` 实机演示（无音频）。
+- [`../../../docs/media/esp32-c6-perf-monitor.gif`](../../../docs/media/esp32-c6-perf-monitor.gif)：
+  `perf_monitor` 实机演示动画（无音频）。
 
 说明：
 

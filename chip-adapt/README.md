@@ -21,7 +21,7 @@ LVGL headless 宿主分开：`console/` 负责预览/取证，本目录负责把
 - `chip-adapt/docs/sifli.html`：SDK 图形能力知识索引，不是操作手册。
 - `chip-adapt/sifli/`：SiFli 自研代码，唯一可直接改 SiFli 导出逻辑的区域。
 - `chip-adapt/esp32/`：ESP32-C6 板级适配、host 控制页、桌面 GUI 与 Arduino bring-up；
-  见 `esp32/README.md`，演示视频 `../docs/media/esp32-c6-perf-monitor.mp4`。
+  见 `esp32/README.md`，演示动画 `../docs/media/esp32-c6-perf-monitor.gif`。
 - `chip-adapt/host/`：共享 `jobs.py` / `http_layer.py` / `timeutil.py`，以及独立烧录页、
   esptool/sftool 双后端契约、排障与实机记录，见 `host/README.md`。
 - `chip-adapt/vendor/`：SDK 与可选外部资源；**只读**，升级按清单重下。
@@ -73,8 +73,8 @@ LVGL headless 宿主分开：`console/` 负责预览/取证，本目录负责把
 > SiFli 与 ESP32 的导出/构建默认都是增量的：只更新变化的源码，复用 SDK/Arduino
 > 构建缓存；`--force` 仅用于清理后重导。ESP32-C6 已跑通 `perf_monitor` 真机链路：
 > Arduino bring-up、host 的 **UART + BLE 双链路**（BLE 优先、UART 回退）、烧录、
-> `/perf/` 控制页、tkinter GUI 和横竖版切换；视频见
-> `../docs/media/esp32-c6-perf-monitor.mp4`。正式 ESP-IDF 导出器和固件壳尚未实现，
+> `/perf/` 控制页、tkinter GUI 和横竖版切换；动画见
+> `../docs/media/esp32-c6-perf-monitor.gif`。正式 ESP-IDF 导出器和固件壳尚未实现，
 > 见 `esp32/README.md`。
 
 ## 从 user/app 到 SDK 编译

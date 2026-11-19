@@ -13,9 +13,7 @@
 都可以控制 Demo/Live、发送周期（默认 0.3 秒）和横竖版。下面是实机拍摄（无音频，
 不是 headless 预览）：
 
-<p align="center"><video src="../../docs/media/esp32-c6-perf-monitor.mp4" controls width="260"></video></p>
-
-[打开视频](../../docs/media/esp32-c6-perf-monitor.mp4)
+<p align="center"><img src="../../docs/media/esp32-c6-perf-monitor.gif" width="260"></p>
 
 ## 当前状态
 

@@ -4,7 +4,7 @@
 无触摸）上的临时 Arduino 适配。它是可烧录的 bring-up 固件，不是正式的 ESP-IDF
 固件壳；正式壳仍按 `esp_lvgl_port` / `esp_console` 规划。
 
-实机演示视频（无音频）：[`../../../docs/media/esp32-c6-perf-monitor.mp4`](../../../docs/media/esp32-c6-perf-monitor.mp4)。
+实机演示动画（无音频）：[`../../../docs/media/esp32-c6-perf-monitor.gif`](../../../docs/media/esp32-c6-perf-monitor.gif)。
 
 生成与烧录入口：`chip-adapt/esp32/arduino/build.py`。
 

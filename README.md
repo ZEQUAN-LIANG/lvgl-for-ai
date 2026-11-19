@@ -78,9 +78,7 @@ The shared source stays in `user/app/`; export copies app sources against the LV
 
 Huangshan Pai (SiFli SF32LB52x, board `sf32lb52-lchspi-ulp`) in real use; the desktop serial and flashing host lives in `chip-adapt/sifli/host/`. The board's screen is 390×450; apps built for other sizes need layout adjustments:
 
-<p align="center"><video src="docs/media/huangshanpai.mp4" controls width="280"></video></p>
-
-[Open the video](docs/media/huangshanpai.mp4)
+<p align="center"><img src="docs/media/huangshanpai.gif" width="280"></p>
 
 ESP32-C6 is supported through the Arduino bring-up path in `chip-adapt/esp32/`. The `perf_monitor` app runs on a Waveshare ESP32-C6-LCD-1.47 (172×320 ST7789) with serial portrait/landscape switching, a host control page at `/perf/`, and a tkinter desktop panel. Monitoring defaults to 0.3 s, and the exporter/compiler paths are incremental:
 
@@ -93,9 +91,7 @@ python -I chip-adapt/esp32/host/perf/perf_gui.py
 
 The board is verified on hardware (USB Serial/JTAG, esptool flash, and a `SHOT` framebuffer dump). The formal ESP-IDF exporter is still on the roadmap; see `chip-adapt/esp32/README.md` and `chip-adapt/esp32/docs/arduino-perf-monitor.md`.
 
-<p align="center"><video src="docs/media/esp32-c6-perf-monitor.mp4" controls width="260"></video></p>
-
-[Open the video](docs/media/esp32-c6-perf-monitor.mp4)
+<p align="center"><img src="docs/media/esp32-c6-perf-monitor.gif" width="260"></p>
 
 Two more points: prebuilt LVGL libraries let you run with just GCC installed (`--prebuilt`); the tools are independent of harnesses like Claude Code and Cursor and are not tied to any model.
 
