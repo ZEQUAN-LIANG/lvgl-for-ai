@@ -719,6 +719,12 @@ class LiveHttpTest(unittest.TestCase):
         (repo / "user" / "app").mkdir(parents=True)
         (repo / "user" / "scenarios").mkdir(parents=True)
         shutil.copy2(APP_C, repo / "user" / "app" / "app.c")
+        coffee = repo / "user" / "app" / "coffee"
+        coffee.mkdir()
+        (coffee / "app.json").write_text(
+            json.dumps({"entry": "coffee_create", "default": True}),
+            encoding="utf-8",
+        )
 
         runtime = BlockingRuntime(self.session)
         harness = WebHarness(

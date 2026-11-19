@@ -97,20 +97,19 @@ void hello_create(void)
 - `printf` 进入会话的 `engine.log`；需要立即看到时加 `fflush(stdout)`。
 - 所有应用变体编译进同一个二进制：非 `static` 全局符号要加应用前缀。
 
-### 1.3 注册
+### 1.3 应用元数据
 
-在 `user/app/app.c` 顶部 include，并在现有 `apps[]` 表里追加一行：
+在 `user/app/hello/app.json` 写入口；构建会扫描所有应用目录并生成
+`user/app/app_registry.inc`，不需要改 `app.c` 或其他共享文件：
 
-```c
-#include "hello/hello.h"
-
-static const app_entry_t apps[] = {
-    /* ... existing entries ... */
-    {"hello", hello_create},
-};
+```json
+{
+  "entry": "hello_create"
+}
 ```
 
-名字必须与场景里的 `"app": "hello"` 完全一致。
+目录名 `hello` 必须与场景里的 `"app": "hello"` 完全一致。需要别名时加
+`"aliases": ["..." ]`；需要默认应用时加 `"default": true`（全局只能有一个）。
 
 ### 1.4 场景
 
@@ -215,7 +214,7 @@ lv_timer_create(tick_cb, 16, NULL);
 ### 多文件拆分
 
 `user/app/**/*.c` 会递归收集并全部编译，可以按 `page.c` / `ui.c` / `model.c`
-拆分；`app.c` 只需要 include 各应用的入口头文件。
+拆分；生成文件只声明 `<entry>(void)`，不需要在共享入口里 include 每个应用的头文件。
 
 ## 5. 约束与排错
 
@@ -231,7 +230,7 @@ lv_timer_create(tick_cb, 16, NULL);
 | 现象 | 先检查 |
 |---|---|
 | 网页下拉里没有新应用 | `user/scenarios/<name>.json` 是否存在、JSON 是否合法、顶层是否有 `app` |
-| engine 启动即退出，日志有 `unknown app=` | `apps[]` 名字与场景 `app` 是否完全一致 |
+| engine 启动即退出，日志有 `unknown app=` | 应用目录名、`app.json` 的 `entry` 与场景 `app` 是否一致；构建日志里的 app discovery 错误 |
 | `build_error` | `user/sessions/<id>/build.log`；常见是 include 路径、版本门漏了、9.6 不存在的 API |
 | `link_error` | 声明了 `<name>_create` 但没有定义，或版本门把定义排除了 |
 | `harness_error` | 场景字段拼写、未知字段、类型不匹配 |
@@ -242,7 +241,7 @@ lv_timer_create(tick_cb, 16, NULL);
 ## 6. 提交前检查清单
 
 - [ ] 源文件在 `user/app/<name>/`，入口签名是 `void <name>_create(void)`
-- [ ] `user/app/app.c` 有 include 和 `apps[]` 注册行
+- [ ] `user/app/<name>/app.json` 的 `entry` 指向 `void <name>_create(void)`
 - [ ] 只在 9.4+ 使用的代码有版本门
 - [ ] 全局符号带应用前缀或为 `static`
 - [ ] 交互控件已 `app_obj_set_name`，应用根已 `app_set_name`

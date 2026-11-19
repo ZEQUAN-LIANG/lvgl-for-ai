@@ -23,7 +23,7 @@ for _path in (CONSOLE_ROOT, ADAPTER_DIR):
         sys.path.insert(0, str(_path))
 
 import layout
-from appmgr import common, registry
+from appmgr import common, discovery
 from asset_plan import AssetPlan, ExportError, plan_assets
 
 ADAPTER_SCHEMA = "lvgl-verify-loop-chip-adapter-v1"
@@ -73,7 +73,7 @@ def export_app(
         )
 
     common._require_plain_name(app)
-    app_symbol = _registered_symbol(root, app)
+    app_symbol = _entry_symbol(root, app)
     source_dir = root / "user" / "app" / app
     if not source_dir.is_dir():
         raise ExportError(
@@ -180,18 +180,12 @@ def _load_adapter(adapter_dir: Path) -> dict[str, Any]:
     return payload
 
 
-def _registered_symbol(root: Path, app: str) -> str:
-    app_c = root / "user" / "app" / "app.c"
-    try:
-        text = app_c.read_text(encoding="utf-8-sig")
-    except OSError as exc:
-        raise ExportError(
-            "app_missing", f"cannot read {app_c}: {exc}"
-        ) from exc
-    for name, symbol in registry.parse_app_entries(text):
-        if name == app:
-            return symbol
-    header = root / "user" / "app" / app / f"{app}.h"
+def _entry_symbol(root: Path, app: str) -> str:
+    apps_dir = root / "user" / "app"
+    for entry in discovery.scan_apps(apps_dir)[0]:
+        if entry.name == app:
+            return entry.entry
+    header = apps_dir / app / f"{app}.h"
     try:
         header_text = header.read_text(encoding="utf-8-sig")
     except OSError:
@@ -199,9 +193,20 @@ def _registered_symbol(root: Path, app: str) -> str:
     symbol = f"{app}_create"
     if re.search(rf"\bvoid\s+{re.escape(symbol)}\s*\(", header_text):
         return symbol
+    for source in sorted((apps_dir / app).glob("*.h")):
+        try:
+            text = source.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        match = re.search(
+            r"\bvoid\s+([A-Za-z_][A-Za-z0-9_]*_create)\s*\(\s*void\s*\)",
+            text,
+        )
+        if match:
+            return match.group(1)
     raise ExportError(
-        "app_not_registered",
-        f'app "{app}" is not registered in {app_c}',
+        "app_entry_missing",
+        f'app "{app}" has no app.json entry and no discoverable create function',
         detail={"app": app},
     )
 
@@ -383,7 +388,7 @@ def _adapter_warnings(adapter_dir: Path, adapter: dict[str, Any]) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="chip-adapt/sifli/export.py",
-        description="Export a registered app as a Huangshan Pi SiFli project.",
+        description="Export an app as a Huangshan Pi SiFli project.",
     )
     parser.add_argument("app")
     parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)

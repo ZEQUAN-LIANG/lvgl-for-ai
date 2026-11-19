@@ -21,7 +21,7 @@
           </label>
           <button id="manager-create" type="submit" class="primary-btn">创建</button>
         </form>
-        <p class="manager-hint">创建后会写入源文件、场景和注册表；不会自动启动预览。</p>
+        <p class="manager-hint">创建后会写入源文件、app.json 和场景；下次构建自动发现，不会自动启动预览。</p>
       </section>
       <section class="manager-section">
         <h3>应用</h3>
@@ -30,7 +30,7 @@
       </section>
       <section class="manager-section">
         <h3>回收站</h3>
-        <p class="manager-hint">删除会移到 .trash/user/app/&lt;id&gt;/，可恢复，也可再次确认后永久删除。</p>
+        <p class="manager-hint">删除会移到 user/.trash/apps/&lt;id&gt;/，可恢复，也可再次确认后永久删除。</p>
         <div id="manager-trash-list" class="manager-list"></div>
       </section>
     </div>

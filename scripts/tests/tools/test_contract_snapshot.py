@@ -108,6 +108,7 @@ class ContractSnapshotTest(unittest.TestCase):
             [
                 "app",
                 "app/alpha.c",
+                "app/app.json",
                 "meta.json",
                 "scenarios",
                 "scenarios/alpha.json",

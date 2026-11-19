@@ -1,6 +1,5 @@
 import importlib.util
 import json
-import re
 import shutil
 import struct
 import sys
@@ -389,13 +388,12 @@ class SifliExportTest(unittest.TestCase):
         self.assertFalse(self.output.exists())
 
     def test_unsupported_api_is_reported(self):
-        registry = (
-            REPO / "user" / "app" / "app.c"
-        ).read_text(encoding="utf-8-sig")
-        names = re.findall(r'\{"([^"]+)"', registry)
-        name = next(item for item in names if item != "sift_watch")
+        name = "coffee"
         bad = self.user_app / name
         bad.mkdir()
+        (bad / "app.json").write_text(
+            json.dumps({"entry": "bad_create"}), encoding="utf-8"
+        )
         (bad / "bad_ui.c").write_text(
             "void bad(lv_obj_t * obj) { lv_obj_set_clickable(obj, false); }\n",
             encoding="utf-8",

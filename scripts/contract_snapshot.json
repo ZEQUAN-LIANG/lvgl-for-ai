@@ -284,7 +284,7 @@
         "error_stdout_empty": true,
         "help": {
           "exit": 0,
-          "text": "usage: new_app.py [-h] [--repo-root REPO_ROOT] [--dry-run] [--force] [--json] name Create a user app variant, scenario, and apps[] registration. positional arguments: name app name: ^[a-z][a-z0-9_]{0,31}$ arguments: -h, --help show this help message and exit --repo-root REPO_ROOT repository root (default: the tool's repository root) --dry-run validate and print planned changes without writing --force overwrite generated files and keep registration idempotent --json print exactly one JSON summary on stdout"
+          "text": "usage: new_app.py [-h] [--repo-root REPO_ROOT] [--dry-run] [--force] [--json] name Create a user app directory, app.json metadata, and scenario. positional arguments: name app name: ^[a-z][a-z0-9_]{0,31}$ arguments: -h, --help show this help message and exit --repo-root REPO_ROOT repository root (default: the tool's repository root) --dry-run validate and print planned changes without writing --force overwrite generated files in the app directory --json print exactly one JSON summary on stdout"
         },
         "invalid_exit": 2,
         "json_success": {
@@ -310,6 +310,7 @@
                 "object": {
                   "app_c": "string",
                   "header": "string",
+                  "metadata": "string",
                   "scenario": "string",
                   "source": "string"
                 }
@@ -318,9 +319,7 @@
               "ok": "boolean",
               "repo_root": "string",
               "updated": {
-                "array": [
-                  "string"
-                ]
+                "array": []
               }
             }
           },
@@ -397,7 +396,7 @@
               "choices": null,
               "default": false,
               "dest": "force",
-              "help": "overwrite generated files and keep registration idempotent",
+              "help": "overwrite generated files in the app directory",
               "nargs": 0,
               "option_strings": [
                 "--force"
@@ -419,7 +418,7 @@
               "type": null
             }
           ],
-          "description": "Create a user app variant, scenario, and apps[] registration.",
+          "description": "Create a user app directory, app.json metadata, and scenario.",
           "mutually_exclusive": [],
           "prog": "new_app.py"
         }
@@ -2282,7 +2281,7 @@
               "app_dir": "string",
               "app_dir_exists": "boolean",
               "default": "boolean",
-              "include": "string",
+              "include": "null",
               "max_depth": "integer",
               "max_entries": "integer",
               "name": "string",
@@ -2361,6 +2360,7 @@
                 "object": {
                   "app_c": "string",
                   "header": "string",
+                  "metadata": "string",
                   "scenario": "string",
                   "source": "string"
                 }
@@ -2369,9 +2369,7 @@
               "ok": "boolean",
               "repo_root": "string",
               "updated": {
-                "array": [
-                  "string"
-                ]
+                "array": []
               }
             }
           },
@@ -3009,6 +3007,7 @@
       "trash_layout": [
         "app",
         "app/alpha.c",
+        "app/app.json",
         "meta.json",
         "scenarios",
         "scenarios/alpha.json"
@@ -3543,10 +3542,10 @@
           "新建应用",
           "应用名",
           "创建",
-          "创建后会写入源文件、场景和注册表；不会自动启动预览。",
+          "创建后会写入源文件、app.json 和场景；下次构建自动发现，不会自动启动预览。",
           "应用",
           "回收站",
-          "删除会移到 .trash/user/app/<id>/，可恢复，也可再次确认后永久删除。",
+          "删除会移到 user/.trash/apps/<id>/，可恢复，也可再次确认后永久删除。",
           "目录结构",
           "最近改动",
           "测试或录制运行中不能修改应用；停止后再试。"
@@ -4070,10 +4069,10 @@
           "新建应用",
           "应用名",
           "创建",
-          "创建后会写入源文件、场景和注册表；不会自动启动预览。",
+          "创建后会写入源文件、app.json 和场景；下次构建自动发现，不会自动启动预览。",
           "应用",
           "回收站",
-          "删除会移到 .trash/user/app/<id>/，可恢复，也可再次确认后永久删除。",
+          "删除会移到 user/.trash/apps/<id>/，可恢复，也可再次确认后永久删除。",
           "目录结构",
           "最近改动",
           "测试或录制运行中不能修改应用；停止后再试。"
@@ -4673,10 +4672,10 @@
           "新建应用",
           "应用名",
           "创建",
-          "创建后会写入源文件、场景和注册表；不会自动启动预览。",
+          "创建后会写入源文件、app.json 和场景；下次构建自动发现，不会自动启动预览。",
           "应用",
           "回收站",
-          "删除会移到 .trash/user/app/<id>/，可恢复，也可再次确认后永久删除。",
+          "删除会移到 user/.trash/apps/<id>/，可恢复，也可再次确认后永久删除。",
           "目录结构",
           "最近改动",
           "测试或录制运行中不能修改应用；停止后再试。"
@@ -4968,6 +4967,10 @@
           "signature": [
             {
               "kind": "POSITIONAL_OR_KEYWORD",
+              "name": "root"
+            },
+            {
+              "kind": "POSITIONAL_OR_KEYWORD",
               "name": "name"
             }
           ]
@@ -4987,15 +4990,6 @@
             {
               "kind": "POSITIONAL_OR_KEYWORD",
               "name": "repo_root"
-            }
-          ]
-        },
-        "parse_app_entries": {
-          "kind": "function",
-          "signature": [
-            {
-              "kind": "POSITIONAL_OR_KEYWORD",
-              "name": "text"
             }
           ]
         },
@@ -5028,19 +5022,6 @@
               "default": 8,
               "kind": "KEYWORD_ONLY",
               "name": "limit"
-            }
-          ]
-        },
-        "register_app": {
-          "kind": "function",
-          "signature": [
-            {
-              "kind": "POSITIONAL_OR_KEYWORD",
-              "name": "text"
-            },
-            {
-              "kind": "POSITIONAL_OR_KEYWORD",
-              "name": "name"
             }
           ]
         },
@@ -5087,24 +5068,6 @@
               "default": false,
               "kind": "KEYWORD_ONLY",
               "name": "dry_run"
-            }
-          ]
-        },
-        "unregister_app": {
-          "kind": "function",
-          "signature": [
-            {
-              "kind": "POSITIONAL_OR_KEYWORD",
-              "name": "text"
-            },
-            {
-              "kind": "POSITIONAL_OR_KEYWORD",
-              "name": "name"
-            },
-            {
-              "default": false,
-              "kind": "KEYWORD_ONLY",
-              "name": "missing_ok"
             }
           ]
         }

@@ -45,13 +45,14 @@ docs/             第三方许可
 ```
 
 `user/app/**/*.c` 是唯一源码真源；`console/` 和 `bin/` 不存放用户业务代码。
-`user/app/intro/` 是默认介绍页与模板；其他应用同样在 `user/app/app.c` 的 `apps[]`
-登记，`user/scenarios/intro.json` 是 intro 的录制演示。
+`user/app/intro/` 是默认介绍页与模板；每个应用在自己的目录写 `app.json` 声明
+`entry`，构建自动生成 `app_registry.inc`，不需要维护中心注册表；
+`user/scenarios/intro.json` 是 intro 的录制演示。
 
 ## 宿主工作流
 
 1. 写或改 `user/app/**/*.c`；每个变体暴露 `void <name>_create(void)`，并在
-   `user/app/app.c` 的 `apps[]` 表登记一行。
+   `user/app/<name>/app.json` 声明 `"entry": "<name>_create"`。
 2. 跑场景：
 
    ```bat

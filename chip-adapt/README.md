@@ -64,16 +64,17 @@ LVGL headless 宿主分开：`console/` 负责预览/取证，本目录负责把
 | 改共享烧录页 | `host/flash_web/`、`host/flasher_web.py` | 两边 host 的 env/plan 测试、两份 README | 在页面写死某个芯片或工具 |
 | 改启动器或图标 | `scripts/launchers/` | 重建 exe、`scripts/tests/tools/test_launchers.py` | 手改 exe/ico；启动器掺端口/URL/协议 |
 | 升级 SDK | `vendor/README.md` + 重下 | 路径、链接、API 复核 | 直接改 SDK 源码 |
-| 新增/修改应用 | `user/app/<app>/` | 场景、`assets.json`、`apps[]` 注册 | 改 `exports/<app>/` |
+| 新增/修改应用 | `user/app/<app>/` | 场景、`assets.json`、`app.json` | 改 `exports/<app>/` |
 | 改文档 | 本节列出的各 README | 链接校验 | 复制官方 skill 内容 |
 
 路径只从 `sifli/layout.py` 取：不要在新代码里硬编码导出目录或 SDK 目录。
 
 > SiFli 与 ESP32 的导出/构建默认都是增量的：只更新变化的源码，复用 SDK/Arduino
 > 构建缓存；`--force` 仅用于清理后重导。ESP32-C6 已跑通 `perf_monitor` 真机链路：
-> Arduino bring-up、host 串口/烧录、`/perf/` 控制页、tkinter GUI 和横竖版串口切换；
-> 视频见 `../docs/media/esp32-c6-perf-monitor.mp4`。正式 ESP-IDF 导出器和固件壳
-> 尚未实现，见 `esp32/README.md`。
+> Arduino bring-up、host 的 **UART + BLE 双链路**（BLE 优先、UART 回退）、烧录、
+> `/perf/` 控制页、tkinter GUI 和横竖版切换；视频见
+> `../docs/media/esp32-c6-perf-monitor.mp4`。正式 ESP-IDF 导出器和固件壳尚未实现，
+> 见 `esp32/README.md`。
 
 ## 从 user/app 到 SDK 编译
 

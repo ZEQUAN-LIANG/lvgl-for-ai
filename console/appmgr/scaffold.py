@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from scenario import ScenarioError, load_scenario
-from . import common, policy, registry
+from . import common, discovery, policy
 from .common import AppError
 
 HEADER_TEMPLATE = """\
@@ -107,16 +107,22 @@ def scaffold_app(
     scenario_path = common._scenario_path(root, f"{name}.json")
     header_path = app_dir / f"{name}.h"
     source_path = app_dir / f"{name}.c"
+    metadata_path = app_dir / discovery.METADATA_NAME
 
     if not app_c.is_file():
         raise AppError("app_c_missing", f"app.c not found: {app_c}")
     _validate_name(root, name, force=force)
 
-    original_bytes, app_c_text, bom, eol = common._read_source(app_c)
-    new_text, registered = registry.register_app(app_c_text, name)
-
     header = _render(HEADER_TEMPLATE, name)
     source = _render(SOURCE_TEMPLATE, name)
+    metadata = (
+        json.dumps(
+            {"entry": f"{name}_create"},
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n"
+    )
     scenario = (
         json.dumps(
             {
@@ -136,6 +142,7 @@ def scaffold_app(
     updated: list[str] = []
     writes: list[tuple[Path, bytes, bool]] = []
     for path, data in (
+        (metadata_path, metadata.encode("utf-8")),
         (header_path, header.encode("utf-8")),
         (source_path, source.encode("utf-8")),
         (scenario_path, scenario.encode("utf-8")),
@@ -147,9 +154,6 @@ def scaffold_app(
         else:
             created.append(common._relative(path, root))
             writes.append((path, data, False))
-    if registered:
-        updated.append(common._relative(app_c, root))
-        writes.append((app_c, common._encode_source(new_text, bom, eol), True))
 
     result: dict[str, Any] = {
         "ok": True,
@@ -160,6 +164,7 @@ def scaffold_app(
         "dry_run": dry_run,
         "files": {
             "app_c": common._relative(app_c, root),
+            "metadata": common._relative(metadata_path, root),
             "header": common._relative(header_path, root),
             "source": common._relative(source_path, root),
             "scenario": common._relative(scenario_path, root),
@@ -176,11 +181,7 @@ def scaffold_app(
     if dry_run:
         return result
 
-    _write_all(
-        writes,
-        write_last=app_c if registered else None,
-        guard=(app_c, original_bytes) if registered else None,
-    )
+    _write_all(writes)
     return result
 
 
@@ -224,18 +225,17 @@ def _validate_name(root: Path, name: str, *, force: bool) -> None:
                 f"symbol {symbol} already exists in {common._relative(path, root)}",
             )
 
-    for entry_name, entry_symbol in registry.parse_app_entries(
-        app_c.read_text(encoding="utf-8-sig")
-    ):
-        if entry_name == name and entry_symbol != symbol:
+    entries, _issues = discovery.scan_apps(user_app)
+    for entry in entries:
+        if entry.name == name and entry.entry != symbol:
             raise AppError(
                 "app_conflict",
-                f'app "{name}" is already registered to {entry_symbol}',
+                f'app "{name}" already uses entry {entry.entry}',
             )
-        if entry_symbol == symbol and entry_name != name:
+        if entry.entry == symbol and entry.name != name:
             raise AppError(
                 "app_conflict",
-                f'symbol {symbol} is already registered as "{entry_name}"',
+                f'symbol {symbol} is already used by "{entry.name}"',
             )
 
 
@@ -275,12 +275,7 @@ def _validate_scenario(text: str, name: str) -> None:
         )
 
 
-def _write_all(
-    writes: list[tuple[Path, bytes, bool]],
-    *,
-    write_last: Path | None,
-    guard: tuple[Path, bytes] | None = None,
-) -> None:
+def _write_all(writes: list[tuple[Path, bytes, bool]]) -> None:
     backups: dict[Path, bytes] = {}
     created: list[Path] = []
     created_dirs: list[Path] = []
@@ -295,15 +290,7 @@ def _write_all(
                 for directory in reversed(missing):
                     directory.mkdir()
                     created_dirs.append(directory)
-        ordered = writes
-        if write_last is not None:
-            ordered = [item for item in writes if item[0] != write_last]
-            ordered.append(
-                next(item for item in writes if item[0] == write_last)
-            )
-        for path, data, existed in ordered:
-            if guard is not None and path == guard[0]:
-                common._ensure_unchanged(path, guard[1])
+        for path, data, existed in writes:
             if existed:
                 backups[path] = path.read_bytes()
             common._replace_bytes(path, data)

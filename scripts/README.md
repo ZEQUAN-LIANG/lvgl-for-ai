@@ -24,7 +24,8 @@ C engine 源码与 LVGL 源码。多版本包会把各 LVGL 库中完全相同�
 manifest 或 GCC 版本未变时不再重编，只重新打包。`--force-build` 强制重建，
 启动器同样按源码摘要复用。
 
-`release_app.c` 是发布包内 `user/app/app.c` 的替代入口，只注册 `intro`。
+`release_app.c` 是发布包内 `user/app/app.c` 的替代入口；它包含由 `app.json`
+生成的 `app_registry.inc`，发布包里只有 `intro`。
 
 ## 回归
 
@@ -44,7 +45,7 @@ manifest 或 GCC 版本未变时不再重编，只重新打包。`--force-build`
 
 | 脚本 | 用途 |
 |---|---|
-| `new_app.py` | 生成应用骨架并注册到 `user/app/app.c` |
+| `new_app.py` | 生成应用骨架、`app.json` 与场景 |
 | `lvgl.py` | `bin/lvgl.cmd` 的统一入口（`run` / `report` / `serve` / `assets`） |
 | `launchers/build.py` | 重建 Windows 双击启动器（MinGW gcc + windres） |
 

@@ -402,6 +402,13 @@ class PrebuiltBuild:
         self._steps: list[CompileStep] | None = None
         self._link_command: list[str] | None = None
 
+    def refresh_dependencies(self) -> None:
+        """Re-hash headers/includes after generated files change."""
+
+        self._headers_digest = self._compute_headers_digest()
+        self._steps = None
+        self._link_command = None
+
     def preflight(self) -> None:
         if not self.user_app_dir.is_dir():
             raise BuildError(
@@ -517,15 +524,16 @@ class PrebuiltBuild:
         for root in roots:
             if not root.is_dir():
                 continue
-            for path in sorted(root.rglob("*.h")):
-                resolved = path.resolve()
-                if resolved in seen or not resolved.is_file():
-                    continue
-                seen.add(resolved)
-                digest.update(path.as_posix().encode("utf-8"))
-                digest.update(b"\0")
-                digest.update(path.read_bytes())
-                digest.update(b"\0")
+            for pattern in ("*.h", "*.inc"):
+                for path in sorted(root.rglob(pattern)):
+                    resolved = path.resolve()
+                    if resolved in seen or not resolved.is_file():
+                        continue
+                    seen.add(resolved)
+                    digest.update(path.as_posix().encode("utf-8"))
+                    digest.update(b"\0")
+                    digest.update(path.read_bytes())
+                    digest.update(b"\0")
         return digest.hexdigest()
 
     def prune_objects(self) -> None:

@@ -30,6 +30,8 @@ sessions/
 /.test-tmp/
 /.test-sessions/
 /user/app/**/*.dump
+/user/app/app_registry.inc
+/user/app/.app_registry.inc.*.tmp
 # Double-click launchers are build artifacts; regenerate with
 # scripts/launchers/build.py (MinGW gcc + windres). The viewer launcher is
 # tracked so it can be downloaded from the repository.

@@ -22,6 +22,7 @@ for path in (str(CONSOLE_ROOT), str(SCRIPTS_DIR)):
 import new_app
 import appmgr as app_domain
 from appmgr import common as app_common
+from appmgr import discovery
 from scenario import load_scenario
 
 REPO_ROOT = CONSOLE_ROOT.parent
@@ -37,6 +38,12 @@ class NewAppTest(unittest.TestCase):
         (self.root / "user" / "app").mkdir(parents=True)
         (self.root / "user" / "scenarios").mkdir(parents=True)
         shutil.copy2(APP_C, self.root / "user" / "app" / "app.c")
+        coffee = self.root / "user" / "app" / "coffee"
+        coffee.mkdir()
+        (coffee / "app.json").write_text(
+            json.dumps({"entry": "coffee_create", "default": True}),
+            encoding="utf-8",
+        )
 
     @property
     def app_c(self) -> Path:
@@ -49,14 +56,11 @@ class NewAppTest(unittest.TestCase):
             code = new_app.main([*args, "--repo-root", str(self.root)])
         return code, out.getvalue(), err.getvalue()
 
-    def _entries(self) -> list[tuple[str, str]]:
-        return app_domain.parse_app_entries(
-            self.app_c.read_text(encoding="utf-8")
-        )
+    def _entries(self) -> list[discovery.AppEntry]:
+        return discovery.scan_apps(self.root / "user" / "app")[0]
 
-    def test_creates_files_and_registers_app(self) -> None:
+    def test_creates_files_and_metadata(self) -> None:
         original = self.app_c.read_bytes()
-        names_before = [name for name, _ in self._entries()]
         code, out, err = self._main("hello")
         self.assertEqual(code, 0, err)
         self.assertEqual(err, "")
@@ -76,21 +80,16 @@ class NewAppTest(unittest.TestCase):
         self.assertIn('printf("[hello] created\\n");', source)
         self.assertIn('app_obj_set_name(button, "hello_button");', source)
 
-        app_c = self.app_c.read_text(encoding="utf-8")
-        self.assertNotEqual(original, self.app_c.read_bytes())
-        self.assertEqual(app_c.count('#include "hello/hello.h"'), 1)
-        self.assertEqual(app_c.count('    {"hello", hello_create},'), 1)
-        self.assertLess(
-            app_c.index('#include "spectrum/spectrum.h"'),
-            app_c.index('#include "hello/hello.h"'),
+        self.assertEqual(self.app_c.read_bytes(), original)
+        metadata = json.loads(
+            (self.root / "user/app/hello/app.json").read_text(
+                encoding="utf-8"
+            )
         )
-        self.assertLess(
-            app_c.index('{"spectrum", spectrum_create}'),
-            app_c.index('{"hello", hello_create}'),
-        )
+        self.assertEqual(metadata["entry"], "hello_create")
         self.assertEqual(
-            [name for name, _ in self._entries()],
-            names_before + ["hello"],
+            [entry.name for entry in self._entries()],
+            ["coffee", "hello"],
         )
 
         scenario = load_scenario(self.root / "user/scenarios/hello.json")
@@ -110,12 +109,13 @@ class NewAppTest(unittest.TestCase):
         self.assertEqual(
             payload["created"],
             [
+                "user/app/hello/app.json",
                 "user/app/hello/hello.h",
                 "user/app/hello/hello.c",
                 "user/scenarios/hello.json",
             ],
         )
-        self.assertEqual(payload["updated"], ["user/app/app.c"])
+        self.assertEqual(payload["updated"], [])
         self.assertTrue(payload["build_required"])
         self.assertTrue(payload["commands"])
 
@@ -125,7 +125,7 @@ class NewAppTest(unittest.TestCase):
         self.assertEqual(code, 0, err)
         payload = json.loads(out)
         self.assertTrue(payload["dry_run"])
-        self.assertIn("user/app/app.c", payload["updated"])
+        self.assertEqual(payload["updated"], [])
         self.assertFalse((self.root / "user/app/hello").exists())
         self.assertFalse((self.root / "user/scenarios/hello.json").exists())
         self.assertEqual(self.app_c.read_bytes(), original)
@@ -136,7 +136,6 @@ class NewAppTest(unittest.TestCase):
             "hello-world",
             "1hello",
             "a" * 33,
-            "coffee",
             "con",
             "com1",
         ):
@@ -176,41 +175,37 @@ class NewAppTest(unittest.TestCase):
         self.assertIn("already exists", err)
         self.assertEqual(self.app_c.read_bytes(), original)
 
-    def test_different_registration_rejected(self) -> None:
-        text = self.app_c.read_text(encoding="utf-8")
-        text = text.replace(
-            '    {"spectrum", spectrum_create},\n',
-            '    {"spectrum", spectrum_create},\n'
-            '    {"hello", coffee_create},\n',
+    def test_symbol_owned_by_another_app_is_rejected(self) -> None:
+        other = self.root / "user/app/other"
+        other.mkdir()
+        (other / "app.json").write_text(
+            json.dumps({"entry": "hello_create"}), encoding="utf-8"
         )
-        self.app_c.write_text(text, encoding="utf-8")
         code, _, err = self._main("hello")
         self.assertEqual(code, 1)
-        self.assertIn("already registered", err)
+        self.assertIn("already used", err)
 
     def test_force_is_idempotent(self) -> None:
         self.assertEqual(self._main("hello")[0], 0)
-        first = self.app_c.read_text(encoding="utf-8")
+        first = (self.root / "user/app/hello/hello.c").read_bytes()
         code, out, err = self._main("hello", "--force", "--json")
         self.assertEqual(code, 0, err)
         payload = json.loads(out)
         self.assertEqual(payload["created"], [])
         self.assertEqual(payload["updated"], [])
-        self.assertEqual(self.app_c.read_text(encoding="utf-8"), first)
-        self.assertEqual(first.count('#include "hello/hello.h"'), 1)
-        self.assertEqual(first.count('{"hello", hello_create}'), 1)
+        self.assertEqual(
+            (self.root / "user/app/hello/hello.c").read_bytes(), first
+        )
 
-    def test_preserves_crlf_and_bom(self) -> None:
+    def test_app_c_is_not_touched(self) -> None:
         text = self.app_c.read_text(encoding="utf-8")
         self.app_c.write_bytes(
             b"\xef\xbb\xbf" + text.replace("\n", "\r\n").encode("utf-8")
         )
+        original = self.app_c.read_bytes()
         code, _, err = self._main("hello")
         self.assertEqual(code, 0, err)
-        data = self.app_c.read_bytes()
-        self.assertTrue(data.startswith(b"\xef\xbb\xbf"))
-        self.assertIn(b"\r\n", data)
-        self.assertNotIn(b"\n", data.replace(b"\r\n", b""))
+        self.assertEqual(self.app_c.read_bytes(), original)
 
     def test_rollback_on_write_failure(self) -> None:
         original = self.app_c.read_bytes()
@@ -231,11 +226,11 @@ class NewAppTest(unittest.TestCase):
         self.assertFalse((self.root / "user/scenarios/hello.json").exists())
         self.assertEqual(self.app_c.read_bytes(), original)
 
-    def test_missing_anchor_fails_without_files(self) -> None:
-        self.app_c.write_text("void app_create(void) {}\n", encoding="utf-8")
+    def test_missing_app_c_fails_without_files(self) -> None:
+        self.app_c.unlink()
         code, _, err = self._main("hello")
         self.assertEqual(code, 1)
-        self.assertIn("cannot find", err)
+        self.assertIn("app.c not found", err)
         self.assertFalse((self.root / "user/app/hello").exists())
         self.assertFalse((self.root / "user/scenarios/hello.json").exists())
 

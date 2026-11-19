@@ -27,7 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="new_app.py",
         description=(
-            "Create a user app variant, scenario, and apps[] registration."
+            "Create a user app directory, app.json metadata, and scenario."
         ),
     )
     parser.add_argument("name", help="app name: ^[a-z][a-z0-9_]{0,31}$")
@@ -45,7 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--force",
         action="store_true",
-        help="overwrite generated files and keep registration idempotent",
+        help="overwrite generated files in the app directory",
     )
     parser.add_argument(
         "--json",

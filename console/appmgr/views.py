@@ -1,52 +1,43 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any, Iterable
 
 from scenario import scenario_index
-from . import common, policy, registry
-from .common import AppError
+from . import common, discovery, policy
 
 
 def list_apps(repo_root: str | Path) -> dict[str, Any]:
     root = common.resolve_repo_root(repo_root)
     app_c = common._app_c(root)
     index = scenario_index(root)
-    if not app_c.is_file():
-        return {
-            "app_c_present": False,
-            "apps": [],
-            "orphans": _orphans(root, set(), index),
-            "warnings": [f"未找到 {common._relative(app_c, root)}"],
-        }
-
-    text = app_c.read_text(encoding="utf-8-sig")
-    try:
-        entries = registry.parse_app_entries(text)
-    except AppError as exc:
-        return {
-            "app_c_present": True,
-            "apps": [],
-            "orphans": _orphans(root, set(), index),
-            "warnings": [exc.message],
-        }
-    apps: list[dict[str, Any]] = []
     warnings: list[str] = []
-    for order, (name, symbol) in enumerate(entries):
+    if not app_c.is_file():
+        warnings.append(f"未找到 {common._relative(app_c, root)}")
+
+    entries, issues = discovery.scan_apps(common._user_app(root))
+    for issue in issues:
+        warnings.append(
+            f"{common._relative(issue.path, root)}: {issue.message}"
+        )
+    ordered = _ordered_entries(entries)
+    defaults = [entry.name for entry in entries if entry.default]
+    if len(defaults) > 1:
+        warnings.append(
+            "多个应用标记为 default：" + ", ".join(defaults)
+        )
+    default_name = defaults[0] if len(defaults) == 1 else None
+    apps: list[dict[str, Any]] = []
+    for order, entry in enumerate(ordered):
+        name = entry.name
         app_dir = common._app_dir(root, name)
         app_scenarios = [
             item
             for item in index
             if item.get("valid") and item.get("app") == name
         ]
-        protected = policy.is_protected_name(name) or any(
-            policy.is_protected_scenario(item["basename"])
-            for item in app_scenarios
-        )
-        canonical = (
-            bool(common.APP_NAME_RE.fullmatch(name))
-            and symbol == f"{name}_create"
-        )
+        protected = name == default_name
         files = _files_under(app_dir)
         modified_ns = common._max_mtime_ns(
             [app_dir, *(root / item["path"] for item in app_scenarios)]
@@ -56,19 +47,17 @@ def list_apps(repo_root: str | Path) -> dict[str, Any]:
             app_warnings.append("目录不存在")
         if not app_scenarios:
             app_warnings.append("没有关联场景")
-        if not canonical:
-            app_warnings.append("注册符号不是 <name>_create，管理台不提供删除")
         if app_warnings:
             warnings.append(name + ": " + "；".join(app_warnings))
         apps.append(
             {
                 "name": name,
-                "symbol": symbol,
+                "symbol": entry.entry,
                 "registered": True,
                 "order": order,
                 "default": order == 0,
                 "protected": protected,
-                "deletable": bool(canonical and not protected),
+                "deletable": not protected,
                 "app_dir": common._relative(app_dir, root),
                 "app_dir_exists": app_dir.is_dir()
                 and not app_dir.is_symlink(),
@@ -82,11 +71,23 @@ def list_apps(repo_root: str | Path) -> dict[str, Any]:
         )
 
     return {
-        "app_c_present": True,
+        "app_c_present": app_c.is_file(),
         "apps": apps,
-        "orphans": _orphans(root, {name for name, _ in entries}, index),
+        "orphans": _orphans(root, {entry.name for entry in ordered}, index),
         "warnings": warnings,
     }
+
+
+def _ordered_entries(entries: list[discovery.AppEntry]) -> list[discovery.AppEntry]:
+    defaults = [entry for entry in entries if entry.default]
+    default = defaults[0] if defaults else None
+    rest = sorted(
+        (entry for entry in entries if entry is not default),
+        key=lambda item: item.name,
+    )
+    if default is None:
+        return rest
+    return [default, *rest]
 
 
 def _orphans(
@@ -99,10 +100,8 @@ def _orphans(
     if user_app.is_dir():
         for path in sorted(user_app.iterdir()):
             if (
-                path.is_dir()
-                and not path.is_symlink()
-                and path.name not in registered
-                and not policy.is_protected_name(path.name)
+                path.name not in registered
+                and _is_app_directory(path)
             ):
                 result.append(
                     {
@@ -120,8 +119,6 @@ def _orphans(
             item.get("valid")
             and isinstance(app, str)
             and app not in registered
-            and not policy.is_protected_name(app)
-            and not policy.is_protected_scenario(item["basename"])
         ):
             result.append(
                 {
@@ -134,6 +131,26 @@ def _orphans(
                 }
             )
     return result
+
+
+def _is_app_directory(path: Path) -> bool:
+    """An unregistered app directory follows the ``<name>_create`` convention."""
+
+    if not path.is_dir() or path.is_symlink():
+        return False
+    if (path / discovery.METADATA_NAME).is_file():
+        return True
+    symbol = re.compile(rf"\b{re.escape(path.name)}_create\b")
+    for child in sorted(path.glob("*.c")) + sorted(path.glob("*.h")):
+        if child.is_symlink() or not child.is_file():
+            continue
+        try:
+            text = child.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        if symbol.search(text):
+            return True
+    return False
 
 
 def app_tree(
@@ -149,23 +166,20 @@ def app_tree(
     max_depth = max(1, min(int(max_depth), 20))
     app_dir = common._app_dir(root, name)
     app_c = common._app_c(root)
-    text = app_c.read_text(encoding="utf-8-sig") if app_c.is_file() else ""
-    try:
-        entries = registry.parse_app_entries(text) if text else []
-    except AppError:
-        entries = []
+    entries, _issues = discovery.scan_apps(common._user_app(root))
+    ordered = _ordered_entries(entries)
     match = next(
         (
-            (index, symbol)
-            for index, (entry_name, symbol) in enumerate(entries)
-            if entry_name == name
+            (index, entry)
+            for index, entry in enumerate(ordered)
+            if entry.name == name
         ),
         None,
     )
     registered = match is not None
-    symbol = match[1] if match else None
+    symbol = match[1].entry if match else None
     order = match[0] if match else None
-    include = registry.find_include(text, name)
+    include = None
 
     state = {"count": 0, "truncated": False}
 
@@ -227,7 +241,7 @@ def app_tree(
         "symbol": symbol,
         "order": order,
         "default": order == 0,
-        "protected": policy.is_protected_name(name),
+        "protected": policy.is_protected_name(root, name),
         "include": include,
         "app_c": app_c_node,
         "app_dir": common._relative(app_dir, root),
@@ -263,7 +277,7 @@ def recent_apps(
 
     app_c = common._app_c(root)
     if app_c.is_file():
-        add(app_c, "registration")
+        add(app_c, "entrypoint")
     user_app = common._user_app(root)
     if user_app.is_dir():
         for path in user_app.rglob("*"):

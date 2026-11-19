@@ -11,6 +11,7 @@ from unittest import mock
 
 import appmgr as app_domain
 from appmgr import common as app_common
+from appmgr import discovery
 
 CONSOLE_ROOT = paths.CONSOLE_ROOT
 REPO_ROOT = CONSOLE_ROOT.parent
@@ -25,6 +26,16 @@ class AppDomainTest(unittest.TestCase):
         (self.root / "user" / "app").mkdir(parents=True)
         (self.root / "user" / "scenarios").mkdir(parents=True)
         shutil.copy2(APP_C, self.root / "user" / "app" / "app.c")
+        for name, entry, default in (
+            ("coffee", "coffee_create", True),
+            ("spectrum", "spectrum_create", False),
+        ):
+            app_dir = self.root / "user" / "app" / name
+            app_dir.mkdir()
+            (app_dir / "app.json").write_text(
+                json.dumps({"entry": entry, "default": default}),
+                encoding="utf-8",
+            )
 
     @property
     def app_c(self) -> Path:
@@ -51,32 +62,26 @@ class AppDomainTest(unittest.TestCase):
 
     def _names(self) -> list[str]:
         return [
-            name
-            for name, _ in app_domain.parse_app_entries(
-                self.app_c.read_text(encoding="utf-8")
-            )
+            entry.name
+            for entry in discovery.scan_apps(self.root / "user" / "app")[0]
         ]
 
-    def test_register_unregister_roundtrip(self) -> None:
-        original = self.app_c.read_text(encoding="utf-8")
-        registered, changed = app_domain.register_app(original, "hello")
-        self.assertTrue(changed)
-        self.assertEqual(self._names_of(registered)[-1], "hello")
-        restored, info = app_domain.unregister_app(registered, "hello")
-        self.assertTrue(info["changed"])
-        self.assertNotIn("hello", info["includes"])
-        self.assertEqual(restored, original)
-
-    def _names_of(self, text: str) -> list[str]:
-        return [name for name, _ in app_domain.parse_app_entries(text)]
-
-    def test_scaffold_creates_registration_and_scenario(self) -> None:
+    def test_scaffold_creates_metadata_and_scenario(self) -> None:
+        original = self.app_c.read_bytes()
         result = self._create("hello")
         self.assertEqual(result["action"], "create")
         self.assertTrue((self.root / "user/app/hello/hello.c").is_file())
+        self.assertTrue((self.root / "user/app/hello/app.json").is_file())
         self.assertTrue((self.root / "user/scenarios/hello.json").is_file())
-        self.assertEqual(self._names()[-1], "hello")
+        self.assertIn("hello", self._names())
         self.assertEqual(self._names()[0], "coffee")
+        self.assertEqual(self.app_c.read_bytes(), original)
+        metadata = json.loads(
+            (self.root / "user/app/hello/app.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(metadata["entry"], "hello_create")
         document = json.loads(
             (self.root / "user/scenarios/hello.json").read_text(
                 encoding="utf-8"
@@ -117,18 +122,33 @@ class AppDomainTest(unittest.TestCase):
         self.assertEqual(purged["action"], "purge")
         self.assertFalse((self.root / purged["path"]).exists())
 
-    def test_delete_protects_builtins_and_scenarios(self) -> None:
-        for name in ("coffee", "xiaohongshu", "spectrum", "demo", "settings"):
-            with self.subTest(name=name):
-                with self.assertRaises(app_domain.AppError) as raised:
-                    app_domain.delete_app(self.root, name)
-                self.assertEqual(raised.exception.code, "protected_app")
+    def test_delete_protects_only_the_default_app(self) -> None:
+        with self.assertRaises(app_domain.AppError) as raised:
+            app_domain.delete_app(self.root, "coffee")
+        self.assertEqual(raised.exception.code, "protected_app")
+
+        spectrum = self.root / "user/app/spectrum"
+        (spectrum / "spectrum.c").write_text(
+            "void spectrum_create(void) {}\n", encoding="utf-8"
+        )
+        self._write_scenario("spectrum", "spectrum")
+        deleted = app_domain.delete_app(self.root, "spectrum")
+        self.assertFalse(spectrum.exists())
+        self.assertFalse(
+            (self.root / "user/scenarios/spectrum.json").exists()
+        )
+        app_domain.restore_app(self.root, deleted["trash_id"])
+        self.assertTrue(spectrum.is_dir())
+        self.assertTrue(
+            (self.root / "user/scenarios/spectrum.json").is_file()
+        )
+
         self._create("hello")
         self._write_scenario("coffee", "hello")
-        with self.assertRaises(app_domain.AppError) as raised:
-            app_domain.delete_app(self.root, "hello")
-        self.assertEqual(raised.exception.code, "protected_scenario")
-        self.assertTrue((self.root / "user/app/hello/hello.c").is_file())
+        deleted = app_domain.delete_app(self.root, "hello")
+        trash = self.root / deleted["trash_dir"]
+        self.assertTrue((trash / "scenarios/coffee.json").is_file())
+        self.assertFalse((self.root / "user/app/hello").exists())
 
     def test_delete_rollback_on_move_failure(self) -> None:
         self._create("hello")
@@ -196,6 +216,11 @@ class AppDomainTest(unittest.TestCase):
         (orphan / "orphan.c").write_text(
             "void orphan_create(void) {}\n", encoding="utf-8"
         )
+        harness = self.root / "user/app/demo"
+        harness.mkdir()
+        (harness / "panel.c").write_text(
+            "void demo_harness_create(void) {}\n", encoding="utf-8"
+        )
         self._write_scenario("ghost", "ghost")
 
         payload = app_domain.list_apps(self.root)
@@ -203,11 +228,14 @@ class AppDomainTest(unittest.TestCase):
         by_name = {entry["name"]: entry for entry in payload["apps"]}
         self.assertTrue(by_name["coffee"]["protected"])
         self.assertFalse(by_name["coffee"]["deletable"])
+        self.assertFalse(by_name["spectrum"]["protected"])
+        self.assertTrue(by_name["spectrum"]["deletable"])
         self.assertTrue(by_name["hello"]["deletable"])
         self.assertEqual(by_name["hello"]["scenario_files"], ["hello.json"])
         orphan_paths = {entry["path"] for entry in payload["orphans"]}
         self.assertIn("user/app/orphan", orphan_paths)
         self.assertIn("user/scenarios/ghost.json", orphan_paths)
+        self.assertNotIn("user/app/demo", orphan_paths)
 
         view = app_domain.app_tree(self.root, "hello")
         self.assertTrue(view["registered"])
@@ -236,20 +264,17 @@ class AppDomainTest(unittest.TestCase):
             app_domain.delete_app(self.root, "missing")
         self.assertEqual(raised.exception.code, "unknown_app")
 
-    def test_crlf_and_bom_survive_delete_and_restore(self) -> None:
+    def test_app_c_is_never_rewritten_by_scaffold_or_trash(self) -> None:
         text = self.app_c.read_text(encoding="utf-8")
         self.app_c.write_bytes(
             b"\xef\xbb\xbf" + text.replace("\n", "\r\n").encode("utf-8")
         )
+        original = self.app_c.read_bytes()
         self._create("hello")
         result = app_domain.delete_app(self.root, "hello")
-        data = self.app_c.read_bytes()
-        self.assertTrue(data.startswith(b"\xef\xbb\xbf"))
-        self.assertNotIn(b"\n", data.replace(b"\r\n", b""))
+        self.assertEqual(self.app_c.read_bytes(), original)
         app_domain.restore_app(self.root, result["trash_id"])
-        data = self.app_c.read_bytes()
-        self.assertTrue(data.startswith(b"\xef\xbb\xbf"))
-        self.assertNotIn(b"\n", data.replace(b"\r\n", b""))
+        self.assertEqual(self.app_c.read_bytes(), original)
 
     def test_apps_package_avoids_forbidden_definition_names(self) -> None:
         package = CONSOLE_ROOT / "appmgr"

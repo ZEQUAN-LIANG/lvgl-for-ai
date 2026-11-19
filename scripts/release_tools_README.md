@@ -7,7 +7,7 @@
 | 脚本 | 用途 |
 |---|---|
 | `lvgl.py` | `bin/lvgl.cmd` 的统一入口：`run` / `report` / `serve` / `assets` |
-| `new_app.py` | 生成应用骨架并注册到 `user/app/app.c` |
+| `new_app.py` | 生成应用骨架、`app.json` 与场景 |
 
 ## 元数据
 

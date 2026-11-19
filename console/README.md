@@ -12,7 +12,7 @@
 | --- | --- |
 | `control/` | `Runtime`（一个实例 = 一个 engine 进程 = 一次会话）、`Recording`、构建、输入、证据 |
 | `web/` | 网页检视台：`ReplayModel`、`LiveSession`、routes、wire |
-| `appmgr/` | 应用管理：registry、policy、scaffold、trash、views |
+| `appmgr/` | 应用管理：discovery、policy、scaffold、trash、views |
 | `assets/` | 字体/图片转换；`vendor/` 内置 freetype-py 与 pypng |
 | `entrypoints/` | `cli.py`、`serve.py`、`serve.pyw`、`assets_tool.py`、`session_report.py`、`feedback.py` |
 | `paths.py` / `scenario.py` / `versions.py` / `digest.py` / `png_codec.py` | 共享模块 |

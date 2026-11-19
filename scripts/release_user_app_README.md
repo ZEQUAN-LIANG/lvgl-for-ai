@@ -3,21 +3,22 @@
 用户代码目录，也是唯一的源码真源。`user/app/**/*.c` 会被构建系统递归收集并全部
 编译，不需要写 `main`，也不需要改构建文件。
 
-## 入口与注册
+## 入口与发现
 
-engine 调用 `app.c` 的 `void app_create(void)`。`app_create` 读取
-`LVGL_VERIFY_LOOP_DEMO`（未设置时取 `apps[0]`），在 `apps[]` 表中查找并调用对应变体：
+engine 调用 `app.c` 的 `void app_create(void)`。构建扫描 `user/app/*/app.json`，
+生成 `user/app/app_registry.inc`；`app_create` 读取 `LVGL_VERIFY_LOOP_DEMO`
+（未设置时取排序后的第一个应用），在生成的表中查找并调用对应变体：
 
-```c
-#include "intro/intro.h"
-
-static const app_entry_t apps[] = {
-    {"intro", intro_create},
-};
+```json
+{
+  "entry": "intro_create",
+  "default": true
+}
 ```
 
 每个变体暴露统一的 `void <name>_create(void)`，内部用 `lv_screen_active()` 取
-engine 已创建好的活动屏幕。未知名字会打印 `[app] apps=...` 后退出。
+engine 已创建好的活动屏幕。未知名字会打印 `[app] apps=...` 后退出。新增应用只写
+自己的目录和 `app.json`，不需要改 `app.c` 或任何共享注册表。
 
 本包自带 `intro`：默认介绍页，也是默认模板，按 9.4+ 版本门编写。
 9.1 / 8.x 不启用应用变体，只显示内置 harness。
