@@ -103,7 +103,7 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 - `session_report.py` 与 CLI `--json` 共用 `session_index`；只给证据，不做判定。视觉输出必须显式给 `--out`，且不能写入会话证据目录。
 - `release_all.py` 只产出两个 zip；`release.py` 才产出解包目录、`.sha256` 与 release manifest。两者在 engine 源码、`user/app`、宿主 SDK manifest 与 GCC 版本摘要未变时复用 `dist/release/lvgl_<token>/`；`--force-build` 强制重建。
 - `upload_release.py` 只读 `GITHUB_TOKEN` / `GITEE_TOKEN`；`--replace` 删除同名旧资产，`--notes-file` 不传时保留线上 Release 正文。
-- 环境变量：`LVGL_VERIFY_LOOP_LVGL_VERSION`（默认 9.6）、`LVGL_VERIFY_LOOP_LVGL_SRC`、`LVGL_VERIFY_LOOP_ZLIB_SRC`、`LVGL_VERIFY_LOOP_LIBPNG_SRC`、`LVGL_VERIFY_LOOP_SESSIONS_ROOT`、`LVGL_VERIFY_LOOP_MAX_FRAMES`、`LVGL_VERIFY_LOOP_MAX_LOG_BYTES`、`LVGL_VERIFY_LOOP_ENCODE_BUDGET_BYTES`、`LVGL_VERIFY_LOOP_DEMO`、`LVGL_VERIFY_LOOP_APPS_DIR`、`LVGL_VERIFY_LOOP_GCC`。
+- 环境变量：`LVGL_VERIFY_LOOP_LVGL_VERSION`（默认 9.6）、`LVGL_VERIFY_LOOP_LVGL_SRC`、`LVGL_VERIFY_LOOP_ZLIB_SRC`、`LVGL_VERIFY_LOOP_LIBPNG_SRC`、`LVGL_VERIFY_LOOP_SESSIONS_ROOT`、`LVGL_VERIFY_LOOP_BUILD_ROOT`、`LVGL_VERIFY_LOOP_MAX_FRAMES`、`LVGL_VERIFY_LOOP_MAX_LOG_BYTES`、`LVGL_VERIFY_LOOP_ENCODE_BUDGET_BYTES`、`LVGL_VERIFY_LOOP_DEMO`、`LVGL_VERIFY_LOOP_APPS_DIR`、`LVGL_VERIFY_LOOP_GCC`。
 - 构建依赖：预编译模式只需 GCC 与 `dist/lvgl/<version>`；源码模式还需要 CMake 3.20+、Ninja，首次构建需要拉取 `engine/third_party/` 的 zlib/libpng 源码。
 - 单元测试用 fake engine / session fixture；`*IntegrationTest` 会真实构建 engine，由同一次 `run_tests.py` 执行。`run_tests.py` 只跑全量；单个模块用 `python -I scripts/tests/run_tests.py scripts.tests.<domain>.<module>`。
 
@@ -134,8 +134,8 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 - `console/`：Python 控制层。`control/`、`web/`、`appmgr/`、`assets/` 四个域包，`entrypoints/` 放 `cli.py`、`serve.py`、`serve.pyw`、`assets_tool.py`、`session_report.py`、`feedback.py`；`paths.py`、`scenario.py`、`versions.py`、`digest.py`、`png_codec.py` 是共享模块。`console/README.md` 是工具用法。
 - `engine/`：C engine 源码。`core/`（main、protocol、session、timeline、window）、`render/`（capture、frame_*、json、png_writer）、`adapter/`（adapter_*、`lv_conf.h`），以及 vendored FreeType 头/库。
 - `scripts/`：维护与版本脚本。`scripts/launchers/` 是 Windows 双击启动器、图标生成器与构建脚本。`scripts/release_tools_README.md` 是发布包内 `scripts/README.md` 的替代版本。`scripts/upload_release.py` 只给维护者用，不进发布包。
-- `user/app/`：用户只写 `user/app/**/*.c`、各自的 `app.json`（声明 `entry` / `aliases` / `default`）与 `user/scenarios/`；应用资源头放在各自的 `user/app/<name>/`，没有公共资源目录。写应用先看 `user/app/GUIDE.md`。`.trash/` 是管理台回收站，不参与构建。
-- `user/scenarios/`：场景 JSON；工具层不写死应用名，应用列表来自 `user/app/<name>/app.json` 和 `user/scenarios/*.json` 的 `app` 字段。
+- `user/app/`：用户只写 `user/app/**/*.c` 与 `user/scenarios/`；应用资源头放在各自的 `user/app/<name>/`，没有公共资源目录。应用目录默认不需要任何 JSON——目录名即应用名，入口按 `void <name>_create(void)` 推导；只有入口名偏离约定时才在该目录写 `app.json`。跨应用约束（当前只有 `default`）在根级 `user/app/app.json`。写应用先看 `user/app/GUIDE.md`。`.trash/` 是管理台回收站，不参与构建。
+- `user/scenarios/`：场景 JSON；工具层不写死应用名，应用列表来自 `user/app/` 的目录发现和 `user/scenarios/*.json` 的 `app` 字段。
 - `docs/`：`skill/SKILL.md` 与 `skill/api-nav/`（每版本 API 导航）、`licenses/`（第三方许可）、`assets/docs.css`；SiFli 能力索引在 `chip-adapt/docs/sifli.html`。
 - `chip-adapt/sifli/`：SiFli 导出适配层。`chip-adapt/README.md` 是区域路由，`chip-adapt/sifli/README.md` 是适配层入口；`chip-adapt/vendor/` 是外部下载物（只读，清单见其 README）；`chip-adapt/exports/` 是导出生成物。`chip-adapt/sifli/export.py` 把 `user/app` 按 LVGL 9.4 基线导出到 `chip-adapt/exports/<app>/`；共享源码仍以 `user/app` 为唯一真源。
 - `chip-adapt/sifli/host/`：黄山派串口 + 烧录上位机，用法见其 README；双击入口是 `chip-adapt/sifli/tools/SiFli-Host.exe`。
@@ -150,9 +150,10 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 
 - 工具不输出 pass/fail、baseline、approval、acceptance；人类在聊天里给验收标准。
 - 没有对象树、`inspect`、属性读取、`set`、`param`；精确状态只能由用户 C 代码 `printf` 到 `engine.log`。
-- 用户入口固定为 `app_create(void)`；`user/app/**/*.c` 递归收集并全部编译，应用变体由 `user/app/<name>/app.json` 自动发现；构建生成 `user/app/app_registry.inc`，不维护中心注册表。
-- 工具层不写死应用名；应用列表来自 `user/app/<name>/app.json` 和 `user/scenarios/*.json` 的 `app` 字段。
-- 管理台只保护 `app.json` 显式标记的 `default` 应用；没有 `PROTECTED_APPS` / `PROTECTED_SCENARIOS` 静态名单，添加或删除应用不需要改 `console/appmgr/policy.py`。
+- 用户入口固定为 `app_create(void)`；`user/app/**/*.c` 递归收集并全部编译。应用由 `user/app/<name>/` 目录自动发现：目录内声明了 `void <name>_create(void)` 即为应用，入口名偏离约定时在该目录放 `app.json` 声明 `entry`；构建生成 `user/app/app_registry.inc`，没有需要登记应用名的中心表。
+- 工具层不写死应用名；应用列表来自 `user/app/` 下的目录发现和 `user/scenarios/*.json` 的 `app` 字段。
+- 跨应用的唯一性约束只在根级 `user/app/app.json` 声明（当前只有 `default`）；加删应用永远不需要改它。
+- 管理台只保护根级 `app.json` 指定的 `default` 应用；没有 `PROTECTED_APPS` / `PROTECTED_SCENARIOS` 静态名单，添加或删除应用不需要改 `console/appmgr/policy.py`。
 - 不静默自动重建旧 engine；`--no-build` 遇到旧 engine 时直接报错并提示用 `--build` 重建。
 - 不改已安装的 `engine/lvgl/<version>/`；要改 LVGL 就把 unified diff 放进 `engine/lvgl/patches/<version>/`，由 `fetch_lvgl.py` 应用。
 - 不引入第二套协议客户端；CLI、网页与 `session_report.py` 都走 `Runtime` / `Recording` / `session_index`。

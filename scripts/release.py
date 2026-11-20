@@ -66,10 +66,13 @@ DEFAULT_LVGL = versions.default()
 SMOKE_SCENARIO = Path("user") / "scenarios" / "intro.json"
 RELEASE_INTRO_APP = "intro"
 RELEASE_SCENARIOS = ("intro.json",)
-RELEASE_APP_FILES = ("app.h", "lvgl_compat.h", "README.md", "GUIDE.md")
+RELEASE_APP_FILES = (
+    "app.h",
+    "app_registry_lookup.h",
+    "lvgl_compat.h",
+    "GUIDE.md",
+)
 RELEASE_APP_DIRS = (RELEASE_INTRO_APP,)
-RELEASE_USER_README = SCRIPTS_DIR / "release_user_app_README.md"
-RELEASE_TOOLS_README = SCRIPTS_DIR / "release_tools_README.md"
 TOOL_RELEASE_EXCLUDE_FILES = (
     "README.md",
     "assets/vendor/README.md",
@@ -311,6 +314,23 @@ def _release_engine_cache_matches(
     )
 
 
+def _write_staged_app_registry(user_app_dir: Path) -> None:
+    """Generate app_registry.inc in a staged ``user/app`` tree.
+
+    ``BuildPlan`` writes the registry on every build, but the engine cache
+    hit path returns before reaching ``BuildPlan``.  Without this call the
+    staged package contains ``app_registry.inc`` only when the cache was
+    cold, so the same sources would yield two different file lists.
+    """
+
+    from appmgr import discovery
+
+    try:
+        discovery.write_registry(user_app_dir)
+    except discovery.DiscoveryError as exc:
+        raise BuildError(f"release: app discovery failed: {exc}") from exc
+
+
 def ensure_release_engine(
     *,
     repo_root: Path,
@@ -350,6 +370,7 @@ def ensure_release_engine(
         sdk = HostSdk.load(sdk_dir, expected_version=version)
         for source in sdk.runtime_dll_paths:
             shutil.copy2(source, build_dir / source.name)
+        _write_staged_app_registry(user_app_dir)
         return {
             "cache": str(cache_engine),
             "status": "reused",
@@ -403,14 +424,22 @@ def ensure_release_engine(
     }
 
 
-def _mark_release_default(path: Path) -> None:
+def _mark_release_default(apps_dir: Path) -> None:
+    """Pin the packaged default app in the staged root metadata.
+
+    ``app_create`` falls back to ``apps[0]``, which is ordered by the root
+    ``app.json`` default.  Without it a user app whose name sorts first would
+    silently become the default of the released package.
+    """
+
+    path = apps_dir / "app.json"
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        payload = {"entry": f"{RELEASE_INTRO_APP}_create"}
+        payload = {}
     if not isinstance(payload, dict):
-        payload = {"entry": f"{RELEASE_INTRO_APP}_create"}
-    payload["default"] = True
+        payload = {}
+    payload["default"] = RELEASE_INTRO_APP
     path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
@@ -426,11 +455,6 @@ def stage_user_tree(repo_root: Path, package: Path) -> None:
         if not source_file.is_file():
             raise BuildError(f"release: user/app/{name} is missing")
         shutil.copy2(source_file, app_target / name)
-    if not RELEASE_USER_README.is_file():
-        raise BuildError(
-            "release: scripts/release_user_app_README.md is missing"
-        )
-    shutil.copy2(RELEASE_USER_README, app_target / "README.md")
     for name in RELEASE_APP_DIRS:
         source_dir = app_source / name
         if not source_dir.is_dir():
@@ -444,7 +468,7 @@ def stage_user_tree(repo_root: Path, package: Path) -> None:
     intro_readme = app_target / RELEASE_INTRO_APP / "README.md"
     if intro_readme.is_file():
         intro_readme.unlink()
-    _mark_release_default(app_target / RELEASE_INTRO_APP / "app.json")
+    _mark_release_default(app_target)
     release_app = SCRIPTS_DIR / "release_app.c"
     if not release_app.is_file():
         raise BuildError("release: scripts/release_app.c is missing")
@@ -519,11 +543,6 @@ def stage_package(
         if not source_file.is_file():
             raise BuildError(f"release: scripts/{name} is missing")
         shutil.copy2(source_file, tools_target / name)
-    if not RELEASE_TOOLS_README.is_file():
-        raise BuildError(
-            "release: scripts/release_tools_README.md is missing"
-        )
-    shutil.copy2(RELEASE_TOOLS_README, tools_target / "README.md")
     stage_user_tree(repo_root, package)
     copy_tree(repo_root / "docs" / "licenses", package / "docs" / "licenses")
     bin_target = package / "bin"

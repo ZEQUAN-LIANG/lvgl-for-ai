@@ -1,7 +1,8 @@
 # 写一个应用变体
 
 本文只讲把界面代码写进 `user/app/` 的最小闭环。按版本的 API 细节见
-`docs/api-nav/<version>.md`；工具与证据的完整约定见包根 `SKILL.md`。
+`docs/skill/api-nav/<version>.md`；工具与证据的完整约定见 `docs/skill/SKILL.md`
+（发布包里是包根 `SKILL.md`）。
 
 命令从包根执行。改过 C 代码后必须重新构建，`--no-build` 只复用当前 engine。
 
@@ -97,19 +98,29 @@ void hello_create(void)
 - `printf` 进入会话的 `engine.log`；需要立即看到时加 `fflush(stdout)`。
 - 所有应用变体编译进同一个二进制：非 `static` 全局符号要加应用前缀。
 
-### 1.3 应用元数据
+### 1.3 应用发现
 
-在 `user/app/hello/app.json` 写入口；构建会扫描所有应用目录并生成
-`user/app/app_registry.inc`，不需要改 `app.c` 或其他共享文件：
+不需要写任何元数据文件。目录名就是应用名，构建会扫描 `user/app/` 下的目录，
+只要目录内的源码声明了 `void hello_create(void)`，就生成 `user/app/app_registry.inc`，
+不需要改 `app.c` 或其他共享文件：
+
+```c
+/* user/app/hello/hello.c */
+void hello_create(void) { ... }
+```
+
+目录名 `hello` 必须与场景里的 `"app": "hello"` 完全一致。
+
+只有入口名偏离约定时才需要 `user/app/hello/app.json`：
 
 ```json
 {
-  "entry": "hello_create"
+  "entry": "hello_page_create"
 }
 ```
 
-目录名 `hello` 必须与场景里的 `"app": "hello"` 完全一致。需要别名时加
-`"aliases": ["..." ]`；需要默认应用时加 `"default": true`（全局只能有一个）。
+需要指定默认应用时改根级 `user/app/app.json` 的 `"default"`（全局只能有一个）；
+不设置时按应用名排序取第一个。
 
 ### 1.4 场景
 
@@ -171,8 +182,8 @@ lv_obj_set_style_text_font(label, &hello_font_24, 0);
 lv_image_set_src(image, &logo);
 ```
 
-- 资源头和源码同目录；`assets.json` 记录字体路径、字号、bpp、字符集和图片
-  SHA256，便于重放。
+- 资源头和源码同目录；`user/.cache/assets/<app>.json` 记录字体路径、字号、bpp、
+  字符集和图片 SHA256，便于重放（缓存目录，不进 Git；同样的信息也在生成头的注释里）。
 - `--scan-app` 收集应用字符串字面量里的字形；动态文本用 `--text-file` 或
   `--text`，中文优先用 `--text-file`。
 - 图片支持 `RGB565`、`ARGB8888`、`RGB888`、`A8`；`--cf auto` 按 alpha 自动选择。
@@ -230,7 +241,7 @@ lv_timer_create(tick_cb, 16, NULL);
 | 现象 | 先检查 |
 |---|---|
 | 网页下拉里没有新应用 | `user/scenarios/<name>.json` 是否存在、JSON 是否合法、顶层是否有 `app` |
-| engine 启动即退出，日志有 `unknown app=` | 应用目录名、`app.json` 的 `entry` 与场景 `app` 是否一致；构建日志里的 app discovery 错误 |
+| engine 启动即退出，日志有 `unknown app=` | 应用目录名与场景 `app` 是否一致；目录内是否声明了 `void <name>_create(void)`（或 `app.json` 的 `entry`）；构建日志里的 app discovery 错误 |
 | `build_error` | `user/sessions/<id>/build.log`；常见是 include 路径、版本门漏了、9.6 不存在的 API |
 | `link_error` | 声明了 `<name>_create` 但没有定义，或版本门把定义排除了 |
 | `harness_error` | 场景字段拼写、未知字段、类型不匹配 |
@@ -241,7 +252,7 @@ lv_timer_create(tick_cb, 16, NULL);
 ## 6. 提交前检查清单
 
 - [ ] 源文件在 `user/app/<name>/`，入口签名是 `void <name>_create(void)`
-- [ ] `user/app/<name>/app.json` 的 `entry` 指向 `void <name>_create(void)`
+- [ ] 应用目录名与场景 `"app"` 一致，且目录内声明了 `void <name>_create(void)`（或 `app.json` 的 `entry` 指向它）
 - [ ] 只在 9.4+ 使用的代码有版本门
 - [ ] 全局符号带应用前缀或为 `static`
 - [ ] 交互控件已 `app_obj_set_name`，应用根已 `app_set_name`
