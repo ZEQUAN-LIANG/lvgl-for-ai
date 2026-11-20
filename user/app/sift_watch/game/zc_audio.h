@@ -5,13 +5,9 @@
 
 #include <stdbool.h>
 
-/* Real speaker output for the Huangshan Pi build.
- *
- * On the SiFli SDK build this opens audprc + audcodec, drives the on-chip DAC
- * into the AW8155 speaker amplifier, and mixes the game's procedural SFX in a
- * small RT-Thread audio thread.  Headless builds (and any board without
- * PA_USING_AW8155) compile to no-ops so the game remains portable.
- */
+/* Real speaker output on the Huangshan Pi build: audprc + audcodec driving the
+ * on-chip DAC into the AW8155 PA. Without PA_USING_AW8155 (headless builds) all
+ * of these compile to no-ops. */
 bool zc_audio_start(void);
 void zc_audio_set_enabled(bool on);
 void zc_audio_set_muted(bool muted);

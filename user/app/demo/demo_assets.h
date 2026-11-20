@@ -1,10 +1,5 @@
-/**
- * @file demo_assets.h
- * Demo assets referenced by the apps C files as C arrays.
- *
- * No asset pipeline yet: the font and the image live in this header and are
- * compiled into the app TU that includes it.
- */
+/* Demo assets referenced by the apps C files as C arrays; no asset pipeline,
+ * so the font and image are compiled into the TU that includes this header. */
 
 #ifndef DEMO_ASSETS_H
 #define DEMO_ASSETS_H
@@ -12,8 +7,7 @@
 #include "lvgl.h"
 #include "lvgl_compat.h"
 
-/* ---- image: 16x16 RGB565 checker ------------------------------------- */
-
+/* 16x16 checker in RGB565. */
 #define DEMO_ASSET_LOGO_SIZE 16
 
 static const uint16_t
@@ -69,9 +63,9 @@ static inline void demo_asset_prepare(void)
 {
 }
 #else
-/* 8.x has no lv_image_dsc_t and its TRUE_COLOR images use the display color
- * depth. The engine runs 8.x at LV_COLOR_DEPTH 32, so convert the same RGB565
- * checker into a 32-bit lv_color_t array once at app startup. */
+/* 8.x has no lv_image_dsc_t, and its TRUE_COLOR images use the display color
+ * depth; the engine runs 8.x at LV_COLOR_DEPTH 32, so the RGB565 checker is
+ * converted to 32-bit lv_color_t once at startup. */
 static lv_color_t
     demo_asset_logo_pixels_8x[DEMO_ASSET_LOGO_SIZE * DEMO_ASSET_LOGO_SIZE];
 
@@ -98,8 +92,7 @@ static const lv_img_dsc_t demo_asset_logo = {
 };
 #endif
 
-/* ---- font: 5x7 1bpp glyphs for the demo title
- * --------------------------------- */
+/* 5x7 1bpp glyphs for the demo title. */
 
 static const uint8_t demo_asset_font_bitmap[] = {
     /* A */ 0x70, 0x88, 0x88, 0xF8, 0x88, 0x88, 0x88,

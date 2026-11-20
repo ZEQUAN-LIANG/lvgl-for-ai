@@ -163,7 +163,7 @@ def _copy_headers(source: Path, out: Path, version: str) -> list[str]:
         if not src_headers.is_dir():
             raise BuildError(f"LVGL source has no src/ header tree: {source}")
         _copy_header_tree(src_headers, include_dir / "src")
-        # "." is the SDK root: LVGL's lv_conf_internal.h includes "lv_conf.h",
+        # "." is the SDK root so lv_conf_internal.h resolves "lv_conf.h".
         include_dirs = [".", "include"]
 
     zlib_src = paths.zlib_src()

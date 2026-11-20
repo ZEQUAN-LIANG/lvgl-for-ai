@@ -3,6 +3,6 @@
 
 #include "lvgl.h"
 
-void xhs_page_create(void);
+void xiaohongshu_create(void);
 
 #endif

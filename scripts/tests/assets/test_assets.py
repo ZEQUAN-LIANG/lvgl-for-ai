@@ -559,7 +559,9 @@ class CliTest(unittest.TestCase):
             )
             self.assertEqual(code, 0, err)
             self.assertTrue(out_path.is_file())
-            self.assertTrue((app_dir / "assets.json").is_file())
+            self.assertTrue(
+                (root / "user" / ".cache" / "assets" / "demo.json").is_file()
+            )
 
     def test_missing_app_is_an_error(self) -> None:
         with _tempdir() as tmp:

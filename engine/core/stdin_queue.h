@@ -1,10 +1,8 @@
 /**
- * @file stdin_queue.h
- * Line reader for the window main loop.
- *
- * Headless mode keeps the blocking ``fgets`` loop. Window mode must pump
- * Win32 messages while it waits for protocol lines, so a reader thread turns
- * stdin into a queue that the window thread drains between message pumps.
+ * Line reader for the window main loop: a thread turns stdin into a queue the
+ * window thread drains between message pumps, so window mode can keep handling
+ * Win32 messages while waiting for protocol lines. Headless mode keeps using
+ * blocking ``fgets`` directly.
  */
 
 #ifndef STDIN_QUEUE_H

@@ -18,11 +18,10 @@
 
 LV_DRAW_BUF_DEFINE_STATIC(viz_draw_buf, VIZ_W, VIZ_H, LV_COLOR_FORMAT_XRGB8888);
 
-/* The HTML canvas backdrop is a diagonal linear gradient with four additive
- * radial glows, a 40/160 px grid, a radial vignette and a CSS scanline/vignette
- * overlay. LVGL has no radial gradients, so the static parts are baked into an
- * XRGB buffer and the glows are added per frame with precomputed alpha masks.
- */
+/* LVGL has no radial gradients, so the canvas backdrop's static parts
+ * (diagonal gradient, 40/160 px grid, vignette, scanline overlay) are baked
+ * into an XRGB buffer, and the four radial glows are added per frame from
+ * precomputed alpha masks. */
 typedef struct {
     int x;
     int y;

@@ -14,16 +14,12 @@
 void perf_monitor_create(void);
 
 /*
- * Parse and apply one serial line.  Call this from the LVGL task, or wrap the
- * call in the target's lvgl_port_lock()/lvgl_port_unlock().  The parser itself
- * is pure; this function only touches widgets.
- *
- * The firmware shell owns the UART/USB-Serial read loop and line assembly.
- * It can route every complete line through perf_monitor_ingest(): non-PERF
- * lines return PERF_PARSE_NOT_PERF and are ignored.
- *
- * PERF PORTRAIT / PERF LANDSCAPE rebuild the layout; on a 172x320 panel the
- * landscape command also switches the LVGL display rotation.
+ * Parse and apply one serial line; the parser is pure, only this call touches
+ * widgets.  Call from the LVGL task, or wrap in lvgl_port_lock() /
+ * lvgl_port_unlock().  The firmware shell owns the UART/USB-Serial read loop
+ * and may route every complete line here: non-PERF lines return
+ * PERF_PARSE_NOT_PERF.  PORTRAIT / LANDSCAPE rebuild the layout, and landscape
+ * also switches the display rotation.
  */
 perf_parse_result_t perf_monitor_ingest(const char * line, size_t len);
 

@@ -1,10 +1,10 @@
 """Derived name policy for the app management console.
 
 This module contains no hand-maintained app registry.  Apps are discovered
-from ``user/app/<name>/app.json`` (see :mod:`appmgr.discovery`); the only
-protected app is the discovered default app, because ``app_create`` uses it
-when ``LVGL_VERIFY_LOOP_DEMO`` is unset.  Create-time reservations are derived
-from the current repository state: app directories, metadata aliases,
+from the ``user/app/<name>/`` directories (see :mod:`appmgr.discovery`); the
+only protected app is the discovered default app, because ``app_create`` uses
+it when ``LVGL_VERIFY_LOOP_DEMO`` is unset.  Create-time reservations are
+derived from the current repository state: app directories, root default,
 scenario-only names and the source files directly under ``user/app``.
 
 Adding or deleting an app therefore never requires editing this module.
@@ -37,10 +37,10 @@ def is_reserved_create_name(root: Path, name: str) -> bool:
     """True when creating *name* must be rejected as reserved.
 
     The default app is always reserved.  Scenario-only names (a scenario with
-    no ``app`` field) and aliases declared by app metadata are reserved too.
-    Names with an existing create target keep the established create path
-    (``app_exists``, ``app_conflict``, ``--force`` or plain creation); only
-    identities with no other target fall through to ``name_reserved``.
+    no ``app`` field) are reserved too.  Names with an existing create target
+    keep the established create path (``app_exists``, ``app_conflict``,
+    ``--force`` or plain creation); only identities with no other target fall
+    through to ``name_reserved``.
     """
 
     if is_protected_name(root, name):
@@ -101,7 +101,6 @@ def _reserved_state(root: Path) -> tuple[frozenset[str], frozenset[str]]:
     for entry in entries:
         names.add(entry.name)
         targets.add(entry.name)
-        names.update(entry.aliases)
 
     scenarios_dir = common._user_scenarios(root)
     if scenarios_dir.is_dir():

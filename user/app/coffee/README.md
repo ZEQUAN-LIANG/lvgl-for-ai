@@ -51,7 +51,8 @@ bin\lvgl.cmd assets font --app coffee --font C:\Windows\Fonts\Deng.ttf ^
 ```
 
 只嵌入 `coffee_texts.h` 中用到的字符与可打印 ASCII；`--scan-app` 会从应用的
-`.c/.h` 字符串字面量收集字符集。`assets.json` 记录 legacy 字号/bpp 参数。
+`.c/.h` 字符串字面量收集字符集。字号/bpp 参数记在生成头的注释里；
+重放账本在 `user/.cache/assets/coffee.json`（不进 Git）。
 
 图片是程序化绘制，当前以提交的 `coffee_images.h` 为准。若要用内置工具重生成，
 先把美术导出为 PNG，再运行：

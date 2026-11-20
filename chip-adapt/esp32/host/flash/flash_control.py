@@ -79,9 +79,6 @@ class Esptool:
     version: tuple[int, int, int]
 
 
-# ------------------------------------------------------------------ esptool --
-
-
 def _run_probe(command: list[str], timeout: float = 20.0) -> subprocess.CompletedProcess:
     return subprocess.run(
         command,
@@ -212,9 +209,6 @@ def find_esptool(config: dict[str, Any]) -> Esptool | None:
 
 def version_text(version: tuple[int, int, int]) -> str:
     return ".".join(str(item) for item in version)
-
-
-# ------------------------------------------------------------------ helpers --
 
 
 def parse_address(value: Any) -> int:
@@ -704,9 +698,6 @@ def _default_work_root() -> Path:
     return HOST_DIR / ".cache" / "flash" / "work"
 
 
-# ----------------------------------------------------------------- progress --
-
-
 class _Progress:
     def __init__(self, total: int) -> None:
         self.total = max(1, int(total))
@@ -872,9 +863,6 @@ def _tail(lines: list[str], count: int = 15) -> str:
     return "\n".join(lines[-count:]) if lines else ""
 
 
-# ------------------------------------------------------------------- command --
-
-
 def build_flash_command(
     esptool: Esptool,
     port: str,
@@ -930,9 +918,6 @@ def build_flash_command(
     return command
 
 
-# ---------------------------------------------------------------- controller --
-
-
 class FlashController:
     def __init__(
         self,
@@ -957,8 +942,6 @@ class FlashController:
         self._lock = threading.RLock()
         self._flash_lock = threading.Lock()
         self._plans: dict[str, dict[str, Any]] = {}
-
-    # ------------------------------------------------------------- environment
 
     def environment(self) -> dict[str, Any]:
         esptool = find_esptool(self.config)
@@ -1064,8 +1047,6 @@ class FlashController:
             )
         return payload
 
-    # ----------------------------------------------------------------- upload
-
     def save_upload(self, name: str, data: bytes) -> dict[str, Any]:
         limit = int(
             self.config.get("flash_max_upload_bytes") or MAX_UPLOAD_BYTES
@@ -1138,8 +1119,6 @@ class FlashController:
         )
         for old in directories[KEEP_WORKDIRS:]:
             shutil.rmtree(old, ignore_errors=True)
-
-    # ------------------------------------------------------------------- plan
 
     def plan(self, source: dict[str, Any]) -> dict[str, Any]:
         address = source.get("address")
@@ -1237,8 +1216,6 @@ class FlashController:
                 status=404,
             )
         return plan
-
-    # ------------------------------------------------------------------ start
 
     def busy(self) -> bool:
         return self._flash_lock.locked()

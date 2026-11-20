@@ -37,10 +37,9 @@ typedef enum {
 } key_action_t;
 
 /**
- * Create LVGL, the display and the standard virtual pointer, keypad and
- * encoder indevs. When ``real_input`` is true, standard pointer and keypad
- * indevs for OS input are created too, so real and virtual input never share
- * device state. No focus group is created: groups belong to apps.
+ * Create LVGL, the display and the virtual pointer/keypad/encoder indevs.
+ * ``real_input`` adds separate OS indevs so real and virtual input never share
+ * device state. No focus group: groups belong to apps.
  */
 adapter_t * adapter_create(uint32_t width, uint32_t height, bool real_input);
 
@@ -53,9 +52,9 @@ void adapter_refresh(adapter_t * adapter);
 bool adapter_last_refresh_painted(const adapter_t * adapter);
 
 /**
- * Inject one pointer action into the standard virtual pointer indev and let
- * LVGL process it. The hit test runs before delivery, so the reply names the
- * object under the point even if the event handler deletes it.
+ * Inject one pointer action into the virtual pointer indev. The hit test runs
+ * before delivery, so the reply names the object even if the handler deletes
+ * it.
  */
 int adapter_pointer(adapter_t * adapter, pointer_action_t action, int32_t x,
                     int32_t y);
@@ -63,10 +62,9 @@ int adapter_pointer(adapter_t * adapter, pointer_action_t action, int32_t x,
 const pointer_reply_t * adapter_last_pointer(const adapter_t * adapter);
 
 /**
- * Feed one real (OS) pointer action into the real pointer indev and process
- * it immediately. Kept separate from the virtual pointer so AI input and a
- * human mouse never overwrite each other. Returns 0 when the real indev
- * exists.
+ * Feed one real (OS) pointer action into the real pointer indev immediately.
+ * Separate from the virtual pointer so AI input and a human mouse never
+ * overwrite each other. Returns 0 when the real indev exists.
  */
 int adapter_real_pointer(adapter_t * adapter, pointer_action_t action,
                          int32_t x, int32_t y);
@@ -75,23 +73,22 @@ const pointer_reply_t * adapter_last_real_pointer(const adapter_t * adapter);
 
 /**
  * Deliver one real (OS) key press/release to the real keypad indev. The state
- * is kept even when LVGL blocks the read so the next timer read can deliver
- * it. Returns 0 when LVGL read the indev, -1 otherwise.
+ * survives a blocked read so the next timer read can still deliver it. Returns
+ * 0 when LVGL read the indev, -1 otherwise.
  */
 int adapter_real_key(adapter_t * adapter, key_action_t action, uint32_t key);
 
 /**
- * Inject one key press/release into the standard virtual keypad indev and let
- * LVGL process it. Returns 0 only when LVGL actually read the indev; a
- * blocked or missing indev returns -1. The caller records ``delivered`` from
- * this return value, never from the intent to send.
+ * Inject one key press/release into the virtual keypad indev. Returns 0 only
+ * when LVGL actually read the indev (blocked or missing returns -1); the caller
+ * records ``delivered`` from this return value, never from the intent to send.
  */
 int adapter_key(adapter_t * adapter, key_action_t action, uint32_t key);
 
 /**
- * Turn the standard virtual encoder indev by ``diff`` steps. Positive values
- * are LVGL's ``enc_diff > 0`` direction (focus forward). The diff is consumed
- * by one read; returns 0 only when LVGL actually read the indev.
+ * Turn the virtual encoder indev by ``diff`` steps; positive is LVGL's
+ * ``enc_diff > 0`` direction (focus forward). One read consumes the diff;
+ * returns 0 only when LVGL actually read the indev.
  */
 int adapter_encoder(adapter_t * adapter, int32_t diff);
 
@@ -105,9 +102,8 @@ const uint8_t * adapter_framebuffer(const adapter_t * adapter);
 int adapter_save_png(const adapter_t * adapter, const char * path);
 
 /**
- * Write the framebuffer as raw RGBA8888 bytes (R, G, B, A) for the live
- * preview stream. The file is width * height * 4 bytes with no header.
- * Returns 0 on success.
+ * Write the framebuffer as raw RGBA8888 (R, G, B, A) for the live preview
+ * stream: width * height * 4 bytes, no header. Returns 0 on success.
  */
 int adapter_save_rgba(const adapter_t * adapter, const char * path);
 

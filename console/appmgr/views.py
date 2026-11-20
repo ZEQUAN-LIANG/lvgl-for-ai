@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -140,17 +139,7 @@ def _is_app_directory(path: Path) -> bool:
         return False
     if (path / discovery.METADATA_NAME).is_file():
         return True
-    symbol = re.compile(rf"\b{re.escape(path.name)}_create\b")
-    for child in sorted(path.glob("*.c")) + sorted(path.glob("*.h")):
-        if child.is_symlink() or not child.is_file():
-            continue
-        try:
-            text = child.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
-            continue
-        if symbol.search(text):
-            return True
-    return False
+    return discovery.matches_entry_convention(path, path.name)
 
 
 def app_tree(

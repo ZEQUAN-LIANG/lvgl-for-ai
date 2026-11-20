@@ -2,12 +2,9 @@ from __future__ import annotations
 
 import paths
 
-import hashlib
-import json
 import re
 import sys
 import unittest
-from pathlib import Path
 
 CONSOLE_ROOT = paths.CONSOLE_ROOT
 if str(CONSOLE_ROOT) not in sys.path:
@@ -15,34 +12,27 @@ if str(CONSOLE_ROOT) not in sys.path:
 
 
 SPECTRUM_DIR = paths.APPS_DIR / "spectrum"
-MANIFEST = SPECTRUM_DIR / "assets.json"
 README = SPECTRUM_DIR / "README.md"
 COVERS = SPECTRUM_DIR / "covers_src"
+COVERS_HEADER = SPECTRUM_DIR / "spectrum_covers.h"
 README_COVER = re.compile(r"covers_src[\\/]([^*`\s]+\.png)")
 
 
-def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
 class SpectrumCoversFrozenTest(unittest.TestCase):
-    def setUp(self) -> None:
-        payload = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        self.entry = payload["assets"]["spectrum_covers"]
+    """``spectrum_covers.h`` is frozen: it came from a removed generator.
 
-    def test_covers_entry_is_frozen(self) -> None:
-        self.assertIs(self.entry.get("frozen"), True)
-        self.assertEqual(self.entry["output"], "spectrum_covers.h")
+    The header is committed and never rebuilt, so the guard is the README
+    statement plus the committed sources it was built from.
+    """
 
-    def test_frozen_hashes_cover_every_source_png(self) -> None:
-        hashes = self.entry.get("source_hashes")
-        self.assertIsInstance(hashes, dict)
-        expected = {f"covers_src/{path.name}" for path in COVERS.glob("*.png")}
-        self.assertEqual(set(hashes), expected)
-        for relative, digest in hashes.items():
-            with self.subTest(source=relative):
-                self.assertTrue(relative.startswith("covers_src/"))
-                self.assertEqual(digest, _sha256(SPECTRUM_DIR / relative))
+    def test_frozen_header_and_sources_are_present(self) -> None:
+        self.assertTrue(COVERS_HEADER.is_file())
+        self.assertTrue(sorted(COVERS.glob("*.png")))
+
+    def test_readme_states_the_header_is_frozen(self) -> None:
+        text = README.read_text(encoding="utf-8")
+        self.assertIn("spectrum_covers.h", text)
+        self.assertIn("冻结", text)
 
     def test_readme_examples_name_existing_sources(self) -> None:
         text = README.read_text(encoding="utf-8")

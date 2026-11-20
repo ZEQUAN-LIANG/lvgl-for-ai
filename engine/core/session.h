@@ -1,16 +1,15 @@
 /**
- * @file session.h
  * One engine session: owns the refresh -> capture -> timeline -> diff
  * orchestration and the evidence write error state.
  *
- * The session enforces the retained-frame invariant: one refresh produces at
- * most one retained frame, and its PNG, timeline frame row and diff rows
- * share the same ``frame_no`` and ``t_ms``. It also owns the changed-only
- * comparison buffer: identical RGB frames are skipped before any evidence is
- * written, so frame numbers stay contiguous.
+ * Enforces the retained-frame invariant: one refresh produces at most one
+ * retained frame, and its PNG, timeline frame row and diff rows share the same
+ * ``frame_no`` and ``t_ms``. It also owns the changed-only comparison buffer,
+ * so identical RGB frames are skipped before any evidence is written and frame
+ * numbers stay contiguous.
  *
- * ``main.c`` keeps argument parsing, adapter/window lifecycle, protocol
- * dispatch and real-input callbacks; every evidence write goes through here.
+ * main.c keeps argument parsing, adapter/window lifecycle, protocol dispatch
+ * and real-input callbacks; every evidence write goes through here.
  */
 
 #ifndef SESSION_H

@@ -28,7 +28,7 @@ for _path in (CONSOLE_ROOT, ADAPTER_DIR):
 import layout
 from appmgr import common
 
-ASSET_SCHEMA = "lvgl-verify-loop-assets-v1"
+PROFILE_SCHEMA = "lvgl-verify-loop-sifli-app-v1"
 ASSET_MODES = {"ezip", "raw"}
 ASSET_PLACEMENTS = {"flash", "psram", "sram"}
 ASSET_TRANSFORMS = {"none", "rotate", "scale", "rotate_scale"}
@@ -52,6 +52,7 @@ def plan_assets(
     adapter: dict[str, Any],
     *,
     ezip_tool: Sequence[str] | None = None,
+    profile: str | Path | None = None,
 ) -> AssetPlan:
     source_dir = Path(source_dir)
     app = source_dir.name
@@ -61,7 +62,9 @@ def plan_assets(
         if assets_dir.is_dir()
         else []
     )
-    manifest = _load_asset_manifest(source_dir, pngs)
+    manifest = _load_asset_manifest(
+        source_dir, pngs, profile=Path(profile) if profile else None
+    )
     assets = manifest["assets"]
     overrides = manifest["cache"]
     if not assets:
@@ -170,8 +173,24 @@ def plan_assets(
     )
 
 
-def _load_asset_manifest(source_dir: Path, pngs: list[Path]) -> dict[str, Any]:
-    manifest_path = source_dir / "assets.json"
+def profile_path(app: str, root: str | Path | None = None) -> Path:
+    """Per-app SiFli export declaration, kept outside ``user/app``.
+
+    With *root* (the repository root an export was asked for) the profile
+    lives in that tree, which is what tests and out-of-tree exports need.
+    """
+
+    if root is None:
+        return layout.APPS_DIR / f"{app}.json"
+    return Path(root) / "chip-adapt" / "sifli" / "apps" / f"{app}.json"
+
+
+def _load_asset_manifest(
+    source_dir: Path, pngs: list[Path], *, profile: Path | None = None
+) -> dict[str, Any]:
+    manifest_path = profile if profile is not None else profile_path(
+        source_dir.name
+    )
     files = {path.name: path for path in pngs}
     if not manifest_path.is_file():
         return {
@@ -197,7 +216,7 @@ def _load_asset_manifest(source_dir: Path, pngs: list[Path]) -> dict[str, Any]:
             f"cannot read {manifest_path}: {exc}",
             detail={"file": str(manifest_path)},
         ) from exc
-    if payload.get("schema") != ASSET_SCHEMA:
+    if payload.get("schema") != PROFILE_SCHEMA:
         raise ExportError(
             "asset_manifest_invalid",
             f"unexpected asset schema in {manifest_path}",
@@ -323,8 +342,9 @@ def _load_asset_manifest(source_dir: Path, pngs: list[Path]) -> dict[str, Any]:
     if missing:
         raise ExportError(
             "asset_unlisted",
-            f"assets.json does not declare: {', '.join(sorted(missing))}",
-            detail={"files": sorted(missing)},
+            f"{manifest_path} does not declare: "
+            f"{', '.join(sorted(missing))}",
+            detail={"files": sorted(missing), "profile": str(manifest_path)},
         )
     cache = payload.get("cache", {})
     if not isinstance(cache, dict):

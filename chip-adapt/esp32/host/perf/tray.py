@@ -236,8 +236,6 @@ class TrayIcon:
         self._hwnd = None
         self._running = False
 
-    # ------------------------------------------------------------------
-
     def _run(self) -> None:
         hinstance = kernel32.GetModuleHandleW(None)
         self._wndproc = WNDPROC(self._on_message)

@@ -62,21 +62,21 @@ class AssetPlanTest(unittest.TestCase):
 
     def _write_manifest(self, assets, *, cache=None, local_header=""):
         payload = {
-            "schema": "lvgl-verify-loop-assets-v1",
+            "schema": asset_plan.PROFILE_SCHEMA,
             "local_header": local_header,
             "assets": assets,
         }
         if cache is not None:
             payload["cache"] = cache
-        (self.source / "assets.json").write_text(
-            json.dumps(payload), encoding="utf-8"
-        )
+        self.profile = self.root / "sifli-app.json"
+        self.profile.write_text(json.dumps(payload), encoding="utf-8")
 
     def _plan(self, *, ezip_tool=None):
         return asset_plan.plan_assets(
             self.source,
             {"ezip_chip": "sf52x"},
             ezip_tool=ezip_tool or self._write_fake_ezip(),
+            profile=getattr(self, "profile", None),
         )
 
     @staticmethod

@@ -90,7 +90,7 @@
     if (managerRoots) {
       const roots = data.roots || {};
       managerRoots.textContent =
-        "应用 " + (roots.app || "user/app") + "/<应用>/app.json · 场景 " +
+        "应用 " + (roots.app || "user/app") + "/<应用>/ · 场景 " +
         (roots.scenarios || "scenarios") + " · 入口 " +
         (roots.app_c || "user/app/app.c") + " · 回收站 " +
         (roots.trash || ".trash/apps") + "/<id>/";
@@ -138,7 +138,7 @@
       const item = makeNode("div", "manager-item");
       const head = makeNode("div", "manager-item-head");
       head.appendChild(makeNode("span", "manager-name", orphan.name || "未知"));
-      addBadge(head, "缺少 app.json", "is-warn");
+      addBadge(head, "缺少入口", "is-warn");
       item.appendChild(head);
       item.appendChild(makeNode("div", "manager-meta", orphan.path || ""));
       managerList.appendChild(item);
@@ -259,7 +259,7 @@
     const data = result.data;
     managerTree.appendChild(makeNode(
       "div", "manager-meta",
-      (data.registered ? "入口 " + (data.symbol || "") : "未发现 app.json") +
+      (data.registered ? "入口 " + (data.symbol || "") : "未发现入口") +
       " · " + (data.app_dir || "")
     ));
     if (data.tree) {

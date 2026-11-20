@@ -170,9 +170,8 @@ class LiveSession:
     def _default_runtime(self) -> RuntimeLike:
         sessions_root = self.sessions_root
         if self._test:
-            # Keep the test root under the sessions root: the engine already
-            # has write access there, while %TEMP% may be blocked for child
-            # processes.
+            # Child processes may be blocked from %TEMP%, so the test root goes
+            # under the sessions root where the engine can already write.
             self.sessions_root.mkdir(parents=True, exist_ok=True)
             self._test_root = Path(
                 tempfile.mkdtemp(prefix=".live-test-", dir=self.sessions_root)

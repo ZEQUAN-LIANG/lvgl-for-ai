@@ -140,7 +140,7 @@ static void xhs_bottom_nav(lv_obj_t * panel)
     lv_obj_set_style_bg_opa(home, 60, 0);
 }
 
-void xhs_page_create(void)
+void xiaohongshu_create(void)
 {
     lv_obj_t * screen = lv_screen_active();
     lv_obj_set_scrollable(screen, false);

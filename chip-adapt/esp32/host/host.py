@@ -214,8 +214,6 @@ class HostHandler(BaseHTTPRequestHandler):
         # Keep the host's stdout readable; serial logs are the real evidence.
         return
 
-    # ---------------------------------------------------------------- helpers
-
     def _body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length") or 0)
         if length <= 0:
@@ -332,8 +330,6 @@ class HostHandler(BaseHTTPRequestHandler):
                     since = int(chunk["next"])
         except (BrokenPipeError, ConnectionResetError, OSError):
             return
-
-    # ---------------------------------------------------------------- flash
 
     def _origin_allowed(self) -> bool:
         origin = self.headers.get("Origin")
@@ -504,8 +500,6 @@ class HostHandler(BaseHTTPRequestHandler):
         job.cancel()
         self._json({"ok": True, "job_id": job.id})
 
-    # ------------------------------------------------------------------- GET
-
     def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
         path = urlparse(self.path).path
         try:
@@ -601,8 +595,6 @@ class HostHandler(BaseHTTPRequestHandler):
             self._error(exc.code, str(exc), status)
         except PerfError as exc:
             self._error(exc.code, str(exc), exc.status)
-
-    # ------------------------------------------------------------------ POST
 
     def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
         path = urlparse(self.path).path
@@ -770,9 +762,6 @@ class HostHandler(BaseHTTPRequestHandler):
             self._error(exc.code, str(exc), status)
         except PerfError as exc:
             self._error(exc.code, str(exc), exc.status)
-
-
-# --------------------------------------------------------------------- HTTP CLI
 
 
 def request_json(

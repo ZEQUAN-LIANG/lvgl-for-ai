@@ -26,16 +26,15 @@ class AppDomainTest(unittest.TestCase):
         (self.root / "user" / "app").mkdir(parents=True)
         (self.root / "user" / "scenarios").mkdir(parents=True)
         shutil.copy2(APP_C, self.root / "user" / "app" / "app.c")
-        for name, entry, default in (
-            ("coffee", "coffee_create", True),
-            ("spectrum", "spectrum_create", False),
-        ):
+        for name in ("coffee", "spectrum"):
             app_dir = self.root / "user" / "app" / name
             app_dir.mkdir()
-            (app_dir / "app.json").write_text(
-                json.dumps({"entry": entry, "default": default}),
-                encoding="utf-8",
+            (app_dir / f"{name}.c").write_text(
+                f"void {name}_create(void) {{}}\n", encoding="utf-8"
             )
+        (self.root / "user" / "app" / "app.json").write_text(
+            json.dumps({"default": "coffee"}), encoding="utf-8"
+        )
 
     @property
     def app_c(self) -> Path:
@@ -66,22 +65,16 @@ class AppDomainTest(unittest.TestCase):
             for entry in discovery.scan_apps(self.root / "user" / "app")[0]
         ]
 
-    def test_scaffold_creates_metadata_and_scenario(self) -> None:
+    def test_scaffold_creates_scenario_without_metadata(self) -> None:
         original = self.app_c.read_bytes()
         result = self._create("hello")
         self.assertEqual(result["action"], "create")
         self.assertTrue((self.root / "user/app/hello/hello.c").is_file())
-        self.assertTrue((self.root / "user/app/hello/app.json").is_file())
+        self.assertFalse((self.root / "user/app/hello/app.json").exists())
         self.assertTrue((self.root / "user/scenarios/hello.json").is_file())
         self.assertIn("hello", self._names())
         self.assertEqual(self._names()[0], "coffee")
         self.assertEqual(self.app_c.read_bytes(), original)
-        metadata = json.loads(
-            (self.root / "user/app/hello/app.json").read_text(
-                encoding="utf-8"
-            )
-        )
-        self.assertEqual(metadata["entry"], "hello_create")
         document = json.loads(
             (self.root / "user/scenarios/hello.json").read_text(
                 encoding="utf-8"
@@ -211,11 +204,16 @@ class AppDomainTest(unittest.TestCase):
 
     def test_list_apps_tree_and_recent(self) -> None:
         self._create("hello")
-        orphan = self.root / "user/app/orphan"
-        orphan.mkdir()
-        (orphan / "orphan.c").write_text(
-            "void orphan_create(void) {}\n", encoding="utf-8"
+        # A directory declaring ``<name>_create`` is an app, not an orphan.
+        convention = self.root / "user/app/plain"
+        convention.mkdir()
+        (convention / "plain.c").write_text(
+            "void plain_create(void) {}\n", encoding="utf-8"
         )
+        # Only an app directory whose metadata cannot be read stays orphaned.
+        broken = self.root / "user/app/broken"
+        broken.mkdir()
+        (broken / "app.json").write_text("{", encoding="utf-8")
         harness = self.root / "user/app/demo"
         harness.mkdir()
         (harness / "panel.c").write_text(
@@ -231,11 +229,13 @@ class AppDomainTest(unittest.TestCase):
         self.assertFalse(by_name["spectrum"]["protected"])
         self.assertTrue(by_name["spectrum"]["deletable"])
         self.assertTrue(by_name["hello"]["deletable"])
+        self.assertTrue(by_name["plain"]["deletable"])
         self.assertEqual(by_name["hello"]["scenario_files"], ["hello.json"])
         orphan_paths = {entry["path"] for entry in payload["orphans"]}
-        self.assertIn("user/app/orphan", orphan_paths)
+        self.assertIn("user/app/broken", orphan_paths)
         self.assertIn("user/scenarios/ghost.json", orphan_paths)
         self.assertNotIn("user/app/demo", orphan_paths)
+        self.assertNotIn("user/app/plain", orphan_paths)
 
         view = app_domain.app_tree(self.root, "hello")
         self.assertTrue(view["registered"])

@@ -6,11 +6,8 @@
 #include "lvgl.h"
 #include "lvgl_compat.h"
 
-/* Version differences stay inside apps. Names exist from LVGL 9.2; 9.1
- * and 8.x have neither the API nor LV_USE_OBJ_NAME, so the tool reports
- * hit_class only. Branches on LVGL_VERSION_MAJOR / LVGL_VERSION_MINOR keep
- * this file compiling against every target version without a tool-side
- * registry. */
+/* Object names exist from LVGL 9.2; 9.1 and 8.x have neither the API nor
+ * LV_USE_OBJ_NAME, so the tool can report hit_class only. */
 static inline void app_obj_set_name(lv_obj_t * obj, const char * name)
 {
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 2

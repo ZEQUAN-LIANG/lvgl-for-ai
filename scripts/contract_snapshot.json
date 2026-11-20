@@ -310,7 +310,7 @@
                 "object": {
                   "app_c": "string",
                   "header": "string",
-                  "metadata": "string",
+                  "metadata": "null",
                   "scenario": "string",
                   "source": "string"
                 }
@@ -2360,7 +2360,7 @@
                 "object": {
                   "app_c": "string",
                   "header": "string",
-                  "metadata": "string",
+                  "metadata": "null",
                   "scenario": "string",
                   "source": "string"
                 }
@@ -3007,7 +3007,6 @@
       "trash_layout": [
         "app",
         "app/alpha.c",
-        "app/app.json",
         "meta.json",
         "scenarios",
         "scenarios/alpha.json"
@@ -3542,7 +3541,7 @@
           "新建应用",
           "应用名",
           "创建",
-          "创建后会写入源文件、app.json 和场景；下次构建自动发现，不会自动启动预览。",
+          "创建后会写入源文件和场景；下次构建自动发现，不会自动启动预览。",
           "应用",
           "回收站",
           "删除会移到 user/.trash/apps/<id>/，可恢复，也可再次确认后永久删除。",
@@ -4069,7 +4068,7 @@
           "新建应用",
           "应用名",
           "创建",
-          "创建后会写入源文件、app.json 和场景；下次构建自动发现，不会自动启动预览。",
+          "创建后会写入源文件和场景；下次构建自动发现，不会自动启动预览。",
           "应用",
           "回收站",
           "删除会移到 user/.trash/apps/<id>/，可恢复，也可再次确认后永久删除。",
@@ -4672,7 +4671,7 @@
           "新建应用",
           "应用名",
           "创建",
-          "创建后会写入源文件、app.json 和场景；下次构建自动发现，不会自动启动预览。",
+          "创建后会写入源文件和场景；下次构建自动发现，不会自动启动预览。",
           "应用",
           "回收站",
           "删除会移到 user/.trash/apps/<id>/，可恢复，也可再次确认后永久删除。",

@@ -188,12 +188,8 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
 
             with zipfile.ZipFile(zip_path) as archive:
                 names = archive.namelist()
-                tools_readme = archive.read(
-                    "lvgl-verify-loop/scripts/README.md"
-                ).decode("utf-8")
-            self.assertIn("new_app.py", tools_readme)
-            self.assertNotIn("release_all.py", tools_readme)
-            self.assertNotIn("sync_github.py", tools_readme)
+            self.assertNotIn("lvgl-verify-loop/scripts/README.md", names)
+            self.assertNotIn("lvgl-verify-loop/user/app/README.md", names)
             for forbidden in (
                 "engine/lvgl/",
                 "engine/third_party/",
@@ -213,7 +209,6 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 "scripts/release.py",
                 "scripts/release_all.py",
                 "scripts/release_app.c",
-                "scripts/release_tools_README.md",
                 "scripts/sync_github.py",
                 "scripts/contract_snapshot.py",
                 "scripts/contract_snapshot.json",
@@ -249,6 +244,7 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
                 "lvgl-verify-loop/build/lvgl_9_6/lvgl_engine.exe",
                 "lvgl-verify-loop/build/lvgl_9_6/libfreetype.dll",
                 "lvgl-verify-loop/user/app/intro/intro.c",
+                "lvgl-verify-loop/user/app/app_registry.inc",
                 "lvgl-verify-loop/user/scenarios/intro.json",
             )
             for name in required:

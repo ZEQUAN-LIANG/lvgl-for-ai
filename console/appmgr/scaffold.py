@@ -115,14 +115,6 @@ def scaffold_app(
 
     header = _render(HEADER_TEMPLATE, name)
     source = _render(SOURCE_TEMPLATE, name)
-    metadata = (
-        json.dumps(
-            {"entry": f"{name}_create"},
-            indent=2,
-            ensure_ascii=False,
-        )
-        + "\n"
-    )
     scenario = (
         json.dumps(
             {
@@ -141,8 +133,9 @@ def scaffold_app(
     created: list[str] = []
     updated: list[str] = []
     writes: list[tuple[Path, bytes, bool]] = []
+    # No app.json is written: the name and ``<name>_create`` convention suffice.
+    # An existing metadata file is left untouched so a renamed entry survives.
     for path, data in (
-        (metadata_path, metadata.encode("utf-8")),
         (header_path, header.encode("utf-8")),
         (source_path, source.encode("utf-8")),
         (scenario_path, scenario.encode("utf-8")),
@@ -164,7 +157,11 @@ def scaffold_app(
         "dry_run": dry_run,
         "files": {
             "app_c": common._relative(app_c, root),
-            "metadata": common._relative(metadata_path, root),
+            "metadata": (
+                common._relative(metadata_path, root)
+                if metadata_path.is_file()
+                else None
+            ),
             "header": common._relative(header_path, root),
             "source": common._relative(source_path, root),
             "scenario": common._relative(scenario_path, root),

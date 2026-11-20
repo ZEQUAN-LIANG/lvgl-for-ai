@@ -59,8 +59,6 @@ class DeviceController:
         except CommandError as exc:
             raise DeviceError(str(exc), code="device_timeout") from exc
 
-    # --------------------------------------------------------------- system
-
     def sys_info(self) -> dict[str, Any]:
         line = self._exchange("sys info", r"@SYS INFO[^\r\n]*")
         data: dict[str, Any] = _kv(line, "@SYS INFO")
@@ -83,8 +81,6 @@ class DeviceController:
     def reset(self) -> bool:
         line = self._exchange("sys reset", r"@OK SYS RESET")
         return line == "@OK SYS RESET"
-
-    # ----------------------------------------------------------------- wifi
 
     def wifi_status(self) -> dict[str, Any]:
         line = self._exchange("wifi status", r"@WIFI STATUS[^\r\n]*")
@@ -148,8 +144,6 @@ class DeviceController:
         value = "on" if enabled else "off"
         line = self._exchange(f"wifi auto {value}", r"@OK WIFI AUTO[^\r\n]*")
         return _payload(line, "@OK WIFI AUTO") == value
-
-    # ----------------------------------------------------------- bluetooth
 
     def bt_status(self) -> dict[str, Any]:
         line = self._exchange("bt status", r"@BT STATUS[^\r\n]*")

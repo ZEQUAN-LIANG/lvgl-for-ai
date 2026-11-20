@@ -44,9 +44,9 @@ TAGS = versions.tags()
 
 SOURCE_SCHEMA = "lvgl-verify-loop-lvgl-source-v1"
 
-# github.com resolves to a parked domain in some networks; codeload and the
-# Gitee mirror both serve the same official tag archives.  When DNS is
-# poisoned, codeload is retried with --resolve against well-known GitHub IPs.
+# Some networks poison github.com into a parked domain; codeload and the Gitee
+# mirror serve the same archives, and codeload is retried with --resolve
+# against well-known GitHub IPs when DNS is poisoned.
 CODELOAD_URL = "https://codeload.github.com/lvgl/lvgl/tar.gz/refs/tags/{tag}"
 GITEE_URL = "https://gitee.com/mirrors/lvgl/repository/archive/{tag}.tar.gz"
 GITHUB_IPS = ("140.82.112.9", "140.82.113.9", "140.82.114.9")
@@ -172,7 +172,7 @@ def extract(archive: Path, extract_root: Path) -> Path:
         try:
             tar.extractall(extract_root, filter="data")
         except TypeError:
-            # Python < 3.12 has no extraction filters; the member check above
+            # Python < 3.12 has no extraction filters; the check above guards it.
             tar.extractall(extract_root)
     tree = extract_root / root
     if not tree.is_dir():
@@ -182,7 +182,7 @@ def extract(archive: Path, extract_root: Path) -> Path:
 
 def verify_tree(tree: Path, version: str) -> tuple[int, int, int]:
     actual = parse_version_header(tree)
-    # The tag is the release identity, including patch-level tags such as
+    # The tag is the release identity, patch-level tags included.
     tag = TAGS[version]
     expected = tuple(int(part) for part in tag.lstrip("v").split("."))
     if actual != expected:

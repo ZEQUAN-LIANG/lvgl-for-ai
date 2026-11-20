@@ -148,8 +148,8 @@ static void intro_fonts_init(void)
     for(i = 0; i < sizeof(spec) / sizeof(spec[0]); i++) {
         const char * path = spec[i].path;
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR < 6
-        /* 9.4/9.5 do not expose the variable-weight axis; use a static bold
-         * display face so headings still read as headings. */
+        /* 9.4/9.5 have no variable-weight axis, so headings fall back to a
+         * static bold display face. */
         if(spec[i].id <= INTRO_F_DISP_42) {
             path = "C:\\Windows\\Fonts\\segoeuib.ttf";
         }

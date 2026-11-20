@@ -317,10 +317,6 @@ class PerfGui:
         if self.tray_enabled:
             self.root.after(200, self.start_tray)
 
-    # ------------------------------------------------------------------
-    # window
-    # ------------------------------------------------------------------
-
     def pick_font(self, *candidates: str) -> str:
         families = set(tkfont.families(self.root))
         for name in candidates:
@@ -809,10 +805,6 @@ class PerfGui:
             takefocus=False,
         )
 
-    # ------------------------------------------------------------------
-    # state and controls
-    # ------------------------------------------------------------------
-
     def choose_mode(self, mode: str) -> None:
         if self.busy or mode == self.mode:
             return
@@ -1002,10 +994,6 @@ class PerfGui:
         else:
             self.serial_var.set("LINK · CLOSED")
             self.serial_dot.itemconfigure(1, fill=WARN)
-
-    # ------------------------------------------------------------------
-    # polling
-    # ------------------------------------------------------------------
 
     def poll(self) -> None:
         if self.closing:
@@ -1215,10 +1203,6 @@ class PerfGui:
             return
         self.start_poll()
 
-    # ------------------------------------------------------------------
-    # log
-    # ------------------------------------------------------------------
-
     def append_log(self, message: str, kind: str = "info") -> None:
         stamp = time.strftime("%H:%M:%S")
         self.log_text.configure(state="normal")
@@ -1234,10 +1218,6 @@ class PerfGui:
         self.log_text.configure(state="normal")
         self.log_text.delete("1.0", "end")
         self.log_text.configure(state="disabled")
-
-    # ------------------------------------------------------------------
-    # preview
-    # ------------------------------------------------------------------
 
     def on_canvas_resize(self, _event: tk.Event) -> None:
         if self.resize_after is not None:
@@ -1633,10 +1613,6 @@ class PerfGui:
                 fill_height,
                 ACCENT if hot else INK,
             )
-
-    # ------------------------------------------------------------------
-    # helpers
-    # ------------------------------------------------------------------
 
     def cpu_trend(self) -> str:
         if len(self.cpu_history) < 6:

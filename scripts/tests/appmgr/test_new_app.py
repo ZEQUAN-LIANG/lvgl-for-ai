@@ -59,7 +59,7 @@ class NewAppTest(unittest.TestCase):
     def _entries(self) -> list[discovery.AppEntry]:
         return discovery.scan_apps(self.root / "user" / "app")[0]
 
-    def test_creates_files_and_metadata(self) -> None:
+    def test_creates_files_without_metadata(self) -> None:
         original = self.app_c.read_bytes()
         code, out, err = self._main("hello")
         self.assertEqual(code, 0, err)
@@ -81,12 +81,11 @@ class NewAppTest(unittest.TestCase):
         self.assertIn('app_obj_set_name(button, "hello_button");', source)
 
         self.assertEqual(self.app_c.read_bytes(), original)
-        metadata = json.loads(
-            (self.root / "user/app/hello/app.json").read_text(
-                encoding="utf-8"
-            )
+        # The directory name and ``hello_create`` follow the convention, so
+        # the scaffold writes no app.json.
+        self.assertFalse(
+            (self.root / "user/app/hello/app.json").exists()
         )
-        self.assertEqual(metadata["entry"], "hello_create")
         self.assertEqual(
             [entry.name for entry in self._entries()],
             ["coffee", "hello"],
@@ -109,12 +108,12 @@ class NewAppTest(unittest.TestCase):
         self.assertEqual(
             payload["created"],
             [
-                "user/app/hello/app.json",
                 "user/app/hello/hello.h",
                 "user/app/hello/hello.c",
                 "user/scenarios/hello.json",
             ],
         )
+        self.assertIsNone(payload["files"]["metadata"])
         self.assertEqual(payload["updated"], [])
         self.assertTrue(payload["build_required"])
         self.assertTrue(payload["commands"])

@@ -409,7 +409,7 @@ def upload_gitee(
     else:
         if not release.get("id"):
             raise UploadError("Gitee did not return a release with an id")
-        # Gitee requires ``body`` on PATCH. When no notes file was given,
+        # Gitee requires ``body`` on PATCH, so fall back to the existing text.
         body = notes if notes is not None else release.get("body")
         patch = {
             "tag_name": tag,

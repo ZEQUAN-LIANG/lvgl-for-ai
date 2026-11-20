@@ -51,8 +51,7 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 PAGE_HEARTBEAT_TTL_S = 120.0
 PAGE_CLOSE_GRACE_S = 0.5
 # Oversized bodies are drained before the 413: Windows otherwise resets the
-# connection while the client is still writing, hiding the 4xx response
-# behind a ConnectionAbortedError.
+# connection mid-write and hides the response behind ConnectionAbortedError.
 MAX_DRAIN_BYTES = 16 * 1024 * 1024
 FILE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*\.png$")
 PAGE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
