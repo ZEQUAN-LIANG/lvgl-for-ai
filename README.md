@@ -1,248 +1,121 @@
 # LVGL Verify Loop
 
-English | [简体中文](README.zh-CN.md)
+An AI-first development and verification platform for LVGL. AI writes the C code, AI verifies it, and humans only provide intent and feedback.
 
-**AI writes LVGL. AI verifies it. Humans only provide intent and feedback.**
+## Overview
 
-An AI-first development and verification platform for LVGL: a real headless LVGL host, virtual input and virtual time, frame-by-frame session evidence, a web inspector, and device paths for real SiFli and ESP32-C6 hardware.
+This project enables a complete AI-driven workflow for developing LVGL user interfaces:
 
-## Why AI-first
+- **AI writes LVGL C code** based on human intent
+- **AI runs scenarios** to test the code
+- **AI reads session evidence** (frames, timeline, logs)
+- **AI judges** whether the work meets acceptance criteria
 
-In the age of AI, code is cheap. Writing C is no longer the bottleneck; what is missing is a loop that lets AI see the real screen and obtain verifiable evidence.
+Humans provide intent, reference visuals, and acceptance criteria—but never write code.
 
-So this project hands LVGL development to AI: AI reads intent, writes C, runs scenarios, reads the evidence, and accepts its own work. Humans do not write code; they provide intent, give feedback on the screen, and set the acceptance criteria.
+## Key Features
 
-Everything is AI-first: AI sits in the developer's seat, while humans move up to intent and feedback.
+### Headless LVGL Engine
+A real headless LVGL host that runs without a display, making it ideal for automated testing and CI/CD pipelines.
 
-| Human | AI |
-| --- | --- |
-| Provide intent and reference visuals | Write LVGL C code |
-| Circle problems on the screen (annotations, whiteboards) | Run scenarios; read frames, timeline, diffs and logs |
-| Define acceptance criteria and make the final call | Self-check against the criteria, self-accept, then fix |
+### Multi-Version Support
+One codebase, six LVGL versions: 9.6, 9.5, 9.4, 9.1, 8.4, and 8.3.
 
-It suits teams that write LVGL UIs with AI and need replayable evidence; it is not built for GPU performance analysis.
+### Web Inspector
+Live preview and replay at `127.0.0.1:8765` with:
+- Frame-by-frame session replay
+- Annotation tools for human feedback
+- Whiteboards for sketching flows and intent
 
-## What it does
+### Session Evidence
+Every run produces comprehensive evidence:
+- Full PNG frames
+- Timeline with input events
+- Per-frame diffs showing changed regions
+- Runtime logs from user C code
 
-### Default intro: the LVGL Verify Loop console
+### Real Hardware Support
+- **SiFli SF32LB52x** (Huangshan Pai) via export chain
+- **ESP32-C6** (Waveshare ESP32-C6-LCD-1.47) via Arduino bring-up
 
-`user/app/intro/` is the skill's default app and default template: an 800×600 showcase assembled from real session snapshots (`user/scenarios/intro.json`).
+## Quick Start
 
-### The AI loop: edit C → run a scenario → read evidence → judge
+### Install from Release
 
-AI edits `user/app/**/*.c` directly, then builds and plays a scenario with one command:
+Download from [GitHub Releases](https://github.com/ZEQUAN-LIANG/lvgl-for-ai/releases) or [Gitee Releases](https://gitee.com/liang-zequan/lvgl-for-ai/releases):
+
+- `lvgl-verify-loop-0.2.2-full-win64.zip` - All six LVGL versions + viewer
+- `lvgl-verify-loop-0.2.2-full-sifli-win64.zip` - Above + SiFli tools
+
+Requires Python 3.9+ on PATH.
+
+### Run a Scenario
 
 ```bash
 python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/coffee.json --json
 ```
 
-stdout is a single line of JSON pointing to a session; the session contains full PNG frames, the timeline, per-frame diffs and the engine log. AI reads this evidence against the human-provided acceptance criteria, then decides whether to change anything. The tool never outputs pass/fail; acceptance criteria come from humans.
+Output is a single JSON line with the session directory.
 
-There is no object tree, `inspect`, property read or `set`: exact internal state is printed to `engine.log` by user C code, and becomes part of the evidence too.
-
-### Web inspector: live preview, replay, annotations, whiteboards
+### Open Web Inspector
 
 ```bash
 python -I console/entrypoints/serve.py --open
 ```
 
-Fixed at `127.0.0.1:8765`. The page shows frames from the real LVGL runtime, either live or replayed from a recorded session; on the right is the annotation tool, where humans circle problems and write a note, saved as an annotation.
+Fixed at `http://127.0.0.1:8765`.
 
-Whiteboards support single-frame, time-range and global scopes — good for sketching flows and explaining intent; every whiteboard requires text or labels, so images and words reach AI together.
-
-AI reads these materials directly:
-
-- Annotations and whiteboards: frame numbers, bboxes, ranges, text and labels in `annotations.json` and `whiteboards.json`;
-- User code: `user/app/**/*.c` is the only source of truth; widget creation, `lv_obj_add_event_cb` bindings and state live in C;
-- Run trace: `timeline.ndjson` records the object name and class hit by each input (`hit` / `hit_class`), and `frame_diffs.ndjson` records changed bboxes.
-
-With the three aligned, AI can tell which code created a widget, which callback an event is bound to, who was hit by an input, and which area changed afterwards — then modify the code based on the annotations and whiteboards.
-
-### Multi-version verification: one app, six LVGL versions
-
-The same `apps` and the same scenario run on LVGL 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3, selected with `--lvgl <version>`. Cross-version comparison covers event semantics and the set of session files, not pixels.
-
-Device apps for the SiFli export path are written against the LVGL 9.4 baseline; that export only checks compatibility and rejects 9.5/9.6-only APIs. The ESP32-C6 Arduino path uses LVGL 9.6.
-
-### Real hardware: host verification, then SiFli export or ESP32-C6 bring-up
-
-Two boards are wired today: Huangshan Pai (SiFli SF32LB52x) through the SiFli export chain, and Waveshare ESP32-C6-LCD-1.47 through the Arduino bring-up path.
+## From Source
 
 ```bash
-python -I chip-adapt/sifli/export.py sift_watch --dry-run
-python -I chip-adapt/sifli/host/cli.py build --app sift_watch --actor ai --json
-python -I chip-adapt/sifli/host/cli.py flash --app sift_watch --actor ai --json
-```
+git clone https://gitee.com/liang-zequan/lvgl-for-ai.git
+cd lvgl-for-ai
 
-The shared source stays in `user/app/`; export copies app sources against the LVGL 9.4 baseline. Without a board, you can only stop at host verification and an export dry-run — never claim the device is verified.
-
-Huangshan Pai (SiFli SF32LB52x, board `sf32lb52-lchspi-ulp`) in real use; the desktop serial and flashing host lives in `chip-adapt/sifli/host/`. The board's screen is 390×450; apps built for other sizes need layout adjustments:
-
-<p align="center"><img src="docs/media/huangshanpai.gif" width="280"></p>
-
-ESP32-C6 is supported through the Arduino bring-up path in `chip-adapt/esp32/`. The `perf_monitor` app runs on a Waveshare ESP32-C6-LCD-1.47 (172×320 ST7789) with serial portrait/landscape switching, a host control page at `/perf/`, and a tkinter desktop panel. Monitoring defaults to 0.3 s, and the exporter/compiler paths are incremental:
-
-```bash
-python -I chip-adapt/esp32/arduino/build.py build
-python -I chip-adapt/esp32/arduino/build.py flash --port COMx
-python -I chip-adapt/esp32/host/host.py serve --port COMx --baud 115200 --open
-python -I chip-adapt/esp32/host/perf/perf_gui.py
-```
-
-The board is verified on hardware (USB Serial/JTAG, esptool flash, and a `SHOT` framebuffer dump). The formal ESP-IDF exporter is still on the roadmap; see `chip-adapt/esp32/README.md` and `chip-adapt/esp32/docs/arduino-perf-monitor.md`.
-
-<p align="center"><img src="docs/media/esp32-c6-perf-monitor.gif" width="260"></p>
-
-Two more points: prebuilt LVGL libraries let you run with just GCC installed (`--prebuilt`); the tools are independent of harnesses like Claude Code and Cursor and are not tied to any model.
-
-## Install the skill
-
-The release zip **is** the skill. Download one of the two 0.2.2 bundles from
-[GitHub Releases](https://github.com/ZEQUAN-LIANG/lvgl-for-ai/releases) or
-[Gitee Releases](https://gitee.com/liang-zequan/lvgl-for-ai/releases):
-
-- `lvgl-verify-loop-0.2.2-full-win64.zip`: all six LVGL versions and the viewer.
-- `lvgl-verify-loop-0.2.2-full-sifli-win64.zip`: the same bundle plus the SiFli tools.
-
-Python 3.9+ must be on PATH (`python`/`pythonw`, or `py`/`pyw`); the package
-does not bundle Python. Running the bundled apps needs no CMake or GCC.
-
-Install it as a personal Claude Code skill with one command (Windows PowerShell):
-
-```powershell
-Expand-Archive .\lvgl-verify-loop-0.2.2-full-win64.zip "$env:USERPROFILE\.claude\skills"
-```
-
-The zip contains a single top-level `lvgl-verify-loop\` folder, so this creates
-`%USERPROFILE%\.claude\skills\lvgl-verify-loop\SKILL.md`. For a single project,
-extract into that project's `.claude\skills\` folder instead. You can also
-right-click the zip, choose **Extract All**, and use the same destination.
-
-Restart Claude Code, then run:
-
-```text
-/lvgl-verify-loop
-```
-
-Or simply describe the LVGL UI you want. The skill edits `user/app/**/*.c`, runs
-scenarios and reads the session evidence. The bundle carries the prebuilt LVGL libraries and
-prebuilt engines for 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3, and the viewer. Running
-them needs only Python 3.9+; no CMake, administrator rights or version
-downloads. Rebuilding after the AI edits C needs GCC 15.2.0 (MinGW-w64 64-bit),
-matching the compiler recorded in the bundled LVGL libraries. CMake and Ninja are only
-needed to build LVGL itself from source, which the release bundle does not do.
-
-Without an AI, open the extracted `lvgl-verify-loop` folder and double-click
-`bin\LVGL-AI-Viewer.exe` (or run `bin\lvgl.cmd serve`); with Python on PATH the
-browser opens `http://127.0.0.1:8765`.
-
-Open the extracted `lvgl-verify-loop` folder as the Claude Code workspace (or
-`cd` there first); the skill's commands are relative to that folder. If you
-installed into the skills directory:
-
-```bat
-cd "%USERPROFILE%\.claude\skills\lvgl-verify-loop"
-bin\lvgl.cmd run --scenario user\scenarios\intro.json --json
-```
-
-## From source
-
-```bash
-git clone https://gitee.com/liang-zequan/lvgl-for-ai.git lvgl-for-agent
-cd lvgl-for-agent
-
-# 1. Download and install LVGL 9.6 sources
+# Install LVGL 9.6 sources
 python -I scripts/fetch_lvgl.py --version 9.6 --repo-root .
 
-# 2. Download PNG encoder sources (zlib / libpng)
+# Install PNG encoder sources
 python -I scripts/fetch_png.py --repo-root .
 
-# 3. Run a scenario (the first run builds the engine; usually takes a few minutes)
+# Run a scenario
 python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/settings.json
 
-# 4. Open the web inspector
+# Open web inspector
 python -I console/entrypoints/serve.py --open
 ```
 
-On success the exit code is `0`, the last stdout line is the session directory, and `manifest.json` has `status: ok`. The default `--source auto` tries GitHub codeload first and the Gitee mirror second; the Gitee LVGL mirror can return HTML/400, so use the default or a version pack when that happens.
+## Session Evidence Structure
 
-Working from source? Open this repository in Claude Code; `CLAUDE.md` covers the
-repo workflow and `SKILL.md` is the skill entry. No separate skill install
-is needed.
-
-## Reading the evidence
-
-A session is the `user/sessions/<id>/` directory:
-
-```text
+```
 user/sessions/<id>/
   manifest.json          # status, app, resolution, frame count
   timeline.ndjson        # input events, frame spans, marks
   frame_diffs.ndjson     # per-frame changed bboxes
-  frames/                # full PNGs; only frames with visual changes
+  frames/                # full PNGs (only changed frames)
   snapshots/             # named snapshots
-  engine.log             # runtime log; exact state is printf'd here by C code
-  build.log              # actual build commands and compiler output
+  engine.log             # runtime log from user C code
+  build.log              # build commands and compiler output
   annotations.json       # human annotations (optional)
 ```
 
-stdout with `--json` is a single line, e.g. (key fields only, paths simplified):
-
-```json
-{"session_id": "20261114-095536-1d9d", "session_dir": "user/sessions/20261114-095536-1d9d", "status": "ok", "app": "coffee", "display": {"width": 800, "height": 600}, "frame_count": 305, "error": null}
-```
-
-
-AI conclusions must point at these files. `status: ok` means the session ended normally; whether the UI meets the acceptance criteria is decided by humans.
-
-## Versions and real hardware
-
-- Host default is LVGL 9.6, for daily preview and evidence collection; the package's `intro` app targets 9.4+.
-- The 0.2.2 release publishes exactly two zips: `full` contains all six LVGL versions and their engines; `full-sifli` adds the SiFli tools. Both require Python 3.9+ on the host and do not bundle it; there is no per-version download step.
-- The bundled LVGL libraries were exported with GCC 15.2.0. Rebuilding user C through the prebuilt path requires the same GCC version; CMake/Ninja are only for LVGL source builds.
-- Device apps are written against the LVGL 9.4 baseline; export only checks compatibility and never rewrites sources.
-- Inspect versions or use source installation only for a custom build:
-
-  ```bash
-  python -I scripts/install_version.py --list
-  python -I scripts/install_version.py --lvgl 9.4 --mode source
-  ```
-
-  Source mode needs CMake/Ninja/GCC. A scenario may set `"lvgl": "9.4"`;
-  `--lvgl` wins over the scenario, then `LVGL_VERIFY_LOOP_LVGL_VERSION`.
-- SiFli is only in `full-sifli`: the self-developed export/host layer,
-  `SiFli-Host.exe`, pyserial/xterm, `sift_watch` source and an exported example.
-  It does not include the SiFli SDK, ARM toolchain, sftool or firmware.
-  SDK, toolchain and sftool installation are in `chip-adapt/vendor/README.md`.
-- ESP32-C6 support lives in the development tree (`chip-adapt/esp32/`); the
-  current release zips do not bundle the Arduino exporter, host or firmware.
-
 ## Requirements
 
-| Dependency | Requirement | Notes |
-| --- | --- | --- |
-| Python | 3.9+ on PATH; not bundled | Tool layer uses the standard library; asset conversion uses bundled FreeType/pypng, no `pip install` or Node.js; the engine also links the bundled FreeType 2.13.2 with `LV_USE_FREETYPE=1` on every version; always run with `python -I` |
-| GCC | MinGW-w64 64-bit, 15.2.0 | Only when rebuilding user C; must match the bundled LVGL manifest. The prebuilt engine does not need it |
-| CMake | ≥ 3.20 | LVGL source builds only; not needed for the release bundles |
-| Ninja | any recent version | LVGL source builds only; not needed for the release bundles |
-| curl | any recent version | Only for downloading LVGL / PNG sources |
-| Disk | ~1 GB free | LVGL sources and build artifacts |
+| Dependency | Notes |
+|------------|-------|
+| Python 3.9+ | On PATH; not bundled |
+| GCC 15.2.0 | MinGW-w64 64-bit; only for rebuilding user C |
+| CMake ≥3.20 | LVGL source builds only |
+| Ninja | LVGL source builds only |
+| curl | For downloading LVGL/PNG sources |
 
-On Windows, MSYS2 UCRT64 is recommended. Full installation steps, PATH setup, first-run notes and common errors are in `console/README.md`.
+## Documentation
 
-## More docs
-
-- `console/README.md`: tool usage, environment setup, common errors, tests, lint and formatting.
-- `user/app/GUIDE.md`: writing user apps.
-- `docs/skill/`: the skill contract (`SKILL.md`) and per-version `api-nav/`.
-- `chip-adapt/sifli/README.md` / `chip-adapt/docs/sifli.html`: SiFli adaptation layer and capabilities.
-- `chip-adapt/esp32/README.md`: ESP32-C6 board setup, host control page, desktop GUI and Arduino bring-up.
-- `chip-adapt/esp32/docs/arduino-perf-monitor.md`: ST7789 + LVGL rotation, flashing and `SHOT` verification notes.
-- `chip-adapt/host/README.md`: shared host layer (jobs, HTTP/SSE, time helpers) and the standalone flasher page used by the ESP32 (esptool) and SiFli (sftool) hosts, including the HTTP contract, firmware sources and troubleshooting.
-- `CONTEXT.md`: domain glossary.
-- `CLAUDE.md`: repository working notes for AI coding agents.
-- `SKILL.md` at the release package root (source: `docs/skill/SKILL.md`): the AI entry contract and agent workflow for the installed skill.
+- `console/README.md` - Tool usage and environment setup
+- `user/app/GUIDE.md` - Writing user applications
+- `chip-adapt/sifli/README.md` - SiFli adaptation layer
+- `chip-adapt/esp32/README.md` - ESP32-C6 board setup
+- `CONTEXT.md` - Domain glossary
 
 ## License
 
-Project source is MIT; see `LICENSE`. Full license texts for LVGL, lodepng, zlib, libpng, freetype-py, FreeType, pypng and the lv_font_conv algorithm reference are in `docs/licenses/`.
+MIT licensed. See `LICENSE` for details. Third-party licenses in `docs/licenses/`.
