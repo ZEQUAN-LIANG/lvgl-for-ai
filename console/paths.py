@@ -7,7 +7,10 @@ sources under ``<repo>/apps`` and scenario JSON under ``<repo>/scenarios``.
 Resolve from ``__file__`` so imports work from any working directory.
 
 Build output lives under :data:`REPO_ROOT`, not inside the tool directory:
-``build/`` belongs to :data:`REPO_ROOT`. Third-party license texts live in
+``build/`` belongs to :data:`REPO_ROOT`. :func:`build_root_from_env` lets
+``LVGL_VERIFY_LOOP_BUILD_ROOT`` move it elsewhere so throwaway builds (tests)
+land in a temporary tree; callers pass the result to :func:`build_dir_for`,
+which stays a pure path computation. Third-party license texts live in
 ``licenses/``.
 """
 
@@ -112,6 +115,14 @@ def sessions_root_from_env() -> Path:
     return DEFAULT_SESSIONS_ROOT
 
 
+def build_root_from_env() -> Path:
+    """Resolve the build root, honouring ``LVGL_VERIFY_LOOP_BUILD_ROOT``."""
+    override = os.environ.get("LVGL_VERIFY_LOOP_BUILD_ROOT")
+    if override:
+        return Path(override).expanduser().resolve()
+    return BUILD_ROOT
+
+
 def entrypoint_path(name: str) -> Path:
     """Return one of the package-facing entry scripts."""
     return CONSOLE_ROOT / "entrypoints" / name
@@ -124,14 +135,22 @@ def entrypoint_command(name: str) -> str:
 
 
 def build_dir_for(
-    version: str, user_app_dir: str | Path | None = None
+    version: str,
+    user_app_dir: str | Path | None = None,
+    *,
+    build_root: str | Path | None = None,
 ) -> Path:
     token = version_token(version)
+    root = (
+        BUILD_ROOT
+        if build_root is None
+        else Path(build_root).expanduser().resolve()
+    )
     if user_app_dir is None:
-        return BUILD_ROOT / f"lvgl_{token}"
+        return root / f"lvgl_{token}"
     app_dir = Path(user_app_dir).expanduser().resolve()
     if app_dir == APPS_DIR.resolve():
-        return BUILD_ROOT / f"lvgl_{token}"
+        return root / f"lvgl_{token}"
     digest = hashlib.sha256(str(app_dir).encode("utf-8")).hexdigest()[:8]
     try:
         relative = app_dir.relative_to(APPS_DIR.resolve())
@@ -141,7 +160,7 @@ def build_dir_for(
     label = (
         re.sub(r"[^0-9A-Za-z]+", "_", label_source).strip("_")[:24] or "app"
     )
-    return BUILD_ROOT / f"lvgl_{token}_export_{label}_{digest}"
+    return root / f"lvgl_{token}_export_{label}_{digest}"
 
 
 def version_token(version: str) -> str:

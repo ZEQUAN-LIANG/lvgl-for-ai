@@ -67,7 +67,7 @@ bin\lvgl.cmd assets font --app spectrum --font C:\Windows\Fonts\consola.ttf ^
 ```
 
 封面层来自已提交的 `covers_src/` PNG；`spectrum_covers.h` 是旧生成器产出的合并头，已冻结，
-不再由内置转换器重建。`assets.json` 的 `spectrum_covers.source_hashes` 记录全部 63 个源文件
+不再由内置转换器重建。它由已删除的生成器产出，源文件保留在 `covers_src/`。
 的 SHA256，改动 PNG 时需要同步更新。单层预览可用内置转换器生成独立头：
 
 ```bat

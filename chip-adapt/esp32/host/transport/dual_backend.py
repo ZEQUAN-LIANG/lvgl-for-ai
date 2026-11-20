@@ -111,8 +111,6 @@ class DualBackend(SerialBackend):
             self.config.get("ble_name") or DEFAULT_BLE_NAME
         )
 
-    # ------------------------------------------------------------------ status
-
     def status(self) -> dict[str, Any]:
         with self._lock:
             ble = self._ble.status() if self._ble is not None else {}
@@ -140,8 +138,6 @@ class DualBackend(SerialBackend):
 
     def has_link(self) -> bool:
         return self.status()["active"] != "none"
-
-    # ------------------------------------------------------------------- open
 
     def open(
         self,
@@ -180,8 +176,6 @@ class DualBackend(SerialBackend):
         thread = threading.Thread(target=target, name=name, daemon=True)
         thread.start()
         self._threads.append(thread)
-
-    # --------------------------------------------------------------- serial
 
     def _serial_loop(self) -> None:
         backoff = _MIN_BACKOFF_S
@@ -250,8 +244,6 @@ class DualBackend(SerialBackend):
             return self._explicit_serial
         return preferred_serial_port()
 
-    # ------------------------------------------------------------------ ble
-
     def _ble_loop(self) -> None:
         backoff = _MIN_BACKOFF_S
         while not self._stop.is_set():
@@ -305,8 +297,6 @@ class DualBackend(SerialBackend):
             except Exception:
                 pass
 
-    # ----------------------------------------------------------------- io
-
     def read(self, max_bytes: int = 4096) -> bytes:
         _ = max_bytes
         try:
@@ -328,9 +318,8 @@ class DualBackend(SerialBackend):
                 except SerialError as exc:
                     with self._lock:
                         self._ble_error = str(exc)
-                    # Only fall back before any bytes reached the BLE peer.
-                    # A failed multi-chunk write could leave a partial line;
-                    # never replay that same line on UART.
+                    # Fall back only before any bytes reached the peer: a partial
+                    # multi-chunk write must not be replayed on UART.
                     if exc.code != "ble_disconnected":
                         raise
             with self._lock:
@@ -345,8 +334,6 @@ class DualBackend(SerialBackend):
                         self._serial_open = False
                     raise
             raise SerialError("no active UART or BLE link", code="no_link")
-
-    # -------------------------------------------------------------- lifecycle
 
     def reset(self, pulse_ms: int = 100) -> None:
         with self._lock:

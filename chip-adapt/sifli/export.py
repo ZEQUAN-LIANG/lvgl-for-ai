@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 from typing import Any, Sequence
@@ -24,7 +23,7 @@ for _path in (CONSOLE_ROOT, ADAPTER_DIR):
 
 import layout
 from appmgr import common, discovery
-from asset_plan import AssetPlan, ExportError, plan_assets
+from asset_plan import AssetPlan, ExportError, plan_assets, profile_path
 
 ADAPTER_SCHEMA = "lvgl-verify-loop-chip-adapter-v1"
 EXPORT_SCHEMA = "lvgl-verify-loop-export-v1"
@@ -102,7 +101,12 @@ def export_app(
         templates_dir=templates_dir,
         lvgl_version=str(adapter["lvgl_version"]),
     )
-    asset_plan = plan_assets(source_dir, adapter, ezip_tool=ezip_tool)
+    asset_plan = plan_assets(
+        source_dir,
+        adapter,
+        ezip_tool=ezip_tool,
+        profile=profile_path(app, root),
+    )
     plan.update(asset_plan.files)
     plan["src/app/app.c"] = _entry_source(
         app_symbol, app=app, has_assets=asset_plan.has_assets
@@ -126,7 +130,7 @@ def export_app(
     commands = [
         f"cd {destination / 'project'} && scons --board={adapter['board']} -j8",
         (
-            f'LVGL_VERIFY_LOOP_USER_APP_DIR="{destination / "src" / "app"}" '
+            f'LVGL_VERIFY_LOOP_APPS_DIR="{destination / "src" / "app"}" '
             f"python -I console/entrypoints/cli.py --lvgl {adapter['lvgl_version']} "
             f"--scenario user/scenarios/{app}.json"
         ),
@@ -185,25 +189,6 @@ def _entry_symbol(root: Path, app: str) -> str:
     for entry in discovery.scan_apps(apps_dir)[0]:
         if entry.name == app:
             return entry.entry
-    header = apps_dir / app / f"{app}.h"
-    try:
-        header_text = header.read_text(encoding="utf-8-sig")
-    except OSError:
-        header_text = ""
-    symbol = f"{app}_create"
-    if re.search(rf"\bvoid\s+{re.escape(symbol)}\s*\(", header_text):
-        return symbol
-    for source in sorted((apps_dir / app).glob("*.h")):
-        try:
-            text = source.read_text(encoding="utf-8-sig")
-        except OSError:
-            continue
-        match = re.search(
-            r"\bvoid\s+([A-Za-z_][A-Za-z0-9_]*_create)\s*\(\s*void\s*\)",
-            text,
-        )
-        if match:
-            return match.group(1)
     raise ExportError(
         "app_entry_missing",
         f'app "{app}" has no app.json entry and no discoverable create function',
@@ -312,7 +297,8 @@ def _export_readme(app: str, app_symbol: str, lvgl_version: str) -> str:
         "\n"
         f"入口 `{app_symbol}`，由 `src/app/app.c` 的 `app_create()` 调用；生成入口先调 `app_assets_init()`。\n"
         f"应用源码按 LVGL {lvgl_version} 基线原样复制；应用入口是 `void <app>_create(void)`，内部用 `lv_screen_active()`。\n"
-        "资源角色、PNG 宽高与缓存配置记录在 `export.json`，资源声明在 `src/app/<app>/assets.json`。\n"
+        "资源角色、PNG 宽高与缓存配置记录在 `export.json`，导出声明在 "
+        "`chip-adapt/sifli/apps/<app>.json`。\n"
         "\n"
         "## 构建\n"
         "\n"
@@ -324,7 +310,7 @@ def _export_readme(app: str, app_symbol: str, lvgl_version: str) -> str:
         "## 运行时验证\n"
         "\n"
         "```bash\n"
-        f'LVGL_VERIFY_LOOP_USER_APP_DIR="chip-adapt/exports/{app}/src/app" '
+        f'LVGL_VERIFY_LOOP_APPS_DIR="chip-adapt/exports/{app}/src/app" '
         f"python -I console/entrypoints/cli.py --lvgl {lvgl_version} "
         f"--scenario user/scenarios/{app}.json\n"
         "```\n"

@@ -77,7 +77,7 @@ def _add_common(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--manifest",
-        help="asset manifest path (default: <app>/assets.json when --app is given)",
+        help="asset manifest path (default: user/.cache/assets/<app>.json when --app is given)",
     )
 
 
@@ -210,6 +210,17 @@ def _resolve_output(
     return (app_dir / f"{name}.h").resolve()
 
 
+def manifest_path(repo_root: Path, app: str) -> Path:
+    """Default replay log for *app*.
+
+    The log records what each generated header was built from.  It is derived
+    data, so it lives under ``user/.cache/`` instead of next to the sources;
+    the generated ``*.h`` files carry the same facts in their header comment.
+    """
+
+    return repo_root / "user" / ".cache" / "assets" / f"{app}.json"
+
+
 def _resolve_manifest(
     args: argparse.Namespace,
     repo_root: Path,
@@ -222,7 +233,7 @@ def _resolve_manifest(
             manifest = repo_root / manifest
         return manifest.resolve()
     if app_dir is not None and not dry_run:
-        return app_dir / "assets.json"
+        return manifest_path(repo_root, app_dir.name)
     return None
 
 

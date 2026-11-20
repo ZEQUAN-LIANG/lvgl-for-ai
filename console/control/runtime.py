@@ -582,10 +582,8 @@ class Runtime:
         env = os.environ.copy()
         if self.app is not None:
             env["LVGL_VERIFY_LOOP_DEMO"] = self.app
-        # A multi-version release stores the FreeType DLL once under
-        # ``dist/lvgl/common/lib`` instead of next to every engine.  Windows finds
-        # it through PATH for ``--no-build`` runs; rebuilt engines also get a
-        # local copy from ``install_runtime_dlls``.
+        # A multi-version release shares one FreeType DLL in
+        # ``dist/lvgl/common/lib``; Windows finds it through PATH.
         shared_lib = paths.shared_sdk_lib_dir()
         if shared_lib is not None:
             env["PATH"] = str(shared_lib) + os.pathsep + env.get("PATH", "")

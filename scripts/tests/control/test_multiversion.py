@@ -24,9 +24,8 @@ EXPECTED_ADAPTER = {
     version: "8x" if version.startswith("8.") else "9x" for version in VERSIONS
 }
 
-# LVGL 8.3/8.4 call the button class "lv_btn" and 9.1 reports the short "btn";
-# 9.4+ uses "lv_button". The objects and events are the same, so the matrix
-# compares the canonical 9.4+ spelling.
+# 8.3/8.4 spell the button class "lv_btn" and 9.1 "btn"; the matrix compares
+# the canonical 9.4+ "lv_button".
 CLASS_ALIASES = {"btn": "lv_button", "lv_btn": "lv_button", "obj": "lv_obj"}
 
 
@@ -96,6 +95,33 @@ class VersionPathRulesTest(unittest.TestCase):
                 paths.lvgl_src_for("8.4-patched"),
                 paths.LVGL_SRC_ROOT / "8.4-patched",
             )
+
+    def test_build_root_override_relocates_every_build_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            self.assertEqual(
+                paths.build_dir_for("9.6", build_root=root),
+                root / "lvgl_9_6",
+            )
+            self.assertEqual(
+                paths.build_dir_for("9.6", paths.APPS_DIR, build_root=root),
+                root / "lvgl_9_6",
+            )
+            exported = paths.build_dir_for(
+                "9.6", root / "elsewhere" / "src" / "app", build_root=root
+            )
+            self.assertEqual(exported.parent, root)
+
+    def test_build_root_from_env_reads_the_override(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(
+                os.environ, {"LVGL_VERIFY_LOOP_BUILD_ROOT": tmp}
+            ):
+                self.assertEqual(
+                    paths.build_root_from_env(), Path(tmp).resolve()
+                )
+        with mock.patch.dict(os.environ, {"LVGL_VERIFY_LOOP_BUILD_ROOT": ""}):
+            self.assertEqual(paths.build_root_from_env(), paths.BUILD_ROOT)
 
 
 class MultiVersionMatrixTest(unittest.TestCase):
@@ -201,9 +227,8 @@ class MultiVersionMatrixTest(unittest.TestCase):
         )
 
     def test_reference_png_decodes_on_every_version(self) -> None:
-        # 9.x lodepng returns a draw buffer and 8.x returns raw RGBA; a broken
-        # decode would either crash or produce nonzero diffs against an
-        # identical run.
+        # 9.x lodepng returns a draw buffer and 8.x raw RGBA; a broken decode
+        # would crash or diff against an identical run.
         for version in VERSIONS:
             with (
                 self.subTest(version=version),

@@ -409,9 +409,8 @@ def _uv_lock_command(
     config: dict[str, Any],
     board: str,
 ) -> list[str] | None:
-    # The SDK ships a uv lock with SCons and its build dependencies.  Using
-    # `uv run --project` gives a self-contained build environment without
-    # requiring the user to activate export.ps1 first.
+    # ``uv run --project`` uses the SDK's uv lock, so the build needs no
+    # activated export.ps1 environment.
     sdk = Path(config.get("sdk_root", ""))
     lock_dir = sdk / "tools" / "locks" / "default"
     uv = shutil.which("uv")

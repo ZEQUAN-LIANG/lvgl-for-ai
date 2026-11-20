@@ -44,7 +44,10 @@ class SifliExportTest(unittest.TestCase):
         self.root = Path(self._tmp.name)
         self.user_app = self.root / "user" / "app"
         self.user_app.mkdir(parents=True)
-        for name in ("app.c", "app.h", "lvgl_compat.h"):
+        self.profiles = self.root / "chip-adapt" / "sifli" / "apps"
+        self.profiles.mkdir(parents=True)
+        for name in ("app.c", "app.h", "app_registry_lookup.h",
+                     "lvgl_compat.h"):
             shutil.copy2(REPO / "user" / "app" / name, self.user_app / name)
         watch = self.user_app / "sift_watch"
         watch.mkdir()
@@ -64,7 +67,7 @@ class SifliExportTest(unittest.TestCase):
         for name, (width, height) in dimensions.items():
             write_png(assets / f"{name}.png", width, height)
         manifest = {
-            "schema": "lvgl-verify-loop-assets-v1",
+            "schema": "lvgl-verify-loop-sifli-app-v1",
             "local_header": "watch_assets.h",
             "assets": {
                 name: {
@@ -84,7 +87,7 @@ class SifliExportTest(unittest.TestCase):
                 "lv_image_header_cache_cnt": 0,
             },
         }
-        (watch / "assets.json").write_text(
+        (self.profiles / "sift_watch.json").write_text(
             json.dumps(manifest, ensure_ascii=False), encoding="utf-8"
         )
         local_header = "\n".join(
@@ -123,7 +126,7 @@ class SifliExportTest(unittest.TestCase):
         return sifli_export.export_app(self.root, *args, **kwargs)
 
     def _declare(self, name, **overrides):
-        manifest = self.user_app / "sift_watch" / "assets.json"
+        manifest = self.profiles / "sift_watch.json"
         payload = json.loads(manifest.read_text(encoding="utf-8"))
         spec = {
             "file": f"{name}.png",
@@ -219,6 +222,20 @@ class SifliExportTest(unittest.TestCase):
         self.assertEqual(len(cli_commands), 1)
         self.assertIn("--lvgl 9.4", cli_commands[0])
 
+    def test_runtime_verification_points_the_tool_at_the_exported_copy(self):
+        # The variable name must match what the control layer reads
+        # (paths.apps_dir_from_env); a near-miss verifies the wrong sources.
+        result = self._export("sift_watch", output_dir=self.output)
+        readme = (self.output / "README.md").read_text(encoding="utf-8")
+        commands = [
+            command
+            for command in result["commands"]
+            if "console/entrypoints/cli.py" in command
+        ]
+        for text in (readme, *commands):
+            self.assertIn("LVGL_VERIFY_LOOP_APPS_DIR=", text)
+            self.assertNotIn("USER_APP_DIR", text)
+
     def test_default_output_uses_exports_zone(self):
         exports = self.root / "chip-adapt" / "exports"
         with mock.patch.object(sifli_export.layout, "EXPORTS_DIR", exports):
@@ -245,7 +262,7 @@ class SifliExportTest(unittest.TestCase):
         sdk_branch, local_branch = header.split("#else", 1)
         local_header = (app_dir / "watch_assets.h").read_text(encoding="utf-8")
         manifest = json.loads(
-            (app_dir / "assets.json").read_text(encoding="utf-8")
+            (self.output / "export.json").read_text(encoding="utf-8")
         )
         dimensions = {
             "watch_bg": (390, 450),
@@ -254,9 +271,12 @@ class SifliExportTest(unittest.TestCase):
             "watch_minute": (8, 136),
             "watch_second": (8, 160),
         }
-        self.assertEqual(set(manifest["assets"]), set(dimensions))
+        self.assertEqual(
+            {record["name"] for record in manifest["assets"]}, set(dimensions)
+        )
+        by_name = {record["name"]: record for record in manifest["assets"]}
         for name, (width, height) in dimensions.items():
-            spec = manifest["assets"][name]
+            spec = by_name[name]
             macro = name.upper()
             self.assertRegex(sdk_branch, rf"(?m)^#define {macro}_W {width}$")
             self.assertRegex(sdk_branch, rf"(?m)^#define {macro}_H {height}$")
@@ -376,7 +396,7 @@ class SifliExportTest(unittest.TestCase):
         return captured
 
     def test_ezip_transform_is_rejected(self):
-        manifest = self.user_app / "sift_watch" / "assets.json"
+        manifest = self.profiles / "sift_watch.json"
         payload = json.loads(manifest.read_text(encoding="utf-8"))
         payload["assets"]["watch_bg"]["transform"] = "rotate"
         manifest.write_text(

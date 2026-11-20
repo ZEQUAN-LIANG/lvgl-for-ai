@@ -141,10 +141,6 @@ static uint32_t net_norm(uint32_t kib_s, uint32_t full_kib_s)
     return value > 100u ? 100u : value;
 }
 
-/* ------------------------------------------------------------------ */
-/* drawing primitives                                                 */
-/* ------------------------------------------------------------------ */
-
 static void draw_line(lv_layer_t * layer, int x1, int y1, int x2, int y2,
                       uint32_t color, int width, lv_opa_t opa, int dash_width,
                       int dash_gap)
@@ -198,10 +194,6 @@ static void draw_dot(lv_layer_t * layer, int cx, int cy, int radius,
     area.y2 = cy + radius;
     lv_draw_rect(layer, &dsc, &area);
 }
-
-/* ------------------------------------------------------------------ */
-/* charts                                                             */
-/* ------------------------------------------------------------------ */
 
 static void draw_cpu_chart(void)
 {
@@ -309,10 +301,6 @@ static void draw_net_chart(void)
     lv_canvas_finish_layer(s_ui.net_canvas, &layer);
     lv_obj_invalidate(s_ui.net_canvas);
 }
-
-/* ------------------------------------------------------------------ */
-/* UI builders                                                        */
-/* ------------------------------------------------------------------ */
 
 static lv_obj_t * make_label(lv_obj_t * parent, const char * text,
                              const lv_font_t * font, uint32_t color, int x,
@@ -655,10 +643,6 @@ static void build_footer(lv_obj_t * screen)
     app_obj_set_name(right, "perf_footer_right");
 }
 
-/* ------------------------------------------------------------------ */
-/* landscape builders — 320 x 172                                     */
-/* ------------------------------------------------------------------ */
-
 static void build_status_landscape(lv_obj_t * screen)
 {
     lv_obj_t * background = lv_obj_create(screen);
@@ -964,10 +948,6 @@ static void build_ui(bool landscape)
     s_screen = screen;
 }
 
-/* ------------------------------------------------------------------ */
-/* state rendering                                                    */
-/* ------------------------------------------------------------------ */
-
 static void update_state_labels(void)
 {
     char middle[24];
@@ -1231,10 +1211,6 @@ static void apply_sample(const perf_sample_t * sample, bool live)
     update_ui();
 }
 
-/* ------------------------------------------------------------------ */
-/* demo data                                                          */
-/* ------------------------------------------------------------------ */
-
 static void demo_sample(void)
 {
     perf_sample_t sample;
@@ -1299,10 +1275,6 @@ static void seed_history(void)
         s_cpu_hist[i] = (uint8_t)(43 + (i - 54));
     }
 }
-
-/* ------------------------------------------------------------------ */
-/* lifecycle                                                          */
-/* ------------------------------------------------------------------ */
 
 static void monitor_timer_cb(lv_timer_t * timer)
 {

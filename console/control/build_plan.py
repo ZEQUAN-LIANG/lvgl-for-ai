@@ -101,7 +101,11 @@ class BuildPlan:
         self.build_dir = (
             Path(build_dir)
             if build_dir is not None
-            else paths.build_dir_for(version, self.user_app_dir)
+            else paths.build_dir_for(
+                version,
+                self.user_app_dir,
+                build_root=paths.build_root_from_env(),
+            )
         )
         self.engine_dir = (
             Path(engine_dir) if engine_dir is not None else paths.ENGINE_DIR

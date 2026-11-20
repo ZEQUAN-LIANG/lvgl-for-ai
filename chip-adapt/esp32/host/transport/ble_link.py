@@ -98,8 +98,6 @@ class BleLink:
             self.config.get("read_timeout_ms", 50)
         )
 
-    # ------------------------------------------------------------------ status
-
     @property
     def ready(self) -> bool:
         return bool(self._ready and self._client is not None)
@@ -122,8 +120,6 @@ class BleLink:
             "subscribed": self._subscribed,
             "last_error": self._last_error,
         }
-
-    # ------------------------------------------------------------------- bleak
 
     def _load_bleak(self) -> Any:
         if self._bleak is not None:
@@ -170,8 +166,6 @@ class BleLink:
             raise SerialError(
                 "BLE event loop did not start", code="ble_loop_failed"
             )
-
-    # -------------------------------------------------------------------- open
 
     def open(
         self,
@@ -258,10 +252,8 @@ class BleLink:
             scanner = self._scanner_factory()
             return await scanner.discover(timeout=self._scan_timeout_s)
         assert self._bleak is not None
-        # Do not filter by service UUID at the OS layer: Windows sometimes
-        # reports a stale or differently encoded UUID in the advertisement
-        # (or omits it from the scan response), which made a live device
-        # invisible.  Match the name/UUID in ``_find_device`` instead.
+        # Filtering by service UUID at the OS layer hides live devices: Windows
+        # sometimes reports a stale UUID.  ``_find_device`` matches instead.
         return await self._bleak.BleakScanner.discover(
             timeout=self._scan_timeout_s,
             return_adv=True,
@@ -279,8 +271,6 @@ class BleLink:
             winrt={"use_cached_services": False},
         )
 
-    # --------------------------------------------------------------- callbacks
-
     def _on_notify(self, _sender: Any, data: bytearray) -> None:
         if data:
             self._queue.put(bytes(data))
@@ -290,8 +280,6 @@ class BleLink:
         self._subscribed = False
         self._disconnected = True
         self._last_error = "BLE disconnected"
-
-    # -------------------------------------------------------------------- read
 
     def read(self, max_bytes: int = 4096) -> bytes:
         _ = max_bytes
@@ -307,8 +295,6 @@ class BleLink:
 
     def _read_timeout_s(self) -> float:
         return max(0.001, self._read_timeout_ms / 1000.0)
-
-    # ------------------------------------------------------------------- write
 
     def write(self, data: bytes) -> int:
         payload = bytes(data)
@@ -338,8 +324,6 @@ class BleLink:
                     ) from exc
                 offset += len(chunk)
             return len(payload)
-
-    # ------------------------------------------------------------------- close
 
     def close(self) -> None:
         loop = self._loop

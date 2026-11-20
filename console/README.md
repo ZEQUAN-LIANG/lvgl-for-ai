@@ -80,6 +80,7 @@ AI 读取顺序：`session_index` 的 counts → annotations / whiteboards 索�
 | `LVGL_VERIFY_LOOP_LVGL_SRC` | 覆盖 LVGL 源码目录 |
 | `LVGL_VERIFY_LOOP_APPS_DIR` | 用户应用目录，默认 `user/app`；导出验证时可指向 `chip-adapt/exports/<app>/src/app` |
 | `LVGL_VERIFY_LOOP_SESSIONS_ROOT` | 会话根，默认 `user/sessions` |
+| `LVGL_VERIFY_LOOP_BUILD_ROOT` | 构建根，默认 `build`；把一次性构建（如测试）落到临时目录 |
 | `LVGL_VERIFY_LOOP_DEMO` | 默认应用名 |
 | `LVGL_VERIFY_LOOP_MAX_FRAMES` / `_MAX_LOG_BYTES` / `_ENCODE_BUDGET_BYTES` | 录制与日志上限 |
 | `LVGL_VERIFY_LOOP_ZLIB_SRC` / `_LIBPNG_SRC` | 覆盖 PNG 编码器源码路径 |

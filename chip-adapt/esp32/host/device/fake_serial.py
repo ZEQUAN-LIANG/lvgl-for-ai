@@ -80,8 +80,6 @@ class FakeSerialBackend(SerialBackend):
     def set_dtr(self, value: bool) -> None:
         _ = value
 
-    # ------------------------------------------------------------- protocol
-
     def _emit(self, text: str) -> None:
         self._queue.put(text.encode("utf-8", "replace"))
 

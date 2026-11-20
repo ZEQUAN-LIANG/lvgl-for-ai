@@ -1,20 +1,17 @@
 /**
- * @file adapter_internal.h
  * Internal seam between adapter_common.c and the LVGL 8.x / 9.x adapters.
  *
- * adapter_common.c owns everything that does not depend on the LVGL version:
- * the pointer/keypad/encoder state machines, hit reply buffers, framebuffer
- * to RGBA conversion, file IO, tick/timer forwarding, adapter_info and the
- * adapter lifecycle. Each adapter_<family>.c defines ``struct adapter`` with
- * ``adapter_common_t common`` as its first member and implements the
- * ``adapter_prim_*`` primitives below. The common file treats the opaque
- * adapter_t as that first member, so every version family must keep the
- * layout and enforce it with ``_Static_assert(offsetof(struct adapter,
- * common) == 0, ...)``.
+ * adapter_common.c owns everything version-independent: the pointer/keypad/
+ * encoder state machines, hit reply buffers, framebuffer to RGBA conversion,
+ * file IO, tick/timer forwarding, adapter_info and the adapter lifecycle. Each
+ * adapter_<family>.c defines ``struct adapter`` with ``adapter_common_t
+ * common`` as its first member and implements the ``adapter_prim_*``
+ * primitives; the common file treats the opaque adapter_t as that first
+ * member, so every family must keep the layout and enforce it with
+ * ``_Static_assert(offsetof(struct adapter, common) == 0, ...)``.
  *
- * This header deliberately stays free of LVGL and lodepng headers: the
- * version boundary is still "only adapter_9x.c / adapter_8x.c include the
- * framework".
+ * Deliberately free of LVGL and lodepng headers: only adapter_9x.c and
+ * adapter_8x.c may include the framework.
  */
 
 #ifndef ADAPTER_INTERNAL_H
@@ -78,10 +75,10 @@ typedef enum {
 size_t adapter_prim_state_size(void);
 
 /**
- * Create LVGL, the display and the standard virtual pointer, keypad and
- * encoder indevs (plus the real OS indevs when ``real_input`` is true). Sets
- * the adapter info strings and the ``has_*`` flags. Returns 0 on success;
- * on failure the caller runs adapter_prim_deinit().
+ * Create LVGL, the display and the standard virtual pointer, keypad and encoder
+ * indevs (plus the real OS indevs when ``real_input`` is true), and set the
+ * adapter info strings and ``has_*`` flags. Returns 0 on success; on failure
+ * the caller runs adapter_prim_deinit().
  */
 int adapter_prim_init(adapter_t * adapter, uint32_t width, uint32_t height,
                       bool real_input);
@@ -95,9 +92,9 @@ void adapter_prim_deinit(adapter_t * adapter);
 void adapter_prim_read(adapter_t * adapter, adapter_indev_kind_t kind);
 
 /**
- * Hit-test the point and copy the object name and class name into the
- * caller's buffers (empty strings when nothing was hit). 9.2+ has object
- * names; 8.x maps built-in class pointers to names.
+ * Hit-test the point and copy the object name and class name into the caller's
+ * buffers (empty strings when nothing was hit). 9.2+ has object names; 8.x
+ * maps built-in class pointers to names.
  */
 void adapter_prim_hit(adapter_t * adapter, int32_t x, int32_t y,
                       char * hit_name, size_t hit_name_size, char * hit_class,

@@ -38,18 +38,32 @@ class _TempRepo(unittest.TestCase):
     def _add_app(
         self, name: str, entry: str | None = None, *, default: bool = False
     ) -> Path:
+        """Create an app directory.
+
+        Without *entry* the directory follows the ``<name>_create``
+        convention and carries no metadata, like a plain app in the repo.
+        Passing *entry* writes a per-app ``app.json``, which is how an app
+        deviates from the convention.
+        """
+
         app_dir = self.root / "user" / "app" / name
         app_dir.mkdir(exist_ok=True)
-        (app_dir / discovery.METADATA_NAME).write_text(
-            json.dumps(
-                {
-                    "entry": entry or f"{name}_create",
-                    "default": default,
-                }
-            ),
-            encoding="utf-8",
-        )
+        if entry is not None:
+            (app_dir / discovery.METADATA_NAME).write_text(
+                json.dumps({"entry": entry}), encoding="utf-8"
+            )
+        else:
+            (app_dir / f"{name}.c").write_text(
+                f"void {name}_create(void) {{}}\n", encoding="utf-8"
+            )
+        if default:
+            self._set_default(name)
         return app_dir
+
+    def _set_default(self, name: str) -> None:
+        (self.root / "user" / "app" / discovery.METADATA_NAME).write_text(
+            json.dumps({"default": name}), encoding="utf-8"
+        )
 
     def _write_scenario(self, name: str, app: str) -> Path:
         path = self.root / "user" / "scenarios" / f"{name}.json"
@@ -134,56 +148,64 @@ class DiscoverySeamTest(_TempRepo):
         discovery.write_registry(apps_dir)
         self.assertIn(b'{"later", later_create}', target.read_bytes())
 
-    def test_default_and_alias_conflicts_are_rejected(self) -> None:
-        self._add_app("one", default=True)
+    def test_root_default_selects_the_first_app(self) -> None:
+        self._add_app("one")
         self._add_app("two", default=True)
-        with self.assertRaises(discovery.DiscoveryError) as raised:
-            discovery.discover_apps(self.root / "user" / "app")
-        self.assertEqual(raised.exception.code, "app_default_conflict")
+        entries = discovery.discover_apps(self.root / "user" / "app")
+        self.assertEqual([entry.name for entry in entries], ["two", "one"])
+        self.assertTrue(entries[0].default)
+        self.assertFalse(entries[1].default)
 
-        (self.root / "user" / "app" / "two" / "app.json").write_text(
-            json.dumps({"entry": "two_create", "aliases": ["one"]}),
-            encoding="utf-8",
-        )
-        with self.assertRaises(discovery.DiscoveryError) as raised:
+    def test_unknown_root_default_is_reported(self) -> None:
+        self._add_app("one")
+        self._set_default("missing")
+        _entries, issues = discovery.scan_apps(self.root / "user" / "app")
+        self.assertEqual(len(issues), 1)
+        self.assertIn("is not a discovered app", issues[0].message)
+        with self.assertRaises(discovery.DiscoveryError):
             discovery.discover_apps(self.root / "user" / "app")
-        self.assertEqual(raised.exception.code, "app_alias_conflict")
+
+    def test_convention_directory_needs_no_metadata(self) -> None:
+        self._add_app("plain")
+        entries, issues = discovery.scan_apps(self.root / "user" / "app")
+        self.assertEqual(issues, [])
+        self.assertEqual([entry.name for entry in entries], ["plain"])
+        self.assertEqual(entries[0].entry, "plain_create")
+
+    def test_helper_directory_without_the_entry_symbol_is_not_an_app(
+        self,
+    ) -> None:
+        self._add_app("plain")
+        helper = self.root / "user" / "app" / "demo"
+        helper.mkdir()
+        (helper / "demo_compat.c").write_text(
+            "void demo_harness_create(bool visible) {}\n", encoding="utf-8"
+        )
+        entries, issues = discovery.scan_apps(self.root / "user" / "app")
+        self.assertEqual(issues, [])
+        self.assertEqual([entry.name for entry in entries], ["plain"])
 
 
 class PolicySeamTest(_TempRepo):
-    def test_default_app_follows_metadata(self) -> None:
+    def test_default_app_follows_root_metadata(self) -> None:
         self._add_app("coffee", default=True)
         self._add_app("spectrum")
         self.assertTrue(policy.is_protected_name(self.root, "coffee"))
         self.assertFalse(policy.is_protected_name(self.root, "spectrum"))
 
-        (self.root / "user" / "app" / "coffee" / "app.json").write_text(
-            json.dumps({"entry": "coffee_create"}), encoding="utf-8"
-        )
-        (self.root / "user" / "app" / "spectrum" / "app.json").write_text(
-            json.dumps({"entry": "spectrum_create", "default": True}),
-            encoding="utf-8",
-        )
+        self._set_default("spectrum")
         self.assertTrue(policy.is_protected_name(self.root, "spectrum"))
         self.assertFalse(policy.is_protected_name(self.root, "coffee"))
 
     def test_reserved_names_cover_all_sources(self) -> None:
         self._add_app("coffee", default=True)
         self._add_app("alias_owner")
-        app_json = self.root / "user" / "app" / "alias_owner" / "app.json"
-        app_json.write_text(
-            json.dumps(
-                {"entry": "alias_owner_create", "aliases": ["latte"]}
-            ),
-            encoding="utf-8",
-        )
         (self.root / "user" / "app" / "gamma").mkdir()
         self._write_scenario("promo", "promo")
         names, _targets = policy._reserved_state(self.root)
         for expected in (
             "coffee",
             "alias_owner",
-            "latte",
             "gamma",
             "promo",
             "app",
@@ -193,17 +215,9 @@ class PolicySeamTest(_TempRepo):
     def test_reserved_check_keeps_existing_create_paths(self) -> None:
         self._add_app("coffee", default=True)
         self._add_app("alias_owner")
-        app_json = self.root / "user" / "app" / "alias_owner" / "app.json"
-        app_json.write_text(
-            json.dumps(
-                {"entry": "alias_owner_create", "aliases": ["latte"]}
-            ),
-            encoding="utf-8",
-        )
         (self.root / "user" / "app" / "gamma").mkdir()
         self._write_scenario("promo", "promo")
         self.assertTrue(policy.is_reserved_create_name(self.root, "coffee"))
-        self.assertTrue(policy.is_reserved_create_name(self.root, "latte"))
         self.assertFalse(policy.is_reserved_create_name(self.root, "gamma"))
         self.assertFalse(policy.is_reserved_create_name(self.root, "promo"))
 
@@ -225,14 +239,6 @@ class ScaffoldPolicyTest(_TempRepo):
 
     def test_reserved_names_keep_exact_code_and_message(self) -> None:
         self._add_app("coffee", default=True)
-        self._add_app("alias_owner")
-        app_json = self.root / "user" / "app" / "alias_owner" / "app.json"
-        app_json.write_text(
-            json.dumps(
-                {"entry": "alias_owner_create", "aliases": ["xhs"]}
-            ),
-            encoding="utf-8",
-        )
         (self.root / "user" / "scenarios" / "settings.json").write_text(
             json.dumps(
                 {
@@ -243,11 +249,41 @@ class ScaffoldPolicyTest(_TempRepo):
             ),
             encoding="utf-8",
         )
-        for name in ("coffee", "app", "settings", "xhs"):
+        for name in ("coffee", "app", "settings"):
             with self.subTest(name=name):
                 error = self._error(name)
                 self.assertEqual(error.code, "name_reserved")
                 self.assertEqual(error.message, f'name "{name}" is reserved')
+
+    def test_scaffold_writes_no_metadata_and_keeps_an_existing_one(
+        self,
+    ) -> None:
+        result = scaffold.scaffold_app(self.root, "hello")
+        self.assertNotIn(
+            "app.json", " ".join(result["created"])
+        )
+        self.assertFalse(
+            (self.root / "user" / "app" / "hello" / "app.json").exists()
+        )
+
+        metadata = self.root / "user" / "app" / "hello" / "app.json"
+        metadata.write_text(
+            json.dumps({"entry": "hello_create"}), encoding="utf-8"
+        )
+        scaffold.scaffold_app(self.root, "hello", force=True)
+        self.assertEqual(
+            json.loads(metadata.read_text(encoding="utf-8"))["entry"],
+            "hello_create",
+        )
+
+    def test_force_refuses_metadata_pointing_elsewhere(self) -> None:
+        scaffold.scaffold_app(self.root, "hello")
+        metadata = self.root / "user" / "app" / "hello" / "app.json"
+        metadata.write_text(
+            json.dumps({"entry": "renamed_create"}), encoding="utf-8"
+        )
+        error = self._error("hello", force=True)
+        self.assertEqual(error.code, "app_conflict")
 
     def test_duplicate_and_force_keep_existing_results(self) -> None:
         original = self.app_c.read_bytes()

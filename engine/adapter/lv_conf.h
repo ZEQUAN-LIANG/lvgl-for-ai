@@ -1,17 +1,14 @@
 /**
- * @file lv_conf.h
- * Configuration for the lvgl_engine host.
- *
- * Only settings that differ from LVGL's lv_conf_internal.h defaults live here.
- * The tool owns this file; user code must not edit it.
+ * Configuration for the lvgl_engine host: only settings that differ from
+ * LVGL's lv_conf_internal.h defaults. The tool owns this file; user code must
+ * not edit it.
  */
 
 #ifndef LV_CONF_H
 #define LV_CONF_H
 
-/* CMake defines LVGL_MAJOR_8 before add_subdirectory() for the 8.x
- * builds. 8.x and 9.x share no configuration vocabulary, so each version
- * family gets its own block. */
+/* CMake defines LVGL_MAJOR_8 before add_subdirectory() for the 8.x builds.
+ * 8.x and 9.x share no configuration vocabulary, so each gets its own block. */
 #ifdef LVGL_MAJOR_8
 
 /* Runtime-sized headless display (default 800x600) at 32-bit color (flush

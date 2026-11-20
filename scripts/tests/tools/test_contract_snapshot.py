@@ -103,12 +103,13 @@ class ContractSnapshotTest(unittest.TestCase):
         self.assertEqual(stream["pixel_bytes"], 16)
 
         self.assertEqual(http["trash_meta_schema"], "lvgl-verify-loop-app-trash-v1")
+        # A discovered app follows the ``<name>_create`` convention, so its
+        # directory carries no metadata file.
         self.assertEqual(
             http["trash_layout"],
             [
                 "app",
                 "app/alpha.c",
-                "app/app.json",
                 "meta.json",
                 "scenarios",
                 "scenarios/alpha.json",

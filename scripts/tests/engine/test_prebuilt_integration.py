@@ -38,6 +38,9 @@ class PrebuiltAutoSelectionIntegrationTest(unittest.TestCase):
             env["LVGL_VERIFY_LOOP_LVGL_SRC"] = str(root / "missing-lvgl")
             env["LVGL_VERIFY_LOOP_APPS_DIR"] = str(app_dir)
             env["LVGL_VERIFY_LOOP_SESSIONS_ROOT"] = str(sessions)
+            # ``app_dir`` lives in a throwaway tree, so its build directory must
+            # too; otherwise every run orphans a directory under ``build/``.
+            env["LVGL_VERIFY_LOOP_BUILD_ROOT"] = str(root / "build")
             env.pop("LVGL_VERIFY_LOOP_DEMO", None)
 
             result = subprocess.run(

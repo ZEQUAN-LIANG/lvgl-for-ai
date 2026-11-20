@@ -1,5 +1,4 @@
 /**
- * @file protocol.h
  * Compact line protocol: "<seq> <verb> [args...]" on stdin, one JSON object
  * per line on stdout. The engine does not parse JSON.
  */

@@ -27,8 +27,7 @@ from typing import Any, Sequence
 
 ADAPTER_DIR = Path(__file__).resolve().parent
 REPO_ROOT = ADAPTER_DIR.parents[2]
-APP = "perf_monitor"
-APP_DIR = REPO_ROOT / "user" / "app" / APP
+DEFAULT_APP = "perf_monitor"
 LVGL_DIR = REPO_ROOT / "engine" / "lvgl" / "9.6"
 VENDOR_ZIP = (
     REPO_ROOT
@@ -39,22 +38,29 @@ VENDOR_ZIP = (
     / "ESP32-C6-LCD-1.47-Demo.zip"
 )
 HOST_CLI = REPO_ROOT / "chip-adapt" / "esp32" / "host" / "host.py"
-DEFAULT_OUT = (
-    REPO_ROOT
-    / "chip-adapt"
-    / "exports"
-    / "esp32"
-    / "perf_monitor_arduino"
-)
+
+
+def app_dir(app: str) -> Path:
+    return REPO_ROOT / "user" / "app" / app
+
+
+def default_out(app: str) -> Path:
+    return REPO_ROOT / "chip-adapt" / "exports" / "esp32" / f"{app}_arduino"
+
+
+def required_app_files(app: str) -> tuple[str, ...]:
+    """Sources every app must provide for this adapter to build.
+
+    ``perf_protocol`` is specific to the PERF TAPE demo, so only the two
+    per-app files are universal.
+    """
+
+    return (f"{app}.c", f"{app}.h")
+
+
 TEMPLATES_DIR = ADAPTER_DIR / "templates"
 DISPLAY_FILES = ("Display_ST7789.cpp", "Display_ST7789.h")
 DISPLAY_PREFIX = "Arduino/examples/LVGL_Arduino/"
-REQUIRED_APP_FILES = (
-    "perf_monitor.c",
-    "perf_monitor.h",
-    "perf_protocol.c",
-    "perf_protocol.h",
-)
 LVGL_ITEMS = (
     "lvgl.h",
     "lvgl_private.h",
@@ -91,7 +97,7 @@ def patch_lvgl_include(text: str) -> str:
     )
 
 
-def _app_sources(app_dir: Path) -> dict[str, bytes]:
+def _app_sources(app: str, app_dir: Path) -> dict[str, bytes]:
     files: dict[str, bytes] = {}
     if not app_dir.is_dir():
         raise AdapterError("app_missing", f"app directory not found: {app_dir}")
@@ -108,7 +114,7 @@ def _app_sources(app_dir: Path) -> dict[str, bytes]:
         raise AdapterError(
             "app_missing", f"no .c/.h sources found in {app_dir}"
         )
-    missing = [name for name in REQUIRED_APP_FILES if name not in files]
+    missing = [name for name in required_app_files(app) if name not in files]
     if missing:
         raise AdapterError(
             "app_missing",
@@ -203,8 +209,9 @@ def _write_plan(
 
 def prepare_workspace(
     *,
-    out_dir: Path = DEFAULT_OUT,
-    app_dir: Path = APP_DIR,
+    app: str = DEFAULT_APP,
+    out_dir: Path | None = None,
+    app_dir_override: Path | None = None,
     lvgl_dir: Path = LVGL_DIR,
     vendor_zip: Path = VENDOR_ZIP,
     force: bool = False,
@@ -212,7 +219,13 @@ def prepare_workspace(
 ) -> dict[str, Any]:
     """Create the Arduino sketch and the bundled LVGL library."""
 
-    out_dir = out_dir.resolve()
+    resolved_app_dir = (
+        app_dir_override if app_dir_override is not None else app_dir(app)
+    )
+    resolved_out = (
+        Path(out_dir).resolve() if out_dir is not None else default_out(app)
+    )
+    out_dir = resolved_out
     sketch_dir = out_dir / SKETCH_NAME
     libraries_dir = out_dir / "libraries"
 
@@ -225,13 +238,15 @@ def prepare_workspace(
                 target.unlink()
 
     files: dict[str, bytes] = {
-        f"{SKETCH_NAME}/perf_c6.ino": _load_template("perf_c6.ino"),
+        f"{SKETCH_NAME}/{SKETCH_NAME}.ino": _load_template(
+            f"{SKETCH_NAME}.ino"
+        ),
         f"{SKETCH_NAME}/ble_uart.h": _load_template("ble_uart.h"),
         f"{SKETCH_NAME}/ble_uart.cpp": _load_template("ble_uart.cpp"),
         f"{SKETCH_NAME}/lv_conf.h": _load_template("lv_conf.h"),
         f"{SKETCH_NAME}/app.h": _load_template("app.h"),
     }
-    for name, data in _app_sources(app_dir).items():
+    for name, data in _app_sources(app, resolved_app_dir).items():
         files[f"{SKETCH_NAME}/{name}"] = data
     for name, data in _display_sources(vendor_zip).items():
         files[f"{SKETCH_NAME}/{name}"] = data
@@ -339,7 +354,7 @@ def _run(
 
 def build_workspace(
     *,
-    out_dir: Path = DEFAULT_OUT,
+    out_dir: Path,
     arduino_cli: str | None = None,
     fqbn: str = DEFAULT_FQBN,
     dry_run: bool = False,
@@ -418,7 +433,7 @@ def _flash_ok(payload: dict[str, Any]) -> bool:
 
 def flash_workspace(
     *,
-    out_dir: Path = DEFAULT_OUT,
+    out_dir: Path,
     port: str,
     host_url: str = "http://127.0.0.1:8767",
     dry_run: bool = False,
@@ -442,7 +457,19 @@ def flash_workspace(
 
 
 def _add_common(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--out", default=str(DEFAULT_OUT))
+    parser.add_argument(
+        "--app",
+        default=DEFAULT_APP,
+        help=(
+            "app directory under user/app to export "
+            f"(default: {DEFAULT_APP})"
+        ),
+    )
+    parser.add_argument(
+        "--out",
+        default="",
+        help="output directory (default: exports/esp32/<app>_arduino)",
+    )
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--json", action="store_true")
@@ -492,11 +519,17 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     args = parser.parse_args(argv)
-    out_dir = Path(args.out)
+    app = args.app
+    out_dir = (
+        Path(args.out).expanduser()
+        if args.out
+        else default_out(app)
+    )
 
     try:
         if args.command == "export":
             payload = prepare_workspace(
+                app=app,
                 out_dir=out_dir,
                 force=args.force,
                 dry_run=args.dry_run,
@@ -508,6 +541,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "build":
             if not args.no_export:
                 prepare_workspace(
+                    app=app,
                     out_dir=out_dir,
                     force=args.force,
                     dry_run=args.dry_run,
@@ -535,6 +569,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "all":
             export_payload = prepare_workspace(
+                app=app,
                 out_dir=out_dir,
                 force=args.force,
                 dry_run=args.dry_run,

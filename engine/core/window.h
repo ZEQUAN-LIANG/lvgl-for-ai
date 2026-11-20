@@ -1,12 +1,11 @@
 /**
- * @file window.h
  * Platform window layer for the engine.
  *
  * Only the engine's main thread pumps the window and calls into this layer.
- * The Win32 implementation (window.c) owns the GDI window, forwards real
- * mouse/keyboard input as events and paints the complete LVGL framebuffer.
- * Other platforms compile the same interface as a stub; window_create()
- * then returns NULL and the caller stays headless.
+ * The Win32 implementation owns the GDI window, forwards real mouse/keyboard
+ * input as events and paints the complete LVGL framebuffer; other platforms
+ * compile the same interface as a stub, so window_create() returns NULL and
+ * the caller stays headless.
  */
 
 #ifndef WINDOW_H

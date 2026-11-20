@@ -30,6 +30,7 @@ sessions/
 /.test-tmp/
 /.test-sessions/
 /user/app/**/*.dump
+/user/.cache/
 /user/app/app_registry.inc
 /user/app/.app_registry.inc.*.tmp
 # Double-click launchers are build artifacts; regenerate with

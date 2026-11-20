@@ -36,8 +36,7 @@ struct adapter {
     lv_indev_t * encoder;
     lv_indev_drv_t encoder_drv;
 
-    /* OS input uses its own standard indevs, created before app_create()
-     * so apps's focus-group loop sees the real keypad. */
+    /* Created before app_create() so the app's focus-group loop sees them. */
     lv_indev_t * real_pointer;
     lv_indev_drv_t real_pointer_drv;
 

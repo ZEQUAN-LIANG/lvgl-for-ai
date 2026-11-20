@@ -45,14 +45,15 @@ docs/             第三方许可
 ```
 
 `user/app/**/*.c` 是唯一源码真源；`console/` 和 `bin/` 不存放用户业务代码。
-`user/app/intro/` 是默认介绍页与模板；每个应用在自己的目录写 `app.json` 声明
-`entry`，构建自动生成 `app_registry.inc`，不需要维护中心注册表；
+`user/app/intro/` 是默认介绍页与模板；应用由 `user/app/<name>/` 目录自动发现
+（目录内声明 `void <name>_create(void)` 即可，入口名偏离约定时才写该目录的
+`app.json`），构建自动生成 `app_registry.inc`，没有登记应用名的中心表；
 `user/scenarios/intro.json` 是 intro 的录制演示。
 
 ## 宿主工作流
 
-1. 写或改 `user/app/**/*.c`；每个变体暴露 `void <name>_create(void)`，并在
-   `user/app/<name>/app.json` 声明 `"entry": "<name>_create"`。
+1. 写或改 `user/app/**/*.c`；每个变体暴露 `void <name>_create(void)`，目录名即
+   应用名，不需要元数据文件。
 2. 跑场景：
 
    ```bat
@@ -75,14 +76,14 @@ bin\lvgl.cmd assets font --app <app> --font C:\Windows\Fonts\Deng.ttf ^
 bin\lvgl.cmd assets image --app <app> --input user\app\<app>\logo.png --cf ARGB8888
 ```
 
-- 默认输出 `user/app/<app>/<name>.h`，并更新 `assets.json`（源文件 SHA256、
-  字号/bpp/字符集、颜色格式）。
+- 默认输出 `user/app/<app>/<name>.h`，并更新 `user/.cache/assets/<app>.json`
+  （源文件 SHA256、字号/bpp/字符集、颜色格式）。
 - 字体头带 `LVGL_VERSION_MAJOR/MINOR` 版本门，同一份头可用于 8.3–9.6。
   `--bpp 8` 只用于 8.x 或 9.3+；目标 9.1/9.2 用 `--bpp 4`。
 - 图片头按目标 major 生成：9.x 头在 9.1–9.6 通用；8.x 用 `--lvgl 8.4` 单独生成。
 - `--scan-app` 从应用 `.c/.h` 字符串字面量收集字形；动态文本用 `--text-file` 或
   `--text`，中文优先用 `--text-file`。
-- 生成的 `*.h` 和 `assets.json` 提交到项目。
+- 生成的 `*.h` 提交到项目；重放账本在 `user/.cache/`（不进 Git）。
 
 ## 证据读取顺序
 

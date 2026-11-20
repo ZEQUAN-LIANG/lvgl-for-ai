@@ -27,7 +27,7 @@ LVGL 应用已同时实现两套布局。
 | `perf_monitor.h` | 应用入口与串口注入 API |
 | `perf_protocol.c/.h` | 不依赖 LVGL 的行协议解析器 |
 | `perf_font_*.h` | 内置转换器生成的 Bahnschrift / Consolas 字体 |
-| `assets.json` | 字体生成记录，便于重放 |
+| `user/.cache/assets/perf_monitor.json` | 字体生成记录，便于重放 |
 
 ## 串口协议
 

@@ -1,9 +1,8 @@
 /**
- * @file timeline.h
  * ``timeline.ndjson`` writer (schema ``lvgl-verify-loop-timeline-v1``).
  *
- * Row types: frame / input / wait / mark / snapshot / end. One JSON object
- * per line; the engine records what happened, it never judges the result.
+ * Row types: frame / input / wait / mark / snapshot / end, one JSON object per
+ * line. The engine records what happened; it never judges the result.
  */
 
 #ifndef TIMELINE_H

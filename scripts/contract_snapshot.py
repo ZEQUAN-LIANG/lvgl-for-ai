@@ -1163,19 +1163,17 @@ def _write_repo(root: Path) -> None:
     (root / "user" / "app" / "coffee").mkdir(parents=True)
     (root / "user" / "app" / "alpha").mkdir()
     (root / "user" / "scenarios").mkdir()
+    # Apps follow the ``<name>_create`` convention, so only the repository
+    # wide default declaration lives in a metadata file.
     (root / "user" / "app" / "coffee" / "coffee.c").write_text(
-        "/* coffee */\n", encoding="utf-8"
+        "void coffee_create(void) {}\n", encoding="utf-8"
     )
-    (root / "user" / "app" / "coffee" / "app.json").write_text(
-        json.dumps({"entry": "coffee_create", "default": True}),
+    (root / "user" / "app" / "app.json").write_text(
+        json.dumps({"default": "coffee"}),
         encoding="utf-8",
     )
     (root / "user" / "app" / "alpha" / "alpha.c").write_text(
-        "/* alpha */\n", encoding="utf-8"
-    )
-    (root / "user" / "app" / "alpha" / "app.json").write_text(
-        json.dumps({"entry": "alpha_create"}),
-        encoding="utf-8",
+        "void alpha_create(void) {}\n", encoding="utf-8"
     )
     (root / "user" / "app" / "app.c").write_text(
         """#include "lvgl.h"

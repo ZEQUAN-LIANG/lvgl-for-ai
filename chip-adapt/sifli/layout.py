@@ -15,4 +15,7 @@ REPO_ROOT = CHIP_ADAPT_DIR.parent
 VENDOR_DIR = CHIP_ADAPT_DIR / "vendor"
 SDK_DIR = VENDOR_DIR / "sifli-sdk"
 EXPORTS_DIR = CHIP_ADAPT_DIR / "exports"
+# Per-app export declarations: they describe the device target, so they live
+# here instead of inside ``user/app/<name>/``.
+APPS_DIR = ADAPTER_DIR / "apps"
 HOST_DIR = ADAPTER_DIR / "host"
