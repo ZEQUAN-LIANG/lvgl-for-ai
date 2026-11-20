@@ -1,7 +1,8 @@
 
+#include "app.h"
 #include "coffee_ui.h"
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #include <stdio.h>
 #include <string.h>
@@ -365,8 +366,8 @@ static void build_cup(lv_obj_t * panel, const coffee_drink_t * drink)
     lv_obj_t * cup = lv_image_create(panel);
     lv_image_set_src(cup, coffee_brew_cup_asset());
     lv_obj_set_pos(cup, cup_x, cup_y);
-    lv_obj_set_scrollable(cup, false);
-    lv_obj_set_clickable(cup, false);
+    app_obj_set_scrollable(cup, false);
+    app_obj_set_clickable(cup, false);
 
     for(int i = 0; i < 3; i++) brew_wisps[i] = NULL;
 
@@ -420,7 +421,7 @@ void coffee_start_brew(int drink)
                                LV_PART_INDICATOR);
     lv_obj_set_style_bg_opa(brew_arc, LV_OPA_TRANSP, LV_PART_KNOB);
     lv_obj_set_style_pad_all(brew_arc, 0, 0);
-    lv_obj_set_clickable(brew_arc, false);
+    app_obj_set_clickable(brew_arc, false);
 
     build_cup(panel, item);
 

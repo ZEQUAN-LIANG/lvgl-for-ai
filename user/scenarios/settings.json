@@ -1,6 +1,7 @@
 {
   "schema": "lvgl-verify-loop-scenario-v1",
   "name": "settings",
+  "app": "test_ui",
   "steps": [
     {"type": "click_at", "x": 112, "y": 324},
     {"type": "wait", "ms": 64},

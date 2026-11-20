@@ -3,7 +3,7 @@
 #include "xhs_page.h"
 #include "xhs_ui.h"
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #include <stdint.h>
 #include <stdio.h>
@@ -143,7 +143,7 @@ static void xhs_bottom_nav(lv_obj_t * panel)
 void xiaohongshu_create(void)
 {
     lv_obj_t * screen = lv_screen_active();
-    lv_obj_set_scrollable(screen, false);
+    app_obj_set_scrollable(screen, false);
     lv_obj_set_style_pad_all(screen, 0, 0);
     lv_obj_set_style_bg_color(screen, lv_color_hex(0xF6F2EC), 0);
     lv_obj_set_style_bg_grad_color(screen, lv_color_hex(0xEDE7F1), 0);
@@ -158,8 +158,8 @@ void xiaohongshu_create(void)
     lv_obj_set_style_bg_opa(blob, 18, 0);
     lv_obj_set_style_border_width(blob, 0, 0);
     lv_obj_set_style_pad_all(blob, 0, 0);
-    lv_obj_set_scrollable(blob, false);
-    lv_obj_set_clickable(blob, false);
+    app_obj_set_scrollable(blob, false);
+    app_obj_set_clickable(blob, false);
 
     blob = lv_obj_create(screen);
     lv_obj_set_pos(blob, 560, 350);
@@ -169,8 +169,8 @@ void xiaohongshu_create(void)
     lv_obj_set_style_bg_opa(blob, 55, 0);
     lv_obj_set_style_border_width(blob, 0, 0);
     lv_obj_set_style_pad_all(blob, 0, 0);
-    lv_obj_set_scrollable(blob, false);
-    lv_obj_set_clickable(blob, false);
+    app_obj_set_scrollable(blob, false);
+    app_obj_set_clickable(blob, false);
 
     lv_obj_t * ring = lv_obj_create(screen);
     lv_obj_set_pos(ring, 610, -80);
@@ -181,8 +181,8 @@ void xiaohongshu_create(void)
     lv_obj_set_style_border_color(ring, lv_color_hex(0xE4D8CE), 0);
     lv_obj_set_style_border_opa(ring, 160, 0);
     lv_obj_set_style_pad_all(ring, 0, 0);
-    lv_obj_set_scrollable(ring, false);
-    lv_obj_set_clickable(ring, false);
+    app_obj_set_scrollable(ring, false);
+    app_obj_set_clickable(ring, false);
 
     lv_obj_t * phone = lv_obj_create(screen);
     lv_obj_set_pos(phone, 238, 8);
@@ -198,8 +198,8 @@ void xiaohongshu_create(void)
     lv_obj_set_style_shadow_opa(phone, 64, 0);
     lv_obj_set_style_shadow_ofs_y(phone, 14, 0);
     lv_obj_set_style_shadow_spread(phone, 2, 0);
-    lv_obj_set_scrollable(phone, false);
-    lv_obj_set_clickable(phone, false);
+    app_obj_set_scrollable(phone, false);
+    app_obj_set_clickable(phone, false);
 
     lv_obj_t * button;
     button = lv_obj_create(screen);
@@ -209,8 +209,8 @@ void xiaohongshu_create(void)
     lv_obj_set_style_bg_color(button, lv_color_hex(0x2C2C31), 0);
     lv_obj_set_style_bg_opa(button, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(button, 0, 0);
-    lv_obj_set_scrollable(button, false);
-    lv_obj_set_clickable(button, false);
+    app_obj_set_scrollable(button, false);
+    app_obj_set_clickable(button, false);
 
     button = lv_obj_create(screen);
     lv_obj_set_pos(button, 234, 192);
@@ -219,8 +219,8 @@ void xiaohongshu_create(void)
     lv_obj_set_style_bg_color(button, lv_color_hex(0x2C2C31), 0);
     lv_obj_set_style_bg_opa(button, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(button, 0, 0);
-    lv_obj_set_scrollable(button, false);
-    lv_obj_set_clickable(button, false);
+    app_obj_set_scrollable(button, false);
+    app_obj_set_clickable(button, false);
 
     button = lv_obj_create(screen);
     lv_obj_set_pos(button, 562, 170);
@@ -229,8 +229,8 @@ void xiaohongshu_create(void)
     lv_obj_set_style_bg_color(button, lv_color_hex(0x2C2C31), 0);
     lv_obj_set_style_bg_opa(button, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(button, 0, 0);
-    lv_obj_set_scrollable(button, false);
-    lv_obj_set_clickable(button, false);
+    app_obj_set_scrollable(button, false);
+    app_obj_set_clickable(button, false);
 
     lv_obj_t * panel = lv_obj_create(phone);
     lv_obj_set_pos(panel, 10, 10);
@@ -241,8 +241,8 @@ void xiaohongshu_create(void)
     lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(panel, 0, 0);
     lv_obj_set_style_pad_all(panel, 0, 0);
-    lv_obj_set_scrollable(panel, false);
-    lv_obj_set_clickable(panel, false);
+    app_obj_set_scrollable(panel, false);
+    app_obj_set_clickable(panel, false);
 
     tab_host = xhs_box(panel, 0, XHS_STATUS_H, XHS_SCREEN_W, XHS_TAB_HOST_H);
     overlay_host = xhs_box(panel, 0, XHS_STATUS_H, XHS_SCREEN_W, XHS_OVERLAY_H);

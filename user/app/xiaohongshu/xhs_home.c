@@ -1,4 +1,5 @@
 
+#include "app.h"
 #include "xhs_ui.h"
 
 #include <ctype.h>
@@ -6,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 static const char * const tab_texts[3] = {
     XHS_TXT_TAB_FOLLOW,
@@ -419,7 +420,7 @@ static void xhs_more_event_cb(lv_event_t * event)
 {
     if(lv_event_get_code(event) != LV_EVENT_CLICKED) return;
     if(category_panel == NULL) return;
-    bool show = lv_obj_is_hidden(category_panel);
+    bool show = app_obj_is_hidden(category_panel);
     xhs_set_hidden(category_panel, !show);
     if(category_chevron != NULL) {
         lv_image_set_rotation(category_chevron, show ? 1800 : 0);
@@ -724,7 +725,7 @@ static void xhs_search_build(lv_obj_t * page)
     lv_textarea_set_one_line(search_textarea, true);
     lv_textarea_set_placeholder_text(search_textarea,
                                      XHS_TXT_SEARCH_PLACEHOLDER);
-    lv_obj_set_clickable(search_textarea, false);
+    app_obj_set_clickable(search_textarea, false);
     lv_obj_set_style_bg_opa(search_textarea, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(search_textarea, 0, 0);
     lv_obj_set_style_pad_all(search_textarea, 0, 0);

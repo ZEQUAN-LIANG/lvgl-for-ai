@@ -28,6 +28,7 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
     def _runtime(self) -> Runtime:
         return Runtime(
             lvgl="9.6",
+            app="test_ui",
             build=True,
             record_changed_only=False,
             sessions_root=self.sessions_root,
@@ -39,11 +40,11 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
         rt.start()
 
         down = rt.pointer("down", *BUTTON_CENTER)
-        self.assertEqual(down["hit"], "demo_button")
+        self.assertEqual(down["hit"], "test_ui_button")
         self.assertEqual(down["hit_class"], "lv_button")
         rt.tick(16)
         up = rt.pointer("up", *BUTTON_CENTER)
-        self.assertEqual(up["hit"], "demo_button")
+        self.assertEqual(up["hit"], "test_ui_button")
         self.assertEqual(up["hit_class"], "lv_button")
 
         rows = read_ndjson(rt.session_dir / "timeline.ndjson")
@@ -57,11 +58,11 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
         )
         for row in inputs:
             self.assertEqual(row["schema"], "lvgl-verify-loop-timeline-v1")
-            self.assertEqual(row["hit"], "demo_button")
+            self.assertEqual(row["hit"], "test_ui_button")
             self.assertEqual(row["hit_class"], "lv_button")
 
         log_text = (rt.session_dir / "engine.log").read_text(encoding="utf-8")
-        self.assertIn("[app] demo_button clicked", log_text)
+        self.assertIn("[app] test_ui_button clicked", log_text)
 
     def test_tick_and_wait_produce_one_png_per_step_and_wait_row(self) -> None:
         rt = self._runtime()
@@ -200,7 +201,7 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
         self.assertEqual(len(replies), 3)
         self.assertEqual(
             [reply["hit"] for reply in replies],
-            ["demo_button", "demo_button", "demo_button"],
+            ["test_ui_button", "test_ui_button", "test_ui_button"],
         )
 
         rows = read_ndjson(rt.session_dir / "timeline.ndjson")
@@ -210,10 +211,10 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
             [("down", 0), ("move", 16), ("up", 32)],
         )
         for row in inputs:
-            self.assertEqual(row["hit"], "demo_button")
+            self.assertEqual(row["hit"], "test_ui_button")
             self.assertEqual(row["hit_class"], "lv_button")
         log_text = (rt.session_dir / "engine.log").read_text(encoding="utf-8")
-        self.assertIn("[app] demo_button clicked", log_text)
+        self.assertIn("[app] test_ui_button clicked", log_text)
 
     def test_key_and_encoder_events_are_delivered(self) -> None:
         rt = self._runtime()
@@ -260,6 +261,7 @@ class PointerTimelineIntegrationTest(unittest.TestCase):
         def run_once(root: Path) -> list[tuple[str, str]]:
             rt = Runtime(
                 lvgl="9.6",
+                app="test_ui",
                 build=True,
                 record_changed_only=False,
                 sessions_root=root,

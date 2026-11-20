@@ -50,7 +50,7 @@ class FakeSerialBackend(SerialBackend):
     def open(self, port: str, baud: int, *, read_timeout_ms: int = 50) -> None:
         self.port = port
         self.is_open = True
-        self._emit("@READY app=c6_demo pages=" + ",".join(self._pages) + "\n")
+        self._emit("@READY app=perf_monitor pages=" + ",".join(self._pages) + "\n")
 
     def close(self) -> None:
         self.is_open = False
@@ -119,7 +119,7 @@ class FakeSerialBackend(SerialBackend):
                 "@SYS INFO chip=ESP32-C6|flash=4MB|"
                 f"heap={183 + int(time.monotonic() - self._started) % 17}KB|"
                 f"uptime={int(time.monotonic() - self._started)}s|"
-                f"app=c6_demo|page={self._pages[self._current]}|"
+                f"app=perf_monitor|page={self._pages[self._current]}|"
                 f"brightness={self._brightness}\n"
             )
             return

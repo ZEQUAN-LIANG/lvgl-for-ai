@@ -1,7 +1,8 @@
 
+#include "app.h"
 #include "coffee_ui.h"
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #include "coffee_assets.h"
 
@@ -515,8 +516,8 @@ lv_obj_t * coffee_box(lv_obj_t * parent, int x, int y, int w, int h)
     lv_obj_set_style_radius(obj, 0, 0);
     lv_obj_set_style_pad_all(obj, 0, 0);
     lv_obj_set_style_shadow_opa(obj, LV_OPA_TRANSP, 0);
-    lv_obj_set_scrollable(obj, false);
-    lv_obj_set_clickable(obj, false);
+    app_obj_set_scrollable(obj, false);
+    app_obj_set_clickable(obj, false);
     return obj;
 }
 
@@ -542,8 +543,8 @@ lv_obj_t * coffee_label(lv_obj_t * parent, const char * text,
     lv_label_set_text(label, text);
     lv_obj_set_style_text_font(label, coffee_font(font), 0);
     lv_obj_set_style_text_color(label, lv_color_hex(color), 0);
-    lv_obj_set_scrollable(label, false);
-    lv_obj_set_clickable(label, false);
+    app_obj_set_scrollable(label, false);
+    app_obj_set_clickable(label, false);
     return label;
 }
 
@@ -569,8 +570,8 @@ lv_obj_t * coffee_icon_obj(lv_obj_t * parent, coffee_icon_id_t icon, int x,
     }
     lv_obj_set_style_image_recolor(image, lv_color_hex(color), 0);
     lv_obj_set_style_image_recolor_opa(image, LV_OPA_COVER, 0);
-    lv_obj_set_scrollable(image, false);
-    lv_obj_set_clickable(image, false);
+    app_obj_set_scrollable(image, false);
+    app_obj_set_clickable(image, false);
     return image;
 }
 
@@ -584,8 +585,8 @@ lv_obj_t * coffee_art_obj(lv_obj_t * parent, coffee_art_id_t art, int x, int y,
     }
     int offset = (176 - size) / 2;
     lv_obj_set_pos(image, x - offset, y - offset);
-    lv_obj_set_scrollable(image, false);
-    lv_obj_set_clickable(image, false);
+    app_obj_set_scrollable(image, false);
+    app_obj_set_clickable(image, false);
     return image;
 }
 
@@ -637,8 +638,8 @@ lv_obj_t * coffee_bar(lv_obj_t * parent, int x, int y, int w, int h,
     lv_obj_set_style_bg_opa(value, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(value, 0, 0);
     lv_obj_set_style_pad_all(value, 0, 0);
-    lv_obj_set_scrollable(value, false);
-    lv_obj_set_clickable(value, false);
+    app_obj_set_scrollable(value, false);
+    app_obj_set_clickable(value, false);
     return value;
 }
 
@@ -666,8 +667,8 @@ lv_obj_t * coffee_toggle(lv_obj_t * parent, int x, int y, int w, int h, bool on,
     lv_obj_set_style_shadow_color(knob, lv_color_hex(0x000000), 0);
     lv_obj_set_style_shadow_width(knob, 4, 0);
     lv_obj_set_style_shadow_opa(knob, 90, 0);
-    lv_obj_set_scrollable(knob, false);
-    lv_obj_set_clickable(knob, false);
+    app_obj_set_scrollable(knob, false);
+    app_obj_set_clickable(knob, false);
     coffee_clickable(track, name);
     coffee_toggle_set(track, on);
     return track;
@@ -689,7 +690,7 @@ void coffee_toggle_set(lv_obj_t * track, bool on)
 
 void coffee_clickable(lv_obj_t * obj, const char * name)
 {
-    lv_obj_set_clickable(obj, true);
+    app_obj_set_clickable(obj, true);
     if(name != NULL) {
         lv_obj_set_name(obj, name);
     }
@@ -697,7 +698,7 @@ void coffee_clickable(lv_obj_t * obj, const char * name)
 
 void coffee_hide(lv_obj_t * obj, bool hidden)
 {
-    if(obj != NULL) lv_obj_set_hidden(obj, hidden);
+    if(obj != NULL) app_obj_set_hidden(obj, hidden);
 }
 
 static lv_obj_t * toast_box;
@@ -728,7 +729,7 @@ void coffee_toast(const char * text)
                                       44, 12, 320, 22);
     }
     lv_label_set_text(toast_label, text);
-    lv_obj_set_hidden(toast_box, false);
+    app_obj_set_hidden(toast_box, false);
     lv_obj_move_foreground(toast_box);
     if(toast_timer != NULL) {
         lv_timer_delete(toast_timer);
@@ -768,7 +769,7 @@ lv_obj_t * coffee_modal_open(int w, int h)
     coffee_brew_abort();
     coffee_maintenance_abort();
     lv_obj_clean(modal_host);
-    lv_obj_set_hidden(modal_host, false);
+    app_obj_set_hidden(modal_host, false);
     lv_obj_move_foreground(modal_host);
 
     lv_obj_t * scrim = lv_obj_create(modal_host);
@@ -779,7 +780,7 @@ lv_obj_t * coffee_modal_open(int w, int h)
     lv_obj_set_style_border_width(scrim, 0, 0);
     lv_obj_set_style_radius(scrim, 0, 0);
     lv_obj_set_style_pad_all(scrim, 0, 0);
-    lv_obj_set_scrollable(scrim, false);
+    app_obj_set_scrollable(scrim, false);
     coffee_clickable(scrim, "modal_scrim");
 
     lv_obj_t * panel = coffee_card(modal_host, (COFFEE_SCREEN_W - w) / 2,
@@ -798,7 +799,7 @@ void coffee_modal_close(void)
     coffee_maintenance_abort();
     if(modal_host == NULL) return;
     lv_obj_clean(modal_host);
-    lv_obj_set_hidden(modal_host, true);
+    app_obj_set_hidden(modal_host, true);
 }
 
 void coffee_refresh_all(void)

@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 static const char * const publish_modes[3] = {
     XHS_TXT_PUBLISH_PHOTO,

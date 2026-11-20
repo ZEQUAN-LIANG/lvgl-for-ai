@@ -203,7 +203,7 @@ class WaitStableEngineIntegrationTest(unittest.TestCase):
             with self.subTest(record_changed_only=flag):
                 rt = Runtime(
                     lvgl="9.6",
-                    app="coffee",
+                    app="test_ui",
                     build=True,
                     record_changed_only=flag,
                     sessions_root=self.sessions_root / str(flag),

@@ -174,7 +174,7 @@ UART/COM 口，再退出 GUI**；host 进程本身可以继续留给网页端使
 
 | 输入 | 回复 |
 | --- | --- |
-| `sys info` | `@SYS INFO chip=ESP32-C6\|flash=4MB\|heap=183KB\|uptime=123s\|app=c6_demo\|page=home\|brightness=42` |
+| `sys info` | `@SYS INFO chip=ESP32-C6\|flash=4MB\|heap=183KB\|uptime=123s\|app=perf_monitor\|page=home\|brightness=42` |
 | `brightness <0-100>` | `@OK BRIGHTNESS <value>` |
 | `sys reset` | `@OK SYS RESET` |
 

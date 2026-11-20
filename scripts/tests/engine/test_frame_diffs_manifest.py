@@ -88,6 +88,7 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
     def _runtime(self, **kwargs) -> Runtime:
         options = {
             "lvgl": "9.6",
+            "app": "test_ui",
             "build": True,
             "record_changed_only": False,
             "sessions_root": self.sessions_root,

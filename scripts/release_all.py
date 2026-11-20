@@ -133,8 +133,9 @@ def _stage_legacy_app(repo: Path, target: Path) -> None:
     # it includes has to be staged next to it.
     for name in ("app.c", "app.h", "app_registry_lookup.h", "lvgl_compat.h"):
         shutil.copy2(source / name, target / name)
-    for name in ("demo", "asset_probe"):
-        shutil.copytree(source / name, target / name)
+    # test_ui is the one app that compiles below 9.4 (its sources fall back to
+    # an explanatory stub), so it is what discovery finds in the legacy tree.
+    shutil.copytree(source / "test_ui", target / "test_ui")
 
 
 def _release_build_dir(repo: Path, version: str) -> Path:
@@ -272,7 +273,11 @@ def _stage_full_package(
                         repo / "user" / "scenarios" / "settings.json",
                         scenario,
                     )
-                    markers = ("[app] demo_button clicked",)
+                    # Legacy versions compile app.c's pre-9.4 branch, which
+                    # shows an empty screen: there is no app to select and no
+                    # button to click, so the marker only proves the engine
+                    # booted and ran the scenario.
+                    markers = ("[app] app_create",)
                 else:
                     scenario = package / "user" / "scenarios" / "intro.json"
                     markers = (

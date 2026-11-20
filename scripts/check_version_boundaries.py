@@ -14,7 +14,7 @@ It verifies that:
   engine sources do not include version LVGL headers;
 * ``apps`` (including per-app subdirectories) carries explicit
   ``#if LVGL_VERSION_MAJOR`` version switches;
-* ``engine/lv_conf.h`` enables ``LV_USE_OBJ_NAME`` for 9.2+ (9.1 and 8.x have
+* ``engine/adapter/lv_conf.h`` enables ``LV_USE_OBJ_NAME`` for 9.2+ (9.1 and 8.x have
   no such switch, which the adapters handle with version conditions) and
   carries a separate 8.x configuration block.
 """
@@ -32,10 +32,11 @@ import paths
 
 REPO_ROOT = paths.REPO_ROOT
 ENGINE_DIR = paths.ENGINE_DIR
+ADAPTER_DIR = ENGINE_DIR / "adapter"
 USER_APP_DIR = paths.APPS_DIR
 ADAPTERS = (
-    ENGINE_DIR / "adapter_9x.c",
-    ENGINE_DIR / "adapter_8x.c",
+    ADAPTER_DIR / "adapter_9x.c",
+    ADAPTER_DIR / "adapter_8x.c",
 )
 
 FORBIDDEN_IN_ENGINE = (
@@ -70,7 +71,7 @@ def check_user_version_switches(failures: list[str]) -> None:
         USER_APP_DIR / "app.c",
         USER_APP_DIR / "app.h",
         USER_APP_DIR / "lvgl_compat.h",
-        USER_APP_DIR / "demo" / "demo_assets.h",
+        USER_APP_DIR / "test_ui" / "test_ui_assets.h",
     ):
         text = path.read_text(encoding="utf-8")
         if "#if LVGL_VERSION_MAJOR" not in text:
@@ -80,7 +81,7 @@ def check_user_version_switches(failures: list[str]) -> None:
 
 
 def check_obj_name_config(failures: list[str]) -> None:
-    text = (ENGINE_DIR / "lv_conf.h").read_text(encoding="utf-8")
+    text = (ENGINE_DIR / "adapter" / "lv_conf.h").read_text(encoding="utf-8")
     if "#define LV_USE_OBJ_NAME 1" not in text:
         failures.append("lv_conf.h: LV_USE_OBJ_NAME must be enabled for 9.2+")
     if "#ifdef LVGL_MAJOR_8" not in text:

@@ -67,7 +67,7 @@ def make_web_session(
                 "action": "down",
                 "x": 1,
                 "y": 1,
-                "hit": "demo_button",
+                "hit": "test_ui_button",
                 "hit_class": "lv_button",
             }
         )

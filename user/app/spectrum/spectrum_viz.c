@@ -1,10 +1,11 @@
 
+#include "app.h"
 #include "spectrum.h"
 
 #include <math.h>
 #include <string.h>
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #define SP_PI         3.14159265358979323846f
 #define VIZ_W         SPECTRUM_VIZ_W
@@ -215,6 +216,9 @@ static void draw_dashed_circle(lv_layer_t * layer, int cx, int cy, int radius,
         points[i].x = cx + (int)(cosf(a) * (float)radius);
         points[i].y = cy + (int)(sinf(a) * (float)radius);
     }
+
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 5
+    /* 9.5 replaced the two-point line with a polyline. */
     lv_draw_line_dsc_t dsc;
     lv_draw_line_dsc_init(&dsc);
     dsc.color = lv_color_hex(color);
@@ -225,6 +229,22 @@ static void draw_dashed_circle(lv_layer_t * layer, int cx, int cy, int radius,
     dsc.dash_width = dash;
     dsc.dash_gap = gap;
     lv_draw_line(layer, &dsc);
+#else
+    /* 9.4 draws one segment at a time; the dash pattern is recreated by
+     * walking the ring and emitting only the "on" spans. */
+    for(int i = 0; i < 97; i++) {
+        int span = i % (dash + gap);
+        if(span >= dash) continue;
+        lv_draw_line_dsc_t dsc;
+        lv_draw_line_dsc_init(&dsc);
+        dsc.color = lv_color_hex(color);
+        dsc.width = 1;
+        dsc.opa = (lv_opa_t)opa;
+        dsc.p1 = points[i];
+        dsc.p2 = points[(i + 1) % 97];
+        lv_draw_line(layer, &dsc);
+    }
+#endif
 }
 
 static void viz_apply_white(uint32_t * pixel, float alpha)
@@ -470,8 +490,8 @@ static void viz_create_overlay(lv_obj_t * parent)
     lv_image_set_src(viz_overlay, &viz_overlay_dsc);
     lv_obj_set_pos(viz_overlay, 0, 0);
     lv_obj_set_size(viz_overlay, VIZ_W, VIZ_H);
-    lv_obj_set_clickable(viz_overlay, false);
-    lv_obj_set_scrollable(viz_overlay, false);
+    app_obj_set_clickable(viz_overlay, false);
+    app_obj_set_scrollable(viz_overlay, false);
 }
 
 static void init_visuals(void)
@@ -846,8 +866,8 @@ void spectrum_viz_create(lv_obj_t * parent)
     lv_obj_set_style_border_width(viz_canvas, 0, 0);
     lv_obj_set_style_pad_all(viz_canvas, 0, 0);
     lv_obj_set_style_bg_opa(viz_canvas, LV_OPA_TRANSP, 0);
-    lv_obj_set_clickable(viz_canvas, false);
-    lv_obj_set_scrollable(viz_canvas, false);
+    app_obj_set_clickable(viz_canvas, false);
+    app_obj_set_scrollable(viz_canvas, false);
 
     viz_cover_base = lv_image_create(parent);
     lv_image_set_src(viz_cover_base,
@@ -856,7 +876,7 @@ void spectrum_viz_create(lv_obj_t * parent)
     lv_obj_set_size(viz_cover_base, 160, 160);
     lv_obj_set_pos(viz_cover_base, VIZ_CX - 80, VIZ_CY - 80);
     lv_image_set_pivot(viz_cover_base, 80, 80);
-    lv_obj_set_clickable(viz_cover_base, false);
+    app_obj_set_clickable(viz_cover_base, false);
 
     viz_cover_spin = lv_image_create(parent);
     lv_image_set_src(viz_cover_spin,
@@ -866,21 +886,21 @@ void spectrum_viz_create(lv_obj_t * parent)
     lv_obj_set_pos(viz_cover_spin, VIZ_CX - 80, VIZ_CY - 80);
     lv_image_set_pivot(viz_cover_spin, 80, 80);
     lv_image_set_blend_mode(viz_cover_spin, LV_BLEND_MODE_ADDITIVE);
-    lv_obj_set_clickable(viz_cover_spin, false);
+    app_obj_set_clickable(viz_cover_spin, false);
 
     viz_ring_inner = lv_obj_create(parent);
     lv_obj_set_style_bg_opa(viz_ring_inner, LV_OPA_TRANSP, 0);
     lv_obj_set_style_radius(viz_ring_inner, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_pad_all(viz_ring_inner, 0, 0);
-    lv_obj_set_clickable(viz_ring_inner, false);
-    lv_obj_set_scrollable(viz_ring_inner, false);
+    app_obj_set_clickable(viz_ring_inner, false);
+    app_obj_set_scrollable(viz_ring_inner, false);
 
     viz_ring_outer = lv_obj_create(parent);
     lv_obj_set_style_bg_opa(viz_ring_outer, LV_OPA_TRANSP, 0);
     lv_obj_set_style_radius(viz_ring_outer, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_pad_all(viz_ring_outer, 0, 0);
-    lv_obj_set_clickable(viz_ring_outer, false);
-    lv_obj_set_scrollable(viz_ring_outer, false);
+    app_obj_set_clickable(viz_ring_outer, false);
+    app_obj_set_scrollable(viz_ring_outer, false);
 
     viz_create_overlay(parent);
 }

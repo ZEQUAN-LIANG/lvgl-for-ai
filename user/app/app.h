@@ -97,9 +97,18 @@ static inline void app_obj_set_hidden(lv_obj_t * obj, bool en)
 #endif
 }
 
+/* 9.6 added lv_obj_is_hidden(); every earlier version spells it as a flag
+ * query, which 8.x and 9.x both provide. */
+static inline bool app_obj_is_hidden(const lv_obj_t * obj)
+{
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+    return lv_obj_is_hidden(obj);
+#else
+    return lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN);
+#endif
+}
+
 void app_panel_create(void);
 lv_obj_t * app_panel_get(void);
-
-void demo_harness_create(bool visible);
 
 #endif

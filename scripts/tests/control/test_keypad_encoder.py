@@ -51,7 +51,10 @@ class KeypadIntegrationTest(unittest.TestCase):
 
     def _runtime(self) -> Runtime:
         return Runtime(
-            lvgl="9.6", build=True, sessions_root=self.sessions_root
+            lvgl="9.6",
+            app="test_ui",
+            build=True,
+            sessions_root=self.sessions_root,
         )
 
     def test_keypad_enter_clicks_the_focused_button(self) -> None:
@@ -76,7 +79,7 @@ class KeypadIntegrationTest(unittest.TestCase):
             ],
         )
         log_text = (rt.session_dir / "engine.log").read_text(encoding="utf-8")
-        self.assertIn("[app] demo_button clicked", log_text)
+        self.assertIn("[app] test_ui_button clicked", log_text)
 
         self.assertIn("[app] focus group created", log_text)
 
@@ -141,7 +144,10 @@ class EncoderIntegrationTest(unittest.TestCase):
 
     def _runtime(self) -> Runtime:
         return Runtime(
-            lvgl="9.6", build=True, sessions_root=self.sessions_root
+            lvgl="9.6",
+            app="test_ui",
+            build=True,
+            sessions_root=self.sessions_root,
         )
 
     def test_encoder_turn_delivers_diff_and_moves_focus_in_sign_order(
@@ -171,9 +177,9 @@ class EncoderIntegrationTest(unittest.TestCase):
             focus_lines(rt.session_dir),
             [
                 "[app] panel focused",
-                "[app] demo_button focused",
+                "[app] test_ui_button focused",
                 "[app] title focused",
-                "[app] demo_button focused",
+                "[app] test_ui_button focused",
             ],
         )
 
@@ -212,7 +218,7 @@ class EncoderIntegrationTest(unittest.TestCase):
             focus_lines(rt.session_dir),
             [
                 "[app] panel focused",
-                "[app] demo_button focused",
+                "[app] test_ui_button focused",
                 "[app] title focused",
             ],
         )
@@ -240,7 +246,10 @@ class KeySequenceDeterminismTest(unittest.TestCase):
 
         def run_once(name: str) -> list[dict]:
             rt = Runtime(
-                lvgl="9.6", build=True, sessions_root=self.root / name
+                lvgl="9.6",
+                app="test_ui",
+                build=True,
+                sessions_root=self.root / name,
             )
             try:
                 rt.start()

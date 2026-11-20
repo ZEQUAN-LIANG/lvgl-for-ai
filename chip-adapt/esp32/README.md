@@ -20,7 +20,6 @@
 | 区域 | 状态 | 说明 |
 | --- | --- | --- |
 | `host/` | 可运行原型 | 复用 SiFli host 的 `SerialBroker`；页面 + Wi-Fi + 蓝牙 + 串口 + 系统网页；独立烧录页 `/flash/`，CLI + fake backend |
-| LVGL demo | 可运行 | `user/app/c6_demo/`，3 页，172×320，headless 场景 `user/scenarios/c6_demo.json` |
 | 性能监控器 | 可运行（真机已验证） | `user/app/perf_monitor/`，172×320 / 320×172 串口切换；host `/perf/` + tkinter GUI；协议与 PC 发送端见其 README |
 | 桌面控制 GUI | 可运行 | `host/perf/perf_gui.py`，走 host HTTP API，不直接占用 COM 口 |
 | Wi-Fi / 蓝牙配置 UI | 已实现 | 网页扫描/连接/开关/改名/可发现；串口协议见 `host/README.md` |
@@ -34,9 +33,7 @@
 ## 快速入口
 
 ```bash
-# LVGL demo（headless，不需要板子）
-python -I console/entrypoints/cli.py --lvgl 9.6 \
-  --scenario user/scenarios/c6_demo.json --json
+# LVGL 界面（headless，不需要板子）
 python -I console/entrypoints/cli.py --lvgl 9.6 \
   --scenario user/scenarios/perf_monitor.json --json
 python -I console/entrypoints/cli.py --lvgl 9.6 --scenario user/scenarios/perf_monitor_landscape.json --json
@@ -108,7 +105,7 @@ python -I chip-adapt/esp32/host/host.py flash \
 2. 新建 `chip-adapt/esp32/templates/` 与 `export.py`：ST7789 + `esp_lvgl_port` 的
    `app_main.c`，以及 `sdkconfig.defaults` / `partitions.csv` / `main/CMakeLists.txt`。
 3. 加 `esp_console` 的 USB Serial/JTAG REPL，注册 `pages` / `page` / `state` / `ping`，
-   调用 `user/app/c6_demo` 暴露的 `c6_demo_page_*` API。
+   调用 `user/app/perf_monitor` 暴露的分页 API。
 4. 真机验证：网页按钮 -> 串口命令 -> 屏幕切页，保留串口日志与屏幕照片/录屏。
 5. 把 `idf.py build` 接进 host；烧录后端已用 esptool 实现，构建仍待接。
 

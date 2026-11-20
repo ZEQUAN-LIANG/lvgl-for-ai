@@ -28,7 +28,7 @@ class AsyncEncodingTest(unittest.TestCase):
         options = {
             "lvgl": "9.6",
             "build": True,
-            "app": "coffee",
+            "app": "test_ui",
             "record_changed_only": False,
             "sessions_root": self.sessions_root,
         }

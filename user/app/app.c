@@ -2,13 +2,11 @@
 #include "lvgl.h"
 
 #include "app.h"
-#include "asset_probe/asset_probe.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 #include "app_registry_lookup.h"
 #endif
 
@@ -16,7 +14,7 @@ void app_create(void)
 {
     printf("[app] app_create\n");
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
     const char * requested = getenv("LVGL_VERIFY_LOOP_DEMO");
     const char * name =
         (requested == NULL || requested[0] == '\0') ? apps[0].name : requested;
@@ -29,21 +27,11 @@ void app_create(void)
         exit(1);
     }
 
-    demo_harness_create(false);
     printf("[app] app=%s\n", app->name);
     app->create();
 #else
-    const char * requested = getenv("LVGL_VERIFY_LOOP_DEMO");
-    if(requested != NULL && strcmp(requested, "asset_probe") == 0) {
-        demo_harness_create(false);
-        printf("[app] app=asset_probe (LVGL < 9.6)\n");
-        asset_probe_create();
-    }
-    else {
-        printf("[app] app=harness (LVGL < 9.6)\n");
-        demo_harness_create(true);
-    }
+    /* 9.1 and 8.x predate the directory discovery registry, which is compiled
+     * for 9.4+ only, so those versions show an empty screen. */
+    printf("[app] app=none (LVGL < 9.4)\n");
 #endif
-
-    printf("[demo_asset] font=demo_asset_font_8 image=demo_asset_logo\n");
 }
