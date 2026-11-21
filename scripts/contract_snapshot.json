@@ -5614,7 +5614,7 @@
         }
       },
       "paths": {
-        "tool_version": "0.2.2"
+        "tool_version": "0.2.3"
       },
       "scenario": {
         "play_scenario": {

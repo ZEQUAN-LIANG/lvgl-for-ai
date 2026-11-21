@@ -43,12 +43,17 @@ python -I scripts/release_all.py --out dist/release --force-build --json
 
 # 上传 Release 资产（token 只从环境变量读取）
 #   set GITHUB_TOKEN=...   /   set GITEE_TOKEN=...
-python -I scripts/upload_release.py --version 0.2.2 --replace --json
+python -I scripts/upload_release.py --version 0.2.3 --replace --json
 python -I scripts/upload_release.py --dry-run --json
 
 # Gitee → GitHub 强制镜像（分支 + 标签）
 python -I scripts/sync_github.py --dry-run
 python -I scripts/sync_github.py
+
+# 发布链路自检（版本号一致性 / 包内容 / 真实安装 / 线上资产）
+python -I scripts/publish_check.py --stage version --json
+python -I scripts/publish_check.py --stage install --json
+python -I scripts/publish_check.py --json                       # 四个 stage 全跑
 
 # 只读会话证据（不启动 engine / 网页）
 python -I console/entrypoints/session_report.py --latest --log-tail 3
@@ -139,7 +144,7 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 - `scripts/`：维护与版本脚本。`scripts/launchers/` 是 Windows 双击启动器、图标生成器与构建脚本。`scripts/release_tools_README.md` 是发布包内 `scripts/README.md` 的替代版本。`scripts/upload_release.py` 只给维护者用，不进发布包。
 - `user/app/`：用户只写 `user/app/**/*.c` 与 `user/scenarios/`；应用资源头放在各自的 `user/app/<name>/`，没有公共资源目录。应用目录默认不需要任何 JSON——目录名即应用名，入口按 `void <name>_create(void)` 推导；只有入口名偏离约定时才在该目录写 `app.json`。跨应用约束（当前只有 `default`）在根级 `user/app/app.json`。写应用先看 `user/app/GUIDE.md`。`.trash/` 是管理台回收站，不参与构建。
 - `user/scenarios/`：场景 JSON；工具层不写死应用名，应用列表来自 `user/app/` 的目录发现和 `user/scenarios/*.json` 的 `app` 字段。
-- `docs/`：`skill/SKILL.md` 与 `skill/api-nav/`（每版本 API 导航）、`licenses/`（第三方许可）、`assets/docs.css`；SiFli 能力索引在 `chip-adapt/docs/sifli.html`。
+- `docs/`：`skill/SKILL.md` 与 `skill/api-nav/`（每版本 API 导航）、`licenses/`（第三方许可）、`assets/docs.css`；`RELEASE.md` 是维护者发布 runbook；SiFli 能力索引在 `chip-adapt/docs/sifli.html`。
 - `chip-adapt/sifli/`：SiFli 导出适配层。`chip-adapt/README.md` 是区域路由，`chip-adapt/sifli/README.md` 是适配层入口；`chip-adapt/vendor/` 是外部下载物（只读，清单见其 README）；`chip-adapt/exports/` 是导出生成物。`chip-adapt/sifli/export.py` 把 `user/app` 按 LVGL 9.4 基线导出到 `chip-adapt/exports/<app>/`；共享源码仍以 `user/app` 为唯一真源。
 - `chip-adapt/sifli/host/`：黄山派串口 + 烧录上位机，用法见其 README；双击入口是 `chip-adapt/sifli/launcher/SiFli-Host.exe`。
 - `chip-adapt/esp32/host/`：ESP32-C6 串口/Wi-Fi/蓝牙上位机与烧录入口，用法见其 README；PERF TAPE 面板在 `host/perf/perf_gui.py`，双击入口是 `chip-adapt/esp32/launcher/PerfTape.exe`（等价于 `python -I chip-adapt/esp32/host/launch.py`）。

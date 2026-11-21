@@ -404,7 +404,7 @@ class ContractSnapshotTest(unittest.TestCase):
         ):
             self.assertIn(name, exports)
         self.assertIn("play_scenario", python["scenario"])
-        self.assertEqual(python["paths"]["tool_version"], "0.2.2")
+        self.assertEqual(python["paths"]["tool_version"], "0.2.3")
         runtime = python["control"]["members"]["Runtime"]
         self.assertEqual(runtime["kind"], "class")
         for method in (

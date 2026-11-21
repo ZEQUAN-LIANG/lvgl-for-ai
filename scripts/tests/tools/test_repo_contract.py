@@ -115,7 +115,7 @@ class PublicSurfaceTest(unittest.TestCase):
     def test_scenario_and_lat_error_alias(self) -> None:
         self.assertTrue(callable(scenario.play_scenario))
         self.assertIs(ToolError, LatError)
-        self.assertEqual(paths.TOOL_VERSION, "0.2.2")
+        self.assertEqual(paths.TOOL_VERSION, "0.2.3")
 
     def test_apps_lifecycle_signatures_are_unchanged(self) -> None:
         for name, signature in EXPECTED_APPS_SIGNATURES.items():

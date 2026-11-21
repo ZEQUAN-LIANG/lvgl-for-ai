@@ -2,7 +2,7 @@
   "schema": "lvgl-verify-loop-versions-v2",
   "default": "9.6",
   "tool": {
-    "version": "0.2.2",
+    "version": "0.2.3",
     "platform": "win64"
   },
   "versions": {

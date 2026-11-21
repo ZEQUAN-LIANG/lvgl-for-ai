@@ -25,7 +25,7 @@ TRASH_ROOT = REPO_ROOT / "user" / ".trash"
 DEFAULT_SESSIONS_ROOT = REPO_ROOT / "user" / "sessions"
 
 DEFAULT_LVGL_VERSION = "9.6"
-TOOL_VERSION = "0.2.2"
+TOOL_VERSION = "0.2.3"
 
 
 def metadata_dir() -> Path:

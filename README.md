@@ -28,15 +28,15 @@ The tool never prints pass/fail. Acceptance criteria come from you.
 
 ## Install
 
-Download a 0.2.2 bundle from [GitHub Releases](https://github.com/ZEQUAN-LIANG/lvgl-for-ai/releases) or [Gitee Releases](https://gitee.com/liang-zequan/lvgl-for-ai/releases):
+Download a 0.2.3 bundle from [GitHub Releases](https://github.com/ZEQUAN-LIANG/lvgl-for-ai/releases) or [Gitee Releases](https://gitee.com/liang-zequan/lvgl-for-ai/releases):
 
-- `lvgl-verify-loop-0.2.2-full-win64.zip` — all six LVGL versions and the viewer.
-- `lvgl-verify-loop-0.2.2-full-sifli-win64.zip` — the same bundle plus the SiFli tools.
+- `lvgl-verify-loop-0.2.3-full-win64.zip` — all six LVGL versions and the viewer.
+- `lvgl-verify-loop-0.2.3-full-sifli-win64.zip` — the same bundle plus the SiFli tools.
 
 Extract it as a personal Claude Code skill (Windows PowerShell):
 
 ```powershell
-Expand-Archive .\lvgl-verify-loop-0.2.2-full-win64.zip "$env:USERPROFILE\.claude\skills"
+Expand-Archive .\lvgl-verify-loop-0.2.3-full-win64.zip "$env:USERPROFILE\.claude\skills"
 ```
 
 The zip has a single top-level `lvgl-verify-loop\` folder, so this creates `%USERPROFILE%\.claude\skills\lvgl-verify-loop\SKILL.md`. For one project only, extract into that project's `.claude\skills\` instead. Right-click → **Extract All** works too.
@@ -164,7 +164,7 @@ Prebuilt LVGL libraries let you run with just GCC installed (`--prebuilt`). The 
 ## Versions
 
 - Host default is LVGL 9.6, for daily preview and evidence collection; the bundled `intro` app targets 9.4+.
-- 0.2.2 publishes exactly two zips: `full` carries all six LVGL versions and their engines; `full-sifli` adds the SiFli tools. There is no per-version download step.
+- 0.2.3 publishes exactly two zips: `full` carries all six LVGL versions and their engines; `full-sifli` adds the SiFli tools. There is no per-version download step.
 - The bundled LVGL libraries were exported with GCC 15.2.0. Rebuilding user C through the prebuilt path requires the same GCC version; CMake/Ninja are only for LVGL source builds.
 - Inspect versions, or use source installation for a custom build:
 

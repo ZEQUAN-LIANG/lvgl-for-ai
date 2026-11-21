@@ -11,7 +11,11 @@ release_all.py  →  构建两个完整包：full 与 full-sifli
 release.py      →  构建单版本核心包（解包目录 + zip）
 upload_release.py → 上传 zip 到 GitHub / Gitee Release（token 只读环境变量）
 export_sdk.py   →  从 engine/lvgl/<version> 导出 dist/lvgl/<version>/
+publish_check.py → 发布链路自检：版本号一致性 / 包内容 / 真实安装 / 线上资产
 ```
+
+发版顺序与判定条件见 `docs/RELEASE.md`；`publish_check.py` 是它的可执行检查。四个 stage
+（`version` / `package` / `install` / `remote`）可单独跑，不带 `--stage` 时按序全跑。
 
 发布包根目录只有 `SKILL.md` 一个文件（`api-nav/` 是目录）；元数据在
 `scripts/meta/`，许可证在 `docs/licenses/`，双击启动器在 `bin/`。发布包不含
