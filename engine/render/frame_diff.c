@@ -149,7 +149,6 @@ void frame_diff_record_reference(frame_diff_t * diff, const uint8_t * frame,
     frame_analysis_t analysis;
     frame_analysis_compare(diff->reference, frame, diff->width, diff->height,
                            diff->threshold, &analysis);
-    /* Reference rows have no previous frame; prev_frame_no is null. */
     write_row(diff, frame_no, 0, false, t_ms, &analysis);
 }
 

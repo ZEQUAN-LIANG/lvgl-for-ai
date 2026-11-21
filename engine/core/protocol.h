@@ -1,8 +1,3 @@
-/**
- * Compact line protocol: "<seq> <verb> [args...]" on stdin, one JSON object
- * per line on stdout. The engine does not parse JSON.
- */
-
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
@@ -16,10 +11,9 @@ extern "C" {
 typedef struct {
     long seq;
     char verb[32];
-    const char * args; /**< Points into the caller's line buffer. */
+    const char * args;
 } command_t;
 
-/** Parse one line in place. Returns false when seq or verb is missing. */
 bool protocol_parse(char * line, command_t * command);
 
 void protocol_ready(FILE * out, const char * protocol,

@@ -36,7 +36,6 @@ struct adapter {
     lv_indev_t * encoder;
     lv_indev_drv_t encoder_drv;
 
-    /* Created before app_create() so the app's focus-group loop sees them. */
     lv_indev_t * real_pointer;
     lv_indev_drv_t real_pointer_drv;
 
@@ -75,8 +74,6 @@ static void encoder_read_cb(lv_indev_drv_t * drv, lv_indev_data_t * data)
     if(adapter == NULL) return;
     data->enc_diff = (int16_t)adapter->common.encoder_diff;
     data->state = LV_INDEV_STATE_RELEASED;
-    /* An encoder diff is a delta: consume it so timer reads do not repeat it.
-     */
     adapter->common.encoder_diff = 0;
     adapter->common.encoder_reads++;
     data->continue_reading = false;
@@ -105,12 +102,6 @@ static void real_keypad_read_cb(lv_indev_drv_t * drv, lv_indev_data_t * data)
     data->continue_reading = false;
 }
 
-/**
- * LVGL 8.x has no object-name API and its lv_obj_class_t carries no name
- * string (that was added in 9.x). Map the built-in class pointers enabled in
- * lv_conf.h to their canonical 8.x class names; custom classes fall back to
- * the nearest known base class. Object names are never invented: hit stays "".
- */
 static const char * class_name(const lv_obj_class_t * class_p)
 {
     while(class_p != NULL) {
@@ -138,7 +129,6 @@ static lv_obj_t * hit_test(adapter_t * adapter, int32_t x, int32_t y)
     if(found != NULL) return found;
     found = lv_indev_search_obj(lv_disp_get_layer_top(display), &point);
     if(found != NULL) return found;
-    /* 8.x has no bottom layer: the active screen is the bottom-most surface. */
     return lv_indev_search_obj(lv_disp_get_scr_act(display), &point);
 }
 
@@ -165,10 +155,6 @@ static void flush_cb(lv_disp_drv_t * disp_drv, const lv_area_t * area,
     lv_disp_flush_ready(disp_drv);
 }
 
-/**
- * LVGL 8.x exposes no lv_indev_read(); the registered read timer callback is
- * the public entry that reads and processes one input event synchronously.
- */
 static void indev_process(const lv_indev_drv_t * drv)
 {
     if(drv != NULL && drv->read_timer != NULL) {
@@ -204,8 +190,6 @@ int adapter_prim_init(adapter_t * adapter, uint32_t width, uint32_t height,
     adapter->display_drv.flush_cb = flush_cb;
     adapter->display_drv.draw_buf = &adapter->draw_buf;
     adapter->display_drv.user_data = adapter;
-    /* Always render the whole screen, matching the 9.x adapter's
-     * LV_DISPLAY_RENDER_MODE_FULL. */
     adapter->display_drv.full_refresh = 1;
     adapter->display = lv_disp_drv_register(&adapter->display_drv);
     if(adapter->display == NULL) return -1;
@@ -218,9 +202,6 @@ int adapter_prim_init(adapter_t * adapter, uint32_t width, uint32_t height,
     if(adapter->pointer == NULL) return -1;
     common->has_pointer = true;
 
-    /* Standard keypad and encoder indevs. They are not attached to any focus
-     * group: the tool stays small, and apps owns its group if it needs
-     * focus navigation. */
     lv_indev_drv_init(&adapter->keypad_drv);
     adapter->keypad_drv.type = LV_INDEV_TYPE_KEYPAD;
     adapter->keypad_drv.read_cb = keypad_read_cb;
@@ -323,7 +304,6 @@ void adapter_prim_hit(adapter_t * adapter, int32_t x, int32_t y,
     lv_obj_t * obj = hit_test(adapter, x, y);
     if(obj == NULL) return;
 
-    /* 8.x has no object-name API and no class-name metadata. */
     const lv_obj_class_t * class_p = lv_obj_get_class(obj);
     snprintf(hit_class, hit_class_size, "%s", class_name(class_p));
 }
@@ -372,8 +352,6 @@ int adapter_prim_png_decode(const unsigned char * data, size_t size,
         lv_mem_free(decoded);
         return -1;
     }
-    /* The 8.x lodepng allocator is lv_mem_alloc, and decode32 asks for RGBA.
-     * Repack into the framebuffer layout B, G, R, X. */
     for(unsigned y = 0; y < png_height; y++) {
         const uint8_t * row = decoded + (size_t)y * png_width * 4u;
         for(unsigned x = 0; x < png_width; x++) {

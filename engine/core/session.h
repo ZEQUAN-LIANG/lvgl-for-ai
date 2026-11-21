@@ -1,17 +1,3 @@
-/**
- * One engine session: owns the refresh -> capture -> timeline -> diff
- * orchestration and the evidence write error state.
- *
- * Enforces the retained-frame invariant: one refresh produces at most one
- * retained frame, and its PNG, timeline frame row and diff rows share the same
- * ``frame_no`` and ``t_ms``. It also owns the changed-only comparison buffer,
- * so identical RGB frames are skipped before any evidence is written and frame
- * numbers stay contiguous.
- *
- * main.c keeps argument parsing, adapter/window lifecycle, protocol dispatch
- * and real-input callbacks; every evidence write goes through here.
- */
-
 #ifndef SESSION_H
 #define SESSION_H
 
@@ -81,17 +67,13 @@ typedef struct {
 
 void session_init(session_t * session, const session_config_t * config);
 
-/** Refresh the display, then record at most one retained frame. */
 void session_refresh_frame(session_t * session);
 
-/** tick <ms>: lv_tick_inc -> lv_timer_handler -> refresh -> record. */
 void session_tick(session_t * session, uint32_t ms);
 
-/** wait <ms>: tick in 16 ms steps and write the wait row; true when painted. */
 bool session_wait_ms(session_t * session, unsigned long ms,
                      session_service_fn service, void * service_user);
 
-/** wait frames <n>: n 16 ms ticks and the wait row; true when painted. */
 bool session_wait_frames(session_t * session, unsigned long frames,
                          session_service_fn service, void * service_user);
 
@@ -107,7 +89,6 @@ void session_input_key(session_t * session, long seq, const char * source,
 void session_input_encoder(session_t * session, long seq, const char * source,
                            long diff);
 
-/** Refresh + present, then write snapshots/NNN_<label>.png and its row. */
 int session_snapshot(session_t * session, const char * label, char * relative,
                      size_t relative_size);
 

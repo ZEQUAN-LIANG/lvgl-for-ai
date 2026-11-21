@@ -1,11 +1,3 @@
-/**
- * @file stdin_queue.c
- * Win32 stdin reader thread; stub elsewhere.
- *
- * The reader only allocates and enqueues complete lines; protocol parsing,
- * replies and every LVGL call stay on the window thread.
- */
-
 #include "stdin_queue.h"
 
 #include <stdio.h>
@@ -135,10 +127,6 @@ void stdin_queue_free(stdin_queue_t * queue)
 {
     if(queue == NULL) return;
 
-    /* The reader may still be blocked in fgets(stdin) when the session ends
-     * through ``quit``. In that case the process exits right after this call,
-     * so the queue intentionally stays allocated instead of freeing memory
-     * under a live thread. An EOF reader has already returned. */
     EnterCriticalSection(&queue->lock);
     bool finished = queue->eof;
     LeaveCriticalSection(&queue->lock);

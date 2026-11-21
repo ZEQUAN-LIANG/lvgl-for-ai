@@ -3,8 +3,6 @@
 
 #include "lvgl.h"
 #include "lodepng.h"
-/* 9.4 moved lv_obj_class_t (and its name field) into the private header.
- * 9.1 keeps the struct public in core/lv_obj_class.h. */
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 #include "src/core/lv_obj_class_private.h"
 #endif
@@ -31,8 +29,6 @@ struct adapter {
     lv_indev_t * pointer;
     lv_indev_t * keypad;
     lv_indev_t * encoder;
-    /* OS input uses its own standard indevs, created before app_create()
-     * so apps's focus-group loop sees the real keypad. */
     lv_indev_t * real_pointer;
     lv_indev_t * real_keypad;
 };
@@ -68,8 +64,6 @@ static void encoder_read_cb(lv_indev_t * indev, lv_indev_data_t * data)
     if(adapter == NULL) return;
     data->enc_diff = (int16_t)adapter->common.encoder_diff;
     data->state = LV_INDEV_STATE_RELEASED;
-    /* An encoder diff is a delta: consume it so timer reads do not repeat it.
-     */
     adapter->common.encoder_diff = 0;
     adapter->common.encoder_reads++;
     data->continue_reading = false;
@@ -169,9 +163,6 @@ int adapter_prim_init(adapter_t * adapter, uint32_t width, uint32_t height,
     adapter->pointer = pointer;
     common->has_pointer = true;
 
-    /* Standard keypad and encoder indevs. They are not attached to any focus
-     * group: the tool stays small, and apps owns its group if it needs
-     * focus navigation. */
     lv_indev_t * keypad = lv_indev_create();
     if(keypad == NULL) return -1;
     lv_indev_set_type(keypad, LV_INDEV_TYPE_KEYPAD);
@@ -277,9 +268,6 @@ void adapter_prim_hit(adapter_t * adapter, int32_t x, int32_t y,
     lv_obj_t * obj = hit_test(adapter, x, y);
     if(obj == NULL) return;
 
-    /* Object names were added in 9.2. LVGL 9.1 has no name API and no
-     * LV_USE_OBJ_NAME switch, so hit stays empty there; hit_class still works.
-     */
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 2
     const char * name = lv_obj_get_name(obj);
     if(name != NULL) {
@@ -331,8 +319,6 @@ int adapter_prim_png_decode(const unsigned char * data, size_t size,
         return -1;
     }
 
-    /* All supported 9.x lodepng builds return a draw buffer, even though the
-     * public signature still says unsigned char *. */
     lv_draw_buf_t * decoded = (lv_draw_buf_t *)decoded_ptr;
     size_t pixel_count = (size_t)png_width * png_height;
     uint8_t * packed = (uint8_t *)malloc(pixel_count * 4u);
@@ -342,9 +328,6 @@ int adapter_prim_png_decode(const unsigned char * data, size_t size,
         lv_draw_buf_destroy(decoded);
         return -1;
     }
-    /* lodepng_decode32 asks for LCT_RGBA, so the draw buffer data is R, G, B, A
-     * even though LVGL creates it with an ARGB8888 header. Repack into the
-     * framebuffer layout B, G, R, X. */
     for(unsigned y = 0; y < png_height; y++) {
         const uint8_t * row =
             decoded->data + (size_t)y * decoded->header.stride;

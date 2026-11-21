@@ -6,12 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/**
- * Every adapter_<family>.c defines ``struct adapter`` with adapter_common_t
- * as its first member (enforced there with _Static_assert). C guarantees a
- * pointer to a struct and a pointer to its first member share an address, so
- * the common implementation can treat the opaque adapter_t as its state.
- */
 static adapter_common_t * common_of(adapter_t * adapter)
 {
     return (adapter_common_t *)adapter;
@@ -115,7 +109,6 @@ int adapter_pointer(adapter_t * adapter, pointer_action_t action, int32_t x,
     adapter_common_t * common = common_of(adapter);
     if(!common->has_pointer) return -1;
 
-    /* Hit test first: the handler may delete the object before we reply. */
     store_hit(adapter, x, y, false);
     common->pointer_reply.x = x;
     common->pointer_reply.y = y;
@@ -142,10 +135,6 @@ int adapter_real_pointer(adapter_t * adapter, pointer_action_t action,
     common->real_pointer_reply.x = x;
     common->real_pointer_reply.y = y;
 
-    /* A real mouse can deliver WM_LBUTTONDOWN before any WM_MOUSEMOVE was
-     * processed (Windows coalesces moves). LVGL would then see a press that
-     * jumps from the old point to the new one, treat it as a scroll and drop
-     * the click. Position the device with a released read first. */
     if(action == POINTER_DOWN) {
         common->real_pointer_pressed = false;
         common->real_pointer_x = x;
@@ -192,9 +181,6 @@ int adapter_key(adapter_t * adapter, key_action_t action, uint32_t key)
     common->keypad_pressed = action == KEY_PRESS;
     adapter_prim_read(adapter, ADAPTER_INDEV_KEYPAD);
     if(common->keypad_reads == reads_before) {
-        /* LVGL blocked the read (for example during a screen transition).
-         * Revert to the state LVGL last saw: a rejected command must not
-         * change the virtual device. */
         common->keypad_pressed = pressed_before;
         common->keypad_key = key_before;
         return -1;
@@ -292,8 +278,6 @@ int adapter_load_png(const char * path, uint8_t ** pixels, uint32_t * width,
     *width = 0;
     *height = 0;
 
-    /* LVGL's lodepng build routes *_file helpers through lv_fs, which needs a
-     * registered driver. Read the bytes ourselves and decode from memory. */
     FILE * file = fopen(path, "rb");
     if(file == NULL) {
         fprintf(stderr, "[engine] cannot open reference %s\n", path);

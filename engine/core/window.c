@@ -1,12 +1,3 @@
-/**
- * @file window.c
- * Win32 GDI window and real-input source; stubs for other platforms.
- *
- * The window owns no LVGL state. It paints the engine's full framebuffer and
- * turns WM_* input into window_event_t callbacks, so every LVGL call
- * stays on the pumping thread.
- */
-
 #include "window.h"
 
 #include <stdio.h>
@@ -48,8 +39,6 @@ static BOOL WINAPI ctrl_handler(DWORD type)
         InterlockedExchange(&ctrl_interrupted, 1);
         return TRUE;
     }
-    /* CTRL_CLOSE_EVENT still gets the default termination; the console cannot
-     * wait for a graceful session close on that path. */
     return FALSE;
 }
 
@@ -71,7 +60,7 @@ static void window_draw(window_t * window, HDC dc)
     memset(&info, 0, sizeof(info));
     info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     info.bmiHeader.biWidth = (LONG)window->width;
-    info.bmiHeader.biHeight = -(LONG)window->height; /* top-down, like LVGL */
+    info.bmiHeader.biHeight = -(LONG)window->height;
     info.bmiHeader.biPlanes = 1;
     info.bmiHeader.biBitCount = 32;
     info.bmiHeader.biCompression = BI_RGB;
@@ -95,7 +84,6 @@ typedef struct {
     const char * name;
 } key_map_t;
 
-/* LVGL key codes from lv_key_t; names match tool.control.keys. */
 static const key_map_t key_map[] = {
     {VK_UP, 17, "UP"},         {VK_DOWN, 18, "DOWN"},
     {VK_RIGHT, 19, "RIGHT"},   {VK_LEFT, 20, "LEFT"},
@@ -148,8 +136,6 @@ static LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam,
             window = (window_t *)create->lpCreateParams;
             window->hwnd = hwnd;
             SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)window);
-            /* DefWindowProc stores the CreateWindowExW title; returning TRUE
-             * here without it leaves the window with an empty caption. */
             return DefWindowProcW(hwnd, message, wparam, lparam);
         }
         case WM_CLOSE:
@@ -168,8 +154,6 @@ static LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam,
             return 0;
         }
         case WM_PRINTCLIENT:
-            /* PrintWindow(PW_CLIENTONLY) reaches this path even when the
-             * window is occluded, which keeps screenshot evidence honest. */
             window_draw(window, (HDC)wparam);
             return 0;
         case WM_MOUSEMOVE:
@@ -207,8 +191,6 @@ static LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam,
             }
             return 0;
         case WM_CAPTURECHANGED:
-            /* Capture can vanish on alt-tab; release the LVGL pointer so the
-             * next real click does not start from a stuck pressed state. */
             if(window != NULL && window->pointer_down) {
                 window->pointer_down = false;
                 emit_pointer_at(window, WINDOW_POINTER_UP, window->pointer_x,
@@ -251,7 +233,6 @@ window_t * window_create(uint32_t width, uint32_t height, const char * title,
     window->callback = callback;
     window->user = user;
 
-    /* Fixed client size in physical pixels. */
     SetProcessDPIAware();
 
     HINSTANCE instance = GetModuleHandleW(NULL);

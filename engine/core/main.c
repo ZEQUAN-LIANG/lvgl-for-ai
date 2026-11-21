@@ -105,12 +105,6 @@ static void engine_present(void * user)
     }
 }
 
-/**
- * Keep real input responsive while a virtual wait runs. The callback still
- * runs on this (the window) thread, so LVGL stays single-threaded. Returns
- * false once the window closed or Ctrl+C arrived; the caller still finishes
- * the current command and replies, then the main loop exits.
- */
 static bool engine_service_window(void * user)
 {
     engine_t * engine = (engine_t *)user;
@@ -372,12 +366,6 @@ static const char * pointer_action_name(window_pointer_action_t action)
     }
 }
 
-/**
- * Real OS input callback. It runs on the window thread, inside the message
- * pump, so calling LVGL here keeps the single-thread rule. Down/up and key
- * events also run timers and repaint so the human sees the result without
- * waiting for a virtual tick; drag moves repaint too.
- */
 static void engine_real_input(void * user, const window_event_t * event)
 {
     engine_t * engine = (engine_t *)user;
@@ -391,8 +379,6 @@ static void engine_real_input(void * user, const window_event_t * event)
 
         if(adapter_real_pointer(engine->adapter, action, event->x, event->y) ==
            0) {
-            /* Hover moves are delivered to LVGL but not written to the
-             * timeline; pressed moves carry drag evidence. */
             if(action != POINTER_MOVE || event->pressed) {
                 const pointer_reply_t * reply =
                     adapter_last_real_pointer(engine->adapter);
@@ -461,10 +447,6 @@ static bool process_command(engine_t * engine, FILE * out, char * line)
     return true;
 }
 
-/**
- * Window main loop: drain queued protocol lines, pump Win32 messages, and
- * wait briefly for either. Every LVGL call stays on this thread.
- */
 static void run_window_loop(engine_t * engine, FILE * out)
 {
     bool eof = false;
@@ -489,7 +471,6 @@ static void run_window_loop(engine_t * engine, FILE * out)
     }
 }
 
-/** Window title names the session so FindWindow can target one engine. */
 static void session_window_title(const char * session_dir, char * out,
                                  size_t out_size)
 {
@@ -599,9 +580,6 @@ int main(int argc, char ** argv)
         return 2;
     }
 
-    /* Unbuffered stdout matters beyond latency: MinGW keeps pipes fully
-     * buffered despite _IOLBF, so user printf() from an event handler could
-     * stay invisible in engine.log until the process exits. */
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 
