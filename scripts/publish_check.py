@@ -49,6 +49,18 @@ VERSION_FILES = (
     "CLAUDE.md",
 )
 
+STALE_CARRIERS = (
+    "README.md",
+    "README.zh-CN.md",
+    "console/paths.py",
+    "scripts/meta/versions.json",
+    "scripts/contract_snapshot.json",
+)
+
+NARRATIVE_FILES = (
+    "docs/RELEASE.md",
+)
+
 GENERATED_ALLOWLIST = (
     "user/app/perf_monitor/assets.json",
     "user/app/perf_monitor/perf_font_",
@@ -154,19 +166,23 @@ def stage_version(version: str) -> dict[str, Any]:
         )
 
     previous = _previous_version(version)
+    warnings: list[str] = []
     if previous:
-        strays = _stray_references(previous)
-        if strays:
-            errors.append(
-                f"stale {previous} references outside the allowlist: "
-                + ", ".join(strays)
-            )
+        for relative in _stray_references(previous):
+            if relative in STALE_CARRIERS:
+                errors.append(
+                    f"{relative}: still references {previous}; "
+                    "required carriers must describe only the current release"
+                )
+            elif relative not in NARRATIVE_FILES:
+                warnings.append(f"{relative} references {previous}")
 
     return {
         "stage": "version",
         "version": version,
         "ok": not errors,
         "errors": errors,
+        "warnings": sorted(set(warnings)),
         "matches": matches,
     }
 
