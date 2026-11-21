@@ -1,24 +1,3 @@
-"""Static version-boundary checks for the LVGL 8.x / 9.x matrix.
-
-This is a source invariant check, not a behaviour test: the unittest suite is
-reserved for Runtime / Recording / CLI behaviour. Run it after build-system or
-user-app changes:
-
-    python -I scripts/check_version_boundaries.py
-
-It verifies that:
-
-* only ``engine/adapter_9x.c`` and ``engine/adapter_8x.c`` include
-  LVGL or lodepng headers;
-* ``engine/adapter_common.c`` / ``adapter_internal.h`` and the rest of the
-  engine sources do not include version LVGL headers;
-* ``apps`` (including per-app subdirectories) carries explicit
-  ``#if LVGL_VERSION_MAJOR`` version switches;
-* ``engine/adapter/lv_conf.h`` enables ``LV_USE_OBJ_NAME`` for 9.2+ (9.1 and 8.x have
-  no such switch, which the adapters handle with version conditions) and
-  carries a separate 8.x configuration block.
-"""
-
 from __future__ import annotations
 
 import sys

@@ -1,11 +1,3 @@
-"""Test package bootstrap.
-
-Put the repository root and the tool root on ``sys.path`` before any test
-module imports ``control``, ``web`` or ``scripts.tests.support``. Importing ``apps``
-here pins ``console/appmgr`` in ``sys.modules`` so the top-level ``user/app/`` source
-directory cannot shadow it while the repository root is also importable.
-"""
-
 from __future__ import annotations
 
 import sys

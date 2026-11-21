@@ -1,18 +1,3 @@
-"""Repeatable full verification for the repository and the release package.
-
-One command runs the checks that must stay green after layout or identity
-changes:
-
-1. static checks (``scripts/lint.py check``)
-2. external contract snapshot (``scripts/contract_snapshot.py compare``)
-3. the full test suite (``scripts/tests/run_tests.py``)
-4. both release packages (``scripts/release_all.py``) and a real run of the
-   ``full`` package from an unrelated extraction directory
-
-The package step reuses the engine cache under ``dist/release/lvgl_<token>``
-unless ``--force-build`` is given, so it does not rebuild C code by default.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -112,14 +97,20 @@ def verify_package(zip_path: Path) -> dict[str, Any]:
                 ],
                 600.0,
             ),
-            ("report", [str(runner), "report", "--latest", "--log-tail", "2"], 120.0),
+            (
+                "report",
+                [str(runner), "report", "--latest", "--log-tail", "2"],
+                120.0,
+            ),
             ("assets", [str(runner), "assets", "doctor", "--json"], 120.0),
         ):
             outcome = run(args, cwd=package, timeout=timeout)
             step = _step(f"package:{name}", outcome)
             checks.append(step)
             if not step["ok"]:
-                errors.append(f"package {name} failed: {outcome['stderr'][-500:]}")
+                errors.append(
+                    f"package {name} failed: {outcome['stderr'][-500:]}"
+                )
     finally:
         shutil.rmtree(root, ignore_errors=True)
     return {"zip": str(zip_path), "errors": errors, "checks": checks}
@@ -173,7 +164,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             try:
                 payload = json.loads(outcome["stdout"].splitlines()[-1])
             except (IndexError, json.JSONDecodeError):
-                report["package"] = {"errors": ["cannot parse release summary"]}
+                report["package"] = {
+                    "errors": ["cannot parse release summary"]
+                }
                 report["ok"] = False
             else:
                 zip_path = Path(payload["full"]["zip"])

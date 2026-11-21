@@ -28,7 +28,10 @@ from control import (
 from scenario import play_scenario
 import paths
 from control.evidence import INDEX_FIELDS
-from scripts.tests.session_fixtures import SESSION_NAME, make_summary_session as make_session
+from scripts.tests.session_fixtures import (
+    SESSION_NAME,
+    make_summary_session as make_session,
+)
 
 CONSOLE_ROOT = paths.CONSOLE_ROOT
 CLI_PATH = paths.entrypoint_path("cli.py")
@@ -239,7 +242,9 @@ class CliUnitTest(unittest.TestCase):
         payload = one_json(out)
 
         self.assertEqual(payload["session_id"], SESSION_NAME)
-        self.assertEqual(payload["schema"], "lvgl-verify-loop-session-index-v1")
+        self.assertEqual(
+            payload["schema"], "lvgl-verify-loop-session-index-v1"
+        )
         self.assertIsNone(payload["error"])
         self.assertEqual(set(payload), set(INDEX_FIELDS))
 
@@ -547,8 +552,6 @@ class CliRealEngineIntegrationTest(unittest.TestCase):
 
     def test_cli_scenario_timeline_matches_the_library_path(self) -> None:
         library_root = self.root / "library"
-        # The CLI takes the app from the scenario; this library call has to
-        # select the same one explicitly for the timelines to be comparable.
         rt = Runtime(
             lvgl="9.6",
             app="test_ui",
@@ -596,7 +599,8 @@ class CliRealEngineIntegrationTest(unittest.TestCase):
         sessions_root = self.root / "idle"
         with (
             mock.patch.dict(
-                os.environ, {"LVGL_VERIFY_LOOP_SESSIONS_ROOT": str(sessions_root)}
+                os.environ,
+                {"LVGL_VERIFY_LOOP_SESSIONS_ROOT": str(sessions_root)},
             ),
             mock.patch.object(
                 cli, "_wait_for_interrupt", side_effect=KeyboardInterrupt

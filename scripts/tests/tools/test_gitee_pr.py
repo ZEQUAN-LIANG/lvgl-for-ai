@@ -156,7 +156,9 @@ class GiteePrTest(unittest.TestCase):
     def test_verify_detects_replacement_chars(self) -> None:
         expected = "## 变更\n\n正常。\n"
         body_path = self.write("body.md", expected)
-        response = FakeResponse(pr_payload("title", "## \ufffd\ufffd\ufffd\ufffd\n"))
+        response = FakeResponse(
+            pr_payload("title", "## \ufffd\ufffd\ufffd\ufffd\n")
+        )
         argv = [
             "verify",
             "24",
@@ -167,9 +169,7 @@ class GiteePrTest(unittest.TestCase):
             "--json",
         ]
         with mock.patch.dict(os.environ, {"GITEE_TOKEN": "secret"}):
-            with mock.patch(
-                "urllib.request.urlopen", return_value=response
-            ):
+            with mock.patch("urllib.request.urlopen", return_value=response):
                 code, output = self.run_cli(argv)
         self.assertEqual(code, 2)
         payload = json.loads(output)
@@ -193,9 +193,7 @@ class GiteePrTest(unittest.TestCase):
             "--json",
         ]
         with mock.patch.dict(os.environ, {"GITEE_TOKEN": "secret"}):
-            with mock.patch(
-                "urllib.request.urlopen", return_value=response
-            ):
+            with mock.patch("urllib.request.urlopen", return_value=response):
                 code, output = self.run_cli(argv)
         self.assertEqual(code, 0)
         payload = json.loads(output)
@@ -242,9 +240,7 @@ class GiteePrTest(unittest.TestCase):
             "--json",
         ]
         with mock.patch.dict(os.environ, {"GITEE_TOKEN": "secret"}):
-            with mock.patch(
-                "urllib.request.urlopen"
-            ) as urlopen:
+            with mock.patch("urllib.request.urlopen") as urlopen:
                 code, output = self.run_cli(argv)
         self.assertEqual(code, 0)
         urlopen.assert_not_called()

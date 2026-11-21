@@ -64,13 +64,6 @@ class LauncherConfigTest(unittest.TestCase):
         )
 
     def test_every_launcher_target_and_cwd_resolve(self) -> None:
-        """The C launcher joins them onto the exe dir; they must exist there.
-
-        Every launcher sits one level below the tool it starts, so the
-        relative paths are easy to get wrong -- an entry that resolves to
-        a missing file makes the built exe fail on double-click with a
-        "target not found" dialog.
-        """
 
         for entry in self.build.LAUNCHERS:
             with self.subTest(launcher=entry["name"]):
@@ -78,15 +71,11 @@ class LauncherConfigTest(unittest.TestCase):
                 target = Path(
                     ntpath.normpath(ntpath.join(exe_dir, entry["target"]))
                 )
-                cwd = Path(
-                    ntpath.normpath(ntpath.join(exe_dir, entry["cwd"]))
-                )
+                cwd = Path(ntpath.normpath(ntpath.join(exe_dir, entry["cwd"])))
                 self.assertTrue(
                     target.is_file(), f"launcher target missing: {target}"
                 )
-                self.assertTrue(
-                    cwd.is_dir(), f"launcher cwd missing: {cwd}"
-                )
+                self.assertTrue(cwd.is_dir(), f"launcher cwd missing: {cwd}")
 
     def test_launchers_use_python_from_path(self) -> None:
         source = (LAUNCHERS_DIR / "launcher.c").read_text(encoding="utf-8")

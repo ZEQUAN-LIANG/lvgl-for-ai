@@ -13,8 +13,6 @@ for path in (REPO_ROOT, CONSOLE_ROOT):
     if text not in sys.path:
         sys.path.insert(0, text)
 
-# Importing support installs the retrying TemporaryDirectory used by the whole
-# suite; Windows delete-pending handles otherwise make temp cleanup flaky.
 from scripts.tests import support  # noqa: E402,F401
 
 

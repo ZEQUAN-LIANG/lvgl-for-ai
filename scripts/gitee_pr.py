@@ -1,27 +1,4 @@
 #!/usr/bin/env python3
-"""Create, update and verify Gitee pull requests from UTF-8 files.
-
-The Windows shell can silently re-encode inline Chinese arguments (GBK/ANSI),
-which is how a PR body turns into replacement characters.  This helper never sends text from
-the command line: titles and bodies come from UTF-8 files, are encoded as
-UTF-8 explicitly, and the stored PR is read back and verified.
-
-Examples::
-
-    python -I scripts/gitee_pr.py create \\
-        --head feat/esp32-ble-dual --base dev \\
-        --title-file .tmp/title.txt --body-file .tmp/body.md --json
-
-    python -I scripts/gitee_pr.py update 24 --body-file .tmp/body.md --json
-
-    python -I scripts/gitee_pr.py show 24 --json
-
-    python -I scripts/gitee_pr.py verify 24 \\
-        --title-file .tmp/title.txt --body-file .tmp/body.md --json
-
-``GITEE_TOKEN`` must be set in the environment; the token is never accepted on
-the command line and never printed.
-"""
 
 from __future__ import annotations
 
@@ -225,7 +202,6 @@ def _request(
 
 
 def _normalize(text: str) -> str:
-    """Ignore Gitee's emoji stripping and whitespace-only differences."""
 
     value = text.replace("\r\n", "\n")
     value = "".join(ch for ch in value if ord(ch) < 0x1F000)
@@ -379,7 +355,12 @@ def cmd_create(args: argparse.Namespace) -> dict[str, Any]:
     verification = (
         _verify_body(result, title=title, body=body)
         if not args.no_verify
-        else {"verified": None, "exact": None, "replacement_chars": None, "issues": []}
+        else {
+            "verified": None,
+            "exact": None,
+            "replacement_chars": None,
+            "issues": [],
+        }
     )
     return _summary(action="create", result=result, verification=verification)
 
@@ -438,7 +419,12 @@ def cmd_update(args: argparse.Namespace) -> dict[str, Any]:
     verification = (
         _verify_body(result, title=title, body=body)
         if not args.no_verify
-        else {"verified": None, "exact": None, "replacement_chars": None, "issues": []}
+        else {
+            "verified": None,
+            "exact": None,
+            "replacement_chars": None,
+            "issues": [],
+        }
     )
     return _summary(action="update", result=result, verification=verification)
 
@@ -505,19 +491,17 @@ def _add_common(parser: argparse.ArgumentParser) -> None:
         help=argparse.SUPPRESS,
     )
     parser.add_argument("--json", action="store_true")
-    parser.add_argument(
-        "--timeout", type=float, default=DEFAULT_TIMEOUT
-    )
+    parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
     parser.add_argument("--dry-run", action="store_true")
 
 
 def _add_text(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
-        "--title", default=None, help="inline ASCII title (prefer --title-file)"
+        "--title",
+        default=None,
+        help="inline ASCII title (prefer --title-file)",
     )
-    parser.add_argument(
-        "--title-file", default=None, help="UTF-8 title file"
-    )
+    parser.add_argument("--title-file", default=None, help="UTF-8 title file")
     parser.add_argument(
         "--body", default=None, help="inline ASCII body (prefer --body-file)"
     )

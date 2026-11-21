@@ -1,10 +1,3 @@
-"""Draw the launcher icons and write multi-size .ico files.
-
-Pure standard library. Shapes are laid out in a 1024-unit design space, rendered
-4x larger with premultiplied-alpha scanline fills, then box-filtered down to
-each icon size and stored as BMP-in-ICO entries.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -184,7 +177,6 @@ def fill_segment(
     thickness: float,
     color: Color,
 ) -> None:
-    """Stamp overlapping discs along a segment to draw a round-capped line."""
 
     radius = thickness / 2.0
     dx = x2 - x1
@@ -197,7 +189,6 @@ def fill_segment(
 
 
 def _draw_perf_tape(canvas: Canvas, size: int) -> None:
-    """A Bluetooth rune on a rounded badge: the launcher opens the BLE panel."""
 
     _draw_background(canvas)
     fill_rounded_rect(canvas, 150, 150, 874, 874, 120, NAVY)
@@ -209,7 +200,6 @@ def _draw_perf_tape(canvas: Canvas, size: int) -> None:
     upper_right = (712.0, 374.0)
     lower_left = (312.0, 650.0)
     lower_right = (712.0, 650.0)
-    # Spine plus the four bowls that make the rune read as an angular "B".
     for start, end, color in (
         (top, center, CYAN),
         (top, upper_left, CYAN),

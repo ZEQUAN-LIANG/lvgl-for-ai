@@ -1,37 +1,3 @@
-"""Record and compare the external behavior contract of the LVGL AI tools.
-
-The snapshot is behavior-equivalence evidence for refactors.  The historical
-ticket ``14-architecture-deepening.md`` is not current guidance.  This tool
-captures the six contracts that refactors may not drift:
-
-- ``http``: routes, methods, status codes and JSON key shapes
-- ``cli``: ``entrypoints/cli.py`` / ``entrypoints/serve.py`` / ``scripts/new_app.py`` parsers, help text,
-  exit codes and ``--json`` keys
-- ``protocol``: engine command grammar, reply shapes, required ready/reply
-  fields and engine launch flags
-- ``session``: session file set, manifest fields/artifacts, ndjson row shapes
-  and ``Recording`` read requirements
-- ``page``: server-rendered element ids/classes, visible copy and endpoint
-  references
-- ``python``: ``control`` exports, ``scenario.play_scenario`` and the ``apps`` lifecycle API
-
-Record once before a refactor and compare after it::
-
-    python -I scripts/contract_snapshot.py record
-    python -I scripts/contract_snapshot.py compare
-
-``compare`` re-records in a temporary directory and exits 0 when the snapshot
-matches, 1 when it differs, and 2 on a harness error.  All probes run against
-temporary user/sessions/repos and an ephemeral HTTP port; the snapshot never
-contains absolute paths, timestamps, runtime-generated session ids or bound
-ports.  Fixed fixture values (for example the page fixture session id) are
-part of the recorded contract.
-
-The protocol and session probes drive the Python control layer with a scripted
-fake engine.  Real C-engine semantics stay covered by the full test suite; the
-snapshot freezes the Python-visible command/reply and evidence contract.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -58,7 +24,6 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-# ``python -I`` does not add the script directory to sys.path.
 CONSOLE_ROOT = Path(__file__).resolve().parent.parent / "console"
 if str(CONSOLE_ROOT) not in sys.path:
     sys.path.insert(0, str(CONSOLE_ROOT))
@@ -103,7 +68,6 @@ READY_OMIT = {
 REPLY_OMIT = os.environ.get("CONTRACT_SNAPSHOT_REPLY_OMIT", "")
 REPLY_ERROR = os.environ.get("CONTRACT_SNAPSHOT_REPLY_ERROR", "")
 
-
 def log(name, text):
     path = os.environ.get(name)
     if not path:
@@ -111,12 +75,10 @@ def log(name, text):
     with open(path, "a", encoding="utf-8", newline="\n") as handle:
         handle.write(text.rstrip("\n") + "\n")
 
-
 def emit(payload):
     line = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     log("CONTRACT_SNAPSHOT_REPLY_LOG", line)
     print(line, flush=True)
-
 
 def png(width, height, rgb):
     raw = bytearray()
@@ -140,7 +102,6 @@ def png(width, height, rgb):
         + chunk(b"IDAT", zlib.compress(bytes(raw), 9))
         + chunk(b"IEND", b"")
     )
-
 
 def write_evidence(root, reference_path):
     frames = root / "frames"
@@ -226,7 +187,6 @@ def write_evidence(root, reference_path):
             json.dumps(reference) + "\n", encoding="utf-8"
         )
 
-
 def reply(seq, frames, t_ms, extra=None):
     payload = {
         "protocol": PROTOCOL,
@@ -238,7 +198,6 @@ def reply(seq, frames, t_ms, extra=None):
     if extra:
         payload.update(extra)
     return payload
-
 
 def main():
     args = sys.argv[1:]
@@ -383,7 +342,6 @@ def main():
                 payload.pop(omit_field, None)
         emit(payload)
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
@@ -547,7 +505,9 @@ def render_diff_report(
 
 @contextlib.contextmanager
 def _workspace() -> Iterable[tuple[Path, Path]]:
-    with tempfile.TemporaryDirectory(prefix="lvgl-verify-loop-contract-") as raw:
+    with tempfile.TemporaryDirectory(
+        prefix="lvgl-verify-loop-contract-"
+    ) as raw:
         root = Path(raw)
         engine = root / "fake_engine.py"
         engine.write_text(_FAKE_ENGINE_SOURCE, encoding="utf-8")
@@ -1059,7 +1019,9 @@ def _session_section(
         type_probe = workspace / f"type-probe-{row_type}"
         shutil.copytree(session_dir, type_probe)
         (type_probe / "timeline.ndjson").write_text(
-            json.dumps({"schema": "lvgl-verify-loop-timeline-v1", "type": row_type})
+            json.dumps(
+                {"schema": "lvgl-verify-loop-timeline-v1", "type": row_type}
+            )
             + "\n",
             encoding="utf-8",
         )
@@ -1163,8 +1125,6 @@ def _write_repo(root: Path) -> None:
     (root / "user" / "app" / "coffee").mkdir(parents=True)
     (root / "user" / "app" / "alpha").mkdir()
     (root / "user" / "scenarios").mkdir()
-    # Apps follow the ``<name>_create`` convention, so only the repository
-    # wide default declaration lives in a metadata file.
     (root / "user" / "app" / "coffee" / "coffee.c").write_text(
         "void coffee_create(void) {}\n", encoding="utf-8"
     )
@@ -1967,8 +1927,6 @@ def _run_python(
     timeout: float = 120.0,
 ) -> subprocess.CompletedProcess[str]:
     environment = os.environ.copy()
-    # ``-I`` ignores PYTHONIOENCODING; ``-X utf8`` keeps piped help/JSON output
-    # decodable on non-UTF-8 Windows consoles.  COLUMNS fixes argparse wrapping.
     environment["COLUMNS"] = "80"
     if env:
         environment.update(env)
@@ -1987,7 +1945,6 @@ def _run_python(
 def _help_contract(script: Path) -> dict[str, Any]:
     result = _run_python(script, ["--help"])
     text = re.sub(r"\s+", " ", result.stdout).strip()
-    # Python 3.9 prints "optional arguments:"; 3.10+ prints "options:".
     text = re.sub(r"\b(?:optional arguments|options):", "arguments:", text)
     return {"exit": result.returncode, "text": text}
 
@@ -2060,8 +2017,12 @@ class _FakeRuntime:
 
 
 def _cli_section(workspace: Path) -> dict[str, Any]:
-    cli_module = _load_module("contract_snapshot_cli", CONSOLE_ROOT / "entrypoints" / "cli.py")
-    web_module = _load_module("contract_snapshot_web", CONSOLE_ROOT / "entrypoints" / "serve.py")
+    cli_module = _load_module(
+        "contract_snapshot_cli", CONSOLE_ROOT / "entrypoints" / "cli.py"
+    )
+    web_module = _load_module(
+        "contract_snapshot_web", CONSOLE_ROOT / "entrypoints" / "serve.py"
+    )
     new_app_module = _load_module(
         "contract_snapshot_new_app", paths.SCRIPTS_DIR / "new_app.py"
     )
@@ -2138,7 +2099,8 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
             "parser": _parser_contract(cli_module.build_parser()),
             "help": _help_contract(CONSOLE_ROOT / "entrypoints" / "cli.py"),
             "invalid_exit": _run_python(
-                CONSOLE_ROOT / "entrypoints" / "cli.py", ["--definitely-not-an-option"]
+                CONSOLE_ROOT / "entrypoints" / "cli.py",
+                ["--definitely-not-an-option"],
             ).returncode,
             "json_success": {
                 "exit": exit_code,
@@ -2184,7 +2146,8 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
             "parser": _parser_contract(web_module.build_parser()),
             "help": _help_contract(CONSOLE_ROOT / "entrypoints" / "serve.py"),
             "invalid_exit": _run_python(
-                CONSOLE_ROOT / "entrypoints" / "serve.py", ["--definitely-not-an-option"]
+                CONSOLE_ROOT / "entrypoints" / "serve.py",
+                ["--definitely-not-an-option"],
             ).returncode,
         },
         "new_app": {
@@ -2200,7 +2163,9 @@ def _cli_section(workspace: Path) -> dict[str, Any]:
         },
         "session_report": {
             "parser": _parser_contract(report_module.build_parser()),
-            "help": _help_contract(CONSOLE_ROOT / "entrypoints" / "session_report.py"),
+            "help": _help_contract(
+                CONSOLE_ROOT / "entrypoints" / "session_report.py"
+            ),
             "json_index": _json_contract(report_json),
             "full_exit": report_full.returncode,
             "timeline": _json_contract(report_timeline),

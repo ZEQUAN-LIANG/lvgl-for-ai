@@ -1,23 +1,3 @@
-"""Check the per-version LVGL API navigation documents.
-
-For each ``docs/skill/api-nav/<version>.md``:
-
-* every backticked ``lv_*`` identifier must exist in a header of the matching
-  ``engine/lvgl/<version>`` tree, unless the line explicitly marks it as a
-  version difference (e.g. "9.6 才有", "9.4 没有") or as one of the 8.x shims
-  provided by ``user/app/lvgl_compat.h``;
-* every backticked ``engine/lvgl/...`` or ``user/...`` path must exist;
-* the twelve fixed sections, at least eight task-index rows, at least eight
-  C snippets, and the ~400 line budget are present.
-
-Run from anywhere with::
-
-    python -I scripts/check_api_nav.py
-
-Exit code 0 means all documents pass. Exceptions are printed with their line
-numbers so they can be recorded in the ticket Progress log.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -199,7 +179,9 @@ def check_readme(root: Path) -> list[str]:
         return [f"{readme}: missing"]
     text = readme.read_text(encoding="utf-8")
     if "LVGL_VERIFY_LOOP_LVGL_VERSION" not in text:
-        errors.append("README.md: does not mention LVGL_VERIFY_LOOP_LVGL_VERSION")
+        errors.append(
+            "README.md: does not mention LVGL_VERIFY_LOOP_LVGL_VERSION"
+        )
     for version in VERSIONS:
         target = f"{version}.md"
         if f"]({target})" not in text:

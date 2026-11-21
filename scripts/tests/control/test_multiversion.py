@@ -12,8 +12,6 @@ import paths
 
 SETTINGS_SCENARIO = paths.REPO_ROOT / "user" / "scenarios" / "settings.json"
 VERSIONS = ("9.6", "9.5", "9.4", "9.1", "8.4", "8.3")
-# app.c compiles the directory-discovery registry for 9.4+ only, so the
-# versions below it cannot select an app and show an empty screen instead.
 DISCOVERY_VERSIONS = ("9.6", "9.5", "9.4")
 EXPECTED_LVGL = {
     "9.6": "9.6.0",
@@ -27,8 +25,6 @@ EXPECTED_ADAPTER = {
     version: "8x" if version.startswith("8.") else "9x" for version in VERSIONS
 }
 
-# 8.3/8.4 spell the button class "lv_btn" and 9.1 "btn"; the matrix compares
-# the canonical 9.4+ "lv_button".
 CLASS_ALIASES = {"btn": "lv_button", "lv_btn": "lv_button", "obj": "lv_obj"}
 
 
@@ -132,17 +128,18 @@ class MultiVersionMatrixTest(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls._tmp = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls._tmp.cleanup)
-        cls._env = mock.patch.dict(os.environ, {"LVGL_VERIFY_LOOP_LVGL_SRC": ""})
+        cls._env = mock.patch.dict(
+            os.environ, {"LVGL_VERIFY_LOOP_LVGL_SRC": ""}
+        )
         cls._env.start()
         cls.addClassCleanup(cls._env.stop)
 
         cls.runs: dict[str, tuple[Runtime, Recording]] = {}
         for version in VERSIONS:
             root = Path(cls._tmp.name) / version / "sessions"
-            # play_scenario only plays steps: the app comes from Runtime, so
-            # the scenario's own "app" field is only honoured by the CLI.
-            # Below 9.4 app.c ignores the selection and shows an empty screen.
-            kwargs = {"app": "test_ui"} if version in DISCOVERY_VERSIONS else {}
+            kwargs = (
+                {"app": "test_ui"} if version in DISCOVERY_VERSIONS else {}
+            )
             rt = Runtime(
                 lvgl=version,
                 build=True,
@@ -180,8 +177,6 @@ class MultiVersionMatrixTest(unittest.TestCase):
         baseline_types = timeline_row_types(self.runs["9.6"][1])
         baseline_artifacts = artifact_paths(self.runs["9.6"][0].session_dir)
 
-        # settings.json selects test_ui, so the 9.4+ builds hit its button at
-        # (112,324) five times; the trailing three inputs reach the screen.
         self.assertEqual(
             [row["hit"] for row in baseline],
             [
@@ -197,8 +192,6 @@ class MultiVersionMatrixTest(unittest.TestCase):
         )
         self.assertTrue(all(row["hit_class"] for row in baseline))
 
-        # 9.4, 9.5 and 9.6 all have the discovery registry, so they run the
-        # scenario identically; only 9.1 and 8.x fall back to an empty screen.
         for version in ("9.6", "9.5", "9.4"):
             with self.subTest(version=version):
                 rt, recording = self.runs[version]
@@ -209,17 +202,17 @@ class MultiVersionMatrixTest(unittest.TestCase):
                     artifact_paths(rt.session_dir), baseline_artifacts
                 )
 
-        # 9.1 and 8.x predate the registry: app.c's else branch leaves the
-        # screen empty, so every input hits the screen itself (or nothing)
-        # and no button is ever pressed.
         for version in ("9.1", "8.4", "8.3"):
             with self.subTest(version=version, empty=True):
                 rows = input_rows(self.runs[version][1])
                 self.assertEqual([row["hit"] for row in rows], [""] * 8)
                 self.assertTrue(
-                    all(row["hit_class"] in ("obj", "lv_obj", "label", "screen")
+                    all(
+                        row["hit_class"]
+                        in ("obj", "lv_obj", "label", "screen")
                         or row["hit_class"] == ""
-                        for row in rows),
+                        for row in rows
+                    ),
                     [row["hit_class"] for row in rows],
                 )
         self.assertEqual(
@@ -227,8 +220,6 @@ class MultiVersionMatrixTest(unittest.TestCase):
         )
 
     def test_reference_png_decodes_on_every_version(self) -> None:
-        # 9.x lodepng returns a draw buffer and 8.x raw RGBA; a broken decode
-        # would crash or diff against an identical run.
         for version in VERSIONS:
             with (
                 self.subTest(version=version),
@@ -308,7 +299,8 @@ class MultiVersionMatrixTest(unittest.TestCase):
                 with (
                     self.subTest(label=label),
                     mock.patch.dict(
-                        os.environ, {"LVGL_VERIFY_LOOP_LVGL_SRC": str(override)}
+                        os.environ,
+                        {"LVGL_VERIFY_LOOP_LVGL_SRC": str(override)},
                     ),
                 ):
                     rt = Runtime(
@@ -360,10 +352,6 @@ class EightXInputSemanticsTest(unittest.TestCase):
                     log_text = (rt.session_dir / "engine.log").read_text(
                         encoding="utf-8"
                     )
-                    # 8.x has no discovery registry and therefore no widgets,
-                    # so activation cannot be observed through an app. What
-                    # this pins is the adapter: the virtual keypad and encoder
-                    # events reached LVGL and were reported as delivered.
                     self.assertIn("[app] app=none (LVGL < 9.4)", log_text)
                     rows = input_rows(Recording.open(rt.session_dir))
                     self.assertEqual(
@@ -377,8 +365,6 @@ class EightXInputSemanticsTest(unittest.TestCase):
                     )
 
     def test_keypad_enter_activates_the_focused_button(self) -> None:
-        # The counterpart to the case above: from 9.4 on there is an app to
-        # focus, so ENTER must reach LVGL and fire the button's callback.
         with tempfile.TemporaryDirectory() as tmp:
             rt = Runtime(
                 lvgl="9.4",

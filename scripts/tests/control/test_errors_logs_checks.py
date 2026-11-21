@@ -633,7 +633,10 @@ class MaxFramesIntegrationTest(unittest.TestCase):
 
         with mock.patch.dict(
             os.environ,
-            {"LVGL_VERIFY_LOOP_MAX_FRAMES": "7", "LVGL_VERIFY_LOOP_MAX_LOG_BYTES": "12345"},
+            {
+                "LVGL_VERIFY_LOOP_MAX_FRAMES": "7",
+                "LVGL_VERIFY_LOOP_MAX_LOG_BYTES": "12345",
+            },
         ):
             configured = Runtime(
                 lvgl="9.6", build=False, sessions_root=self.sessions_root
@@ -655,7 +658,9 @@ class MaxFramesIntegrationTest(unittest.TestCase):
                         sessions_root=self.sessions_root,
                         **kwargs,
                     )
-        with mock.patch.dict(os.environ, {"LVGL_VERIFY_LOOP_MAX_FRAMES": "nope"}):
+        with mock.patch.dict(
+            os.environ, {"LVGL_VERIFY_LOOP_MAX_FRAMES": "nope"}
+        ):
             with self.assertRaises(ValueError):
                 Runtime(
                     lvgl="9.6", build=False, sessions_root=self.sessions_root

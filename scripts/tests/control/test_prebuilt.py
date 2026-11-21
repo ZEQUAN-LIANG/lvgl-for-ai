@@ -425,9 +425,7 @@ class CommandTest(PrebuiltCase):
         runner = WritingRunner()
         self.plan(runner).execute(build=True)
         compiled = runner.compile_calls()
-        self.assertTrue(
-            any(call[2].endswith("app.c") for call in compiled)
-        )
+        self.assertTrue(any(call[2].endswith("app.c") for call in compiled))
 
     def test_source_build_removes_the_prebuilt_engine(self) -> None:
         self.plan(WritingRunner()).execute(build=True)

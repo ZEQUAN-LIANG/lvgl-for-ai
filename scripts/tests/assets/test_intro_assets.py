@@ -13,7 +13,6 @@ CONSOLE_ROOT = paths.CONSOLE_ROOT
 if str(CONSOLE_ROOT) not in sys.path:
     sys.path.insert(0, str(CONSOLE_ROOT))
 
-
 INTRO_DIR = paths.APPS_DIR / "intro"
 ASSETS_DIR = INTRO_DIR / "assets"
 MANIFEST = paths.REPO_ROOT / "user" / ".cache" / "assets" / "intro.json"
@@ -33,13 +32,6 @@ def _sha256(path: Path) -> str:
 
 
 class IntroAssetsManifestTest(unittest.TestCase):
-    """Checks the generated headers, and the replay log when it is present.
-
-    The replay log is derived data under ``user/.cache/`` (git ignored), so a
-    clean checkout has no log: the file-level checks always run, the hash
-    cross-checks only when the log is there.
-    """
-
     def setUp(self) -> None:
         self.generated = sorted(INTRO_DIR.glob("intro_img_*.h"))
         if MANIFEST.is_file():
@@ -76,7 +68,9 @@ class IntroAssetsManifestTest(unittest.TestCase):
                 {path.name for path in self.generated},
                 {entry["output"] for entry in self.assets.values()},
             )
-        for path in [INTRO_DIR / name for name in HANDWRITTEN] + self.generated:
+        for path in [
+            INTRO_DIR / name for name in HANDWRITTEN
+        ] + self.generated:
             with self.subTest(name=path.name):
                 text = path.read_text(encoding="utf-8")
                 self.assertIsNone(LEGACY_IMAGE_NAME.search(text))

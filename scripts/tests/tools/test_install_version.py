@@ -11,7 +11,6 @@ from pathlib import Path
 from scripts import install_version
 import paths
 
-
 INDEX = {
     "schema": install_version.INDEX_SCHEMA,
     "default": "9.6",
@@ -125,7 +124,9 @@ class PackInstallTest(unittest.TestCase):
             self.assertEqual(code, 0, err)
             payload = json.loads(out)
             self.assertEqual(payload["status"], "ok")
-            self.assertTrue((repo / "dist" / "lvgl" / "9.4" / "manifest.json").is_file())
+            self.assertTrue(
+                (repo / "dist" / "lvgl" / "9.4" / "manifest.json").is_file()
+            )
             self.assertTrue(
                 (
                     repo / "build" / "lvgl_9_4" / paths.engine_filename()
@@ -260,7 +261,9 @@ class PackInstallTest(unittest.TestCase):
                 repo, "9.4", interactive=False, yes=True
             )
             self.assertEqual(actions, ["download_pack", "install_pack"])
-            self.assertTrue((repo / "dist" / "lvgl" / "9.4" / "manifest.json").is_file())
+            self.assertTrue(
+                (repo / "dist" / "lvgl" / "9.4" / "manifest.json").is_file()
+            )
             state = install_version._load_prompt_state(repo)
             self.assertIn("9.4", state["accepted"])
 

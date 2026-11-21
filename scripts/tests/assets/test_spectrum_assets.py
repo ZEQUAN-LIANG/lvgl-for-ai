@@ -10,7 +10,6 @@ CONSOLE_ROOT = paths.CONSOLE_ROOT
 if str(CONSOLE_ROOT) not in sys.path:
     sys.path.insert(0, str(CONSOLE_ROOT))
 
-
 SPECTRUM_DIR = paths.APPS_DIR / "spectrum"
 README = SPECTRUM_DIR / "README.md"
 COVERS = SPECTRUM_DIR / "covers_src"
@@ -19,12 +18,6 @@ README_COVER = re.compile(r"covers_src[\\/]([^*`\s]+\.png)")
 
 
 class SpectrumCoversFrozenTest(unittest.TestCase):
-    """``spectrum_covers.h`` is frozen: it came from a removed generator.
-
-    The header is committed and never rebuilt, so the guard is the README
-    statement plus the committed sources it was built from.
-    """
-
     def test_frozen_header_and_sources_are_present(self) -> None:
         self.assertTrue(COVERS_HEADER.is_file())
         self.assertTrue(sorted(COVERS.glob("*.png")))

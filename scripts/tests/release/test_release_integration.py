@@ -148,10 +148,18 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             self.assertTrue(
                 (published / "bin" / "LVGL-AI-Viewer.exe").is_file()
             )
-            self.assertTrue((published / "scripts" / "meta" / "versions.json").is_file())
-            self.assertTrue((published / "scripts" / "meta" / "VERSION.json").is_file())
-            self.assertTrue((published / "docs" / "licenses" / "LICENSE").is_file())
-            self.assertTrue((published / "console" / "entrypoints" / "cli.py").is_file())
+            self.assertTrue(
+                (published / "scripts" / "meta" / "versions.json").is_file()
+            )
+            self.assertTrue(
+                (published / "scripts" / "meta" / "VERSION.json").is_file()
+            )
+            self.assertTrue(
+                (published / "docs" / "licenses" / "LICENSE").is_file()
+            )
+            self.assertTrue(
+                (published / "console" / "entrypoints" / "cli.py").is_file()
+            )
             self.assertTrue(
                 (
                     published / "build" / "lvgl_9_6" / "lvgl_engine.exe"
@@ -300,7 +308,9 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             ):
                 self.assertIn(heading, skill)
             version = json.loads(
-                (pkg / "scripts" / "meta" / "VERSION.json").read_text(encoding="utf-8")
+                (pkg / "scripts" / "meta" / "VERSION.json").read_text(
+                    encoding="utf-8"
+                )
             )
             self.assertEqual(version["schema"], "lvgl-verify-loop-version-v1")
             self.assertEqual(version["lvgl"]["host_sdk"], ["9.6"])
@@ -317,7 +327,9 @@ class ReleaseArtifactIntegrationTest(unittest.TestCase):
             work = root / "elsewhere"
             work.mkdir()
             env = os.environ.copy()
-            env["LVGL_VERIFY_LOOP_SESSIONS_ROOT"] = str(root / "user" / "sessions")
+            env["LVGL_VERIFY_LOOP_SESSIONS_ROOT"] = str(
+                root / "user" / "sessions"
+            )
             env.pop("LVGL_VERIFY_LOOP_LVGL_SRC", None)
             env.pop("LVGL_VERIFY_LOOP_DEMO", None)
             wrapper = [

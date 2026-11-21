@@ -630,7 +630,8 @@ class ScenarioIndexTest(unittest.TestCase):
         self.assertTrue(by_name["good.json"]["valid"])
         self.assertFalse(by_name["wrong_schema.json"]["valid"])
         self.assertIn(
-            "lvgl-verify-loop-scenario-v1", by_name["wrong_schema.json"]["error"]
+            "lvgl-verify-loop-scenario-v1",
+            by_name["wrong_schema.json"]["error"],
         )
 
     def test_index_accepts_an_independent_scenarios_dir(self) -> None:

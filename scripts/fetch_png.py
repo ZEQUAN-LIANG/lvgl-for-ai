@@ -1,17 +1,3 @@
-"""Fetch pinned zlib and libpng source trees into ``engine/third_party/``.
-
-The engine writes PNG evidence with libpng + zlib, not LVGL's bundled
-lodepng.  Both trees are pinned by tag and commit, and are cloned into
-``.scratch/tmp`` before being copied to ``engine/third_party/<name>/``.  The
-downloaded trees are untrusted data: this script only reads them and never
-builds or executes them.  Builds happen from ``engine/third_party/``.
-
-Run with ``python -I`` and an explicit repository root:
-
-    python -I scripts/fetch_png.py --repo-root .
-    python -I scripts/fetch_png.py --repo-root . --force
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -26,7 +12,6 @@ ZLIB = {
     "name": "zlib",
     "version": "1.3.1",
     "tag": "v1.3.1",
-    # Commit pointed to by the annotated v1.3.1 tag.
     "commit": "51b7f2abdade71cd9bb0e7a373ef2610ec6f9daf",
     "url": "https://github.com/madler/zlib.git",
     "header": "zlib.h",
@@ -37,7 +22,6 @@ LIBPNG = {
     "name": "libpng",
     "version": "1.6.44",
     "tag": "v1.6.44",
-    # Commit pointed to by the annotated v1.6.44 tag.
     "commit": "f5e92d76973a7a53f517579bc95d61483bf108c0",
     "url": "https://github.com/pnggroup/libpng.git",
     "header": "png.h",

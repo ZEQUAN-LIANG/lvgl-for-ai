@@ -1,27 +1,3 @@
-"""Build the distributable skill zip from this workspace.
-
-One command produces the package directory, zip, ``.sha256`` and release
-manifest.  The unpacked skill directory stays under the output directory
-(``dist/release/lvgl-verify-loop/``) next to the zip, so it can be inspected or run
-without extracting.  The default package is host-only: tool layer, ``user/``,
-the prebuilt host SDK, a prebuilt engine, ``bin/lvgl.cmd`` and ``SKILL.md``.
-The skill root contains only ``SKILL.md``: metadata lives in ``scripts/meta/``,
-licenses in ``docs/licenses/`` and documentation assets in ``docs/``.  LVGL source,
-third-party source, sessions, tests and chip adapter trees never enter the
-package.
-
-Prebuilt engines are cached under ``dist/release/lvgl_<token>/`` and reused
-until their source, host SDK or compiler digest changes; ``--force-build``
-rebuilds them.  Smoke runs inside the staging directory from an unrelated
-working directory before the zip is written: ``--no-build``, a prebuilt build,
-and the web server.  ``--skip-smoke`` exists only for development.
-
-Usage::
-
-    python -I scripts/release.py
-    python -I scripts/release.py --lvgl 9.6 --out release --json
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -109,7 +85,6 @@ TOOL_EXCLUDE_DIRS = {"__pycache__", ".cache"}
 ENGINE_EXCLUDE_DIRS = {"__pycache__", "lvgl", "third_party"}
 APPS_EXCLUDE_DIRS = {".trash", "__pycache__"}
 EXCLUDE_SUFFIXES = {".pyc", ".pyo", ".dump"}
-
 
 _run = release_bundle.run_command
 
@@ -315,13 +290,6 @@ def _release_engine_cache_matches(
 
 
 def _write_staged_app_registry(user_app_dir: Path) -> None:
-    """Generate app_registry.inc in a staged ``user/app`` tree.
-
-    ``BuildPlan`` writes the registry on every build, but the engine cache
-    hit path returns before reaching ``BuildPlan``.  Without this call the
-    staged package contains ``app_registry.inc`` only when the cache was
-    cold, so the same sources would yield two different file lists.
-    """
 
     from appmgr import discovery
 
@@ -425,12 +393,6 @@ def ensure_release_engine(
 
 
 def _mark_release_default(apps_dir: Path) -> None:
-    """Pin the packaged default app in the staged root metadata.
-
-    ``app_create`` falls back to ``apps[0]``, which is ordered by the root
-    ``app.json`` default.  Without it a user app whose name sorts first would
-    silently become the default of the released package.
-    """
 
     path = apps_dir / "app.json"
     try:
@@ -987,7 +949,9 @@ def release(
             repo_root=repo_root,
             force=True,
         )
-    with tempfile.TemporaryDirectory(prefix="lvgl-verify-loop-release-") as raw:
+    with tempfile.TemporaryDirectory(
+        prefix="lvgl-verify-loop-release-"
+    ) as raw:
         staging_package = Path(raw) / PACKAGE_DIR_NAME
         staged = stage_package(
             repo_root=repo_root,

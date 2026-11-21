@@ -183,7 +183,10 @@ class AnnotationApiTest(unittest.TestCase):
         status, _, payload = self.harness.json(
             "POST",
             f"/api/sessions/{SESSION_ID}/annotations",
-            payload={"schema": "lvgl-verify-loop-annotations-v1", "notes": notes},
+            payload={
+                "schema": "lvgl-verify-loop-annotations-v1",
+                "notes": notes,
+            },
         )
         self.assertGreaterEqual(status, 400, payload)
         self.assertLess(status, 500, payload)

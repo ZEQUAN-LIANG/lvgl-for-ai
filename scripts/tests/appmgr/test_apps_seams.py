@@ -38,13 +38,6 @@ class _TempRepo(unittest.TestCase):
     def _add_app(
         self, name: str, entry: str | None = None, *, default: bool = False
     ) -> Path:
-        """Create an app directory.
-
-        Without *entry* the directory follows the ``<name>_create``
-        convention and carries no metadata, like a plain app in the repo.
-        Passing *entry* writes a per-app ``app.json``, which is how an app
-        deviates from the convention.
-        """
 
         app_dir = self.root / "user" / "app" / name
         app_dir.mkdir(exist_ok=True)
@@ -134,13 +127,9 @@ class DiscoverySeamTest(_TempRepo):
         apps_dir = self.root / "user" / "app"
         target = discovery.write_registry(apps_dir)
         first = target.read_bytes()
-        self.assertIn(
-            b'{"coffee", coffee_create}', first
-        )
+        self.assertIn(b'{"coffee", coffee_create}', first)
         self.assertIn(b'{"hello", hello_create}', first)
-        self.assertLess(
-            first.index(b'{"coffee"'), first.index(b'{"hello"')
-        )
+        self.assertLess(first.index(b'{"coffee"'), first.index(b'{"hello"'))
         before = target.stat().st_mtime_ns
         discovery.write_registry(apps_dir)
         self.assertEqual(target.stat().st_mtime_ns, before)
@@ -222,15 +211,6 @@ class PolicySeamTest(_TempRepo):
         self.assertFalse(policy.is_reserved_create_name(self.root, "promo"))
 
 
-class PolicyScopeDocumentationTest(unittest.TestCase):
-    def test_module_docstring_marks_derived_policy(self) -> None:
-        doc = policy.__doc__ or ""
-        self.assertIn("no hand-maintained app registry", doc)
-        self.assertIn("discovered default app", doc)
-        self.assertNotIn("PROTECTED_APPS", doc)
-        self.assertNotIn("PROTECTED_SCENARIOS", doc)
-
-
 class ScaffoldPolicyTest(_TempRepo):
     def _error(self, name: str, **kwargs) -> common.AppError:
         with self.assertRaises(common.AppError) as raised:
@@ -259,9 +239,7 @@ class ScaffoldPolicyTest(_TempRepo):
         self,
     ) -> None:
         result = scaffold.scaffold_app(self.root, "hello")
-        self.assertNotIn(
-            "app.json", " ".join(result["created"])
-        )
+        self.assertNotIn("app.json", " ".join(result["created"]))
         self.assertFalse(
             (self.root / "user" / "app" / "hello" / "app.json").exists()
         )
@@ -302,9 +280,7 @@ class ScaffoldPolicyTest(_TempRepo):
             "hello",
             [
                 entry.name
-                for entry in discovery.scan_apps(
-                    self.root / "user" / "app"
-                )[0]
+                for entry in discovery.scan_apps(self.root / "user" / "app")[0]
             ],
         )
 

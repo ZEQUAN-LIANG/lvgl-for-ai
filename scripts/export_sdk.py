@@ -1,20 +1,3 @@
-"""Export a prebuilt host SDK for one LVGL version.
-
-The SDK holds the five static libraries the engine and user apps need
-(LVGL, adapter, engine, libpng, zlib), the public LVGL and PNG headers,
-``lv_conf.h`` and a manifest (``lvgl-verify-loop-host-sdk-v1``) with the compiler,
-defines, include order, link order and hashes.  A package with ``dist/lvgl/<ver>``
-can build ``apps`` without ``lvgl`` or CMake.
-
-Usage::
-
-    python -I scripts/export_sdk.py --version 9.6 --out dist/lvgl/9.6
-
-The build is a Release configuration built by the existing CMake engine
-project.  The executable and the exported ``libengine.a`` come from the same
-``engine_core`` object library.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -58,11 +41,7 @@ FREETYPE_DIR = paths.ENGINE_DIR / "third_party" / "freetype"
 FREETYPE_INCLUDE_DIR = FREETYPE_DIR / "include"
 FREETYPE_IMPORT_LIB = FREETYPE_DIR / "lib" / "libfreetype.dll.a"
 FREETYPE_RUNTIME_DLL = (
-    paths.CONSOLE_ROOT
-    / "assets"
-    / "vendor"
-    / "freetype"
-    / "libfreetype.dll"
+    paths.CONSOLE_ROOT / "assets" / "vendor" / "freetype" / "libfreetype.dll"
 )
 
 EXPORT_TIMEOUT_S = 900.0
@@ -163,7 +142,6 @@ def _copy_headers(source: Path, out: Path, version: str) -> list[str]:
         if not src_headers.is_dir():
             raise BuildError(f"LVGL source has no src/ header tree: {source}")
         _copy_header_tree(src_headers, include_dir / "src")
-        # "." is the SDK root so lv_conf_internal.h resolves "lv_conf.h".
         include_dirs = [".", "include"]
 
     zlib_src = paths.zlib_src()
@@ -214,7 +192,11 @@ def export_sdk(
             "build tools not found on PATH: " + ", ".join(missing),
             command=["cmake"],
         )
-    chosen = compiler or os.environ.get("LVGL_VERIFY_LOOP_GCC") or shutil.which("gcc")
+    chosen = (
+        compiler
+        or os.environ.get("LVGL_VERIFY_LOOP_GCC")
+        or shutil.which("gcc")
+    )
     if not chosen:
         raise BuildError(
             "C compiler not found: set LVGL_VERIFY_LOOP_GCC or put gcc on PATH "
@@ -258,7 +240,13 @@ def export_sdk(
     ]
     _run(configure, "configure")
     _run(
-        ["cmake", "--build", str(build_dir), "--target", "lvgl_verify_loop_sdk"],
+        [
+            "cmake",
+            "--build",
+            str(build_dir),
+            "--target",
+            "lvgl_verify_loop_sdk",
+        ],
         "build",
     )
 

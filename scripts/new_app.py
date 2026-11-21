@@ -1,11 +1,3 @@
-"""Create a user app variant through :mod:`apps`.
-
-    python -I scripts/new_app.py hello
-    python -I scripts/new_app.py hello --dry-run --json
-
-The script never builds. C changes require a source build.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -14,7 +6,6 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
-# ``python -I`` does not add the script directory to sys.path.
 CONSOLE_ROOT = Path(__file__).resolve().parent.parent / "console"
 if str(CONSOLE_ROOT) not in sys.path:
     sys.path.insert(0, str(CONSOLE_ROOT))

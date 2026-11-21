@@ -196,7 +196,9 @@ class ReplayApiTest(unittest.TestCase):
         self.assertEqual(payload["frames"][1]["t_ms"], 16)
         self.assertEqual(len(payload["snapshots"]), 1)
         self.assertEqual(payload["annotations_count"], 0)
-        self.assertEqual(payload["manifest"]["schema"], "lvgl-verify-loop-session-v1")
+        self.assertEqual(
+            payload["manifest"]["schema"], "lvgl-verify-loop-session-v1"
+        )
 
     def test_timeline_endpoint_returns_rows(self) -> None:
         status, _, payload = self.harness.json(

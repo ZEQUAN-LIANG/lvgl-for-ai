@@ -85,7 +85,9 @@ class PruneSessionsTest(unittest.TestCase):
     def test_empty_annotations_do_not_protect_old_sessions(self) -> None:
         old = self.make_session(session_id(0))
         (old / "annotations.json").write_text(
-            json.dumps({"schema": "lvgl-verify-loop-annotations-v1", "notes": []}),
+            json.dumps(
+                {"schema": "lvgl-verify-loop-annotations-v1", "notes": []}
+            ),
             encoding="utf-8",
         )
         for seq in range(1, 12):

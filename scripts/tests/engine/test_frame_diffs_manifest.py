@@ -187,7 +187,8 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
         frame_count = len(list((rt.session_dir / "frames").glob("*.png")))
         self.assertEqual(frame_count, 6)
         self.assertEqual(
-            [row["schema"] for row in rows], ["lvgl-verify-loop-frame-diffs-v1"] * 5
+            [row["schema"] for row in rows],
+            ["lvgl-verify-loop-frame-diffs-v1"] * 5,
         )
         self.assertEqual([row["frame_no"] for row in rows], [2, 3, 4, 5, 6])
         self.assertEqual(
@@ -317,7 +318,8 @@ class FrameDiffManifestIntegrationTest(unittest.TestCase):
         rows = read_ndjson(rt.session_dir / "reference_diffs.ndjson")
         self.assertEqual([row["frame_no"] for row in rows], [1, 2, 3, 4, 5, 6])
         self.assertEqual(
-            [row["schema"] for row in rows], ["lvgl-verify-loop-frame-diffs-v1"] * 6
+            [row["schema"] for row in rows],
+            ["lvgl-verify-loop-frame-diffs-v1"] * 6,
         )
         self.assertTrue(all(row["prev_frame_no"] is None for row in rows))
         self.assertEqual([row["changed_px"] for row in rows[:2]], [0, 0])

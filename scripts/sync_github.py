@@ -1,17 +1,3 @@
-"""Mirror the Gitee remote's branches and tags to GitHub.
-
-Gitee is the source of truth: every branch under ``refs/remotes/<source>/`` and
-every tag on the source remote is force-pushed to the target remote. Branches
-that diverged on GitHub are overwritten; GitHub-only branches and tags are left
-untouched.
-
-Run from the repository root with::
-
-    python -I scripts/sync_github.py --dry-run
-    python -I scripts/sync_github.py
-    python -I scripts/sync_github.py --json
-"""
-
 from __future__ import annotations
 
 import argparse

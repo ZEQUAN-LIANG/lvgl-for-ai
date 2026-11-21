@@ -1,23 +1,3 @@
-"""Upload release assets to GitHub and Gitee Releases.
-
-Tokens come only from the environment:
-
-- ``GITHUB_TOKEN`` with ``repo`` scope.
-- ``GITEE_TOKEN`` from Gitee Settings -> Private Tokens, with ``projects``
-  scope.
-
-The script never stores a token, never reads a token file and never prompts.
-A missing token is an error with instructions.
-
-Usage::
-
-    set GITHUB_TOKEN=...
-    set GITEE_TOKEN=...
-    python -I scripts/upload_release.py --version 0.2.1 --replace
-    python -I scripts/upload_release.py --target github
-    python -I scripts/upload_release.py --dry-run
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -409,7 +389,6 @@ def upload_gitee(
     else:
         if not release.get("id"):
             raise UploadError("Gitee did not return a release with an id")
-        # Gitee requires ``body`` on PATCH, so fall back to the existing text.
         body = notes if notes is not None else release.get("body")
         patch = {
             "tag_name": tag,
@@ -464,7 +443,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", default=paths.TOOL_VERSION)
     parser.add_argument("--tag", default=None, help="default: v<version>")
     parser.add_argument(
-        "--assets-dir", type=Path, default=None, help="default: <repo>/dist/release"
+        "--assets-dir",
+        type=Path,
+        default=None,
+        help="default: <repo>/dist/release",
     )
     parser.add_argument(
         "--target", choices=("all", "github", "gitee"), default="all"
@@ -494,7 +476,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    assets_dir = (args.assets_dir or (paths.REPO_ROOT / "dist" / "release")).resolve()
+    assets_dir = (
+        args.assets_dir or (paths.REPO_ROOT / "dist" / "release")
+    ).resolve()
     tag = args.tag or f"v{args.version}"
     try:
         assets = release_assets(assets_dir, args.version)

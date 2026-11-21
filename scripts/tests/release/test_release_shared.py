@@ -65,7 +65,8 @@ class SmokeEnvironmentTest(unittest.TestCase):
             ):
                 env = release_bundle.smoke_environment(workspace)
             self.assertEqual(
-                env["LVGL_VERIFY_LOOP_SESSIONS_ROOT"], str(workspace / "sessions")
+                env["LVGL_VERIFY_LOOP_SESSIONS_ROOT"],
+                str(workspace / "sessions"),
             )
             self.assertNotIn("LVGL_VERIFY_LOOP_LVGL_SRC", env)
             self.assertNotIn("LVGL_VERIFY_LOOP_DEMO", env)
@@ -90,7 +91,9 @@ class ScenarioSmokeTest(unittest.TestCase):
                 command, *, cwd, env, timeout
             ) -> subprocess.CompletedProcess[str]:
                 calls.append((list(command), Path(cwd), dict(env), timeout))
-                session = Path(env["LVGL_VERIFY_LOOP_SESSIONS_ROOT"]) / "session"
+                session = (
+                    Path(env["LVGL_VERIFY_LOOP_SESSIONS_ROOT"]) / "session"
+                )
                 session.mkdir(parents=True)
                 (session / "engine.log").write_text(
                     "[app] app=intro\n[intro] ui created\n", encoding="utf-8"
@@ -122,7 +125,8 @@ class ScenarioSmokeTest(unittest.TestCase):
             command, cwd, env, timeout = calls[0]
             self.assertEqual(cwd, workspace)
             self.assertEqual(
-                env["LVGL_VERIFY_LOOP_SESSIONS_ROOT"], str(workspace / "sessions")
+                env["LVGL_VERIFY_LOOP_SESSIONS_ROOT"],
+                str(workspace / "sessions"),
             )
             self.assertEqual(timeout, 180.0)
             if os.name == "nt":
@@ -150,7 +154,9 @@ class ScenarioSmokeTest(unittest.TestCase):
             workspace.mkdir()
 
             def fake_run(command, *, cwd, env, timeout):
-                session = Path(env["LVGL_VERIFY_LOOP_SESSIONS_ROOT"]) / "session"
+                session = (
+                    Path(env["LVGL_VERIFY_LOOP_SESSIONS_ROOT"]) / "session"
+                )
                 session.mkdir(parents=True)
                 (session / "engine.log").write_text(
                     "nothing\n", encoding="utf-8"
@@ -203,9 +209,13 @@ def stage_tiny_package(package: Path, tool_version: str) -> dict:
     package.mkdir(parents=True)
     (package / "SKILL.md").write_text("skill\n", encoding="utf-8")
     (package / "scripts" / "meta").mkdir(parents=True)
-    (package / "scripts" / "meta" / "versions.json").write_text("{}\n", encoding="utf-8")
+    (package / "scripts" / "meta" / "versions.json").write_text(
+        "{}\n", encoding="utf-8"
+    )
     (package / "console" / "entrypoints").mkdir(parents=True)
-    (package / "console" / "entrypoints" / "cli.py").write_text("print('x')\n", encoding="utf-8")
+    (package / "console" / "entrypoints" / "cli.py").write_text(
+        "print('x')\n", encoding="utf-8"
+    )
     (package / "dist" / "lvgl" / "9.6").mkdir(parents=True)
     (package / "dist" / "lvgl" / "9.6" / "manifest.json").write_text(
         json.dumps(SDK_MANIFEST) + "\n", encoding="utf-8"

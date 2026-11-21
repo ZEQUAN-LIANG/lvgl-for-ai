@@ -81,11 +81,7 @@ class NewAppTest(unittest.TestCase):
         self.assertIn('app_obj_set_name(button, "hello_button");', source)
 
         self.assertEqual(self.app_c.read_bytes(), original)
-        # The directory name and ``hello_create`` follow the convention, so
-        # the scaffold writes no app.json.
-        self.assertFalse(
-            (self.root / "user/app/hello/app.json").exists()
-        )
+        self.assertFalse((self.root / "user/app/hello/app.json").exists())
         self.assertEqual(
             [entry.name for entry in self._entries()],
             ["coffee", "hello"],
@@ -143,7 +139,9 @@ class NewAppTest(unittest.TestCase):
                 self.assertEqual(code, 1)
                 self.assertIn("[new-app] error:", err)
                 if name not in app_domain.WINDOWS_DEVICE_NAMES:
-                    self.assertFalse((self.root / "user" / "app" / name).exists())
+                    self.assertFalse(
+                        (self.root / "user" / "app" / name).exists()
+                    )
 
     def test_existing_files_require_force(self) -> None:
         (self.root / "user/app/hello").mkdir()

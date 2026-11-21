@@ -9,7 +9,9 @@ from unittest import mock
 
 from control import Recording
 from scripts.tests.session_fixtures import FRAME_1 as FRAME
-from scripts.tests.session_fixtures import make_recording_session as make_session
+from scripts.tests.session_fixtures import (
+    make_recording_session as make_session,
+)
 from scripts.tests.support import write_png_rgb
 
 
@@ -24,7 +26,9 @@ class RecordingReadTest(unittest.TestCase):
         recording = Recording.open(session)
 
         self.assertEqual(recording.path, session)
-        self.assertEqual(recording.manifest["schema"], "lvgl-verify-loop-session-v1")
+        self.assertEqual(
+            recording.manifest["schema"], "lvgl-verify-loop-session-v1"
+        )
         self.assertEqual(recording.manifest["status"], "ok")
 
         timeline = recording.timeline()
@@ -40,7 +44,9 @@ class RecordingReadTest(unittest.TestCase):
         self.assertIsNone(recording.reference_diffs())
 
         annotations = recording.annotations
-        self.assertEqual(annotations["schema"], "lvgl-verify-loop-annotations-v1")
+        self.assertEqual(
+            annotations["schema"], "lvgl-verify-loop-annotations-v1"
+        )
         self.assertEqual(len(annotations["notes"]), 1)
 
         log_text = recording.log()
@@ -138,7 +144,9 @@ class RecordingReadTest(unittest.TestCase):
         )
 
     def test_bad_manifest_schema_raises_value_error_with_path(self) -> None:
-        session = make_session(self.root, manifest_schema="lvgl-verify-loop-session-v0")
+        session = make_session(
+            self.root, manifest_schema="lvgl-verify-loop-session-v0"
+        )
         with self.assertRaises(ValueError) as caught:
             Recording.open(session)
         self.assertIn("manifest.json", str(caught.exception))
@@ -169,7 +177,9 @@ class RecordingReadTest(unittest.TestCase):
         session = make_session(self.root)
         path = session / "timeline.ndjson"
         path.write_text(
-            json.dumps({"schema": "lvgl-verify-loop-timeline-v1", "type": "tree"})
+            json.dumps(
+                {"schema": "lvgl-verify-loop-timeline-v1", "type": "tree"}
+            )
             + "\n",
             encoding="utf-8",
         )

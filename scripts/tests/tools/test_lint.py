@@ -1,17 +1,13 @@
-"""Unit tests for scripts/lint.py.
-
-No external tool runs: subprocess calls are mocked, so the suite works on a
-machine without ruff, clang-format or cppcheck.
-"""
-
 from __future__ import annotations
 
 import paths
 
 import argparse
+import contextlib
 import io
 import json
 import sys
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -95,15 +91,11 @@ class DiscoveryTest(unittest.TestCase):
         self.assertIn("scripts/lint.py", python_paths)
         self.assertIn("engine/core/main.c", c_paths)
         self.assertIn("user/app/coffee/coffee_ui.c", c_paths)
-        self.assertNotIn(
-            "user/app/coffee/coffee_font_12.h", c_paths
-        )
+        self.assertNotIn("user/app/coffee/coffee_font_12.h", c_paths)
         self.assertNotIn("user/app/intro/intro_layout.c", c_paths)
         self.assertGreater(discovery.generated, 0)
         for path in python_paths:
-            self.assertFalse(
-                path.startswith("chip-adapt/vendor/"), path
-            )
+            self.assertFalse(path.startswith("chip-adapt/vendor/"), path)
 
     def test_explicit_excluded_path_is_reported(self) -> None:
         diagnostics: list[str] = []
@@ -143,7 +135,9 @@ class CommandTest(unittest.TestCase):
     def test_cppcheck_lvgl8_uses_extra_lodepng(self) -> None:
         argv = lint._cppcheck_argv(["cppcheck"], [], "8.4", False)
         self.assertIn("-DLVGL_MAJOR_8=1", argv)
-        self.assertTrue(any("extra" in part and "png" in part for part in argv))
+        self.assertTrue(
+            any("extra" in part and "png" in part for part in argv)
+        )
         self.assertFalse(any("lodepng" in part for part in argv))
 
     def test_cppcheck_misra_is_opt_in(self) -> None:
@@ -159,7 +153,11 @@ class CommandTest(unittest.TestCase):
         )
         self.assertEqual(
             lint.parse_tools("all", allow_cppcheck=True),
-            ["ruff", "clang-format", "cppcheck"],
+            ["ruff", "clang-format", "cppcheck", "comments"],
+        )
+        self.assertEqual(
+            lint.parse_tools("comments", allow_cppcheck=True),
+            ["comments"],
         )
 
     def test_adapter_filter_follows_version(self) -> None:
@@ -208,10 +206,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(findings[0].column, 5)
 
     def test_cppcheck_template_with_pipe_in_message(self) -> None:
-        stderr = (
-            "engine\\main.c|9|3|warning|unusedVariable|"
-            "unused: a | b\n"
-        )
+        stderr = "engine\\main.c|9|3|warning|unusedVariable|unused: a | b\n"
         findings = lint._parse_cppcheck(stderr)
         self.assertEqual(len(findings), 1)
         self.assertEqual(findings[0].path, "engine/main.c")
@@ -245,15 +240,34 @@ class HookTest(unittest.TestCase):
         path = "user/app/coffee/coffee_font_12.h"
         self.assertEqual(self.run_hook(self.payload(path)), 0)
 
+    def test_non_source_suffix_is_not_scanned(self) -> None:
+        capture = io.StringIO()
+        with _temp_repo_file("notes.md", "# heading\n") as relative:
+            with mock.patch.object(
+                sys, "stdin", FakeStdin(self.payload(relative))
+            ), mock.patch("sys.stderr", capture):
+                code = lint.cmd_hook()
+        self.assertEqual(code, 0)
+        self.assertNotIn("comments", capture.getvalue())
+
+    def test_comment_finding_exits_two(self) -> None:
+        capture = io.StringIO()
+        with _temp_repo_file("probe_comment.py", "x = 1  # prose\n") as rel:
+            with mock.patch.object(
+                sys, "stdin", FakeStdin(self.payload(rel))
+            ), mock.patch("sys.stderr", capture):
+                code = lint.cmd_hook()
+        self.assertEqual(code, 2)
+        self.assertIn("comments COMMENT", capture.getvalue())
+
     def test_python_finding_exits_two(self) -> None:
         result = lint.ToolResult(
             name="ruff", status="findings", findings=[make_finding()]
         )
         empty = lint.ToolResult(name="ruff-format", status="ok")
-        with mock.patch.object(
-            lint, "run_ruff_check", return_value=result
-        ), mock.patch.object(
-            lint, "run_ruff_format", return_value=empty
+        with (
+            mock.patch.object(lint, "run_ruff_check", return_value=result),
+            mock.patch.object(lint, "run_ruff_format", return_value=empty),
         ):
             code = self.run_hook(self.payload("scripts/lint.py"))
         self.assertEqual(code, 2)
@@ -262,10 +276,9 @@ class HookTest(unittest.TestCase):
         skipped = lint.ToolResult(
             name="ruff", status="skipped", error="not found"
         )
-        with mock.patch.object(
-            lint, "run_ruff_check", return_value=skipped
-        ), mock.patch.object(
-            lint, "run_ruff_format", return_value=skipped
+        with (
+            mock.patch.object(lint, "run_ruff_check", return_value=skipped),
+            mock.patch.object(lint, "run_ruff_format", return_value=skipped),
         ):
             code = self.run_hook(self.payload("scripts/lint.py"))
         self.assertEqual(code, 0)
@@ -277,14 +290,16 @@ class HookTest(unittest.TestCase):
         )
         empty = lint.ToolResult(name="ruff-format", status="ok")
         capture = io.StringIO()
-        with mock.patch.object(
-            lint, "run_ruff_check", return_value=result
-        ), mock.patch.object(
-            lint, "run_ruff_format", return_value=empty
+        with (
+            mock.patch.object(lint, "run_ruff_check", return_value=result),
+            mock.patch.object(lint, "run_ruff_format", return_value=empty),
         ):
-            with mock.patch.object(sys, "stdin", FakeStdin(
-                self.payload("scripts/lint.py")
-            )), mock.patch("sys.stderr", capture):
+            with (
+                mock.patch.object(
+                    sys, "stdin", FakeStdin(self.payload("scripts/lint.py"))
+                ),
+                mock.patch("sys.stderr", capture),
+            ):
                 code = lint.cmd_hook()
         self.assertEqual(code, 2)
         self.assertIn("5 more omitted", capture.getvalue())
@@ -292,11 +307,12 @@ class HookTest(unittest.TestCase):
     def test_engine_header_checks_engine_sources(self) -> None:
         empty = lint.ToolResult(name="clang-format", status="ok")
         cpp = lint.ToolResult(name="cppcheck", status="ok")
-        with mock.patch.object(
-            lint, "run_clang_format", return_value=empty
-        ), mock.patch.object(
-            lint, "run_cppcheck", return_value=cpp
-        ) as mocked:
+        with (
+            mock.patch.object(lint, "run_clang_format", return_value=empty),
+            mock.patch.object(
+                lint, "run_cppcheck", return_value=cpp
+            ) as mocked,
+        ):
             code = self.run_hook(self.payload("engine/adapter/adapter.h"))
         self.assertEqual(code, 0)
         self.assertTrue(mocked.called)
@@ -304,9 +320,10 @@ class HookTest(unittest.TestCase):
 
     def test_user_app_source_skips_cppcheck(self) -> None:
         empty = lint.ToolResult(name="clang-format", status="ok")
-        with mock.patch.object(
-            lint, "run_clang_format", return_value=empty
-        ), mock.patch.object(lint, "run_cppcheck") as mocked:
+        with (
+            mock.patch.object(lint, "run_clang_format", return_value=empty),
+            mock.patch.object(lint, "run_cppcheck") as mocked,
+        ):
             code = self.run_hook(self.payload("user/app/coffee/coffee_ui.c"))
         self.assertEqual(code, 0)
         self.assertFalse(mocked.called)
@@ -377,12 +394,11 @@ class ExitCodeTest(unittest.TestCase):
     def run_check(
         self, args: argparse.Namespace, result: lint.ToolResult
     ) -> int:
-        with mock.patch.object(
-            lint, "discover", return_value=lint.Discovery()
-        ), mock.patch.object(
-            lint, "run_ruff_check", return_value=result
-        ), mock.patch("sys.stdout", io.StringIO()), mock.patch(
-            "sys.stderr", io.StringIO()
+        with (
+            mock.patch.object(lint, "discover", return_value=lint.Discovery()),
+            mock.patch.object(lint, "run_ruff_check", return_value=result),
+            mock.patch("sys.stdout", io.StringIO()),
+            mock.patch("sys.stderr", io.StringIO()),
         ):
             return lint.cmd_check(args)
 
@@ -397,9 +413,7 @@ class ExitCodeTest(unittest.TestCase):
         self.assertEqual(self.run_check(self.make_args(), result), 1)
 
     def test_tool_error_is_two(self) -> None:
-        result = lint.ToolResult(
-            name="ruff", status="error", error="boom"
-        )
+        result = lint.ToolResult(name="ruff", status="error", error="boom")
         self.assertEqual(self.run_check(self.make_args(), result), 2)
 
     def test_missing_tool_skip_flag(self) -> None:
@@ -415,14 +429,15 @@ class ExitCodeTest(unittest.TestCase):
             stderr="engine/main.c|1|1|warning|id|msg\n",
             stdout="",
         )
-        with mock.patch.object(
-            lint, "resolve_tool", return_value=["cppcheck"]
-        ), mock.patch.object(
-            lint, "tool_version", return_value="Cppcheck 2.20"
-        ), mock.patch.object(
-            lint, "_cppcheck_prerequisites", return_value=[]
-        ), mock.patch.object(
-            lint, "run_command", return_value=proc
+        with (
+            mock.patch.object(lint, "resolve_tool", return_value=["cppcheck"]),
+            mock.patch.object(
+                lint, "tool_version", return_value="Cppcheck 2.20"
+            ),
+            mock.patch.object(
+                lint, "_cppcheck_prerequisites", return_value=[]
+            ),
+            mock.patch.object(lint, "run_command", return_value=proc),
         ):
             result = lint.run_cppcheck(
                 [Path("engine/main.c")],
@@ -437,11 +452,13 @@ class ExitCodeTest(unittest.TestCase):
 
     def test_ruff_exit_two_is_harness_error(self) -> None:
         proc = mock.Mock(returncode=2, stderr="bad config", stdout="")
-        with mock.patch.object(
-            lint, "resolve_tool", return_value=["ruff"]
-        ), mock.patch.object(
-            lint, "tool_version", return_value="ruff 0.17.5"
-        ), mock.patch.object(lint, "run_command", return_value=proc):
+        with (
+            mock.patch.object(lint, "resolve_tool", return_value=["ruff"]),
+            mock.patch.object(
+                lint, "tool_version", return_value="ruff 0.17.5"
+            ),
+            mock.patch.object(lint, "run_command", return_value=proc),
+        ):
             result = lint.run_ruff_check(
                 [Path("scripts/lint.py")],
                 skip_missing=False,
@@ -449,6 +466,79 @@ class ExitCodeTest(unittest.TestCase):
             )
         self.assertEqual(result.status, "error")
         self.assertIn("bad config", result.error)
+
+
+@contextlib.contextmanager
+def _temp_source(name: str, text: str):
+    with tempfile.TemporaryDirectory() as raw:
+        path = Path(raw) / name
+        path.write_text(text, encoding="utf-8")
+        yield path
+
+
+@contextlib.contextmanager
+def _temp_repo_file(name: str, text: str):
+    path = lint.REPO_ROOT / name
+    try:
+        path.write_text(text, encoding="utf-8")
+        yield name
+    finally:
+        path.unlink(missing_ok=True)
+
+
+class CommentScanTest(unittest.TestCase):
+    def scan(self, name: str, text: str) -> list[lint.Finding]:
+        with _temp_source(name, text) as path:
+            return lint._scan_comments(path)
+
+    def test_c_line_and_block_comments(self) -> None:
+        findings = self.scan(
+            "x.c", "int a;\n// one\n/* two */\nint b; /* three */\n"
+        )
+        self.assertEqual([f.code for f in findings], ["COMMENT"] * 3)
+        self.assertEqual([f.line for f in findings], [2, 3, 4])
+
+    def test_c_slashes_inside_strings_are_not_comments(self) -> None:
+        findings = self.scan(
+            "x.c",
+            'lv_label_set_text(l, "MODE // ORBIT RING");\n'
+            'const char * p = "// user/app/coffee/coffee.c";\n',
+        )
+        self.assertEqual(findings, [])
+
+    def test_c_cppcheck_suppress_is_exempt(self) -> None:
+        findings = self.scan(
+            "x.c", "int a;\n// cppcheck-suppress arrayIndexOutOfBounds\n"
+        )
+        self.assertEqual(findings, [])
+
+    def test_python_hash_and_docstrings(self) -> None:
+        findings = self.scan(
+            "x.py",
+            'def f():\n    "doc"\n    return 1  # trailing\n',
+        )
+        self.assertEqual(
+            sorted(f.code for f in findings), ["COMMENT", "DOCSTRING"]
+        )
+
+    def test_python_directives_are_exempt(self) -> None:
+        findings = self.scan(
+            "x.py",
+            "#!/usr/bin/env python3\n"
+            "import os  # noqa: F401\n"
+            "x = 1  # type: ignore\n",
+        )
+        self.assertEqual(findings, [])
+
+    def test_python_multiline_strings_are_not_docstrings(self) -> None:
+        findings = self.scan(
+            "x.py", 'BLOB = """line one\n# phase: build\nok\n"""\n'
+        )
+        self.assertEqual(findings, [])
+
+    def test_clean_source_has_no_findings(self) -> None:
+        self.assertEqual(self.scan("x.c", "int main(void) { return 0; }\n"), [])
+        self.assertEqual(self.scan("x.py", "VALUE = 1\n"), [])
 
 
 class ReleaseExclusionTest(unittest.TestCase):

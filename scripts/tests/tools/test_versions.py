@@ -155,7 +155,9 @@ class PackageCopyTest(unittest.TestCase):
             original = source.read_bytes()
             package = root / "package"
             (package / "scripts" / "meta").mkdir(parents=True)
-            (package / "scripts" / "meta" / "versions.json").write_bytes(original)
+            (package / "scripts" / "meta" / "versions.json").write_bytes(
+                original
+            )
 
             release.write_package_versions(package, tool_version="0.9.9")
 

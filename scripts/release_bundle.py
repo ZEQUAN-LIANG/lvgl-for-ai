@@ -1,17 +1,3 @@
-"""The release artifact contract shared by every bundle build.
-
-Both ``release.py`` (one package) and ``release_all.py`` (two bundles) write
-the same product shape:
-
-* a deterministic ``<package>/...`` zip;
-* ``<zip>.sha256`` with the coreutils ``<digest>  <name>`` line;
-* ``<zip stem>.release.json`` with per-file hashes and SDK provenance.
-
-Keeping the writers here means the two entry points cannot drift.  Staging,
-engine builds and smoke checks stay in the entry points (or in ``release.py``)
-until the shared orchestration layer is in place.
-"""
-
 from __future__ import annotations
 
 import json
@@ -112,7 +98,9 @@ def build_manifest(
     sdk_manifest: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if sdk_manifest is None:
-        manifest_path = package / "dist" / "lvgl" / lvgl_version / "manifest.json"
+        manifest_path = (
+            package / "dist" / "lvgl" / lvgl_version / "manifest.json"
+        )
         sdk_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     sdk_manifest_sha256 = sha256_file(
         package / "dist" / "lvgl" / lvgl_version / "manifest.json"

@@ -19,7 +19,6 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 import contract_snapshot as cs
 
-# Side effect: install the Windows-safe TemporaryDirectory before setUp runs.
 from scripts.tests import support  # noqa: F401,E402
 
 
@@ -102,9 +101,9 @@ class ContractSnapshotTest(unittest.TestCase):
         self.assertEqual(stream["height"], 2)
         self.assertEqual(stream["pixel_bytes"], 16)
 
-        self.assertEqual(http["trash_meta_schema"], "lvgl-verify-loop-app-trash-v1")
-        # A discovered app follows the ``<name>_create`` convention, so its
-        # directory carries no metadata file.
+        self.assertEqual(
+            http["trash_meta_schema"], "lvgl-verify-loop-app-trash-v1"
+        )
         self.assertEqual(
             http["trash_layout"],
             [
@@ -209,9 +208,15 @@ class ContractSnapshotTest(unittest.TestCase):
         self.assertEqual(protocol["seq_starts_at"], 1)
         self.assertTrue(protocol["seq_contiguous"])
         self.assertEqual(protocol["ready_seq"], 0)
-        self.assertEqual(protocol["ready_protocol"], "lvgl-verify-loop-engine-v1")
-        self.assertTrue(protocol["protocol_versions"]["lvgl-verify-loop-engine-v1"])
-        self.assertFalse(protocol["protocol_versions"]["lvgl-verify-loop-engine-v0"])
+        self.assertEqual(
+            protocol["ready_protocol"], "lvgl-verify-loop-engine-v1"
+        )
+        self.assertTrue(
+            protocol["protocol_versions"]["lvgl-verify-loop-engine-v1"]
+        )
+        self.assertFalse(
+            protocol["protocol_versions"]["lvgl-verify-loop-engine-v0"]
+        )
         required = set(protocol["required_ready_keys"])
         self.assertTrue(
             {
@@ -398,9 +403,7 @@ class ContractSnapshotTest(unittest.TestCase):
             "EngineNotFound",
         ):
             self.assertIn(name, exports)
-        self.assertIn(
-            "play_scenario", python["scenario"]
-        )
+        self.assertIn("play_scenario", python["scenario"])
         self.assertEqual(python["paths"]["tool_version"], "0.2.2")
         runtime = python["control"]["members"]["Runtime"]
         self.assertEqual(runtime["kind"], "class")

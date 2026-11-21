@@ -407,7 +407,9 @@ class SessionReportTest(unittest.TestCase):
             payload, json.loads(json.dumps(session_index(session)))
         )
         self.assertEqual(payload["session_id"], SESSION_NAME)
-        self.assertEqual(payload["schema"], "lvgl-verify-loop-session-index-v1")
+        self.assertEqual(
+            payload["schema"], "lvgl-verify-loop-session-index-v1"
+        )
 
     def test_human_output_is_bounded_and_lists_evidence(self) -> None:
         session = make_query_session(self.root)

@@ -304,7 +304,9 @@ class SessionStoreTest(unittest.TestCase):
         (path / "snapshots").mkdir()
         write_png_rgb(path / "snapshots" / "001_done.png", 1, 1, [(4, 5, 6)])
         (path / "annotations.json").write_text(
-            json.dumps({"schema": "lvgl-verify-loop-annotations-v1", "notes": []}),
+            json.dumps(
+                {"schema": "lvgl-verify-loop-annotations-v1", "notes": []}
+            ),
             encoding="utf-8",
         )
         store.note_ready(

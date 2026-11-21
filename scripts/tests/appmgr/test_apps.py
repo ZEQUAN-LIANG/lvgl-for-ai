@@ -127,14 +127,10 @@ class AppDomainTest(unittest.TestCase):
         self._write_scenario("spectrum", "spectrum")
         deleted = app_domain.delete_app(self.root, "spectrum")
         self.assertFalse(spectrum.exists())
-        self.assertFalse(
-            (self.root / "user/scenarios/spectrum.json").exists()
-        )
+        self.assertFalse((self.root / "user/scenarios/spectrum.json").exists())
         app_domain.restore_app(self.root, deleted["trash_id"])
         self.assertTrue(spectrum.is_dir())
-        self.assertTrue(
-            (self.root / "user/scenarios/spectrum.json").is_file()
-        )
+        self.assertTrue((self.root / "user/scenarios/spectrum.json").is_file())
 
         self._create("hello")
         self._write_scenario("coffee", "hello")
@@ -204,18 +200,14 @@ class AppDomainTest(unittest.TestCase):
 
     def test_list_apps_tree_and_recent(self) -> None:
         self._create("hello")
-        # A directory declaring ``<name>_create`` is an app, not an orphan.
         convention = self.root / "user/app/plain"
         convention.mkdir()
         (convention / "plain.c").write_text(
             "void plain_create(void) {}\n", encoding="utf-8"
         )
-        # Only an app directory whose metadata cannot be read stays orphaned.
         broken = self.root / "user/app/broken"
         broken.mkdir()
         (broken / "app.json").write_text("{", encoding="utf-8")
-        # A directory without the conventional entry symbol is a helper,
-        # not an app, and must not show up as an orphan.
         helper = self.root / "user/app/helper"
         helper.mkdir()
         (helper / "helper_util.c").write_text(

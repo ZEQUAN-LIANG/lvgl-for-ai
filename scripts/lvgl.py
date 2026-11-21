@@ -1,14 +1,3 @@
-"""Unified entry for the distributable skill package.
-
-``bin/lvgl.cmd`` calls this file from any working directory.  It only maps a
-subcommand to the existing entry point; there is no second CLI:
-
-- ``run``    -> ``console/entrypoints/cli.py`` (build and play a scenario)
-- ``report`` -> ``console/entrypoints/session_report.py`` (read finished evidence)
-- ``serve``  -> ``console/entrypoints/serve.py`` (viewer and live bridge)
-- ``assets`` -> ``console/entrypoints/assets_tool.py`` (fonts/images to LVGL C arrays)
-"""
-
 from __future__ import annotations
 
 import sys

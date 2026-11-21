@@ -1,5 +1,3 @@
-"""Build the Windows double-click launchers and their icons."""
-
 from __future__ import annotations
 
 import argparse
@@ -36,7 +34,11 @@ LAUNCHERS = (
         "target": r"..\host\server.py",
         "cwd": r"..\host",
         "args": ("--open",),
-        "output": REPO_ROOT / "chip-adapt" / "sifli" / "launcher" / "SiFli-Host.exe",
+        "output": REPO_ROOT
+        / "chip-adapt"
+        / "sifli"
+        / "launcher"
+        / "SiFli-Host.exe",
     },
     {
         "name": "perf-tape",

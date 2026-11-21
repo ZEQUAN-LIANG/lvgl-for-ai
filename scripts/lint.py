@@ -1,29 +1,9 @@
-"""Static checks and formatting for repo-owned Python and C sources.
-
-One entry point wraps ruff, clang-format and cppcheck so the Claude Code
-PostToolUse hook, the git pre-commit hook and manual runs share the same file
-discovery, exit codes and JSON report.  Only the standard library is imported:
-the three tools are external executables resolved at runtime.
-
-Usage::
-
-    python -I scripts/lint.py check [--json] [--tools LIST]
-                                       [--files PATH...] [--lvgl VERSION]
-                                       [--cppcheck-user-app] [--misra]
-                                       [--skip-missing]
-    python -I scripts/lint.py format [--json] [--tools LIST]
-                                        [--files PATH...] [--check]
-    python -I scripts/lint.py hook
-
-Exit codes: ``0`` clean, ``1`` findings, ``2`` harness error (missing tool,
-missing LVGL/SDK tree, bad argument, timeout).  ``--skip-missing`` turns
-missing tools and missing LVGL/SDK trees into ``skipped`` results instead.
-"""
-
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
+import io
 import json
 import os
 import re
@@ -31,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import time
+import tokenize
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -58,7 +39,7 @@ PYTHON_ROOTS = (
 )
 C_ROOTS = ("engine", "user", "chip-adapt/sifli")
 
-TOOL_NAMES = ("ruff", "clang-format", "cppcheck")
+TOOL_NAMES = ("ruff", "clang-format", "cppcheck", "comments")
 TOOL_ENV_VARS = {
     "ruff": "LVGL_VERIFY_LOOP_RUFF",
     "clang-format": "LVGL_VERIFY_LOOP_CLANG_FORMAT",
@@ -87,7 +68,6 @@ EXCLUDED_DIR_NAMES = frozenset(
     }
 )
 EXCLUDED_PREFIXES = ("engine/third_party/freetype", "console/assets/vendor")
-# LVGL configuration header: keep the upstream-style macro layout untouched.
 EXCLUDED_FILES = frozenset({"engine/adapter/lv_conf.h"})
 
 GENERATED_MARKERS = re.compile(
@@ -105,6 +85,14 @@ CPPCHECK_LINE = re.compile(
     r"(?P<severity>[a-z]+)\|(?P<code>[^|]*)\|(?P<message>.*)$"
 )
 RUFF_WOULD_REFORMAT = "Would reformat: "
+
+EXEMPT_COMMENT_MARKERS = (
+    "noqa",
+    "type:",
+    "pragma:",
+    "cppcheck-suppress",
+)
+EXEMPT_COMMENT_CODES = frozenset({"COMMENT", "DOCSTRING"})
 
 HOOK_MAX_FINDINGS = 20
 HOOK_MESSAGE_LIMIT = 300
@@ -174,11 +162,6 @@ def is_excluded(relative: Path) -> bool:
 
 
 def is_generated(path: Path) -> bool:
-    """True for asset/data files that must never be reformatted.
-
-    Generated headers put the marker in the first few lines; the intro layout
-    data table puts it below its include block, so the window is 40 lines.
-    """
     try:
         with path.open("r", encoding="utf-8", errors="replace") as handle:
             head = [handle.readline() for _ in range(40)]
@@ -410,6 +393,156 @@ def _changed_files(
     return [
         rel_path(path) for path in files if before.get(path) != _digest(path)
     ]
+
+
+def _comment_spans_c(text: str) -> list[tuple[str, int, int, int]]:
+    spans: list[tuple[str, int, int, int]] = []
+    index = 0
+    length = len(text)
+    line = 1
+    column = 0
+    while index < length:
+        char = text[index]
+        if char == "\n":
+            line += 1
+            column = 0
+            index += 1
+            continue
+        if char == '"' or char == "'":
+            quote = char
+            index += 1
+            column += 1
+            while index < length and text[index] != quote:
+                if text[index] == "\\":
+                    index += 1
+                    column += 1
+                if index < length and text[index] == "\n":
+                    line += 1
+                    column = 0
+                index += 1
+                column += 1
+            index += 1
+            column += 1
+            continue
+        if text.startswith("//", index):
+            start_line, start_col = line, column
+            while index < length and text[index] != "\n":
+                index += 1
+                column += 1
+            spans.append(("COMMENT", start_line, start_col, start_line))
+            continue
+        if text.startswith("/*", index):
+            start_line, start_col = line, column
+            index += 2
+            column += 2
+            while index < length and not text.startswith("*/", index):
+                if text[index] == "\n":
+                    line += 1
+                    column = 0
+                else:
+                    column += 1
+                index += 1
+            index += 2
+            column += 2
+            spans.append(("COMMENT", start_line, start_col, line))
+            continue
+        index += 1
+        column += 1
+    return spans
+
+
+def _docstring_nodes(tree: ast.AST) -> list[ast.Constant]:
+    nodes: list[ast.Constant] = []
+    owners = (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+    for node in ast.walk(tree):
+        if not isinstance(node, owners):
+            continue
+        body = node.body
+        if not body:
+            continue
+        first = body[0]
+        if not isinstance(first, ast.Expr):
+            continue
+        value = first.value
+        if isinstance(value, ast.Constant) and isinstance(value.value, str):
+            nodes.append(value)
+    return nodes
+
+
+def _comment_spans_python(text: str) -> list[tuple[str, int, int, int]]:
+    spans: list[tuple[str, int, int, int]] = []
+    try:
+        tokens = list(tokenize.generate_tokens(io.StringIO(text).readline))
+    except (tokenize.TokenError, IndentationError, SyntaxError):
+        return spans
+    for token in tokens:
+        if token.type != tokenize.COMMENT:
+            continue
+        spans.append(("COMMENT", token.start[0], token.start[1], token.end[0]))
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return spans
+    for node in _docstring_nodes(tree):
+        start = getattr(node, "lineno", 1)
+        end = getattr(node, "end_lineno", start)
+        spans.append(("DOCSTRING", start, 0, end))
+    return spans
+
+
+def _comment_exempt(lines: Sequence[str], start: int, end: int) -> bool:
+    for line in range(start, min(end, len(lines)) + 1):
+        content = lines[line - 1]
+        if line == 1 and content.lstrip().startswith("#!"):
+            return True
+        if any(marker in content for marker in EXEMPT_COMMENT_MARKERS):
+            return True
+    return False
+
+
+def _scan_comments(path: Path) -> list[Finding]:
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    if path.suffix.lower() in PYTHON_SUFFIXES:
+        spans = _comment_spans_python(text)
+    else:
+        spans = _comment_spans_c(text)
+    lines = text.splitlines()
+    findings: list[Finding] = []
+    for code, start, start_col, end in spans:
+        if _comment_exempt(lines, start, end):
+            continue
+        findings.append(
+            Finding(
+                tool="comments",
+                path=rel_path(path),
+                line=start,
+                column=start_col + 1,
+                code=code,
+                message=(
+                    "docstring is not allowed"
+                    if code == "DOCSTRING"
+                    else "comment is not allowed"
+                ),
+            )
+        )
+    return findings
+
+
+def run_comment_check(files: Sequence[Path]) -> ToolResult:
+    started = time.monotonic()
+    findings: list[Finding] = []
+    for path in files:
+        findings.extend(_scan_comments(path))
+    return ToolResult(
+        name="comments",
+        status="findings" if findings else "ok",
+        files=len(files),
+        findings=findings,
+        duration_s=time.monotonic() - started,
+    )
 
 
 def _parse_ruff(payload: Iterable[dict]) -> list[Finding]:
@@ -841,7 +974,9 @@ def _is_vendored_path(path: str) -> bool:
 
 def parse_tools(value: str, *, allow_cppcheck: bool) -> list[str] | None:
     if value in (None, "", "all"):
-        names = list(TOOL_NAMES) if allow_cppcheck else ["ruff", "clang-format"]
+        names = (
+            list(TOOL_NAMES) if allow_cppcheck else ["ruff", "clang-format"]
+        )
     else:
         names = [item.strip() for item in value.split(",") if item.strip()]
     if not allow_cppcheck and "cppcheck" in names:
@@ -898,7 +1033,11 @@ def _cppcheck_targets(
 
 def _engine_c_sources() -> list[Path]:
     engine = REPO_ROOT / "engine"
-    paths = [path for sub in ("core", "render", "adapter") for path in (engine / sub).glob("*.c")]
+    paths = [
+        path
+        for sub in ("core", "render", "adapter")
+        for path in (engine / sub).glob("*.c")
+    ]
     return sorted(paths)
 
 
@@ -1023,6 +1162,10 @@ def cmd_check(args: argparse.Namespace) -> int:
     discovery = discover(args.files, diagnostics)
     version = args.lvgl or default_lvgl_version()
     results: list[ToolResult] = []
+    if "comments" in tools:
+        results.append(
+            run_comment_check(list(discovery.python) + list(discovery.c))
+        )
     if "ruff" in tools:
         results.append(
             run_ruff_check(
@@ -1167,6 +1310,9 @@ def _hook_findings(
     suffix = rel.suffix.lower()
     posix = rel.as_posix()
     findings: list[Finding] = []
+    if suffix not in ALL_SUFFIXES:
+        return findings
+    findings.extend(run_comment_check([path]).findings)
     if suffix == ".py":
         check = run_ruff_check(
             [path], skip_missing=True, timeout=HOOK_TIMEOUT_S

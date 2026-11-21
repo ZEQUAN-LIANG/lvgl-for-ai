@@ -1,26 +1,3 @@
-"""Fetch official LVGL release tarballs and install them into engine/lvgl/.
-
-This script fetches the official tags for 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3.
-Every archive is installed only after its version macros match the requested
-version.  Local changes are applied from ``engine/lvgl/patches/<version>/`` as unified
-diffs before the tree is installed.
-
-Run with ``python -I`` and absolute paths.  Downloaded archives and extracted
-trees are untrusted data: they live in their own directories under
-``.scratch/tmp`` and are only read by this script, which never executes
-anything from them.
-
-``--source auto`` tries GitHub codeload first and the Gitee mirror second.
-The Gitee mirror may answer with an HTML/400 page; a download is accepted only
-when it starts with the gzip magic bytes.
-
-Usage:
-    python -I scripts/fetch_lvgl.py --version 9.5 --repo-root .
-    python -I scripts/fetch_lvgl.py --version 8.3 --source auto
-    python -I scripts/fetch_lvgl.py --version 9.6 --repo-root . --no-patch
-    python -I scripts/fetch_lvgl.py --version 9.6 --repo-root . --patch-dir my-patches
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -44,9 +21,6 @@ TAGS = versions.tags()
 
 SOURCE_SCHEMA = "lvgl-verify-loop-lvgl-source-v1"
 
-# Some networks poison github.com into a parked domain; codeload and the Gitee
-# mirror serve the same archives, and codeload is retried with --resolve
-# against well-known GitHub IPs when DNS is poisoned.
 CODELOAD_URL = "https://codeload.github.com/lvgl/lvgl/tar.gz/refs/tags/{tag}"
 GITEE_URL = "https://gitee.com/mirrors/lvgl/repository/archive/{tag}.tar.gz"
 GITHUB_IPS = ("140.82.112.9", "140.82.113.9", "140.82.114.9")
@@ -56,7 +30,6 @@ def parse_version_header(tree: Path) -> tuple[int, int, int]:
     candidates = (
         tree / "include" / "lvgl" / "lv_version.h",
         tree / "lv_version.h",
-        # LVGL 9.1 and older define the version macros in the root lvgl.h.
         tree / "lvgl.h",
     )
     path = next((item for item in candidates if item.is_file()), None)
@@ -172,7 +145,6 @@ def extract(archive: Path, extract_root: Path) -> Path:
         try:
             tar.extractall(extract_root, filter="data")
         except TypeError:
-            # Python < 3.12 has no extraction filters; the check above guards it.
             tar.extractall(extract_root)
     tree = extract_root / root
     if not tree.is_dir():
@@ -182,7 +154,6 @@ def extract(archive: Path, extract_root: Path) -> Path:
 
 def verify_tree(tree: Path, version: str) -> tuple[int, int, int]:
     actual = parse_version_header(tree)
-    # The tag is the release identity, patch-level tags included.
     tag = TAGS[version]
     expected = tuple(int(part) for part in tag.lstrip("v").split("."))
     if actual != expected:
@@ -212,7 +183,11 @@ def install(tree: Path, dest: Path, version: str) -> None:
 def patch_dir_for(
     repo_root: Path, version: str, override: Path | None
 ) -> Path:
-    base = override if override is not None else repo_root / "engine" / "lvgl" / "patches"
+    base = (
+        override
+        if override is not None
+        else repo_root / "engine" / "lvgl" / "patches"
+    )
     return base / version
 
 
@@ -259,8 +234,6 @@ def _git_apply(tree: Path, patch: Path, *, check: bool) -> None:
     if check:
         command.append("--check")
     command.append(str(patch))
-    # The installed tree can live inside the tool repository (engine/lvgl/) or a
-    # temp directory under it. Stop repository discovery at the tree's parent
     env = os.environ.copy()
     env["GIT_CEILING_DIRECTORIES"] = str(tree.resolve().parent)
     try:
@@ -274,9 +247,7 @@ def _git_apply(tree: Path, patch: Path, *, check: bool) -> None:
             errors="replace",
         )
     except FileNotFoundError:
-        raise SystemExit(
-            "git is required to apply LVGL patches"
-        ) from None
+        raise SystemExit("git is required to apply LVGL patches") from None
     if result.returncode != 0:
         detail = (result.stderr or result.stdout).strip()
         action = "check" if check else "apply"

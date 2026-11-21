@@ -150,7 +150,9 @@ class ApplyPatchesTest(unittest.TestCase):
                 (dest / "src" / "foo.c").read_text(encoding="utf-8"), "new\n"
             )
             stamp = json.loads(
-                (dest / ".lvgl-verify-loop-source.json").read_text(encoding="utf-8")
+                (dest / ".lvgl-verify-loop-source.json").read_text(
+                    encoding="utf-8"
+                )
             )
             self.assertEqual(stamp["patches"], ["0001.patch"])
 
@@ -199,7 +201,9 @@ class ApplyPatchesTest(unittest.TestCase):
             fetch_lvgl.write_source_stamp(root, "9.6", [patch])
 
             payload = json.loads(
-                (root / ".lvgl-verify-loop-source.json").read_text(encoding="utf-8")
+                (root / ".lvgl-verify-loop-source.json").read_text(
+                    encoding="utf-8"
+                )
             )
             self.assertEqual(payload["schema"], fetch_lvgl.SOURCE_SCHEMA)
             self.assertEqual(payload["version"], "9.6")

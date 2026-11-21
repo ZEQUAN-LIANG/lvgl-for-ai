@@ -15,9 +15,7 @@ from web.live_session import LiveError, LiveSession
 from scripts.tests.web_support import SESSION_ID, make_web_session
 
 SIGINT_DRIVER = support.WEB_SIGINT_DRIVER
-APP_C = (
-    Path(__file__).resolve().parents[3] / "user" / "app" / "app.c"
-)
+APP_C = Path(__file__).resolve().parents[3] / "user" / "app" / "app.c"
 
 
 class SessionFakeRuntime(FakeRuntime):
@@ -93,7 +91,9 @@ class LiveSessionTest(unittest.TestCase):
         self.session = make_web_session(self.root)
 
     def _session(self, factory) -> LiveSession:
-        session = LiveSession(self.root / "user" / "sessions", runtime_factory=factory)
+        session = LiveSession(
+            self.root / "user" / "sessions", runtime_factory=factory
+        )
         self.addCleanup(_quiet_stop_session, session)
         return session
 
@@ -360,7 +360,9 @@ class LiveSessionTest(unittest.TestCase):
             self.addCleanup(_quiet_stop_session, session)
             session.start("test", "coffee")
             test_root = Path(str(captured["sessions_root"]))
-            self.assertNotEqual(test_root, (self.root / "user" / "sessions").resolve())
+            self.assertNotEqual(
+                test_root, (self.root / "user" / "sessions").resolve()
+            )
             self.assertEqual(
                 test_root.parent, (self.root / "user" / "sessions").resolve()
             )
@@ -467,7 +469,8 @@ class LiveSessionTest(unittest.TestCase):
         self.assertEqual(store.max_log_bytes, 16 * 1024 * 1024)
         self.assertEqual(store.retention, 10)
         self.assertEqual(
-            store.sessions_root.parent, (self.root / "user" / "sessions").resolve()
+            store.sessions_root.parent,
+            (self.root / "user" / "sessions").resolve(),
         )
         self.assertEqual(store.lvgl_src.name, "9.4")
 

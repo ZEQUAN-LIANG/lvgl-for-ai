@@ -9,7 +9,6 @@ from unittest import mock
 
 from control import Recording, Runtime, ScenarioError
 
-# Side effect: install the Windows-safe TemporaryDirectory before setUp runs.
 from scripts.tests import support  # noqa: F401,E402
 
 FAKE_ENGINE = support.FAKE_ENGINE

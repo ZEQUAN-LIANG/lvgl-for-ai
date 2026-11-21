@@ -1,29 +1,3 @@
-"""Install one LVGL version for a local LVGL Verify Loop workspace.
-
-The default package ships LVGL 9.6. This script adds another supported
-version in one command:
-
-    python -I scripts/install_version.py --list
-    python -I scripts/install_version.py --lvgl 9.4 --source auto
-    python -I scripts/install_version.py --lvgl 9.5 --no-build
-    python -I scripts/install_version.py --lvgl 9.4 --mode pack \
-        --pack path\\to\\version-pack.zip
-
-Source mode wraps ``fetch_lvgl.py``, ``fetch_png.py`` and
-``export_sdk.py``, then builds ``apps`` against the exported host SDK
-with ``BuildPlan``. It needs CMake, Ninja and GCC for the SDK export, and GCC
-for the app build. ``--source auto`` (the default) tries GitHub codeload first;
-the Gitee LVGL mirror can return an HTML/400 page, so use ``auto`` or a pack
-when it does. Pack mode installs a release asset that already contains
-``dist/lvgl/<version>`` and ``build/lvgl_<token>/lvgl_engine``; it needs no compiler
-unless the user later changes C code.
-
-All paths are resolved from ``--repo-root`` (default: the detected workspace
-root). ``scripts/meta/versions.json`` lists the supported versions, the default and
-whether the shipped intro app supports that version. Older checkouts that
-still keep ``versions.json`` at the workspace root are accepted as a fallback.
-"""
-
 from __future__ import annotations
 
 import argparse

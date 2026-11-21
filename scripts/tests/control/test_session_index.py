@@ -21,7 +21,9 @@ class SessionIndexDegradeTest(unittest.TestCase):
         session = make_query_session(self.root)
         path = session / "timeline.ndjson"
         with path.open("a", encoding="utf-8", newline="\n") as handle:
-            handle.write('{"schema": "lvgl-verify-loop-timeline-v1", "type": "fra')
+            handle.write(
+                '{"schema": "lvgl-verify-loop-timeline-v1", "type": "fra'
+            )
         manifest_path = session / "manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest["status"] = "crash"

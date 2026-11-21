@@ -120,7 +120,9 @@ class VersionTest(unittest.TestCase):
             root = Path(tmp) / "repo"
             (root / "dist" / "lvgl" / "9.4").mkdir(parents=True)
             (root / "engine" / "lvgl" / "8.4").mkdir(parents=True)
-            with mock.patch.dict(os.environ, {"LVGL_VERIFY_LOOP_LVGL_VERSION": ""}):
+            with mock.patch.dict(
+                os.environ, {"LVGL_VERIFY_LOOP_LVGL_VERSION": ""}
+            ):
                 self.assertEqual(resolve_lvgl_version(root, "auto"), "9.4")
             self.assertEqual(resolve_lvgl_version(root, "8.4"), "8.4")
             self.assertTrue(version_available(root, "9.4"))

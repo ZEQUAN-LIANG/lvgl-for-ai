@@ -22,10 +22,7 @@ from scripts.tests.support import symlinked_file
 from scripts.tests.web_support import SESSION_ID, WebHarness, make_web_session
 
 SIGINT_DRIVER = support.WEB_SIGINT_DRIVER
-APP_C = (
-    Path(__file__).resolve().parents[3] / "user" / "app" / "app.c"
-)
-
+APP_C = Path(__file__).resolve().parents[3] / "user" / "app" / "app.c"
 
 from scripts.tests.web.test_web_live_session import (
     BlockingRuntime,
@@ -445,9 +442,7 @@ class LiveHttpTest(unittest.TestCase):
                         _sink.update(kwargs)
                         super().__init__(**kwargs)
 
-                with mock.patch(
-                    "web.live_session.Runtime", CapturingRuntime
-                ):
+                with mock.patch("web.live_session.Runtime", CapturingRuntime):
                     harness = WebHarness(
                         self.root,
                         scenarios_dir=self._write_display_scenarios(),

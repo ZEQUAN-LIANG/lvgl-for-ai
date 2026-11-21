@@ -28,8 +28,12 @@ def make_package(root: Path) -> Path:
     (package / "scripts" / "meta").mkdir(parents=True)
     (package / "dist" / "lvgl" / "9.6").mkdir(parents=True)
     (package / "SKILL.md").write_text("---\nname: x\n---\n", encoding="utf-8")
-    (package / "console" / "entrypoints" / "cli.py").write_text("print('x')\n", encoding="utf-8")
-    (package / "scripts" / "meta" / "VERSION.json").write_text("{}\n", encoding="utf-8")
+    (package / "console" / "entrypoints" / "cli.py").write_text(
+        "print('x')\n", encoding="utf-8"
+    )
+    (package / "scripts" / "meta" / "VERSION.json").write_text(
+        "{}\n", encoding="utf-8"
+    )
     (package / "dist" / "lvgl" / "9.6" / "manifest.json").write_text(
         json.dumps(SDK_MANIFEST, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -162,7 +166,12 @@ class SifliOverlayTest(unittest.TestCase):
             repo = Path(raw)
             shared = repo / "chip-adapt" / "host"
             shared.mkdir(parents=True)
-            for name in ("jobs.py", "http_layer.py", "timeutil.py", "flasher_web.py"):
+            for name in (
+                "jobs.py",
+                "http_layer.py",
+                "timeutil.py",
+                "flasher_web.py",
+            ):
                 (shared / name).write_text("# shared\n", encoding="utf-8")
             (shared / "flash_web").mkdir()
             (shared / "flash_web" / "index.html").write_text(
@@ -173,7 +182,9 @@ class SifliOverlayTest(unittest.TestCase):
 
             sifli_host = repo / "chip-adapt" / "sifli" / "host"
             sifli_host.mkdir(parents=True)
-            (sifli_host / "server.py").write_text("# server\n", encoding="utf-8")
+            (sifli_host / "server.py").write_text(
+                "# server\n", encoding="utf-8"
+            )
             (repo / "chip-adapt" / "README.md").write_text(
                 "# chip-adapt\n", encoding="utf-8"
             )
@@ -181,7 +192,9 @@ class SifliOverlayTest(unittest.TestCase):
             (package / "bin").mkdir(parents=True)
 
             with mock.patch.object(
-                release_bundle, "run_command", return_value=mock.Mock(returncode=1)
+                release_bundle,
+                "run_command",
+                return_value=mock.Mock(returncode=1),
             ):
                 release_all._overlay_sifli(package, repo, "0.2.0")
 
@@ -205,7 +218,9 @@ class ReleaseAllArtifactsTest(unittest.TestCase):
                 paths.REPO_ROOT / "scripts" / "meta" / "versions.json",
                 repo / "scripts" / "meta" / "versions.json",
             )
-            source_before = (repo / "scripts" / "meta" / "versions.json").read_bytes()
+            source_before = (
+                repo / "scripts" / "meta" / "versions.json"
+            ).read_bytes()
 
             def fake_stage(
                 repo_arg, package, *, tool_version, smoke, force_build, plan
@@ -221,9 +236,9 @@ class ReleaseAllArtifactsTest(unittest.TestCase):
                     "{}\n", encoding="utf-8"
                 )
                 (package / "dist" / "lvgl" / "9.6").mkdir(parents=True)
-                (package / "dist" / "lvgl" / "9.6" / "manifest.json").write_text(
-                    json.dumps(SDK_MANIFEST) + "\n", encoding="utf-8"
-                )
+                (
+                    package / "dist" / "lvgl" / "9.6" / "manifest.json"
+                ).write_text(json.dumps(SDK_MANIFEST) + "\n", encoding="utf-8")
                 return {
                     "engine": {"status": "reused"},
                     "shared": {},
@@ -262,7 +277,8 @@ class ReleaseAllArtifactsTest(unittest.TestCase):
                 )
 
             self.assertEqual(
-                (repo / "scripts" / "meta" / "versions.json").read_bytes(), source_before
+                (repo / "scripts" / "meta" / "versions.json").read_bytes(),
+                source_before,
             )
             self.assertEqual(summary["schema"], "lvgl-verify-loop-release-v2")
             expected = {
@@ -303,7 +319,9 @@ class ReleaseAllArtifactsTest(unittest.TestCase):
                 )
                 self.assertEqual(summary[key]["manifest"], str(manifest_path))
                 payload = json.loads(manifest_path.read_text(encoding="utf-8"))
-                self.assertEqual(payload["schema"], "lvgl-verify-loop-release-v1")
+                self.assertEqual(
+                    payload["schema"], "lvgl-verify-loop-release-v1"
+                )
                 self.assertEqual(set(payload["files"]), files)
                 self.assertEqual(payload["sha256"], digest)
                 self.assertEqual(payload["package"]["file_count"], len(files))

@@ -31,16 +31,6 @@ _CHANNELS = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
 
 
 class RetryingTemporaryDirectory(tempfile.TemporaryDirectory):
-    """TemporaryDirectory that waits out Windows delete-pending handles.
-
-    Windows can keep a just-deleted file in the delete-pending state while a
-    scanner or another process still holds a handle. ``rmtree`` then sees the
-    file during its scan, unlinks it, and the final ``rmdir`` fails with
-    ``ERROR_DIR_NOT_EMPTY`` even though the directory is already empty. A few
-    bounded retries let the pending delete finish; the last failure is raised,
-    so a real cleanup problem still fails the test.
-    """
-
     def cleanup(self) -> None:
         delay = 0.02
         for attempt in range(6):
@@ -223,13 +213,6 @@ def write_png_rgb(
 def symlinked_file(
     testcase: unittest.TestCase, link: str | Path, target: str | Path
 ) -> Path:
-    """Make ``link`` behave as a symlink to ``target`` for one test.
-
-    Creating a real symlink needs extra privilege on Windows. When it is
-    unavailable the helper writes the target bytes to ``link`` and patches
-    ``Path.is_symlink`` for that path, so callers still exercise the symlink
-    branch instead of skipping the test or changing its expectations.
-    """
     link_path = Path(link)
     target_path = Path(target)
     try:

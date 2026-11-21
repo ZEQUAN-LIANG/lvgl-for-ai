@@ -1,7 +1,6 @@
 # tools
 
-工具脚本按链路分组；每个脚本的参数、默认值与输出以 `--help` 和模块 docstring
-为准，本页只做入口路由。
+工具脚本按链路分组；每个脚本的参数、默认值与输出以 `--help` 为准，本页只做入口路由。
 
 > 发布包内的本页由 `release_tools_README.md` 覆盖，只列出随包脚本。
 
@@ -56,5 +55,5 @@ manifest 或 GCC 版本未变时不再重编，只重新打包。`--force-build`
 | `contract_snapshot.py` | 录制 / 比较外部契约快照 |
 | `check_version_boundaries.py` | 校验版本边界 |
 | `check_api_nav.py` | 校验 `docs/skill/api-nav/` |
-| `lint.py` | ruff / clang-format / cppcheck 的统一入口（不进发布包） |
+| `lint.py` | ruff / clang-format / cppcheck / comments 的统一入口（不进发布包） |
 | `sync_github.py` | Gitee → GitHub 镜像（分支 + 标签） |

@@ -76,7 +76,9 @@ class AsyncEncodingTest(unittest.TestCase):
         )
 
     def test_encode_budget_allows_one_oversized_frame(self) -> None:
-        with mock.patch.dict(os.environ, {"LVGL_VERIFY_LOOP_ENCODE_BUDGET_BYTES": "1"}):
+        with mock.patch.dict(
+            os.environ, {"LVGL_VERIFY_LOOP_ENCODE_BUDGET_BYTES": "1"}
+        ):
             rt = self._runtime()
             self.addCleanup(rt.stop)
             rt.start()

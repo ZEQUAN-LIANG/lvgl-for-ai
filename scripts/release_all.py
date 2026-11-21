@@ -1,16 +1,3 @@
-"""Build the two default release bundles.
-
-The default release contains exactly two zips:
-
-- ``full``: one package with all six LVGL versions and their prebuilt engines.
-- ``full-sifli``: the same package plus the self-developed SiFli tools.
-
-There are no per-version packs, no release notes and no upload scripts in the
-release directory.  Tokens are never part of this build.  Files that are
-identical in every host SDK (the FreeType DLL, its import library and the
-shared zlib/libpng/FreeType headers) are stored once under ``dist/lvgl/common``.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -129,12 +116,8 @@ def _stage_intro_app(repo: Path, target: Path) -> None:
 def _stage_legacy_app(repo: Path, target: Path) -> None:
     source = repo / "user" / "app"
     target.mkdir(parents=True)
-    # Legacy targets keep the repository app.c, so the shared lookup header
-    # it includes has to be staged next to it.
     for name in ("app.c", "app.h", "app_registry_lookup.h", "lvgl_compat.h"):
         shutil.copy2(source / name, target / name)
-    # test_ui is the one app that compiles below 9.4 (its sources fall back to
-    # an explanatory stub), so it is what discovery finds in the legacy tree.
     shutil.copytree(source / "test_ui", target / "test_ui")
 
 
@@ -200,7 +183,9 @@ def _copy_engine(package: Path, repo: Path, version: str) -> None:
     target.mkdir(parents=True, exist_ok=True)
     shutil.copy2(engine, target / engine.name)
     manifest = json.loads(
-        (repo / "dist" / "lvgl" / version / "manifest.json").read_text(encoding="utf-8")
+        (repo / "dist" / "lvgl" / version / "manifest.json").read_text(
+            encoding="utf-8"
+        )
     )
     for name in manifest.get("runtime_dlls", []):
         source = repo / "dist" / "lvgl" / version / "lib" / name
@@ -273,10 +258,6 @@ def _stage_full_package(
                         repo / "user" / "scenarios" / "settings.json",
                         scenario,
                     )
-                    # Legacy versions compile app.c's pre-9.4 branch, which
-                    # shows an empty screen: there is no app to select and no
-                    # button to click, so the marker only proves the engine
-                    # booted and ran the scenario.
                     markers = ("[app] app_create",)
                 else:
                     scenario = package / "user" / "scenarios" / "intro.json"
@@ -510,7 +491,9 @@ def build_release(
             digest=full_sha,
         )
 
-        sifli_package = root / "chip-adapt" / "sifli" / release_bundle.PACKAGE_DIR_NAME
+        sifli_package = (
+            root / "chip-adapt" / "sifli" / release_bundle.PACKAGE_DIR_NAME
+        )
         shutil.copytree(package, sifli_package)
         _overlay_sifli(sifli_package, repo, tool_version)
         sifli_zip = out / FULL_SIFLI_ASSET.format(version=tool_version)
