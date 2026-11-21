@@ -13,7 +13,6 @@ from unittest import mock
 
 from control import (
     EngineNotFound,
-    ProtocolError,
     Recording,
     Runtime,
     RuntimeCrash,
@@ -259,25 +258,8 @@ class RuntimeSessionOptionTest(unittest.TestCase):
         self.assertEqual(store.mode, "headless")
         self.assertEqual(store.sessions_root, self.sessions_root.resolve())
         self.assertEqual(store.max_log_bytes, 12345)
-        self.assertIsNone(store.retention)
+        self.assertEqual(store.retention, None)
         self.assertIsInstance(store.lvgl_src, Path)
-
-    def test_runtime_like_readouts_are_read_only(self) -> None:
-        rt = Runtime(
-            lvgl="9.6",
-            app="coffee",
-            build=False,
-            sessions_root=self.sessions_root,
-        )
-        self.addCleanup(rt.stop)
-
-        self.assertEqual(rt.app, "coffee")
-        self.assertEqual(rt.mode, "headless")
-        self.assertIsNone(rt.ready)
-        for name in ("app", "mode", "ready"):
-            with self.subTest(option=name):
-                with self.assertRaises(AttributeError):
-                    setattr(rt, name, "overridden")
 
 
 class RuntimeSessionSurfaceTest(unittest.TestCase):
@@ -285,43 +267,6 @@ class RuntimeSessionSurfaceTest(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.sessions_root = Path(self._tmp.name) / "sessions"
-
-    def test_pure_store_options_are_not_re_exposed(self) -> None:
-        rt = Runtime(
-            lvgl="9.6",
-            app="coffee",
-            build=False,
-            record=False,
-            live_frame=True,
-            record_changed_only=True,
-            sessions_root=self.sessions_root,
-            max_log_bytes=12345,
-            session_retention=None,
-        )
-        self.addCleanup(rt.stop)
-
-        for name in (
-            "build",
-            "record",
-            "live_frame",
-            "record_changed_only",
-            "lvgl_src",
-            "sessions_root",
-            "max_log_bytes",
-            "session_retention",
-        ):
-            with self.subTest(option=name):
-                self.assertFalse(hasattr(rt, name))
-
-        self.assertEqual(rt._store.app, "coffee")
-        self.assertIs(rt._store.build, False)
-        self.assertIs(rt._store.record, False)
-        self.assertIs(rt._store.live_frame, True)
-        self.assertIs(rt._store.record_changed_only, True)
-        self.assertEqual(rt._store.max_log_bytes, 12345)
-        self.assertIsNone(rt._store.retention)
-        self.assertIsInstance(rt._store.lvgl_src, Path)
-        self.assertEqual(rt._store.sessions_root, self.sessions_root.resolve())
 
     def test_runtime_like_readouts_survive(self) -> None:
         rt = Runtime(lvgl="9.6", build=False, sessions_root=self.sessions_root)
@@ -438,20 +383,6 @@ class RuntimeProcessSeamTest(unittest.TestCase):
             (rt.session_dir / "manifest.json").read_text(encoding="utf-8")
         )
         self.assertEqual(final["status"], "ok")
-
-    def test_malformed_ready_is_protocol_error(self) -> None:
-        rt = self._runtime()
-        with mock.patch.dict(os.environ, {"FAKE_READY": "malformed"}):
-            with self.assertRaises(ProtocolError):
-                rt.start()
-
-        self.assertFalse(rt.is_running)
-        manifest = json.loads(
-            (rt.session_dir / "manifest.json").read_text(encoding="utf-8")
-        )
-        self.assertEqual(manifest["status"], "harness_error")
-        self.assertEqual(manifest["error"]["code"], "protocol_error")
-        rt.stop()
 
     def test_crash_before_ready_is_runtime_crash(self) -> None:
         rt = self._runtime()

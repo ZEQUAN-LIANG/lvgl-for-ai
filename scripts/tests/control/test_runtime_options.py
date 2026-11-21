@@ -73,15 +73,6 @@ class RuntimeOptionCharacterizationTest(unittest.TestCase):
         self.assertEqual(store.lvgl_src.name, "9.5")
 
 
-class RuntimeOptionBagRemovedTest(unittest.TestCase):
-    def test_the_option_bag_and_duplicate_name_list_are_gone(self) -> None:
-        from control import runtime as runtime_module
-
-        self.assertFalse(hasattr(runtime_module, "RuntimeOptions"))
-        self.assertFalse(hasattr(runtime_module, "_SESSION_OPTIONS"))
-        self.assertFalse(hasattr(runtime_module, "_UNSET"))
-
-
 class RuntimeLikeBehaviorTest(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()

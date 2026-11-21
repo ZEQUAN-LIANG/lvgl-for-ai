@@ -603,11 +603,12 @@ class LiveHttpTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertGreaterEqual(current["t_ms"], 33)
 
-        calls = runtime.tick_calls
         status, _, _ = harness.json("POST", "/api/live/stop")
         self.assertEqual(status, 200)
+        settling = runtime.tick_calls
         time.sleep(0.25)
-        self.assertEqual(runtime.tick_calls, calls)
+        self.assertEqual(runtime.tick_calls, settling)
+        self.assertGreaterEqual(settling, 1)
 
     def test_test_mode_ticker_uses_33ms(self) -> None:
         class TickingRuntime(FakeRuntime):

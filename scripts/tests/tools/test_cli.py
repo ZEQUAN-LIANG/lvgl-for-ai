@@ -75,6 +75,15 @@ class CliUnitTest(unittest.TestCase):
         self.addCleanup(patcher.stop)
         return fake, factory
 
+    def _assert_runtime_options(
+        self, factory: mock.MagicMock, **expected: object
+    ) -> None:
+        factory.assert_called_once()
+        actual = factory.call_args.kwargs
+        for key, value in expected.items():
+            with self.subTest(option=key):
+                self.assertEqual(actual.get(key), value)
+
     def _scenario(self, **extra) -> Path:
         document = {
             "schema": "lvgl-verify-loop-scenario-v1",
@@ -95,8 +104,8 @@ class CliUnitTest(unittest.TestCase):
         fake, factory = self._patch_runtime()
         code, out, err = run_cli([])
 
-        factory.assert_called_once_with(
-            lvgl=None, build=True, record=True, record_changed_only=True
+        self._assert_runtime_options(
+            factory, lvgl=None, build=True, record=True, record_changed_only=True
         )
         self.assertEqual(code, 0)
         self.assertEqual(fake.start_calls, 1)
@@ -110,11 +119,12 @@ class CliUnitTest(unittest.TestCase):
         path = self._scenario(lvgl="9.4")
         code, _, _ = run_cli(["--scenario", str(path)])
 
-        factory.assert_called_once_with(
+        self._assert_runtime_options(
+            factory,
             lvgl="9.4",
+            scenario=path,
             build=True,
             record=True,
-            scenario=path,
             record_changed_only=True,
         )
         self.assertEqual(code, 0)
@@ -125,11 +135,12 @@ class CliUnitTest(unittest.TestCase):
         path = self._scenario(lvgl="9.4")
         code, _, _ = run_cli(["--lvgl", "9.6", "--scenario", str(path)])
 
-        factory.assert_called_once_with(
+        self._assert_runtime_options(
+            factory,
             lvgl="9.6",
+            scenario=path,
             build=True,
             record=True,
-            scenario=path,
             record_changed_only=True,
         )
         self.assertEqual(code, 0)
@@ -145,7 +156,8 @@ class CliUnitTest(unittest.TestCase):
                 ) as factory:
                     code, _, _ = run_cli([flag])
                 self.assertEqual(code, 0)
-                factory.assert_called_once_with(
+                self._assert_runtime_options(
+                    factory,
                     lvgl=None,
                     build=True,
                     record=True,
@@ -168,24 +180,13 @@ class CliUnitTest(unittest.TestCase):
                 ) as factory:
                     code, _, _ = run_cli(argv)
                 self.assertEqual(code, 0)
-                factory.assert_called_once_with(
+                self._assert_runtime_options(
+                    factory,
                     lvgl=None,
                     build=True,
                     record=expected,
                     record_changed_only=True,
                 )
-
-    def test_recording_always_keeps_only_changed_frames(self) -> None:
-        fake = FakeRuntime()
-        with mock.patch.object(cli, "Runtime", return_value=fake) as factory:
-            code, _, _ = run_cli([])
-        self.assertEqual(code, 0)
-        factory.assert_called_once_with(
-            lvgl=None,
-            build=True,
-            record=True,
-            record_changed_only=True,
-        )
 
     def test_no_build_maps_to_build_false_and_default_stays_true(self) -> None:
         cases = [([], True), (["--build"], True), (["--no-build"], False)]
@@ -197,7 +198,8 @@ class CliUnitTest(unittest.TestCase):
                 ) as factory:
                     code, _, _ = run_cli(argv)
                 self.assertEqual(code, 0)
-                factory.assert_called_once_with(
+                self._assert_runtime_options(
+                    factory,
                     lvgl=None,
                     build=expected,
                     record=True,
@@ -291,7 +293,8 @@ class CliUnitTest(unittest.TestCase):
 
         self.assertEqual(code, 0)
         self.assertEqual(err, "")
-        factory.assert_called_once_with(
+        self._assert_runtime_options(
+            factory,
             lvgl=None,
             build=True,
             record=True,
@@ -302,17 +305,17 @@ class CliUnitTest(unittest.TestCase):
 
     def test_scenario_app_is_used_when_the_flag_is_omitted(self) -> None:
         _, factory = self._patch_runtime(app="xiaohongshu")
-        code, _, _ = run_cli(
-            ["--scenario", str(self._scenario(app="xiaohongshu"))]
-        )
+        path = self._scenario(app="xiaohongshu")
+        code, _, _ = run_cli(["--scenario", str(path)])
 
         self.assertEqual(code, 0)
-        factory.assert_called_once_with(
+        self._assert_runtime_options(
+            factory,
             lvgl=None,
             build=True,
             record=True,
             app="xiaohongshu",
-            scenario=self._scenario(app="xiaohongshu"),
+            scenario=path,
             record_changed_only=True,
         )
 

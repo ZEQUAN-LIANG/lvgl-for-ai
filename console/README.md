@@ -109,8 +109,14 @@ python -I scripts/lvgl.py assets doctor --json
 python -I scripts/lint.py check --json
 python -I scripts/lint.py format --files user/app/coffee/coffee_ui.c
 
-# 全量测试（单元 + 真实 engine 集成）
-python -I scripts/tests/run_tests.py
+# 测试分三层；默认只跑快层（810 个 / ~65 s）
+python -I scripts/tests/run_tests.py                    # fast（默认）
+python -I scripts/tests/run_tests.py --tier engine       # 真 engine 集成（128 个）
+python -I scripts/tests/run_tests.py --tier integration  # 真构建 / 发布包（3 个）
+python -I scripts/tests/run_tests.py --tier all          # 全量 941 个（verify.py 用）
+
+# 单个测试模块（用完整模块名；显式名字不做层过滤）
+python -I scripts/tests/run_tests.py scripts.tests.control.test_scenario
 
 # 应用骨架与版本安装
 python -I scripts/new_app.py myapp --dry-run

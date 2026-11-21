@@ -384,6 +384,7 @@ class FakeEngineErrorSessionTest(unittest.TestCase):
         self.assertEqual(manifest["error"]["code"], "protocol_error")
         self.assertEqual(manifest["error"]["detail"]["raw"], error.raw)
         self.assertEqual(manifest["error"]["detail"]["seq"], 0)
+        self.assertFalse(runtime.is_running)
 
     def test_reply_seq_mismatch_is_typed_and_marks_harness_error(self) -> None:
         runtime = self._runtime()

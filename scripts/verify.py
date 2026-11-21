@@ -148,7 +148,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             run(["scripts/contract_snapshot.py", "compare"], timeout=600.0),
         )
     if not args.skip_tests:
-        add("tests", run(["scripts/tests/run_tests.py"], timeout=3600.0))
+        add(
+            "tests",
+            run(
+                ["scripts/tests/run_tests.py", "--tier", "all"],
+                timeout=3600.0,
+            ),
+        )
     if not args.skip_package:
         release_args = [
             "scripts/release_all.py",

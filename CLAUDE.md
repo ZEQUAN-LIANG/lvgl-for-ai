@@ -76,10 +76,13 @@ python -I scripts/lint.py format --files user/app/coffee/coffee_ui.c
 # 一键回归：lint + 契约快照 + 全量测试 + 发布包冒烟
 python -I scripts/verify.py --json
 
-# 全量测试（单元 + 真实 engine 集成；需要六套 LVGL 源码）
-python -I scripts/tests/run_tests.py
+# 测试分层：默认只跑快层（~65 s / 810 个），慢层显式选择
+python -I scripts/tests/run_tests.py                    # fast（默认）
+python -I scripts/tests/run_tests.py --tier engine       # 真 engine 集成（128 个）
+python -I scripts/tests/run_tests.py --tier integration  # 真构建 / 发布包（3 个）
+python -I scripts/tests/run_tests.py --tier all          # 全量 941 个，verify.py 用
 
-# 单个测试模块（tests 是包，用完整模块名）
+# 单个测试模块（tests 是包，用完整模块名；显式名字不受 --tier 过滤）
 python -I scripts/tests/run_tests.py scripts.tests.control.test_scenario
 
 # 外部契约快照 / 版本边界 / API 导航校验
@@ -105,7 +108,7 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 - `upload_release.py` 只读 `GITHUB_TOKEN` / `GITEE_TOKEN`；`--replace` 删除同名旧资产，`--notes-file` 不传时保留线上 Release 正文。
 - 环境变量：`LVGL_VERIFY_LOOP_LVGL_VERSION`（默认 9.6）、`LVGL_VERIFY_LOOP_LVGL_SRC`、`LVGL_VERIFY_LOOP_ZLIB_SRC`、`LVGL_VERIFY_LOOP_LIBPNG_SRC`、`LVGL_VERIFY_LOOP_SESSIONS_ROOT`、`LVGL_VERIFY_LOOP_BUILD_ROOT`、`LVGL_VERIFY_LOOP_MAX_FRAMES`、`LVGL_VERIFY_LOOP_MAX_LOG_BYTES`、`LVGL_VERIFY_LOOP_ENCODE_BUDGET_BYTES`、`LVGL_VERIFY_LOOP_DEMO`、`LVGL_VERIFY_LOOP_APPS_DIR`、`LVGL_VERIFY_LOOP_GCC`。
 - 构建依赖：预编译模式只需 GCC 与 `dist/lvgl/<version>`；源码模式还需要 CMake 3.20+、Ninja，首次构建需要拉取 `engine/third_party/` 的 zlib/libpng 源码。
-- 单元测试用 fake engine / session fixture；`*IntegrationTest` 会真实构建 engine，由同一次 `run_tests.py` 执行。`run_tests.py` 只跑全量；单个模块用 `python -I scripts/tests/run_tests.py scripts.tests.<domain>.<module>`。
+- 测试分三层，分类表在 `scripts/tests/run_tests.py`（`ENGINE_CLASSES` / `INTEGRATION_CLASSES`，按**类**而非模块，因为同一文件里混有快慢测试）。默认 `fast` 层约 65 s；`engine` 层跑真 engine 与真构建；`integration` 层跑发布包与预编译端到端。新增慢测试必须登记进分类表，否则会拖慢默认层。`verify.py` 与发布前回归用 `--tier all`。显式给出测试名时不做层过滤。
 
 ## 架构
 
