@@ -169,6 +169,16 @@ python -I scripts/sync_github.py
 - 分支用 `--force-with-lease`，tag 用 `--force`。这是一次**覆盖式镜像**，GitHub 侧
   独有的分支或 tag 会被丢掉。
 - 上一步已经在 GitHub 建过 Release 也没关系：tag 被更新后 Release 仍指向同名 tag。
+- **标签被重写过就推不动**：脚本开头的 `git fetch github --tags` 会因为本地 tag 已被
+  改写而报 `would clobber existing tag` 并整体失败（它比推送更早执行）。只在需要重发
+  某个版本、把 tag 移到新提交时才会遇到。此时手动补两步：
+
+  ```bash
+  git push --force-with-lease github refs/remotes/origin/dev:refs/heads/dev
+  git push --force github refs/tags/v<版本号>:refs/tags/v<版本号>
+  ```
+
+  然后在 GitHub 侧用 `upload_release.py --target github --replace` 替换资产。
 
 判定：输出 `synced <N> branches and <M> tags`，且 `git ls-remote --heads github` 的
 `dev` 与本机 `origin/dev` 同一个 commit。
