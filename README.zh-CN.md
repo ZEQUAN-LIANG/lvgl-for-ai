@@ -2,9 +2,11 @@
 
 [English](README.md) | 简体中文
 
-**AI 写 LVGL，AI 自己验证；人只提供意图与反馈。**
+**AI 写 LVGL 的 C，AI 自己验证；人只给意图和反馈。**
 
-一个 AI-first 的 LVGL 开发与验证平台：真实 headless LVGL 宿主、虚拟输入与虚拟时间、逐帧会话证据、网页检视台，以及通向 SiFli 与 ESP32-C6 真机的适配链路。
+改 `user/app/**/*.c` → 跑场景 → 读帧、timeline 与 diff → 对照人给的验收标准判定。一次改动一条命令，每次都留下可回放的证据。
+
+背后是真实 headless LVGL 宿主、虚拟输入与虚拟时间、网页检视台，以及通向 SiFli 与 ESP32-C6 真机的导出链路。
 
 ## 为什么 AI-first
 
@@ -58,11 +60,13 @@ AI 直接读这些材料：
 
 三者对齐后，AI 能知道控件由哪段代码创建、事件绑到哪个回调、这次输入命中了谁、画面随后变了哪块，再按标注和白板的反馈改代码。
 
-### 多版本验证：一套应用，六个 LVGL 版本
+### 多版本验证：六个 LVGL 版本，一套证据管线
 
-同一份 `apps` 与同一个场景，可以跑在 LVGL 9.6 / 9.5 / 9.4 / 9.1 / 8.4 / 8.3 上，用 `--lvgl <version>` 选择。跨版本比较事件语义与会话文件集合，不比较像素。
+用户应用按 LVGL 9.4 基线编写，跑在 LVGL 9.6 / 9.5 / 9.4 上，用 `--lvgl <version>` 选择；同一份 `user/app/**/*.c` 与同一个场景驱动这三个版本。跨版本比较事件语义与会话文件集合，不比较像素。
 
-SiFli 导出链路的设备应用按 LVGL 9.4 基线编写，导出时只做兼容性检查并拒绝
+LVGL 9.1 / 8.4 / 8.3 由同一个 engine 与同一套证据管线支持，作为遗留版本检查：目录式应用发现的门是 9.4，所以这三个版本只显示空屏，适合核对事件语义，不适合预览应用。
+
+SiFli 导出链路的设备应用同样按 LVGL 9.4 基线编写，导出时只做兼容性检查并拒绝
 9.5/9.6-only API；ESP32-C6 的 Arduino 链路使用 LVGL 9.6。
 
 ### 真机链路：宿主验证，SiFli 导出或 ESP32-C6 bring-up
@@ -183,6 +187,7 @@ user/sessions/<id>/
   engine.log             # 运行日志，精确状态由 C 代码 printf 到这里
   build.log              # 实际构建命令与编译器输出
   annotations.json       # 人的标注（可选）
+  whiteboards.json       # 人的白板（可选；图片在 whiteboards/）
 ```
 
 `--json` 的 stdout 只有一行，例如（截取关键字段，路径已简化）：
@@ -190,7 +195,6 @@ user/sessions/<id>/
 ```json
 {"session_id": "20261114-095536-1d9d", "session_dir": "user/sessions/20261114-095536-1d9d", "status": "ok", "app": "coffee", "display": {"width": 800, "height": 600}, "frame_count": 305, "error": null}
 ```
-
 
 AI 的结论必须指向这些文件。`status: ok` 表示会话正常结束；界面是否满足验收标准，由人判定。
 
@@ -221,7 +225,7 @@ AI 的结论必须指向这些文件。`status: ok` 表示会话正常结束；�
 
 | 依赖 | 要求 | 说明 |
 | --- | --- | --- |
-| Python | 3.9+ 且在 PATH 上；发布包不自带 | 只用标准库，不需要 `pip install`；engine 在所有版本默认 `LV_USE_FREETYPE=1` 并链接随包 FreeType 2.13.2；命令统一用 `python -I` |
+| Python | 3.9+ 且在 PATH 上；发布包不自带 | 只用标准库，资产生成用随包 FreeType/pypng，不需要 `pip install` 或 Node.js；engine 在所有版本默认 `LV_USE_FREETYPE=1` 并链接随包 FreeType 2.13.2；命令统一用 `python -I` |
 | GCC | MinGW-w64 64 位，15.2.0 | 只有重新编译用户 C 时需要，且必须与随包 LVGL 库的 manifest 一致；预编译 engine 不需要 |
 | CMake | ≥ 3.20 | 仅从 LVGL 源码构建需要；发布包不需要 |
 | Ninja | 任意近版 | 仅从 LVGL 源码构建需要；发布包不需要 |
@@ -236,6 +240,7 @@ Windows 推荐 MSYS2 UCRT64。完整安装步骤、PATH 配置、首次运行说
 - `user/app/GUIDE.md`：写用户应用。
 - `docs/skill/`：skill 入口契约 `SKILL.md` 与各版本 `api-nav/`。
 - `chip-adapt/sifli/README.md` / `chip-adapt/docs/sifli.html`：SiFli 适配层与能力边界。
+- `chip-adapt/host/README.md`：ESP32（esptool）与 SiFli（sftool）上位机共享的 host 基础模块与独立烧录页，含 HTTP 契约、固件来源与常见问题。
 - `chip-adapt/esp32/README.md`：ESP32-C6 板级说明、host 控制页、桌面 GUI 与 Arduino bring-up。
 - `chip-adapt/esp32/docs/arduino-perf-monitor.md`：ST7789 + LVGL 旋转、烧录与 `SHOT` 验证说明。
 - `CONTEXT.md`：领域术语表。
@@ -244,4 +249,4 @@ Windows 推荐 MSYS2 UCRT64。完整安装步骤、PATH 配置、首次运行说
 
 ## 许可
 
-本项目源码为 MIT，见根目录 `LICENSE`。LVGL、lodepng、zlib、libpng 的许可全文见 `docs/licenses/`。
+本项目源码为 MIT，见根目录 `LICENSE`。LVGL、lodepng、zlib、libpng、freetype-py、FreeType、pypng 的许可全文与 lv_font_conv 算法参考说明见 `docs/licenses/`。
