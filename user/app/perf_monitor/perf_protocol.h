@@ -64,4 +64,4 @@ bool perf_parse_starts_with_perf(const char * line, size_t len);
 }
 #endif
 
-#endif /* PERF_PROTOCOL_H */
+#endif

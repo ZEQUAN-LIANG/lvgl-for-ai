@@ -309,7 +309,6 @@ perf_parse_result_t perf_protocol_parse(const char * line, size_t len,
             }
             sample->thread_count = (uint8_t)parsed;
         }
-        /* Unknown keys are ignored so newer PC agents can add fields. */
     }
 
     if(!have_version) return PERF_PARSE_BAD_VERSION;

@@ -1,4 +1,3 @@
-
 #include "app.h"
 #include "xhs_ui.h"
 

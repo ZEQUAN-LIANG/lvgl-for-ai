@@ -1,4 +1,3 @@
-
 #include "app.h"
 #include "textarea_evidence.h"
 

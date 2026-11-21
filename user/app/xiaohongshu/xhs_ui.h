@@ -1,4 +1,3 @@
-
 #ifndef XHS_UI_H
 #define XHS_UI_H
 

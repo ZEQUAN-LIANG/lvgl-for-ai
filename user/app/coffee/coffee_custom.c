@@ -1,4 +1,3 @@
-
 #include "coffee_ui.h"
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4

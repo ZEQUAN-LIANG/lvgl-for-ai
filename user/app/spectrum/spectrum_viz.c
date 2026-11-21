@@ -1,4 +1,3 @@
-
 #include "app.h"
 #include "spectrum.h"
 
@@ -19,10 +18,6 @@
 
 LV_DRAW_BUF_DEFINE_STATIC(viz_draw_buf, VIZ_W, VIZ_H, LV_COLOR_FORMAT_XRGB8888);
 
-/* LVGL has no radial gradients, so the canvas backdrop's static parts
- * (diagonal gradient, 40/160 px grid, vignette, scanline overlay) are baked
- * into an XRGB buffer, and the four radial glows are added per frame from
- * precomputed alpha masks. */
 typedef struct {
     int x;
     int y;
@@ -218,7 +213,6 @@ static void draw_dashed_circle(lv_layer_t * layer, int cx, int cy, int radius,
     }
 
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 5
-    /* 9.5 replaced the two-point line with a polyline. */
     lv_draw_line_dsc_t dsc;
     lv_draw_line_dsc_init(&dsc);
     dsc.color = lv_color_hex(color);
@@ -230,8 +224,6 @@ static void draw_dashed_circle(lv_layer_t * layer, int cx, int cy, int radius,
     dsc.dash_gap = gap;
     lv_draw_line(layer, &dsc);
 #else
-    /* 9.4 draws one segment at a time; the dash pattern is recreated by
-     * walking the ring and emitting only the "on" spans. */
     for(int i = 0; i < 97; i++) {
         int span = i % (dash + gap);
         if(span >= dash) continue;

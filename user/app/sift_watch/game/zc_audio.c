@@ -69,7 +69,6 @@ static bool audio_config(void)
 
     memset(&caps, 0, sizeof(caps));
     caps.main_type = AUDIO_TYPE_OUTPUT;
-    /* The Huangshan Pi routes AU_DAC1P/N to the AW8155 speaker PA. */
     caps.sub_type = 1U << HAL_AUDCODEC_DAC_CH1;
     caps.udata.config.channels = 1;
     caps.udata.config.samplerate = ZC_AUDIO_SR;

@@ -5,9 +5,6 @@
 
 #include <stdbool.h>
 
-/* Real speaker output on the Huangshan Pi build: audprc + audcodec driving the
- * on-chip DAC into the AW8155 PA. Without PA_USING_AW8155 (headless builds) all
- * of these compile to no-ops. */
 bool zc_audio_start(void);
 void zc_audio_set_enabled(bool on);
 void zc_audio_set_muted(bool muted);

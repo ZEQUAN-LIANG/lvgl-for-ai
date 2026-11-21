@@ -1,14 +1,9 @@
-/* Assets for the test_ui self-test app, compiled in as C arrays; no asset
- * pipeline, so the font and image are compiled into the TU that includes this
- * header. */
-
 #ifndef TEST_UI_ASSETS_H
 #define TEST_UI_ASSETS_H
 
 #include "lvgl.h"
 #include "lvgl_compat.h"
 
-/* 16x16 checker in RGB565. */
 #define TEST_UI_ASSET_LOGO_SIZE 16
 
 static const uint16_t test_ui_asset_logo_pixels[TEST_UI_ASSET_LOGO_SIZE *
@@ -64,9 +59,6 @@ static inline void test_ui_asset_prepare(void)
 {
 }
 #else
-/* 8.x has no lv_image_dsc_t, and its TRUE_COLOR images use the display color
- * depth; the engine runs 8.x at LV_COLOR_DEPTH 32, so the RGB565 checker is
- * converted to 32-bit lv_color_t once at startup. */
 static lv_color_t test_ui_asset_logo_pixels_8x[TEST_UI_ASSET_LOGO_SIZE *
                                                TEST_UI_ASSET_LOGO_SIZE];
 
@@ -94,13 +86,7 @@ static const lv_img_dsc_t test_ui_asset_logo = {
 };
 #endif
 
-/* 5x7 1bpp glyphs for the test_ui title. */
-
-static const uint8_t test_ui_asset_font_bitmap[] = {
-    /* A */ 0x70, 0x88, 0x88, 0xF8, 0x88, 0x88, 0x88,
-    /* L */ 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0xF8,
-    /* T */ 0xF8, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-};
+static const uint8_t test_ui_asset_font_bitmap[] = {};
 
 static const lv_font_fmt_txt_glyph_dsc_t test_ui_asset_font_glyphs[] = {
     {.bitmap_index = 0,
@@ -135,7 +121,6 @@ static const lv_font_fmt_txt_glyph_dsc_t test_ui_asset_font_glyphs[] = {
      .ofs_y = 1},
 };
 
-/* Relative code points (letter - 0x20), sorted: space, 'A', 'L', 'T'. */
 static const uint16_t test_ui_asset_font_unicode[] = {0x00, 0x21, 0x2C, 0x34};
 
 static const lv_font_fmt_txt_cmap_t test_ui_asset_font_cmaps[] = {
@@ -194,4 +179,4 @@ static const lv_font_t test_ui_asset_font_8 = {
     .underline_thickness = 0,
 };
 
-#endif /* TEST_UI_ASSETS_H */
+#endif

@@ -6,8 +6,6 @@
 #include "lvgl.h"
 #include "lvgl_compat.h"
 
-/* Object names exist from LVGL 9.2; 9.1 and 8.x have neither the API nor
- * LV_USE_OBJ_NAME, so the tool can report hit_class only. */
 static inline void app_obj_set_name(lv_obj_t * obj, const char * name)
 {
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 2
@@ -33,7 +31,6 @@ static inline const char * app_get_name(const lv_obj_t * obj)
 #endif
 }
 
-/* 9.6 introduced dedicated flag setters; 9.4/9.5 and 8.x keep add/clear. */
 static inline void app_obj_set_scrollable(lv_obj_t * obj, bool en)
 {
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
@@ -97,8 +94,6 @@ static inline void app_obj_set_hidden(lv_obj_t * obj, bool en)
 #endif
 }
 
-/* 9.6 added lv_obj_is_hidden(); every earlier version spells it as a flag
- * query, which 8.x and 9.x both provide. */
 static inline bool app_obj_is_hidden(const lv_obj_t * obj)
 {
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6

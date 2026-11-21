@@ -1,4 +1,3 @@
-
 #ifndef COFFEE_UI_H
 #define COFFEE_UI_H
 

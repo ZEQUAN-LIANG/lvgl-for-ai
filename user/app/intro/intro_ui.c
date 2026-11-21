@@ -148,8 +148,6 @@ static void intro_fonts_init(void)
     for(i = 0; i < sizeof(spec) / sizeof(spec[0]); i++) {
         const char * path = spec[i].path;
 #if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR < 6
-        /* 9.4/9.5 have no variable-weight axis, so headings fall back to a
-         * static bold display face. */
         if(spec[i].id <= INTRO_F_DISP_42) {
             path = "C:\\Windows\\Fonts\\segoeuib.ttf";
         }
@@ -316,9 +314,6 @@ lv_obj_t * intro_text_line(lv_obj_t * parent, int32_t x, int32_t y,
         return label;
     }
 
-    /* Scale each run so its advance matches the browser line box. Edge
-     * spaces are removed and paid back as a target-width gap, because LVGL
-     * trims them from the label's line box. */
     uint8_t j;
     lv_point_t adv[8];
     const char * draw[8];

@@ -31,8 +31,6 @@
 #define SIFT_CLOCK_MIN_VALID        1600000000U
 #define SIFT_CLOCK_EPOCH_2026_01_01 1767225600U
 
-/* Physical keys and the vibration motor exist only on the SiFli SDK build; the
- * exporter defines LVGL_VERIFY_LOOP_EZIP_ASSETS, headless builds get stubs. */
 #if defined(LVGL_VERIFY_LOOP_EZIP_ASSETS)
 #define SIFT_HAS_KEY 1
 #include "rtdevice.h"
@@ -58,46 +56,44 @@
 #endif
 #endif
 
-#define SIFT_W                390
-#define SIFT_H                450
-#define SIFT_PANEL_RADIUS     44
-#define SIFT_CELL             3
-#define SIFT_COLS             60
-#define SIFT_ROWS             80
-#define SIFT_GRID_X0          105
-#define SIFT_GRID_Y0          106
-#define SIFT_NECK_ROW         40
-#define SIFT_NECK_Y           226
-#define SIFT_HG_TOP           106
-#define SIFT_HG_BOTTOM        346
-#define SIFT_SIM_STEP_MS      66U
-#define SIFT_RENDER_MS        40U
-#define SIFT_SWIPE_MIN        42
-#define SIFT_SWIPE_LONG       90
-#define SIFT_FLIP_MS          680U
-#define SIFT_ORBIT_MIN_ELEV   (-0.05f)
-#define SIFT_ORBIT_MAX_ELEV   0.85f
-#define SIFT_P3_PITCH_SIGN    1
-#define SIFT_P3_BASE_PITCH_PX 9
-#define SIFT_P3_PARALLAX_PX   15
-#define SIFT_VX               24
-#define SIFT_VY               32
-#define SIFT_VZ               24
-#define SIFT_VNECK            16
-#define SIFT_VCELL            7.5f
-#define SIFT_HG_CX            195
-#define SIFT_HG_CY            226
-#define SIFT_FRAME_HALF_X     106
-#define SIFT_FRAME_HALF_Z     90
-#define SIFT_FRAME_POST_HALF  4
-#define SIFT_FRAME_POST_TOP   120
-#define SIFT_FRAME_CAP_HALF_X 108
-#define SIFT_FRAME_CAP_HALF_Z 92
-#define SIFT_FRAME_CAP_HALF_Y 7
-#define SIFT_FRAME_CAP_Y      127
-#define SIFT_PI               3.14159265f
-/* This board's accelerometer z axis points into the screen: face-up is
- * negative, face-down is positive. */
+#define SIFT_W                    390
+#define SIFT_H                    450
+#define SIFT_PANEL_RADIUS         44
+#define SIFT_CELL                 3
+#define SIFT_COLS                 60
+#define SIFT_ROWS                 80
+#define SIFT_GRID_X0              105
+#define SIFT_GRID_Y0              106
+#define SIFT_NECK_ROW             40
+#define SIFT_NECK_Y               226
+#define SIFT_HG_TOP               106
+#define SIFT_HG_BOTTOM            346
+#define SIFT_SIM_STEP_MS          66U
+#define SIFT_RENDER_MS            40U
+#define SIFT_SWIPE_MIN            42
+#define SIFT_SWIPE_LONG           90
+#define SIFT_FLIP_MS              680U
+#define SIFT_ORBIT_MIN_ELEV       (-0.05f)
+#define SIFT_ORBIT_MAX_ELEV       0.85f
+#define SIFT_P3_PITCH_SIGN        1
+#define SIFT_P3_BASE_PITCH_PX     9
+#define SIFT_P3_PARALLAX_PX       15
+#define SIFT_VX                   24
+#define SIFT_VY                   32
+#define SIFT_VZ                   24
+#define SIFT_VNECK                16
+#define SIFT_VCELL                7.5f
+#define SIFT_HG_CX                195
+#define SIFT_HG_CY                226
+#define SIFT_FRAME_HALF_X         106
+#define SIFT_FRAME_HALF_Z         90
+#define SIFT_FRAME_POST_HALF      4
+#define SIFT_FRAME_POST_TOP       120
+#define SIFT_FRAME_CAP_HALF_X     108
+#define SIFT_FRAME_CAP_HALF_Z     92
+#define SIFT_FRAME_CAP_HALF_Y     7
+#define SIFT_FRAME_CAP_Y          127
+#define SIFT_PI                   3.14159265f
 #define SIFT_IMU_FACE_DOWN_MG     (550)
 #define SIFT_IMU_FACE_UP_MG       (-250)
 #define SIFT_IMU_FLIP_COOLDOWN_MS 1200U
@@ -408,7 +404,6 @@ static void put_px(int32_t x, int32_t y, uint16_t color)
     s_fb[y * SIFT_W + x] = color;
 }
 
-/* alpha is 0..32; 32 keeps the source, 0 keeps the destination. */
 static uint16_t blend565(uint16_t src, uint16_t dst, uint32_t alpha)
 {
     if(alpha >= 32U) return src;
@@ -532,7 +527,6 @@ static void draw_text(const char * text, int32_t x, int32_t y, int32_t scale,
         x -= width;
     size_t len = strlen(text);
     for(size_t i = 0; i < len; i++) {
-        /* cppcheck false positive: the loop is bounded by strlen. */
         // cppcheck-suppress arrayIndexOutOfBounds
         const uint8_t * glyph = font_for(text[i]);
         draw_glyph(glyph, x, y, scale, color);
@@ -968,8 +962,6 @@ static void draw_background(void)
             put_px(x, y + 2, color);
         }
     }
-
-    /* The 1.85" AMOLED has rounded glass; draw_panel_mask cuts the corners. */
 }
 
 static void draw_battery(int32_t x, int32_t y)
@@ -1144,9 +1136,6 @@ static void fill_quad(const int32_t * xs, const int32_t * ys, uint16_t color)
     }
 }
 
-/* Scanline fill of a convex polygon, blended once per pixel. Filling the glass
- * end caps as one 16-point polygon avoids the double blend on shared edges that
- * per-triangle fans produce. */
 static void fill_poly_blend(const int32_t * xs, const int32_t * ys, int32_t n,
                             uint16_t color, uint32_t alpha)
 {
@@ -1220,9 +1209,6 @@ static void draw_box3(int32_t cx, int32_t cy, int32_t cz, int32_t hx,
     float fc = flip_cos();
     float fs = flip_sin();
 
-    /* Classify the whole box by its centre, not per corner: a post spans the
-     * full height, so per-corner depth would flip the back posts into the near
-     * batch and let them paint over the sand. */
     int32_t center_px;
     int32_t center_py;
     int32_t center_depth;
@@ -1287,15 +1273,10 @@ static void draw_frame3d(const orbit_m_t * m, bool back)
               SIFT_FRAME_CAP_HALF_Y, SIFT_FRAME_CAP_HALF_Z, m, back);
 }
 
-/* Draw only the cap face visible from this elevation, and one side of the
- * hourglass at a time: the far cap must precede the glass and sand, the near
- * cap must follow the frame front. */
 static void draw_cap_details(const orbit_m_t * m, bool back)
 {
     const float fc = flip_cos();
     const float fs = flip_sin();
-    /* Top-face normal after flip is (0, fc, fs); the view ray is
-     * cam = (-ce*sy, -se, -ce*cy), so the dot is -(se*fc + ce*cy*fs). */
     const bool show_top = (-(m->se * fc + m->ce * m->cy * fs)) < 0.0f;
 
     for(int32_t sign = -1; sign <= 1; sign += 2) {
@@ -1324,10 +1305,6 @@ static void draw_cap_details(const orbit_m_t * m, bool back)
     }
 }
 
-/* The glass is a surface of revolution, projected point by point: an
- * axis-aligned ellipse cannot represent the projection once flip and yaw are
- * both non-zero (the real one tilts up to 83 degrees). Rows are drawn far or
- * near by average depth, so the sand reads as inside a shell. */
 static const float s_glass_cos16[16] = {
     1.0000f,  0.9239f,  0.7071f,  0.3827f,  0.0000f,  -0.3827f,
     -0.7071f, -0.9239f, -1.0000f, -0.9239f, -0.7071f, -0.3827f,
@@ -1371,10 +1348,6 @@ static void draw_glass_disc(const orbit_m_t * m, int32_t y_model, int32_t r,
                     4U + (uint32_t)round_f32(18.0f * fres));
 }
 
-/* Only the end caps are filled; the cylindrical wall stays transparent. A quad
- * mesh over it self-intersects at the neck (radius drops from 82 to 17 in a few
- * rows) and leaves comb-like seams, while thin glass reads through its
- * silhouette and highlights anyway. */
 static void draw_glass_surface(const orbit_m_t * m, bool near_pass)
 {
     int32_t y_model;
@@ -1385,8 +1358,6 @@ static void draw_glass_surface(const orbit_m_t * m, bool near_pass)
     draw_glass_disc(m, y_model, r, near_pass);
 }
 
-/* Re-draw the left and right silhouette after the sand, so the bottle still
- * reads on top of the sand without wrapping rings around it. */
 static void draw_glass_edges(const orbit_m_t * m)
 {
     int32_t prev_lx = 0;
@@ -1425,16 +1396,11 @@ static void draw_glass_edges(const orbit_m_t * m)
         if(have_prev) {
             draw_line(prev_lx, prev_ly, lx, ly, COL_MINT_DIM, 1);
             draw_line(prev_hx, prev_hy, hx, hy, COL_MINT_DIM, 1);
-            /* A second line two pixels inside the rim shows the wall
-             * thickness; skipped when the tube is edge-on. */
             if(hx - lx > 10) {
                 draw_line(prev_lx + 2, prev_ly, lx + 2, ly, COL_LINE, 1);
                 draw_line(prev_hx - 2, prev_hy, hx - 2, hy, COL_LINE, 1);
             }
 
-            /* Very light haze over the silhouette; without it the wall is fully
-             * transparent and the sand looks scattered rather than contained.
-             * One scanline per step avoids the seams a quad fill brings. */
             int32_t ya = prev_ly;
             int32_t yb = ly;
             int32_t ax0 = prev_lx;
@@ -1474,8 +1440,6 @@ static void draw_glass_edges(const orbit_m_t * m)
         have_prev = true;
     }
 
-    /* Close the tube with projected rim rings: an axis-aligned ellipse only
-     * matches the real projection when flip is zero. */
     for(int32_t cap = 0; cap < 2; cap++) {
         int32_t y_model;
         int32_t r;
@@ -1497,16 +1461,12 @@ static void draw_glass_edges(const orbit_m_t * m)
     }
 }
 
-/* The specular band is the set of surface points whose screen normal lines up
- * with the light (upper left). Maximising N.L gives theta = atan2(A.L, B.L), so
- * the highlight follows the view instead of being glued to body coordinates. */
 static void draw_glass_highlights(const orbit_m_t * m)
 {
     const float fc = flip_cos();
     const float fs = flip_sin();
     const float lx = -0.62f;
     const float ly = -0.78f;
-    /* N(theta) = A*sin(theta) + B*cos(theta) in screen space. */
     const float ad = m->cy * lx + m->sy * m->se * ly;
     const float bd = -m->sy * fc * lx + (m->ce * fs + m->cy * m->se * fc) * ly;
     const float energy = ad * ad + bd * bd;
@@ -1539,8 +1499,6 @@ static void draw_glass_highlights(const orbit_m_t * m)
         }
     }
 
-    /* Neck wall: the inner surface is a real part of the solid, so keep it at
-     * its projected position, but only on the near half. */
     const float neck_r = 17.0f;
     const float neck_x = 14.0f;
     const float neck_z = sqrtf(neck_r * neck_r - neck_x * neck_x);
@@ -1593,9 +1551,6 @@ static void draw_voxels(const orbit_m_t * m)
     if(!s_vox_sprites_ready) build_vox_sprites();
     memset(s_vbins, 0, sizeof(s_vbins));
 
-    /* A voxel's screen footprint changes with yaw/elev/flip: scale the grain
-     * sprite with the widest projected cell axis so neighbouring grains meet,
-     * rounding up, since one pixel short leaves a black dot between them. */
     const float fc = flip_cos();
     const float fs = flip_sin();
     const float axis_x =
@@ -1678,8 +1633,6 @@ static void draw_hourglass(void)
 
     draw_frame3d(&m, true);
     draw_cap_details(&m, true);
-    /* Far glass, then sand, then near glass: the near panes tint the sand
-     * instead of covering the shell. */
     draw_glass_3d(&m, false);
     draw_voxels(&m);
     bool nearly_empty =
@@ -2370,8 +2323,6 @@ static bool point_in_rect(int32_t x, int32_t y, int32_t rx, int32_t ry,
     return x >= rx && x < rx + rw && y >= ry && y < ry + rh;
 }
 
-/* Keep the orbit zone tight around the bottle so the screen edges stay free
- * for page swipes and the app drawer gesture. */
 static bool inside_orbit_zone(int32_t x, int32_t y)
 {
     return x > 70 && x < 320 && y > 92 && y < 352;
@@ -2493,8 +2444,6 @@ static void sift_handle_tap(int x, int y)
         return;
     }
 
-    /* The chevron sits near the rounded panel corner, so the hit area is much
-     * larger than the drawn arrow. */
     if(point_in_rect(x, y, 8, 8, 80, 68)) {
         go_back();
         return;
@@ -2910,7 +2859,6 @@ static void imu_update(void)
     }
     int32_t dx = fx - s_imu_base_x;
     int32_t dy = fy - s_imu_base_y;
-    /* ~60 degrees per g: 1000 mg reads 60 degrees. */
     s.sensor_roll = clamp_i32(dx * 60 / 1000, -45, 45);
     s.sensor_pitch = clamp_i32(dy * 60 / 1000, -32, 32);
     s.sensor_live = true;
@@ -2982,7 +2930,7 @@ static void key_init(void)
 static bool key_pressed_edge(int pin, bool * raw, bool * down,
                              uint32_t * raw_at, uint32_t now)
 {
-    bool level = rt_pin_read(pin) != 0; /* KEY1/KEY2 are active high. */
+    bool level = rt_pin_read(pin) != 0;
     if(level != *raw) {
         *raw = level;
         *raw_at = now;

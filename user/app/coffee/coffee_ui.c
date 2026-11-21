@@ -1,4 +1,3 @@
-
 #include "app.h"
 #include "coffee_ui.h"
 

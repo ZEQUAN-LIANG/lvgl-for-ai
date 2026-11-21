@@ -1,8 +1,3 @@
-/* Registry lookup shared by user/app/app.c and scripts/release_app.c so the two
- * entrypoints stay in sync. The build writes ``app_registry.inc`` from the app
- * directories under ``user/app/``; include this inside the caller's version
- * gate, since the .inc only exists after the build generated it. */
-
 #ifndef LVGL_VERIFY_LOOP_APP_REGISTRY_LOOKUP_H
 #define LVGL_VERIFY_LOOP_APP_REGISTRY_LOOKUP_H
 
@@ -41,4 +36,4 @@ static inline void app_print_apps(void)
     printf("\n");
 }
 
-#endif /* LVGL_VERIFY_LOOP_APP_REGISTRY_LOOKUP_H */
+#endif

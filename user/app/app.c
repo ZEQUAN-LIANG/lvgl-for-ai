@@ -1,4 +1,3 @@
-
 #include "lvgl.h"
 
 #include "app.h"
@@ -30,8 +29,6 @@ void app_create(void)
     printf("[app] app=%s\n", app->name);
     app->create();
 #else
-    /* 9.1 and 8.x predate the directory discovery registry, which is compiled
-     * for 9.4+ only, so those versions show an empty screen. */
     printf("[app] app=none (LVGL < 9.4)\n");
 #endif
 }

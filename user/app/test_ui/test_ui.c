@@ -1,14 +1,3 @@
-/* The tool self-test screen: a titled panel, a button and a focus group.
- *
- * This used to be the hidden ``demo/`` harness that ``app_create`` mounted
- * under every other app.  It is a normal, selectable app now, so it draws
- * visibly like any other and is chosen with ``--app test_ui`` or a scenario's
- * ``"app"`` field.  Nothing else mounts it.
- *
- * The button sits at (32,300) 160x48 -- centre (112,324) -- which the tool's
- * integration tests click.  Keep that geometry when editing.
- */
-
 #include "test_ui.h"
 
 #include <stdio.h>

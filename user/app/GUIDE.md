@@ -259,3 +259,4 @@ lv_timer_create(tick_cb, 16, NULL);
 - [ ] `user/scenarios/<name>.json` 顶层写了 `"app": "<name>"`
 - [ ] 构建成功，`manifest.json` 的 `status` 为 `ok`
 - [ ] `engine.log` 有预期状态，`timeline.ndjson` 的 `hit` 指向预期控件
+- [ ] 源码里没有注释或 docstring（工具指令类注释除外，见 `console/README.md`）
