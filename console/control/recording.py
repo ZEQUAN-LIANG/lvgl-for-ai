@@ -1,15 +1,3 @@
-"""Recording: a read-only view of one session's evidence.
-
-``Recording.open(path)`` reads an existing session and never starts an engine.
-Frames, timeline rows and frame diffs are plain files written by the engine;
-the manifest and build log are written by
-:class:`~control.session.SessionStore`. The file layout and the manifest
-schema come from :mod:`~control.session_schema`, shared with the writer.
-
-Only ``annotations`` is writable: humans and AI agents add notes to a session
-without touching the evidence the engine produced.
-"""
-
 from __future__ import annotations
 
 import json
@@ -66,15 +54,6 @@ def _read_json_object(path: Path) -> dict[str, Any]:
 
 
 class Recording:
-    """Evidence view for ``user/sessions/<id>/``.
-
-    Required files are ``manifest.json`` and ``engine.log``. When the manifest
-    describes a recorded session (``frame_count > 0`` or the artifacts list
-    ``timeline`` / ``frame_diffs``), those two files are required as well.
-    ``build.log`` and ``annotations.json`` are optional; a missing annotations
-    file reads as an empty ``lvgl-verify-loop-annotations-v1`` document.
-    """
-
     def __init__(self, path: str | Path) -> None:
         raw = Path(path)
         if raw.is_file() and raw.name == session_schema.MANIFEST_FILE:

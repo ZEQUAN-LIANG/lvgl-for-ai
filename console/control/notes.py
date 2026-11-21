@@ -1,12 +1,3 @@
-"""The ``lvgl-verify-loop-annotations-v1`` write transaction.
-
-``add_note`` is the only write path. It takes the session's
-``.annotations.lock`` across processes, reads and validates the existing
-document, appends the note, writes region crops from the resolved evidence
-image, and atomically replaces ``annotations.json``. The web adapter only
-supplies ``source="web"``; the chat entry point supplies ``source="chat"``.
-"""
-
 from __future__ import annotations
 
 import hashlib

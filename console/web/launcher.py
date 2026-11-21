@@ -1,16 +1,3 @@
-"""Warm-start decision for the no-console web viewer.
-
-``LVGL-AI-Viewer.exe`` only starts ``web.pyw`` hidden. The decision to reuse a
-viewer that is already listening or to start a new server lives here, next to
-the server address constants and the shared page URL, so the check, the
-browser URL and the bound address cannot drift and the behavior can be tested
-without Windows or a browser.
-
-The check uses a TCP connection rather than binding the port: the server sets
-``SO_REUSEADDR`` (``allow_reuse_address``), so a second bind can succeed on
-Windows even while the viewer is running.
-"""
-
 from __future__ import annotations
 
 import socket

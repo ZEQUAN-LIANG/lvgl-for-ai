@@ -1,11 +1,3 @@
-"""Load the bundled FreeType / pypng dependencies lazily.
-
-The vendor directory is copied into the released skill.  ``python -I`` does not
-put it on ``sys.path``, so the converters insert it explicitly and verify that
-the imported modules really came from this directory (a system-installed
-``freetype-py`` must not be silently used).
-"""
-
 from __future__ import annotations
 
 import sys

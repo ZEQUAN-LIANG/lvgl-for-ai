@@ -45,11 +45,6 @@ def available_versions(repo_root: Path) -> list[str]:
 
 
 def resolve_lvgl_version(repo_root: Path, requested: str = "auto") -> str:
-    """Resolve ``--lvgl``.
-
-    Precedence for ``auto``: ``LVGL_VERIFY_LOOP_LVGL_VERSION`` > the highest supported
-    directory under ``dist/lvgl/`` or ``engine/lvgl/`` > the index default.
-    """
     if requested != "auto":
         if not _supported(requested, repo_root):
             choices = ", ".join(supported_versions(repo_root))

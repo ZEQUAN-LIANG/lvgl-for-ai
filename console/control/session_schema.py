@@ -1,14 +1,3 @@
-"""Session evidence layout and manifest schema, shared by writer and reader.
-
-A session is one directory under the sessions root. The engine writes the
-frame PNGs, ``timeline.ndjson`` and ``frame_diffs.ndjson``; the Python control
-layer writes ``manifest.json`` and ``build.log`` and keeps ``engine.log``.
-:class:`~control.session.SessionStore` builds the manifest from the
-constants and helpers here, and :class:`~control.recording.Recording`
-validates it with the same definition, so the write side and the read side
-cannot drift.
-"""
-
 from __future__ import annotations
 
 import datetime as _dt
@@ -39,7 +28,6 @@ WHITEBOARDS_DIR = "whiteboards"
 WHITEBOARDS_SCHEMA = "lvgl-verify-loop-whiteboards-v1"
 PREVIEW_FILE = "live.rgba"
 
-# Full write-side field order. The manifest JSON keeps this order.
 MANIFEST_FIELDS = (
     "schema",
     "id",
@@ -88,7 +76,6 @@ def is_session_id(value: Any) -> bool:
     )
 
 
-# Optional evidence file -> manifest artifacts key, in listing order.
 ARTIFACT_FILES = (
     (BUILD_LOG_FILE, "build_log"),
     (ENGINE_LOG_FILE, "engine_log"),

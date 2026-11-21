@@ -1,15 +1,3 @@
-"""SessionStore: the only writer of one session's evidence directory.
-
-A session is one directory under the sessions root. The store reserves it,
-opens ``engine.log``, writes ``build.log`` and ``manifest.json``, removes the
-transient ``live.rgba`` preview and applies the retention policy. The engine
-writes the frames and ndjson evidence itself; the store accounts for those
-files through the shared :mod:`~control.session_schema` layout.
-
-:class:`TailLog` owns the byte-capped, line-aligned ``engine.log``;
-:class:`SessionOutcome` owns the final manifest status (failure > crash > ok).
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -296,7 +284,6 @@ class SessionStore:
         self._truncated = True
 
     def append_check(self, command: str, ok: bool, frame_no: Any) -> None:
-        """Record that a protocol command ran; never judges the picture."""
         self._checks.append(
             {"cmd": command, "ok": bool(ok), "frame_no": frame_no}
         )

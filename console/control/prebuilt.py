@@ -1,14 +1,3 @@
-"""Host SDK loading and the gcc compile/link plan used by prebuilt builds.
-
-A prebuilt build compiles ``user/app/**/*.c`` and the engine's ``main.c``
-against the host SDK exported by ``scripts/export_sdk.py``.  It never needs
-LVGL source, third-party source, CMake or Ninja.
-
-Everything here is data plus command construction: :class:`BuildPlan` runs the
-commands through its scripted-runner seam, so unit tests can pin the selection,
-flags and error mapping without a compiler.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -339,7 +328,9 @@ def resolve_compiler(
     if override is not None:
         compiler = str(override)
     else:
-        compiler = os.environ.get("LVGL_VERIFY_LOOP_GCC") or (shutil.which("gcc") or "")
+        compiler = os.environ.get("LVGL_VERIFY_LOOP_GCC") or (
+            shutil.which("gcc") or ""
+        )
     if not compiler:
         raise BuildError(
             "C compiler not found: set LVGL_VERIFY_LOOP_GCC or put gcc on PATH "
@@ -403,7 +394,6 @@ class PrebuiltBuild:
         self._link_command: list[str] | None = None
 
     def refresh_dependencies(self) -> None:
-        """Re-hash headers/includes after generated files change."""
 
         self._headers_digest = self._compute_headers_digest()
         self._steps = None

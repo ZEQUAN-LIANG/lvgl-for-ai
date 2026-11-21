@@ -1,10 +1,3 @@
-"""HTTP adapter exports for the annotation write transaction.
-
-The validation and write transaction live in
-:mod:`control.notes`; the web layer keeps only the import surface its
-routes and tests use.
-"""
-
 from __future__ import annotations
 
 from control.notes import (

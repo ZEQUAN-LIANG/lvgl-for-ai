@@ -1,9 +1,3 @@
-"""App scaffolding: templates, name validation and transactional writes.
-
-``scripts/new_app.py`` is a thin CLI over :func:`scaffold_app`; the web app
-manager calls the same function through ``POST /api/apps/create``.
-"""
-
 from __future__ import annotations
 
 import json
@@ -26,7 +20,7 @@ HEADER_TEMPLATE = """\
 void {{NAME}}_create(void);
 #endif
 
-#endif /* {{GUARD}} */
+#endif
 """
 
 SOURCE_TEMPLATE = """\
@@ -80,7 +74,7 @@ void {{NAME}}_create(void)
     printf("[{{NAME}}] created\\n");
 }
 
-#endif /* LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6 */
+#endif
 """
 
 SCENARIO_STEPS = [
@@ -133,8 +127,6 @@ def scaffold_app(
     created: list[str] = []
     updated: list[str] = []
     writes: list[tuple[Path, bytes, bool]] = []
-    # No app.json is written: the name and ``<name>_create`` convention suffice.
-    # An existing metadata file is left untouched so a renamed entry survives.
     for path, data in (
         (header_path, header.encode("utf-8")),
         (source_path, source.encode("utf-8")),

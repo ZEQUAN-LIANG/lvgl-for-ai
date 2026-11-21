@@ -1,16 +1,3 @@
-"""Read and crop session PNGs without Pillow or ffmpeg.
-
-Frames and snapshots written by the engine are ordinary non-interlaced 8-bit
-PNGs (RGB for the current XRGB8888 display). This module decodes the subset
-needed by the evidence tools, reads pixels, crops boxes, arranges labeled
-contact sheets, compares image pairs with an optional heatmap, and re-encodes
-PNGs.
-
-Supported color types: grayscale (0), RGB (2), grayscale+alpha (4), RGBA (6);
-bit depth 8, interlace 0. Anything else raises :class:`PngError` with the
-actual header values so the caller knows which codec to extend.
-"""
-
 from __future__ import annotations
 
 import struct
@@ -47,13 +34,11 @@ _LABEL_COLOR = (255, 255, 255)
 
 
 class PngError(ValueError):
-    """A PNG is malformed or uses an unsupported subset."""
+    pass
 
 
 @dataclass(frozen=True)
 class Region:
-    """A display-pixel rectangle, the same coordinate space as annotations."""
-
     x: int
     y: int
     w: int
@@ -320,14 +305,6 @@ def read_pixel(data: bytes, x: int, y: int) -> tuple[int, int, int]:
 def compare_png(
     left: bytes, right: bytes, *, heatmap: bool = False
 ) -> ImageComparison:
-    """Compare two same-size PNGs and report changed-pixel statistics.
-
-    A pixel changes when any RGB channel differs; alpha is ignored.
-    ``max_delta`` is the largest channel difference divided by 255, matching
-    the frame-diff evidence. With ``heatmap=True`` the result carries an RGB
-    image where changed pixels are yellow-to-red by delta and unchanged pixels
-    stay dark.
-    """
     left_header = read_png_header(left)
     right_header = read_png_header(right)
     for header, side in ((left_header, "left"), (right_header, "right")):

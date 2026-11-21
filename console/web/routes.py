@@ -1,10 +1,3 @@
-"""HTTP route table for the web adapter.
-
-The table lives here so ``webapp.py`` stays a domain adapter.  ``_WebHandler``
-delegates each request to :func:`route`; these literals are the single source
-checked by ``test_docs_single_source``.
-"""
-
 from __future__ import annotations
 
 from http import HTTPStatus

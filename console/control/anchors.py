@@ -1,12 +1,3 @@
-"""Stable feedback anchors and the row-order resolver.
-
-An input command only queues work inside LVGL; frames are recorded by
-``tick`` / ``wait``. A frame's ``t_ms`` is therefore not a reliable lookup key.
-Resolution walks ``timeline.ndjson`` in row order instead: the picture before
-an event is the last evidence row at or before it, and the result is the first
-evidence row after it. Frames and snapshots are both evidence.
-"""
-
 from __future__ import annotations
 
 import json
@@ -676,7 +667,6 @@ def derive_anchor(
     frame_no: int | None = None,
     t_ms: int | None = None,
 ) -> dict[str, Any]:
-    """Derive the nearest mark / click / input before a note's frame."""
     rows = timeline_rows(recording)
     if not rows:
         return {"kind": "t_ms", "t_ms": t_ms if _is_int(t_ms) else 0}

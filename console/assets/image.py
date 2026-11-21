@@ -83,15 +83,13 @@ def _read_rows(path: Path) -> tuple[int, int, list[bytes], bool]:
     try:
         reader = png.Reader(filename=str(path))
         width, height, rows, info = reader.asRGBA8()
-    except Exception as exc:  # pypng raises several exception types
+    except Exception as exc:
         raise AssetError(f"cannot decode PNG {path.name}: {exc}") from exc
     row_bytes = [bytes(row) for row in rows]
     require(
         len(row_bytes) == height,
         f"PNG {path.name} returned {len(row_bytes)} rows; expected {height}",
     )
-    # asRGBA8() always reports ``alpha: True`` because it requests RGBA output,
-    # even for an opaque RGB source.  Inspect the actual alpha bytes instead.
     seen_alpha = False
     for row in row_bytes:
         if any(value != 0xFF for value in row[3::4]):
@@ -281,8 +279,6 @@ def render_image_header(
     source_sha256: str,
 ) -> str:
     major, _minor = major_minor(target_version)
-    # <NAME>_H is the image height macro, so the include guard needs a
-    # different suffix.
     guard = f"{name.upper()}_H_INCLUDED"
     lines: list[str] = [
         "/*",

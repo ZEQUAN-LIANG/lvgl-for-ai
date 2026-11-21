@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""Read one finished session's evidence without starting an engine or the web.
-
-The default output is the ``lvgl-verify-loop-session-index-v1`` query plan; ``--json``
-prints the same index on one line. The query subcommands are bounded:
-``timeline``, ``diffs``, ``frames``, ``notes``, ``resolve``, ``context`` and
-``feedback``. The visual commands (``crop``, ``contact-sheet``, ``pixel``,
-``compare``) read snapshot or frame paths and write only an explicit output
-file. Exit code 0 means the evidence was read; 2 means the input or output
-could not be handled.
-"""
 
 from __future__ import annotations
 
@@ -18,7 +8,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# ``python -I`` does not add the script directory to sys.path.
 CONSOLE_ROOT = Path(__file__).resolve().parent.parent
 if str(CONSOLE_ROOT) not in sys.path:
     sys.path.insert(0, str(CONSOLE_ROOT))

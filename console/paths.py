@@ -1,19 +1,3 @@
-"""Canonical locations for the tool, apps, scenarios and session evidence.
-
-The development checkout and the release package share one layout: the Python
-control layer lives under ``<repo>/tool``, the C engine under
-``<repo>/engine``, the maintenance scripts under ``<repo>/tools``, user app
-sources under ``<repo>/apps`` and scenario JSON under ``<repo>/scenarios``.
-Resolve from ``__file__`` so imports work from any working directory.
-
-Build output lives under :data:`REPO_ROOT`, not inside the tool directory:
-``build/`` belongs to :data:`REPO_ROOT`. :func:`build_root_from_env` lets
-``LVGL_VERIFY_LOOP_BUILD_ROOT`` move it elsewhere so throwaway builds (tests)
-land in a temporary tree; callers pass the result to :func:`build_dir_for`,
-which stays a pure path computation. Third-party license texts live in
-``licenses/``.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -116,7 +100,6 @@ def sessions_root_from_env() -> Path:
 
 
 def build_root_from_env() -> Path:
-    """Resolve the build root, honouring ``LVGL_VERIFY_LOOP_BUILD_ROOT``."""
     override = os.environ.get("LVGL_VERIFY_LOOP_BUILD_ROOT")
     if override:
         return Path(override).expanduser().resolve()
@@ -124,12 +107,10 @@ def build_root_from_env() -> Path:
 
 
 def entrypoint_path(name: str) -> Path:
-    """Return one of the package-facing entry scripts."""
     return CONSOLE_ROOT / "entrypoints" / name
 
 
 def entrypoint_command(name: str) -> str:
-    """Return the ``python -I`` command for an entry script."""
     relative = entrypoint_path(name).relative_to(REPO_ROOT).as_posix()
     return f"python -I {relative}"
 

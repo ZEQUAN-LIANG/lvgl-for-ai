@@ -1,13 +1,3 @@
-"""PID guard for the engine binary of one build directory.
-
-Windows keeps a running PE image locked, so a new link cannot replace
-``lvgl_engine.exe`` while a previous engine still runs. ``EngineLink`` writes
-``<build_dir>/.engine.pid`` after spawning; the build path calls
-:func:`ensure_engine_stopped` and waits for that pid before touching the build
-tree. A stale pid is removed; an engine that refuses to exit produces a typed
-``BuildError`` instead of an opaque linker failure.
-"""
-
 from __future__ import annotations
 
 import ctypes

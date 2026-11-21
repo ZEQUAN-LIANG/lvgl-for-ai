@@ -6,17 +6,13 @@ from typing import Any, Callable, Sequence
 
 
 class ToolError(Exception):
-    """Base class for every error raised by the control layer."""
+    pass
 
 
-# Public compatibility alias. The base class was named ``LatError`` before the
-# naming cleanup; new code should use ``ToolError``.
 LatError = ToolError
 
 
 class BuildError(ToolError):
-    """The engine failed to compile."""
-
     def __init__(
         self,
         message: str,
@@ -39,8 +35,6 @@ class BuildError(ToolError):
 
 
 class LinkError(ToolError):
-    """The engine failed to link."""
-
     def __init__(
         self,
         message: str,
@@ -56,8 +50,6 @@ class LinkError(ToolError):
 
 
 class RuntimeCrash(ToolError):
-    """The engine process died or stopped answering."""
-
     def __init__(
         self,
         message: str,
@@ -73,8 +65,6 @@ class RuntimeCrash(ToolError):
 
 
 class ProtocolError(ToolError):
-    """A protocol line was malformed or did not match the command sequence."""
-
     def __init__(
         self,
         message: str,
@@ -88,24 +78,12 @@ class ProtocolError(ToolError):
 
 
 class ScenarioError(ToolError):
-    """An input event or scenario step is invalid.
-
-    ``step`` is the zero-based index inside the event/step list so the caller
-    can point at the offending entry without re-reading the script.
-    """
-
     def __init__(self, message: str, *, step: int | None = None) -> None:
         super().__init__(message)
         self.step = step
 
 
 class EngineNotFound(ToolError):
-    """The engine binary is missing.
-
-    Carries the exact configure and build commands so the caller can recover
-    without reading the source.
-    """
-
     def __init__(
         self,
         engine_path: str | Path,
@@ -134,7 +112,6 @@ def _shell_join(command: Sequence[str]) -> str:
 
 EXIT_FAILURE = 1
 EXIT_HARNESS = 2
-
 
 LOG_TAIL_LINES = 40
 LOG_TAIL_CHARS = 8192
@@ -193,12 +170,6 @@ def _engine_not_found_detail(error: EngineNotFound) -> dict[str, Any]:
 
 @dataclass(frozen=True)
 class ErrorMapping:
-    """One row of the error vocabulary.
-
-    The row is the only place that names an error's layer code, manifest
-    status and CLI exit code; :func:`dump_error` also uses its detail builder.
-    """
-
     error_type: type[BaseException]
     code: str
     status: str

@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""Generate LVGL font/image C arrays.
-
-    python -I console/entrypoints/assets_tool.py font --app coffee --font C:\\Windows\\Fonts\\Deng.ttf --size 16
-    python -I console/entrypoints/assets_tool.py image --app coffee --input logo.png --cf ARGB8888
-    python -I console/entrypoints/assets_tool.py doctor --json
-
-The converter is a file tool: it does not start the engine, a display or a
-session.  The generated headers are plain LVGL C and do not need this tool at
-build or run time.
-"""
 
 from __future__ import annotations
 
@@ -211,12 +201,6 @@ def _resolve_output(
 
 
 def manifest_path(repo_root: Path, app: str) -> Path:
-    """Default replay log for *app*.
-
-    The log records what each generated header was built from.  It is derived
-    data, so it lives under ``user/.cache/`` instead of next to the sources;
-    the generated ``*.h`` files carry the same facts in their header comment.
-    """
 
     return repo_root / "user" / ".cache" / "assets" / f"{app}.json"
 

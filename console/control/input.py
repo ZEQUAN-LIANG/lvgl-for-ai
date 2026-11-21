@@ -1,33 +1,3 @@
-"""Input vocabulary: devices, actions, tokens, integer ranges and key parsing.
-
-This module is the single vocabulary source shared by ``play_scenario``
-(``lvgl-verify-loop-scenario-v1``), ``Runtime`` and the CLI:
-
-- :data:`DEVICE_ACTIONS` lists the pointer/key/encoder actions;
-- :data:`TOKEN_PATTERN` defines the ``[A-Za-z0-9_-]+`` token syntax and
-  :func:`is_token` enforces it with the 64-character cap;
-- :data:`INT16_MIN` / :data:`INT16_MAX` define the encoder range;
-- :func:`resolve_key` (re-exported from :mod:`~control.keys`) defines the
-  ``LV_KEY_*`` aliases and ``CHAR_<code>`` text tokens;
-- :func:`text_problem` enforces the printable ASCII range of a ``text`` step.
-
-The ``*_problem`` functions return the shared diagnostic text (or ``None``);
-callers prepend their own context (``step N:``) and raise their own error type.
-The ``require_*`` helpers raise ``ValueError`` with the Runtime wording.
-
-``lvgl-verify-loop-input-v1`` is the compact, replayable form of a scripted gesture::
-
-    {"at_ms": 0, "device": "pointer", "action": "down", "x": 10, "y": 20}
-    {"at_ms": 16, "device": "key", "action": "press", "key": "ENTER"}
-    {"at_ms": 32, "device": "encoder", "action": "turn", "diff": -1}
-
-``at_ms`` is the offset from the start of the ``rt.input(...)`` call. Events
-are stably sorted by ``at_ms`` before dispatch, so equal timestamps keep the
-caller's order. Key names are resolved against LVGL 9.6's ``LV_KEY_*`` set or
-the printable ASCII ``CHAR_<code>`` text tokens; unknown names raise
-:class:`ScenarioError` with the event index before any command is sent.
-"""
-
 from __future__ import annotations
 
 import re

@@ -1,15 +1,3 @@
-"""User app domain package: discovery, scaffold, trash and filesystem views.
-
-Apps are discovered from ``user/app/<name>/app.json``; there is no central
-registration table to edit.  The CLI ``scripts/new_app.py`` and the web layer
-both call this package, so scaffolding, deletion and generated-registry output
-have one implementation.
-
-Public lifecycle interface: :func:`list_apps`, :func:`app_tree`,
-:func:`recent_apps`, :func:`list_trash`, :func:`scaffold_app`,
-:func:`delete_app`, :func:`restore_app`, :func:`permanently_delete`.
-"""
-
 from __future__ import annotations
 
 from .common import AppError, WINDOWS_DEVICE_NAMES, resolve_repo_root

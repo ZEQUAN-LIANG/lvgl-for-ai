@@ -1,12 +1,3 @@
-"""Cross-process lock for one build directory.
-
-CMake and Ninja do not support two processes writing the same build tree.
-:class:`BuildLock` serializes ``needs_configure -> configure -> build`` across
-the CLI and the web server with an OS file lock. The file stays on disk; the
-OS releases the lock when the process exits, so a crash cannot leave a stale
-lock behind.
-"""
-
 from __future__ import annotations
 
 import os
@@ -78,8 +69,6 @@ def build_lock(
 
 
 class FileLock:
-    """One OS file lock with a caller-chosen path and timeout."""
-
     def __init__(self, path: str | Path, *, timeout: float) -> None:
         self.path = Path(path)
         self.timeout = float(timeout)

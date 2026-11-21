@@ -23,9 +23,7 @@ def list_apps(repo_root: str | Path) -> dict[str, Any]:
     ordered = _ordered_entries(entries)
     defaults = [entry.name for entry in entries if entry.default]
     if len(defaults) > 1:
-        warnings.append(
-            "多个应用标记为 default：" + ", ".join(defaults)
-        )
+        warnings.append("多个应用标记为 default：" + ", ".join(defaults))
     default_name = defaults[0] if len(defaults) == 1 else None
     apps: list[dict[str, Any]] = []
     for order, entry in enumerate(ordered):
@@ -77,7 +75,9 @@ def list_apps(repo_root: str | Path) -> dict[str, Any]:
     }
 
 
-def _ordered_entries(entries: list[discovery.AppEntry]) -> list[discovery.AppEntry]:
+def _ordered_entries(
+    entries: list[discovery.AppEntry],
+) -> list[discovery.AppEntry]:
     defaults = [entry for entry in entries if entry.default]
     default = defaults[0] if defaults else None
     rest = sorted(
@@ -98,10 +98,7 @@ def _orphans(
     user_app = common._user_app(root)
     if user_app.is_dir():
         for path in sorted(user_app.iterdir()):
-            if (
-                path.name not in registered
-                and _is_app_directory(path)
-            ):
+            if path.name not in registered and _is_app_directory(path):
                 result.append(
                     {
                         "kind": "directory",
@@ -133,7 +130,6 @@ def _orphans(
 
 
 def _is_app_directory(path: Path) -> bool:
-    """An unregistered app directory follows the ``<name>_create`` convention."""
 
     if not path.is_dir() or path.is_symlink():
         return False

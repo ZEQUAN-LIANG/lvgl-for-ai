@@ -1,15 +1,3 @@
-"""Best-effort retention for session directories.
-
-Every session is one directory under the sessions root. The tool keeps the
-newest :data:`DEFAULT_SESSION_LIMIT` sessions and never keeps a
-``build_error`` session. Cleanup runs right after a new session directory is
-reserved, so evidence from the current run is never touched.
-
-Directories whose name does not match the session id format, or whose
-``manifest.json`` is missing or unreadable, are left alone: they may belong to
-another live Runtime, an interrupted run, or the user.
-"""
-
 from __future__ import annotations
 
 import json

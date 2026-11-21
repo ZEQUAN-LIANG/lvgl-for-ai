@@ -1,10 +1,3 @@
-"""TTF/OTF -> LVGL ``lv_font_t`` C array conversion.
-
-The bitmap/cmap layout follows ``lv_font_conv`` (MIT): glyphs are packed
-independently, MSB-first, each glyph padded to a byte boundary; ``stride`` stays
-0 (continuous packing).
-"""
-
 from __future__ import annotations
 
 import ctypes
@@ -29,7 +22,7 @@ from .errors import AssetError
 from .version import major_minor, target_label
 from .vendor import load_freetype
 
-_MAX_BITMAP_INDEX = (1 << 20) - 1  # LV_FONT_FMT_TXT_LARGE == 0
+_MAX_BITMAP_INDEX = (1 << 20) - 1
 _MAX_ADV_W = (1 << 12) - 1
 _MAX_BOX = 255
 _MIN_OFS = -128

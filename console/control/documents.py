@@ -1,12 +1,3 @@
-"""One JSON document plus its managed image files, stored in a session.
-
-Annotations and whiteboards share this module: read and validate the
-document, stage images, atomically replace the document, roll back images
-written by a failed transaction, and remove images the document no longer
-references. The document-specific note/whiteboard validation stays with the
-caller; this module owns the envelope, file names and side effects.
-"""
-
 from __future__ import annotations
 
 import json

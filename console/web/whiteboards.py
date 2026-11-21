@@ -1,15 +1,3 @@
-"""The ``lvgl-verify-loop-whiteboards-v1`` read/write transaction.
-
-A whiteboard explains what a note expects. Its scope is ``global``, a single
-``frame`` or a ``range`` of frames. The PNG is the human drawing; ``text`` and
-``labels`` are the contract an AI agent reads, so a whiteboard without either
-is rejected.
-
-``save_whiteboard`` is the only write path: it validates the payload, writes
-the image under a content-addressed name, then atomically replaces
-``whiteboards.json``. A failed document write removes the new image.
-"""
-
 from __future__ import annotations
 
 import base64

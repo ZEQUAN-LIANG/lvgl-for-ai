@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""Write one human feedback note from the chat window.
-
-The tool only records what the human said and where it applies; it never
-decides whether the note is fixed. ``add`` is the v1 entry point: ``author``
-must be ``human`` and ``transcribed_by`` may be ``ai``.
-"""
 
 from __future__ import annotations
 

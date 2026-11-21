@@ -1,11 +1,3 @@
-"""EngineLink: one engine process and the ``lvgl-verify-loop-engine-v1`` line protocol.
-
-The link owns process spawn, the stdout/stderr pumps, ``seq`` correlation,
-EOF and timeout handling, ``ready`` validation, crash completion and the
-quit -> wait -> terminate -> kill shutdown ladder. :class:`Runtime` keeps the
-public actions and turns replies into session evidence.
-"""
-
 from __future__ import annotations
 
 import json
@@ -41,14 +33,6 @@ def spawn_engine(
     env: Mapping[str, str] | None,
     cwd: Any,
 ) -> "subprocess.Popen[str]":
-    """Spawn the engine with console-window isolation.
-
-    Keep the engine out of the terminal's Ctrl+C group: the documented stop
-    path is quit -> wait -> terminate, so the engine must stay alive until
-    ``EngineLink.shutdown`` asks it to exit. ``CREATE_NO_WINDOW`` keeps the
-    console-subsystem engine from flashing its own console when the parent is
-    pythonw (the no-console web launcher).
-    """
     isolation: dict[str, Any] = {}
     if os.name == "nt":
         isolation["creationflags"] = (
@@ -123,7 +107,6 @@ class EngineLink:
 
     @property
     def is_started(self) -> bool:
-        """True while a process object exists, even if it already exited."""
         return self._proc is not None
 
     @property
@@ -427,13 +410,6 @@ class EngineLink:
 
 
 def _protocol_message(line: str) -> dict | None:
-    """Return a protocol payload, or None when the line is user/LVGL log output.
-
-    Recognition is strict: a line must be a JSON object carrying the protocol
-    version *and* either ``ready: true`` or a reply shaped as ``seq`` + ``ok``.
-    A user ``printf`` that happens to print a JSON object therefore stays in
-    engine.log instead of being mistaken for a reply.
-    """
     if not line.startswith("{"):
         return None
     try:

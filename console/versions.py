@@ -1,17 +1,3 @@
-"""Read the LVGL version index that ships in ``scripts/meta/versions.json``.
-
-The index is the only version manifest for the tool: supported membership,
-the default version, and the intro / legacy / bundled flags all come from it.
-Consumers that need a different shape (CLI tuples, tag maps, the release
-build order) render it themselves; they must not carry a second copy.
-
-``repo_root`` is optional for tests and for tools that operate on another
-workspace.  When that workspace has no ``scripts/meta/versions.json`` (or the older
-root ``versions.json``), the active package index is used as the fallback, so
-a temporary directory that only contains ``dist/lvgl/<version>`` still resolves
-against the installed tool.
-"""
-
 from __future__ import annotations
 
 import json

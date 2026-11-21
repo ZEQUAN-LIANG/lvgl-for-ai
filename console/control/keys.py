@@ -1,21 +1,3 @@
-"""Key and character tokens accepted by ``Runtime.key`` and ``lvgl-verify-loop-input-v1``.
-
-The ``LV_KEY_*`` table mirrors ``lv_key_t`` in LVGL 9.6's public header
-``include/lvgl/core/lv_group.h``. Names are case-insensitive and may carry the
-``LV_KEY_`` prefix; the canonical name (without prefix, uppercase) is what the
-timeline records. LVGL 9.6 defines no ``LV_KEY_INSERT``, so ``INSERT`` is an
-unknown key.
-
-Text input uses one printable ASCII character per keypress. The stable token
-is ``CHAR_<code>`` (for example ``CHAR_65`` for ``A``); :func:`char_key` builds
-it and :func:`resolve_key` accepts it case-insensitively. Unicode and IME input
-are out of scope.
-
-This table is version-independent: 8.x and every supported 9.x release use the
-same ``lv_key_t`` names and values. Version-specific API differences are
-documented in ``docs/skill/api-nav/``.
-"""
-
 from __future__ import annotations
 
 import re

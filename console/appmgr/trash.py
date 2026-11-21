@@ -1,11 +1,3 @@
-"""App trash lifecycle: soft delete, restore and permanent delete.
-
-A delete moves the app directory and its scenarios under
-``user/.trash/apps/<trash-id>/`` and writes ``meta.json``; restore moves them
-back; purge removes the entry for good.  No shared registry is edited because
-the next build rediscovers apps from ``user/app/<name>/app.json``.
-"""
-
 from __future__ import annotations
 
 import json

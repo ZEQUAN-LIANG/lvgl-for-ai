@@ -1,34 +1,3 @@
-"""Directory-based app discovery and generated C registry.
-
-An app is a directory under ``user/app`` whose sources declare
-``void <name>_create(void)``, where ``<name>`` is the directory name::
-
-    user/app/coffee/coffee_page.c   ->  void coffee_create(void)
-
-The directory name is the app name and the entry symbol is derived from it,
-so a plain app needs no metadata file at all.  A directory that deviates from
-the convention keeps an ``app.json`` next to its sources::
-
-    user/app/xiaohongshu/app.json
-    {"entry": "xhs_page_create"}
-
-A declaration that must hold *across* apps lives in the root metadata file
-``user/app/app.json``; it currently carries only ``default``::
-
-    {"default": "coffee"}
-
-These files register no app list: apps still come from the directories, and
-``default`` is the one fact only the root view can decide.  Builds generate
-``user/app/app_registry.inc`` from the discovered directories, and the fixed
-``user/app/app.c`` entrypoint includes it.  Removing an app directory removes
-it from the next build without touching any shared file.
-
-``scan_apps`` is the tolerant view used by the management console; it returns
-valid entries plus per-directory issues.  ``discover_apps`` is the strict view
-used by builds and exporters: it raises :class:`DiscoveryError` instead of
-silently skipping a malformed metadata file.
-"""
-
 from __future__ import annotations
 
 import json
@@ -82,13 +51,11 @@ def app_directory(apps_dir: str | Path, name: str) -> Path:
 
 
 def metadata_path(apps_dir: str | Path, name: str) -> Path:
-    """Per-app metadata, present only when the app deviates from the rule."""
 
     return app_directory(apps_dir, name) / METADATA_NAME
 
 
 def root_metadata_path(apps_dir: str | Path) -> Path:
-    """Repository-wide declarations shared by every app."""
 
     return Path(apps_dir) / METADATA_NAME
 
@@ -102,13 +69,6 @@ def convention_symbol(name: str) -> str:
 
 
 def matches_entry_convention(directory: str | Path, name: str) -> bool:
-    """True when *directory* declares ``void <name>_create(void)``.
-
-    The pattern requires the return type and the ``(void)`` parameter list, so
-    a comment, a macro name or another app's symbol cannot make a helper
-    directory look like an app.  ``user/app/demo`` only defines
-    ``demo_harness_create`` and ``demo_button_create``, so it stays a helper.
-    """
 
     directory = Path(directory)
     if not directory.is_dir() or directory.is_symlink():
@@ -132,12 +92,6 @@ def matches_entry_convention(directory: str | Path, name: str) -> bool:
 def scan_apps(
     apps_dir: str | Path,
 ) -> tuple[list[AppEntry], list[DiscoveryIssue]]:
-    """Return metadata-declared apps and per-directory issues.
-
-    Directories that neither carry ``app.json`` nor declare the conventional
-    entry symbol (for example ``user/app/demo``) are helpers, not apps, and
-    are ignored.
-    """
 
     root = Path(apps_dir)
     entries: list[AppEntry] = []
@@ -176,7 +130,6 @@ def scan_apps(
 
 
 def discover_apps(apps_dir: str | Path) -> list[AppEntry]:
-    """Strict discovery: fail on malformed metadata or duplicate identities."""
 
     entries, issues = scan_apps(apps_dir)
     if issues:
@@ -196,7 +149,6 @@ def discover_apps(apps_dir: str | Path) -> list[AppEntry]:
 
 
 def default_app_name(apps_dir: str | Path) -> str | None:
-    """Return the app named by ``user/app/app.json``, if any."""
 
     entries, _issues = scan_apps(apps_dir)
     defaults = [entry for entry in entries if entry.default]
@@ -211,7 +163,6 @@ def find_app(apps_dir: str | Path, name: str) -> AppEntry | None:
 
 
 def write_registry(apps_dir: str | Path) -> Path:
-    """Write ``app_registry.inc`` only when its content changes."""
 
     root = Path(apps_dir)
     entries = discover_apps(root)
@@ -252,10 +203,7 @@ def render_registry(entries: list[AppEntry]) -> str:
     return "\n".join(lines)
 
 
-def _read_entry(
-    directory: Path, default_name: str | None
-) -> AppEntry | None:
-    """Build one entry, or ``None`` when the directory is not an app."""
+def _read_entry(directory: Path, default_name: str | None) -> AppEntry | None:
 
     name = directory.name
     metadata = directory / METADATA_NAME
@@ -265,10 +213,11 @@ def _read_entry(
     if not common.NAME_RE.fullmatch(name):
         raise DiscoveryError(
             "app_metadata_invalid",
-            f"app directory name {name!r} must match "
-            "^[a-z][a-z0-9_]{0,31}$",
+            f"app directory name {name!r} must match ^[a-z][a-z0-9_]{{0,31}}$",
         )
-    entry = _read_metadata(metadata) if has_metadata else convention_symbol(name)
+    entry = (
+        _read_metadata(metadata) if has_metadata else convention_symbol(name)
+    )
     return AppEntry(
         name=name,
         entry=entry,

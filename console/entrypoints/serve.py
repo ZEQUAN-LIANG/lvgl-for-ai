@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""Thin launcher for the LVGL session viewer.
-
-    python -I console/entrypoints/serve.py
-
-Serves replay and the live bridge at the fixed default address
-``http://127.0.0.1:8765/``. The HTTP/UI layer lives in ``web``;
-this file only parses flags and starts the server. It works from any working
-directory and does not require a browser to be present.
-"""
 
 from __future__ import annotations
 
@@ -15,7 +6,6 @@ import argparse
 import sys
 from pathlib import Path
 
-# ``python -I`` does not add the script directory to sys.path.
 CONSOLE_ROOT = Path(__file__).resolve().parent.parent
 if str(CONSOLE_ROOT) not in sys.path:
     sys.path.insert(0, str(CONSOLE_ROOT))

@@ -131,7 +131,6 @@ def _decode_c_literal(raw: str) -> str:
 
 
 def scan_c_strings(text: str) -> list[str]:
-    """Return decoded string literals from C source, skipping comments/chars."""
     strings: list[str] = []
     state = "code"
     buffer: list[str] = []

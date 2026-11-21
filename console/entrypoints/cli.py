@@ -1,36 +1,4 @@
 #!/usr/bin/env python3
-"""Thin CLI for the control layer.
-
-    python -I console/entrypoints/cli.py --lvgl 9.6 --record \
-        --scenario user/scenarios/settings.json
-
-Only argument mapping: parse flags, construct ``Runtime``, run
-``play_scenario`` or stay idle, then translate the outcome into exit codes and
-the optional ``--json`` session index. Protocol and evidence files live in
-``control``; this file never speaks the wire protocol itself.
-
-Exit codes: 0 = session finished ok; 1 = build, link or engine crash;
-2 = harness error (bad flags, scenario, protocol, missing engine).
-
-``--no-build`` skips the source build and uses the existing ``build/`` engine;
-the default remains ``--build``. Build mode is automatic: an existing
-``engine/lvgl/<version>`` uses the source build, otherwise ``dist/lvgl/<version>`` is
-used through the prebuilt path; ``--prebuilt`` / ``--source`` override that
-choice. ``--app NAME`` selects
-the user app variant by setting ``LVGL_VERIFY_LOOP_DEMO``; when ``--scenario`` is used and
-the scenario declares ``app``, omitting the flag uses the scenario value.
-A scenario's optional ``display`` object sets the engine width/height; an
-explicit ``--app`` overrides only the app, not that scene's display. A
-scenario's optional ``lvgl`` field selects the version when ``--lvgl`` is
-omitted; explicit ``--lvgl`` wins, then the scenario field, then
-``LVGL_VERIFY_LOOP_LVGL_VERSION``, then the default 9.6.
-
-``--json`` prints exactly one JSON object on stdout. When the session evidence
-is readable it is the same ``lvgl-verify-loop-session-index-v1`` document as
-``session_report.py --json``; otherwise a failed read keeps the original
-``session_id`` / ``manifest_path`` / ``app`` / ``error`` envelope. Diagnostics
-stay on stderr.
-"""
 
 from __future__ import annotations
 
@@ -40,7 +8,6 @@ import sys
 import time
 from pathlib import Path
 
-# ``python -I`` does not add the script directory to sys.path.
 CONSOLE_ROOT = Path(__file__).resolve().parent.parent
 if str(CONSOLE_ROOT) not in sys.path:
     sys.path.insert(0, str(CONSOLE_ROOT))
@@ -64,7 +31,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 try:
     import install_version
-except ModuleNotFoundError:  # packaged skill ships no maintenance scripts
+except ModuleNotFoundError:
     install_version = None
 
 EXIT_OK = 0

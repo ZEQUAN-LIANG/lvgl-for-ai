@@ -1,13 +1,3 @@
-"""Runtime: one LVGL engine process == one session.
-
-The Python layer is the only control layer. This module keeps the public
-actions and lifecycle; :class:`~control.build_plan.BuildPlan` owns
-preflight, configure/build and engine path resolution,
-:class:`~control.engine_link.EngineLink` owns the process and the line
-protocol, and :class:`~control.session.SessionStore` owns the session
-evidence files.
-"""
-
 from __future__ import annotations
 
 import os
@@ -109,35 +99,6 @@ class RuntimeLike(Protocol):
 
 
 class Runtime:
-    """An LVGL engine process and its session directory.
-
-    One instance owns exactly one session; create a new Runtime for another
-    run. ``build=True`` (the default) reconfigures when needed and rebuilds
-    ``lvgl_engine`` before launch; ``build_mode`` is ``auto`` (source when
-    ``lvgl`` exists, otherwise the prebuilt SDK), ``source`` or
-    ``prebuilt``. ``record=True`` keeps frames and records
-    only frames whose pixels differ from the previous retained frame;
-    ``record_changed_only=False`` is an internal test seam that keeps
-    identical frames too. Frame numbers stay contiguous and ``max_frames``
-    counts retained frames. ``live_frame=True``
-    writes an overwritten ``live.rgba`` raw preview for the web stream; it can
-    be combined with ``record=True`` and is never an evidence artifact.
-    ``record=False`` with ``live_frame=True`` keeps only that preview file, so
-    a test session shows frames without recording evidence.
-    ``app`` selects the user app variant by setting ``LVGL_VERIFY_LOOP_DEMO`` for the
-    engine and is recorded in the manifest; ``None`` inherits the environment.
-    ``width``/``height`` set the display size at startup and must be provided
-    together; ``None`` keeps the engine default (800x600) and is recorded from
-    the engine's ``ready`` message.
-    ``window=True`` asks the engine for a Win32 GDI window; real mouse and
-    keyboard input then work alongside the virtual indevs. ``headless`` stays
-    the default, and non-Windows engines fall back to headless.
-
-    Session options are constructor keywords only. ``SessionStore`` owns
-    their values after construction; Runtime exposes just ``app`` / ``mode`` /
-    ``ready`` for the :class:`RuntimeLike` surface.
-    """
-
     def __init__(
         self,
         lvgl: str | None = None,
@@ -582,8 +543,6 @@ class Runtime:
         env = os.environ.copy()
         if self.app is not None:
             env["LVGL_VERIFY_LOOP_DEMO"] = self.app
-        # A multi-version release shares one FreeType DLL in
-        # ``dist/lvgl/common/lib``; Windows finds it through PATH.
         shared_lib = paths.shared_sdk_lib_dir()
         if shared_lib is not None:
             env["PATH"] = str(shared_lib) + os.pathsep + env.get("PATH", "")

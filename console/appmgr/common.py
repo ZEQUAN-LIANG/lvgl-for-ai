@@ -29,14 +29,6 @@ TRASH_ROOT_REL = "user/.trash/apps"
 
 
 class AppError(Exception):
-    """Domain error carrying a code, message and detail.
-
-    HTTP status is intentionally not part of the domain error: the web
-    adapter maps ``code`` to a status. ``status`` stays in the signature only
-    because the committed contract snapshot freezes it; it is accepted and
-    ignored so older callers keep constructing the same object.
-    """
-
     def __init__(
         self,
         code: str,

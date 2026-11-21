@@ -1,14 +1,3 @@
-"""One live Runtime, its raw preview hub, ticker and lifecycle state.
-
-``LiveSession`` is the internal seam for the web live preview. It owns the
-single ``Runtime``, the temporary session root used by test mode, the
-``LiveFrameHub`` and its publisher thread, the selected app, and the
-idle -> starting -> running -> stopping state machine.
-
-It raises :class:`LiveError` (code / message / detail) and carries no HTTP
-semantics; ``WebApp`` maps the code to a status and stays a composition root.
-"""
-
 from __future__ import annotations
 
 import shutil
@@ -31,8 +20,6 @@ RUNNING = "running"
 STOPPING = "stopping"
 LIVE_KINDS = ("record", "test")
 
-# One virtual frame per browser input event. LVGL only reads indevs and draws
-# inside a tick, so the live session must advance time after forwarding input.
 LIVE_INPUT_STEP_MS = 16
 LIVE_TEST_TICK_MS = 33
 LIVE_TEST_INTERVAL_S = 0.033
@@ -83,13 +70,6 @@ def empty_live_status() -> dict[str, Any]:
 
 
 class LiveStream:
-    """A reader bound to the hub of one running live session.
-
-    The handler captures one stream when the response starts. A later
-    session's hub must not take over the same HTTP response, so the binding
-    never follows a restart.
-    """
-
     def __init__(self, hub: LiveFrameHub) -> None:
         self._hub = hub
 
@@ -145,19 +125,12 @@ class LiveSession:
         return self._runtime is not None and bool(self._runtime.is_running)
 
     def _is_active_snapshot(self) -> bool:
-        """Lock-free read for ``GET /``: page rendering must not wait on ticks."""
         if self._state == STARTING:
             return True
         runtime = self._runtime
         return runtime is not None and bool(runtime.is_running)
 
     def selected_app(self, requested: str | None) -> str | None:
-        """Keep the running session authoritative over a URL request.
-
-        Deliberately lock-free: the old page path read the bridge fields
-        directly, so opening a replay page never waited for a live tick or a
-        stop that was finishing the engine.
-        """
         if self._is_active_snapshot():
             return self._app
         return requested or self._app
@@ -170,8 +143,6 @@ class LiveSession:
     def _default_runtime(self) -> RuntimeLike:
         sessions_root = self.sessions_root
         if self._test:
-            # Child processes may be blocked from %TEMP%, so the test root goes
-            # under the sessions root where the engine can already write.
             self.sessions_root.mkdir(parents=True, exist_ok=True)
             self._test_root = Path(
                 tempfile.mkdtemp(prefix=".live-test-", dir=self.sessions_root)
@@ -410,10 +381,6 @@ class LiveSession:
         return stat.st_mtime_ns, stat.st_size
 
     def _start_ticker_locked(self) -> None:
-        """Advance the live runtime and publish raw preview frames.
-
-        The ticker never appends ticks to ``manifest.checks``.
-        """
         self._stop_ticker()
         stop = threading.Event()
         self._ticker_stop = stop
@@ -481,13 +448,6 @@ class LiveSession:
         thread.start()
 
     def _stop_ticker(self) -> None:
-        """Stop and join the ticker; safe to call while holding ``_lock``.
-
-        The ticker's tick section uses the same lock, so a caller holding it
-        cannot race a tick. A ticker waiting for the lock exits as soon as
-        the event is set after it acquires the lock; ``join`` is capped at
-        one second.
-        """
         stop = self._ticker_stop
         thread = self._ticker
         self._ticker_stop = None

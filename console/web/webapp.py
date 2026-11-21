@@ -1,17 +1,3 @@
-"""HTTP/UI adapter for live sessions and recorded evidence.
-
-The server is a thin shell over the Python control layer:
-
-- live start/stop/input/status route through :class:`LiveSession`, which owns
-  the Runtime, raw preview hub, ticker and temporary test-session root;
-- replay reads sessions with ``Recording`` and never starts an engine;
-- annotation writes go through ``annotations.write_note``; this module only
-  resolves the session and maps the domain error code to a status.
-
-There is no second protocol client: this module never reads or writes stdin /
-stdout and never spawns a process.
-"""
-
 from __future__ import annotations
 
 import json
@@ -50,8 +36,6 @@ ANNOTATION_BODY_BYTES = 12 * 1024 * 1024
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 PAGE_HEARTBEAT_TTL_S = 120.0
 PAGE_CLOSE_GRACE_S = 0.5
-# Oversized bodies are drained before the 413: Windows otherwise resets the
-# connection mid-write and hides the response behind ConnectionAbortedError.
 MAX_DRAIN_BYTES = 16 * 1024 * 1024
 FILE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*\.png$")
 PAGE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")

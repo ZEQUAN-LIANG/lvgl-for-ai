@@ -1,21 +1,3 @@
-"""One evidence-to-view-model conversion shared by the page and the JSON API.
-
-``load(recording)`` builds the model the replay page and the ``/api/sessions``
-series render: frame rows numbered from ``timeline.ndjson`` when available,
-snapshot labels, timeline rows, frame and reference diffs, annotation notes,
-log tails and the manifest.
-
-Each evidence file is read at most once and only when the caller first asks for
-it, so the page (which renders every section) reads the same data the JSON
-endpoints do without making single-section endpoints read unrelated files.
-``ReplayModel.prime()`` reads every section the page renders, keeping the old
-"one bad file degrades the whole page" behaviour at the same point.
-
-Missing or corrupt optional evidence degrades to the empty values the page has
-always displayed; the original error stays on the model for the endpoints that
-used to raise it.
-"""
-
 from __future__ import annotations
 
 from functools import cached_property

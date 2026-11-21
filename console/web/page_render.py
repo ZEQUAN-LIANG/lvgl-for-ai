@@ -1,16 +1,3 @@
-"""Server-rendered HTML for session replay and the live controls.
-
-Everything technical (manifest, checks, raw diffs, engine.log, build.log) is
-rendered inside collapsed ``<details>`` blocks. The visible page only shows
-the frames, snapshots, timeline, annotations and the optional read-only diff
-overlay.
-
-The evidence-to-view conversion lives in :mod:`replay_model`; this module only
-turns that one model into markup.  Notes therefore have exactly one renderer
-(:func:`_render_notes`): the browser replaces the rendered list with the same
-markup after a save instead of rebuilding note fields itself.
-"""
-
 from __future__ import annotations
 
 import html

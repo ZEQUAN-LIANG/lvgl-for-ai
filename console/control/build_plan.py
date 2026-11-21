@@ -1,17 +1,3 @@
-"""BuildPlan: preflight, configure, build and engine path resolution.
-
-One plan is one LVGL version's source build. It resolves the LVGL source tree,
-build directory and user app directories, decides whether the CMake cache still
-matches, and runs configure/build into ``build.log`` text with typed
-:class:`~control.errors.BuildError` /
-:class:`~control.errors.LinkError` failures.
-
-:class:`~control.runtime.Runtime` uses :meth:`BuildPlan.execute` for the
-whole flow; the phase methods remain available for callers that need their own
-failure mapping. Both share command construction, the cache check and engine
-path resolution.
-"""
-
 from __future__ import annotations
 
 import os
@@ -128,8 +114,6 @@ class BuildPlan:
         self._compiler = None if compiler is None else str(compiler)
         self._compiler_version = compiler_version
         self._prebuilt: PrebuiltBuild | None = None
-        # An explicit build command is an embedding/test toolchain and always
-        # uses the source-plan execution path.
         self.mode = self._select_mode(build_mode)
         if self._build_explicit:
             self.mode = "source"
@@ -274,8 +258,6 @@ class BuildPlan:
                 ensure_engine_stopped(self.build_dir / paths.engine_filename())
                 marker = self.build_dir / PREBUILT_MARKER
                 if marker.is_file():
-                    # A prebuilt engine is newer than the CMake objects; remove
-                    # it so Ninja actually relinks the source build.
                     marker.unlink()
                     engine = self.built_engine_path
                     if engine.is_file():

@@ -1,15 +1,3 @@
-"""Raw framebuffer frames for the web live preview.
-
-The C engine writes the transient ``live.rgba`` file; the live ticker reads
-it and publishes immutable frames here. HTTP stream handlers only touch this
-hub, never the engine process or the line protocol.
-
-Wire frame: ``<4sIIII>`` = magic ``LVFR``, width, height, frame number and
-virtual time in milliseconds (little-endian), followed by width * height * 4
-RGBA bytes. ``frame number`` is the hub publish sequence so it keeps growing
-even after recording reaches ``max_frames``.
-"""
-
 from __future__ import annotations
 
 import threading

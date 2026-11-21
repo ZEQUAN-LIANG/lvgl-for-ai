@@ -1,12 +1,3 @@
-"""The ``lvgl-verify-loop-session-index-v1`` query plan.
-
-``session_index`` is the single read-only entry point shared by the session
-report tool and the CLI JSON output. It returns counts, addresses and next
-steps, not the full timeline: each raw file keeps its size and row count so a
-reader can decide whether to open it. The index never starts an engine or the
-web server and never judges the picture.
-"""
-
 from __future__ import annotations
 
 import json

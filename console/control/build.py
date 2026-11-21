@@ -1,9 +1,3 @@
-"""CMake/Ninja configure + build, with GCC diagnostics parsing.
-
-The tool never decides whether a UI is correct; it only reports which layer
-failed. Build output is kept verbatim in ``build.log``.
-"""
-
 from __future__ import annotations
 
 import os
@@ -91,8 +85,6 @@ def run_capture(
     env: Mapping[str, str] | None = None,
 ) -> BuildResult:
     start = time.perf_counter()
-    # cmake/ninja are console programs; when the web runs under pythonw this
-    # stops each incremental build from flashing a console window.
     flags: dict[str, object] = {}
     if os.name == "nt":
         flags["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -216,8 +208,6 @@ def needs_configure(
     libpng_src: Path | None = None,
 ) -> bool:
     cache_path = build_dir / "CMakeCache.txt"
-    # A failed configure can leave CMakeCache.txt without build.ninja; always
-    # reconfigure in that case instead of letting ninja fail on a missing file.
     if not cache_path.is_file() or not (build_dir / "build.ninja").is_file():
         return True
     expected = {
@@ -230,8 +220,6 @@ def needs_configure(
         "LVGL_VERIFY_LOOP_LIBPNG_SRC": (
             libpng_src if libpng_src is not None else paths.libpng_src()
         ),
-        # Moving the checkout leaves the LVGL_VERIFY_LOOP_* values unchanged, but the
-        # generated build files still embed the old engine directory.
         "CMAKE_HOME_DIRECTORY": paths.ENGINE_DIR
         if engine_dir is None
         else engine_dir,
