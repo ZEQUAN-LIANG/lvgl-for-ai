@@ -547,8 +547,11 @@ class CliRealEngineIntegrationTest(unittest.TestCase):
 
     def test_cli_scenario_timeline_matches_the_library_path(self) -> None:
         library_root = self.root / "library"
+        # The CLI takes the app from the scenario; this library call has to
+        # select the same one explicitly for the timelines to be comparable.
         rt = Runtime(
             lvgl="9.6",
+            app="test_ui",
             build=True,
             record_changed_only=True,
             sessions_root=library_root,

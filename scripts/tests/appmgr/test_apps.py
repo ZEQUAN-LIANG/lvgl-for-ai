@@ -214,10 +214,12 @@ class AppDomainTest(unittest.TestCase):
         broken = self.root / "user/app/broken"
         broken.mkdir()
         (broken / "app.json").write_text("{", encoding="utf-8")
-        harness = self.root / "user/app/demo"
-        harness.mkdir()
-        (harness / "panel.c").write_text(
-            "void demo_harness_create(void) {}\n", encoding="utf-8"
+        # A directory without the conventional entry symbol is a helper,
+        # not an app, and must not show up as an orphan.
+        helper = self.root / "user/app/helper"
+        helper.mkdir()
+        (helper / "helper_util.c").write_text(
+            "void helper_util_setup(void) {}\n", encoding="utf-8"
         )
         self._write_scenario("ghost", "ghost")
 
@@ -234,7 +236,7 @@ class AppDomainTest(unittest.TestCase):
         orphan_paths = {entry["path"] for entry in payload["orphans"]}
         self.assertIn("user/app/broken", orphan_paths)
         self.assertIn("user/scenarios/ghost.json", orphan_paths)
-        self.assertNotIn("user/app/demo", orphan_paths)
+        self.assertNotIn("user/app/helper", orphan_paths)
         self.assertNotIn("user/app/plain", orphan_paths)
 
         view = app_domain.app_tree(self.root, "hello")

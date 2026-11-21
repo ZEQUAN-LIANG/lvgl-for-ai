@@ -220,6 +220,7 @@ class BuildFailureSessionTest(unittest.TestCase):
     def _runtime(self) -> Runtime:
         return Runtime(
             lvgl="9.6",
+            app="test_ui",
             build=True,
             record_changed_only=False,
             sessions_root=self.sessions_root,
@@ -558,6 +559,7 @@ class RecordFalseIntegrationTest(unittest.TestCase):
     def test_record_false_writes_no_frames_timeline_or_diffs(self) -> None:
         runtime = Runtime(
             lvgl="9.6",
+            app="test_ui",
             build=True,
             record=False,
             sessions_root=self.sessions_root,
@@ -661,7 +663,10 @@ class MaxFramesIntegrationTest(unittest.TestCase):
 
     def test_engine_reports_the_default_600_frame_cap(self) -> None:
         runtime = Runtime(
-            lvgl="9.6", build=True, sessions_root=self.sessions_root
+            lvgl="9.6",
+            app="test_ui",
+            build=True,
+            sessions_root=self.sessions_root,
         )
         self.addCleanup(runtime.stop)
         runtime.start()
@@ -674,6 +679,7 @@ class MaxFramesIntegrationTest(unittest.TestCase):
     def test_cap_stops_frames_but_time_and_commands_keep_working(self) -> None:
         runtime = Runtime(
             lvgl="9.6",
+            app="test_ui",
             build=True,
             record_changed_only=False,
             sessions_root=self.sessions_root,
@@ -700,7 +706,7 @@ class MaxFramesIntegrationTest(unittest.TestCase):
 
         pointer = runtime.pointer("down", *BUTTON_CENTER)
         self.assertEqual(pointer["frames"], 3)
-        self.assertEqual(pointer["hit"], "demo_button")
+        self.assertEqual(pointer["hit"], "test_ui_button")
         runtime.mark("after_cap")
         snapshot = runtime.snapshot("after_cap")
         self.assertTrue((runtime.session_dir / snapshot["file"]).is_file())

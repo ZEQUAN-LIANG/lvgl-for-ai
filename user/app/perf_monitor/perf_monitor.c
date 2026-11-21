@@ -1,6 +1,6 @@
 #include "perf_monitor.h"
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #include "app.h"
 
@@ -1122,7 +1122,7 @@ static void update_ui(void)
 
     for(int i = 0; i < PERF_THREADS; i++) {
         bool visible = (unsigned)i < thread_count;
-        lv_obj_set_hidden(s_ui.thread_track[i], !visible);
+        app_obj_set_hidden(s_ui.thread_track[i], !visible);
         if(!visible) continue;
 
         lv_obj_set_pos(s_ui.thread_track[i],

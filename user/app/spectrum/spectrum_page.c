@@ -1,11 +1,12 @@
 
+#include "app.h"
 #include "spectrum.h"
 
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #define SP_TEXT      0xE8F6FF
 #define SP_DIM       0x7E91B8
@@ -870,7 +871,7 @@ void spectrum_create(void)
     lv_obj_set_style_bg_grad_color(screen,
                                    lv_color_hex(spectrum_palette()->bg0), 0);
     lv_obj_set_style_bg_grad_dir(screen, LV_GRAD_DIR_VER, 0);
-    lv_obj_set_scrollable(screen, false);
+    app_obj_set_scrollable(screen, false);
     lv_obj_set_scrollbar_mode(screen, LV_SCROLLBAR_MODE_OFF);
 
     build_center(screen);

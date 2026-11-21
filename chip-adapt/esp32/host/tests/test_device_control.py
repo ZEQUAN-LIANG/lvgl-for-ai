@@ -45,7 +45,7 @@ class DeviceControllerTest(unittest.TestCase):
         info = self.device.sys_info()
         self.assertEqual(info["chip"], "ESP32-C6")
         self.assertEqual(info["flash"], "4MB")
-        self.assertEqual(info["app"], "c6_demo")
+        self.assertEqual(info["app"], "perf_monitor")
         self.assertEqual(info["page"], "home")
 
     def test_wifi_scan_and_connect(self) -> None:

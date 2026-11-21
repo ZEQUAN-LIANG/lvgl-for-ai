@@ -1,6 +1,6 @@
 #include "zombie_cannon.h"
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #include "app.h"
 #include "sift_watch/game/zc_game.h"

@@ -5,7 +5,7 @@
 递归收集并全部编译，不需要注册表，也不需要写 `main`。
 
 > 发布包只带 `intro/` 一个应用；它同时是默认介绍页和默认模板。下表中的 coffee、
-> xiaohongshu、spectrum、sift_watch、zombie_cannon、c6_demo、perf_monitor、
+> xiaohongshu、spectrum、sift_watch、zombie_cannon、perf_monitor、test_ui、
 > textarea_evidence 仅存在于开发仓库。
 
 ## 应用分类
@@ -14,12 +14,13 @@
 
 | 类别 | 应用 | 用途 |
 |---|---|---|
-| 示例应用 | `coffee`、`xiaohongshu`、`spectrum`、`sift_watch`、`zombie_cannon`、`c6_demo`、`perf_monitor` | 演示完整界面与交互；优先从这里学写法 |
-| 工具自测应用 | `asset_probe`、`textarea_evidence`、`demo/` | 资源转换探针、文本输入证据与旧版本 harness；集成测试依赖，不要随意改 |
+| 示例应用 | `coffee`、`xiaohongshu`、`spectrum`、`sift_watch`、`zombie_cannon`、`perf_monitor` | 演示完整界面与交互；优先从这里学写法 |
+| 工具自测应用 | `test_ui`、`textarea_evidence` | 集成测试靶子（面板 + 按键 + 焦点组）与文本输入证据；不要随意改 |
 | 发布应用 | `intro` | 发布包唯一应用，同时是默认介绍页与模板 |
 
-`demo/` 只有 `demo_harness_create` / `demo_button_create`，没有 `demo_create`，
-因此不会被应用发现；它由 `app_create` 在 LVGL 9.1 / 8.x 或集成测试路径下直接挂载。
+`test_ui` 是普通应用，与其它应用一样由目录发现、用 `--app test_ui` 或场景的
+`"app"` 字段选择；它**不会**被挂到别的应用上。集成测试用它做命中靶子
+（按键在 (32,300)，中心 (112,324)），`settings.json` 因此声明了 `"app": "test_ui"`。
 
 ## 应用变体（app）
 
@@ -29,16 +30,20 @@
 
 | 应用 | 界面 | 版本 |
 |---|---|---|
-| `coffee`（开发仓库默认） | AURELIA C9 咖啡机 | 9.6 |
-| `xiaohongshu` | 小红书复刻 | 9.6 |
-| `spectrum` | ORBITAL 频谱播放器 | 9.6 |
-| `sift_watch` | 手表 OS，含 ZOMBIE 无尽尸潮 | 9.6 / 导出 9.4 |
-| `zombie_cannon` | 390x460 无尽尸潮独立预览 | 9.6 |
-| `c6_demo` | 172x320 ESP32-C6 无触摸板三页演示 | 9.6 |
-| `perf_monitor` | 172x320 / 320x172 性能监控 + 串口布局切换 | 9.6 |
-| `intro` | 项目介绍页，发布包唯一应用与默认模板 | 发布包 9.4+ / 开发仓库 9.6 |
-| `asset_probe`、`textarea_evidence` | 工具自测（资源探针、文本输入证据） | 9.6（`asset_probe` 另含 9.1 / 8.x） |
-| 9.1 / 8.x | 忽略选择，显示 `demo/` 的 harness | 9.1 / 8.x |
+| `coffee`（开发仓库默认） | AURELIA C9 咖啡机 | 9.4+ |
+| `xiaohongshu` | 小红书复刻 | 9.4+ |
+| `spectrum` | ORBITAL 频谱播放器 | 9.4+ |
+| `sift_watch` | 手表 OS，含 ZOMBIE 无尽尸潮 | 9.4+ / 导出 9.4 |
+| `zombie_cannon` | 390x460 无尽尸潮独立预览 | 9.4+ |
+| `perf_monitor` | 172x320 / 320x172 性能监控 + 串口布局切换 | 9.4+ |
+| `intro` | 项目介绍页，发布包唯一应用与默认模板 | 发布包 9.4+ / 开发仓库 9.4+ |
+| `test_ui`、`textarea_evidence` | 工具自测（集成测试靶子、文本输入证据） | 9.4+ |
+| 9.1 / 8.x | 无应用发现，只显示空屏 | 9.1 / 8.x |
+
+9.4 及以上都能选应用；9.1 与 8.x 没有目录发现注册表（`app.c` 的注册表门是 9.4），
+所以既不显示应用也不挂任何测试界面。写跨版本应用时按 **9.4 基线**，用 `app.h` 的
+`app_obj_set_*` / `app_obj_is_hidden` 包装代替 9.6 才有的 `lv_obj_set_clickable`
+等专用 setter。
 
 未知应用名会打印 `[app] apps=...` 后让 engine 退出，避免悄悄跑错界面。
 
@@ -123,4 +128,5 @@ python -I scripts/new_app.py <name>             # 生成目录、源文件和场
 - `manifest.json` 的 `app` 字段记录本次会话选择的应用（未指定时为 `null`），
   `display` 记录实际宽高（启动失败时为 `null`）。
 - `engine.log` 中 `[app] apps=...` 列出已实现的应用，`[app] app=...` 记录本次选择。
-- `settings.json` 不声明 `app`，走用户代码默认值，并保留隐藏的 `demo_button` 供工具测试使用。
+- `settings.json` 声明 `"app": "test_ui"`：它点 (112,324) 命中该应用的按键，
+  是集成测试与旧版本发布冒烟共用的场景。

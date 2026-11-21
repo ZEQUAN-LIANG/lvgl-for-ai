@@ -1,7 +1,8 @@
 
+#include "app.h"
 #include "coffee_ui.h"
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #include <stdio.h>
 
@@ -136,7 +137,7 @@ lv_obj_t * coffee_favorites_create(lv_obj_t * parent)
     subtitle =
         coffee_label_at(page, "", COFFEE_FT_13, COFFEE_MUTED, 20, 48, 360, 18);
     grid = coffee_box(page, 0, 80, COFFEE_PAGE_W, COFFEE_PAGE_H - 80);
-    lv_obj_set_scrollable(grid, true);
+    app_obj_set_scrollable(grid, true);
     lv_obj_set_scroll_dir(grid, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(grid, LV_SCROLLBAR_MODE_OFF);
     coffee_favorites_refresh();

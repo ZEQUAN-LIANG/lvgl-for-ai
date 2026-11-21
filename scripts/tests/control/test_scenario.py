@@ -259,7 +259,7 @@ class ScenarioValidationTest(unittest.TestCase):
 
     def test_unknown_step_type_is_rejected(self) -> None:
         self.assert_scenario_error(
-            [{"type": "toggle", "id": "demo_button"}], "type"
+            [{"type": "toggle", "id": "test_ui_button"}], "type"
         )
 
     def test_key_step_rejects_unknown_key_with_step_index(self) -> None:
@@ -423,7 +423,7 @@ class ScenarioFileTest(unittest.TestCase):
     def test_unknown_top_level_field_is_rejected(self) -> None:
         path = scenario_file(self.root, [{"type": "wait", "ms": 16}])
         data = json.loads(path.read_text(encoding="utf-8"))
-        data["target"] = "demo_button"
+        data["target"] = "test_ui_button"
         path.write_text(json.dumps(data), encoding="utf-8")
         with self.assertRaises(ScenarioError) as caught:
             play_scenario(self.runtime, path)
@@ -716,6 +716,7 @@ class SettingsScenarioIntegrationTest(unittest.TestCase):
     def test_settings_scenario_runs_on_the_real_engine(self) -> None:
         rt = Runtime(
             lvgl="9.6",
+            app="test_ui",
             build=True,
             record_changed_only=False,
             sessions_root=self.sessions_root,
@@ -788,10 +789,15 @@ class SettingsScenarioIntegrationTest(unittest.TestCase):
         for row in snapshots:
             self.assertTrue((recording.path / row["file"]).is_file())
         self.assertEqual(len(recording.frames), 9)
-        self.assertIn("[app] demo_button clicked", recording.log())
+        self.assertIn("[app] test_ui_button clicked", recording.log())
 
     def test_drag_interval_ms_advances_timeline_input_t_ms(self) -> None:
-        rt = Runtime(lvgl="9.6", build=True, sessions_root=self.sessions_root)
+        rt = Runtime(
+            lvgl="9.6",
+            app="test_ui",
+            build=True,
+            sessions_root=self.sessions_root,
+        )
         self.addCleanup(rt.stop)
         rt.start()
         path = scenario_file(
@@ -826,6 +832,7 @@ class SettingsScenarioIntegrationTest(unittest.TestCase):
         def play(source, name: str) -> list[dict]:
             rt = Runtime(
                 lvgl="9.6",
+                app="test_ui",
                 build=True,
                 sessions_root=self.sessions_root / name,
             )

@@ -28,6 +28,8 @@ void app_create(void)
     printf("[app] app=%s\n", app->name);
     app->create();
 #else
-    printf("[app] app=harness (LVGL < 9.4)\n");
+    /* Below 9.4 there is no directory-discovery registry, so the packaged
+     * engine shows an empty screen. */
+    printf("[app] app=none (LVGL < 9.4)\n");
 #endif
 }

@@ -106,10 +106,10 @@ class PublicSurfaceTest(unittest.TestCase):
 class DiscoverySeamTest(_TempRepo):
     def test_directories_without_metadata_are_not_apps(self) -> None:
         self._add_app("hello")
-        helper = self.root / "user" / "app" / "demo"
+        helper = self.root / "user" / "app" / "helper"
         helper.mkdir()
-        (helper / "panel.c").write_text(
-            "void app_panel_create(void) {}\n", encoding="utf-8"
+        (helper / "helper_util.c").write_text(
+            "void helper_util_setup(void) {}\n", encoding="utf-8"
         )
         entries, issues = discovery.scan_apps(self.root / "user" / "app")
         self.assertEqual([entry.name for entry in entries], ["hello"])
@@ -176,10 +176,10 @@ class DiscoverySeamTest(_TempRepo):
         self,
     ) -> None:
         self._add_app("plain")
-        helper = self.root / "user" / "app" / "demo"
+        helper = self.root / "user" / "app" / "helper"
         helper.mkdir()
-        (helper / "demo_compat.c").write_text(
-            "void demo_harness_create(bool visible) {}\n", encoding="utf-8"
+        (helper / "helper_util.c").write_text(
+            "void helper_util_setup(bool visible) {}\n", encoding="utf-8"
         )
         entries, issues = discovery.scan_apps(self.root / "user" / "app")
         self.assertEqual(issues, [])

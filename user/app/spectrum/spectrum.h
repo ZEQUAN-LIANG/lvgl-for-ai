@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #define SPECTRUM_SCREEN_W      800
 #define SPECTRUM_SCREEN_H      600

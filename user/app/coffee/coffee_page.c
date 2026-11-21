@@ -1,7 +1,8 @@
 
+#include "app.h"
 #include "coffee_ui.h"
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #include <stdio.h>
 
@@ -118,12 +119,12 @@ void coffee_toggle_standby(void)
     coffee_state.standby = !coffee_state.standby;
     if(coffee_state.standby) {
         coffee_log("standby=on");
-        lv_obj_set_hidden(standby_layer, false);
+        app_obj_set_hidden(standby_layer, false);
         lv_obj_move_foreground(standby_layer);
     }
     else {
         coffee_log("standby=off");
-        lv_obj_set_hidden(standby_layer, true);
+        app_obj_set_hidden(standby_layer, true);
         coffee_toast(COFFEE_TXT_TOAST_WAKE);
     }
 }
@@ -163,7 +164,7 @@ static void build_backdrop(lv_obj_t * screen)
     lv_obj_set_style_bg_grad_dir(screen, LV_GRAD_DIR_VER, 0);
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
     lv_obj_set_style_pad_all(screen, 0, 0);
-    lv_obj_set_scrollable(screen, false);
+    app_obj_set_scrollable(screen, false);
 
     lv_obj_t * glow = coffee_box(screen, -180, -220, 560, 560);
     lv_obj_set_style_radius(glow, LV_RADIUS_CIRCLE, 0);
@@ -336,7 +337,7 @@ void coffee_create(void)
     dim_layer = coffee_box(screen, 0, 0, COFFEE_SCREEN_W, COFFEE_SCREEN_H);
     lv_obj_set_style_bg_color(dim_layer, lv_color_hex(0x000000), 0);
     lv_obj_set_style_bg_opa(dim_layer, 0, 0);
-    lv_obj_set_clickable(dim_layer, false);
+    app_obj_set_clickable(dim_layer, false);
     coffee_dim_overlay_set(dim_layer);
 
     coffee_show_page(COFFEE_PAGE_HOME);

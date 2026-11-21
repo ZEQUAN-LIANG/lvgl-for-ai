@@ -20,7 +20,7 @@ class ChangedFramesTest(unittest.TestCase):
         options = {
             "lvgl": "9.6",
             "build": True,
-            "app": "coffee",
+            "app": "test_ui",
             "sessions_root": self.sessions_root,
         }
         options.update(kwargs)

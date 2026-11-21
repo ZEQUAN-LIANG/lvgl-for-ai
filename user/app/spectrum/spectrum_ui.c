@@ -1,11 +1,12 @@
 
+#include "app.h"
 #include "spectrum.h"
 
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #include "spectrum_assets.h"
 
@@ -216,8 +217,8 @@ lv_obj_t * spectrum_box(lv_obj_t * parent, int x, int y, int w, int h)
     lv_obj_set_style_radius(obj, 0, 0);
     lv_obj_set_style_border_width(obj, 0, 0);
     lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, 0);
-    lv_obj_set_scrollable(obj, false);
-    lv_obj_set_clickable(obj, false);
+    app_obj_set_scrollable(obj, false);
+    app_obj_set_clickable(obj, false);
     lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_OFF);
     return obj;
 }
@@ -249,7 +250,7 @@ lv_obj_t * spectrum_label_align(lv_obj_t * parent, const char * text,
         (font == SPECTRUM_FONT_MONO_7 || font == SPECTRUM_FONT_MONO_8) ? 1 : 0,
         0);
     lv_obj_set_style_pad_all(label, 0, 0);
-    lv_obj_set_clickable(label, false);
+    app_obj_set_clickable(label, false);
     return label;
 }
 
@@ -270,7 +271,7 @@ void spectrum_set_icon(lv_obj_t * image, spectrum_icon_id_t icon, int size,
     lv_obj_set_size(image, 28, 28);
     lv_obj_set_style_image_recolor(image, lv_color_hex(color), 0);
     lv_obj_set_style_image_recolor_opa(image, LV_OPA_COVER, 0);
-    lv_obj_set_clickable(image, false);
+    app_obj_set_clickable(image, false);
 }
 
 lv_obj_t * spectrum_icon_obj(lv_obj_t * parent, spectrum_icon_id_t icon, int x,
@@ -283,13 +284,13 @@ lv_obj_t * spectrum_icon_obj(lv_obj_t * parent, spectrum_icon_id_t icon, int x,
     lv_obj_set_pos(image, x - (28 - size) / 2, y - (28 - size) / 2);
     lv_obj_set_style_image_recolor(image, lv_color_hex(color), 0);
     lv_obj_set_style_image_recolor_opa(image, LV_OPA_COVER, 0);
-    lv_obj_set_clickable(image, false);
+    app_obj_set_clickable(image, false);
     return image;
 }
 
 void spectrum_clickable(lv_obj_t * obj, const char * name)
 {
-    lv_obj_set_clickable(obj, true);
+    app_obj_set_clickable(obj, true);
     lv_obj_set_name(obj, name);
 }
 

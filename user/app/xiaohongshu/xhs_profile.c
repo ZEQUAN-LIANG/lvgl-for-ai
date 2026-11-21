@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 static const char * const profile_tabs[3] = {
     XHS_TXT_PROFILE_NOTES,

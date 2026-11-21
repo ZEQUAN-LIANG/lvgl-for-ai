@@ -35,7 +35,12 @@ class RuntimeIntegrationTest(unittest.TestCase):
     def test_start_writes_ready_session_manifest_logs_and_first_frame(
         self,
     ) -> None:
-        rt = Runtime(lvgl="9.6", build=True, sessions_root=self.sessions_root)
+        rt = Runtime(
+            lvgl="9.6",
+            app="test_ui",
+            build=True,
+            sessions_root=self.sessions_root,
+        )
         self.addCleanup(rt.stop)
         rt.start()
 
@@ -90,8 +95,8 @@ class RuntimeIntegrationTest(unittest.TestCase):
 
         log_text = engine_log.read_text(encoding="utf-8")
         self.assertIn("[app] app_create", log_text)
+        self.assertIn("[app] app=test_ui", log_text)
         self.assertIn("[app] panel_create", log_text)
-        self.assertIn("[demo_asset]", log_text)
 
         rt.stop()
         self.assertFalse(rt.is_running)

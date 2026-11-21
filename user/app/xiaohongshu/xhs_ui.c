@@ -1,7 +1,8 @@
 
+#include "app.h"
 #include "xhs_ui.h"
 
-#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 6
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 4
 
 #include "xhs_assets.h"
 
@@ -182,8 +183,8 @@ lv_obj_t * xhs_box(lv_obj_t * parent, int x, int y, int w, int h)
     lv_obj_set_style_radius(obj, 0, 0);
     lv_obj_set_style_pad_all(obj, 0, 0);
     lv_obj_set_style_shadow_opa(obj, LV_OPA_TRANSP, 0);
-    lv_obj_set_scrollable(obj, false);
-    lv_obj_set_clickable(obj, false);
+    app_obj_set_scrollable(obj, false);
+    app_obj_set_clickable(obj, false);
     return obj;
 }
 
@@ -194,7 +195,7 @@ lv_obj_t * xhs_label(lv_obj_t * parent, const char * text, xhs_font_id_t font,
     lv_label_set_text(label, text);
     lv_obj_set_style_text_font(label, xhs_font(font), 0);
     lv_obj_set_style_text_color(label, lv_color_hex(color), 0);
-    lv_obj_set_scrollable(label, false);
+    app_obj_set_scrollable(label, false);
     return label;
 }
 
@@ -213,8 +214,8 @@ lv_obj_t * xhs_image(lv_obj_t * parent, xhs_icon_id_t icon, int x, int y)
     lv_obj_t * image = lv_image_create(parent);
     lv_image_set_src(image, xhs_icon(icon));
     lv_obj_set_pos(image, x, y);
-    lv_obj_set_scrollable(image, false);
-    lv_obj_set_clickable(image, false);
+    app_obj_set_scrollable(image, false);
+    app_obj_set_clickable(image, false);
     return image;
 }
 
@@ -238,8 +239,8 @@ lv_obj_t * xhs_cover_thumb(lv_obj_t * parent, int cover_index, int x, int y,
     lv_image_set_src(image, src);
     lv_image_set_scale(image, (uint32_t)(LV_SCALE_NONE * scale / 100));
     lv_obj_set_pos(image, (w - src_w) / 2, (h - src_h) / 2);
-    lv_obj_set_scrollable(image, false);
-    lv_obj_set_clickable(image, false);
+    app_obj_set_scrollable(image, false);
+    app_obj_set_clickable(image, false);
     return thumb;
 }
 
@@ -255,8 +256,8 @@ lv_obj_t * xhs_cover_scaled(lv_obj_t * parent, int cover_index, int scale_pct,
     lv_image_set_src(image, src);
     lv_image_set_scale(image, (uint32_t)(LV_SCALE_NONE * scale_pct / 100));
     lv_obj_set_pos(image, center_x - src_w / 2, top_y + (drawn_h - src_h) / 2);
-    lv_obj_set_scrollable(image, false);
-    lv_obj_set_clickable(image, false);
+    app_obj_set_scrollable(image, false);
+    app_obj_set_clickable(image, false);
     return image;
 }
 
@@ -295,9 +296,9 @@ lv_obj_t * xhs_page(lv_obj_t * parent)
     lv_obj_set_style_border_width(page, 0, 0);
     lv_obj_set_style_radius(page, 0, 0);
     lv_obj_set_style_pad_all(page, 0, 0);
-    lv_obj_set_scrollable(page, false);
-    lv_obj_set_clickable(page, true);
-    lv_obj_set_hidden(page, true);
+    app_obj_set_scrollable(page, false);
+    app_obj_set_clickable(page, true);
+    app_obj_set_hidden(page, true);
     return page;
 }
 
@@ -311,8 +312,8 @@ lv_obj_t * xhs_root_page(lv_obj_t * parent)
     lv_obj_set_style_border_width(page, 0, 0);
     lv_obj_set_style_radius(page, 0, 0);
     lv_obj_set_style_pad_all(page, 0, 0);
-    lv_obj_set_scrollable(page, false);
-    lv_obj_set_clickable(page, true);
+    app_obj_set_scrollable(page, false);
+    app_obj_set_clickable(page, true);
     return page;
 }
 
@@ -333,7 +334,7 @@ lv_obj_t * xhs_scroll(lv_obj_t * parent, int x, int y, int w, int h)
 
 void xhs_clickable(lv_obj_t * obj, const char * name)
 {
-    lv_obj_set_clickable(obj, true);
+    app_obj_set_clickable(obj, true);
     if(name != NULL) {
         lv_obj_set_name(obj, name);
     }
@@ -341,7 +342,7 @@ void xhs_clickable(lv_obj_t * obj, const char * name)
 
 void xhs_set_hidden(lv_obj_t * obj, bool hidden)
 {
-    lv_obj_set_hidden(obj, hidden);
+    app_obj_set_hidden(obj, hidden);
 }
 
 void xhs_back_event_cb(lv_event_t * event)
