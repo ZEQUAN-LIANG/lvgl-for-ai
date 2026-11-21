@@ -515,6 +515,17 @@ def _request(
         raise CheckError(f"GET {url.split('?', 1)[0]} failed: {exc}") from exc
 
 
+def _gitee_asset_names(payload: Any) -> set[str]:
+    names: set[str] = set()
+    if not isinstance(payload, dict):
+        return names
+    for key in ("assets", "attach_files"):
+        for item in payload.get(key) or []:
+            if isinstance(item, dict) and item.get("name"):
+                names.add(str(item["name"]))
+    return names
+
+
 def stage_remote(version: str) -> dict[str, Any]:
     errors: list[str] = []
     tag = f"v{version}"
@@ -534,10 +545,7 @@ def stage_remote(version: str) -> dict[str, Any]:
             payload = _request(url, headers={"User-Agent": USER_AGENT})
             releases["gitee"] = {
                 "url": f"https://gitee.com/{GITEE_REPO}/releases/tag/{tag}",
-                "assets": sorted(
-                    item.get("name", "")
-                    for item in (payload or {}).get("attach_files") or []
-                ),
+                "assets": sorted(_gitee_asset_names(payload)),
             }
         except CheckError as exc:
             errors.append(f"gitee: {exc}")
