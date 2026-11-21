@@ -138,7 +138,8 @@ python -I chip-adapt/sifli/host/tests/run_tests.py
 - `user/scenarios/`：场景 JSON；工具层不写死应用名，应用列表来自 `user/app/` 的目录发现和 `user/scenarios/*.json` 的 `app` 字段。
 - `docs/`：`skill/SKILL.md` 与 `skill/api-nav/`（每版本 API 导航）、`licenses/`（第三方许可）、`assets/docs.css`；SiFli 能力索引在 `chip-adapt/docs/sifli.html`。
 - `chip-adapt/sifli/`：SiFli 导出适配层。`chip-adapt/README.md` 是区域路由，`chip-adapt/sifli/README.md` 是适配层入口；`chip-adapt/vendor/` 是外部下载物（只读，清单见其 README）；`chip-adapt/exports/` 是导出生成物。`chip-adapt/sifli/export.py` 把 `user/app` 按 LVGL 9.4 基线导出到 `chip-adapt/exports/<app>/`；共享源码仍以 `user/app` 为唯一真源。
-- `chip-adapt/sifli/host/`：黄山派串口 + 烧录上位机，用法见其 README；双击入口是 `chip-adapt/sifli/tools/SiFli-Host.exe`。
+- `chip-adapt/sifli/host/`：黄山派串口 + 烧录上位机，用法见其 README；双击入口是 `chip-adapt/sifli/launcher/SiFli-Host.exe`。
+- `chip-adapt/esp32/host/`：ESP32-C6 串口/Wi-Fi/蓝牙上位机与烧录入口，用法见其 README；PERF TAPE 面板在 `host/perf/perf_gui.py`，双击入口是 `chip-adapt/esp32/launcher/PerfTape.exe`（等价于 `python -I chip-adapt/esp32/host/launch.py`）。
 - `engine/lvgl/<version>/`：LVGL 源码，不进 Git；用 `fetch_lvgl.py` 下载。要改 LVGL 时把 unified diff 放进 `engine/lvgl/patches/<version>/`，由 `fetch_lvgl.py` 应用；不要直接修改已安装的源码树。
 - `dist/lvgl/<version>/`：预编译宿主 SDK（静态库、公共头、`lv_conf.h`、`lvgl-verify-loop-host-sdk-v1` manifest），由 `scripts/export_sdk.py` 生成；不进 Git。
 - `scripts/meta/`：包元数据；`versions.json` 是版本索引（`lvgl-verify-loop-versions-v2`），发布包还含 `VERSION.json`。

@@ -3,8 +3,10 @@ from __future__ import annotations
 import paths
 
 import importlib.util
+import ntpath
 import struct
 import unittest
+from pathlib import Path
 
 CONSOLE_ROOT = paths.CONSOLE_ROOT
 REPO_ROOT = CONSOLE_ROOT.parent
@@ -37,16 +39,54 @@ class LauncherConfigTest(unittest.TestCase):
             entry["output"], REPO_ROOT / "bin" / "LVGL-AI-Viewer.exe"
         )
 
-    def test_host_launcher_lives_in_the_sifli_tools_directory(self) -> None:
+    def test_host_launcher_lives_in_the_sifli_launcher_directory(self) -> None:
         entry = self.entries["sifli-host"]
-        self.assertEqual(entry["target"], r"..\chip-adapt\sifli\host\server.py")
-        self.assertEqual(entry["cwd"], r"..\chip-adapt\sifli\host")
+        self.assertEqual(entry["target"], r"..\host\server.py")
+        self.assertEqual(entry["cwd"], r"..\host")
         self.assertEqual(entry["args"], ("--open",))
         self.assertNotIn("python", entry)
         self.assertEqual(
             entry["output"],
-            REPO_ROOT / "chip-adapt" / "sifli" / "tools" / "SiFli-Host.exe",
+            REPO_ROOT / "chip-adapt" / "sifli" / "launcher" / "SiFli-Host.exe",
         )
+
+    def test_perf_tape_launcher_lives_in_the_esp32_launcher_directory(
+        self,
+    ) -> None:
+        entry = self.entries["perf-tape"]
+        self.assertEqual(entry["target"], r"..\host\launch.py")
+        self.assertEqual(entry["cwd"], r"..\host")
+        self.assertEqual(entry["args"], ())
+        self.assertNotIn("python", entry)
+        self.assertEqual(
+            entry["output"],
+            REPO_ROOT / "chip-adapt" / "esp32" / "launcher" / "PerfTape.exe",
+        )
+
+    def test_every_launcher_target_and_cwd_resolve(self) -> None:
+        """The C launcher joins them onto the exe dir; they must exist there.
+
+        Every launcher sits one level below the tool it starts, so the
+        relative paths are easy to get wrong -- an entry that resolves to
+        a missing file makes the built exe fail on double-click with a
+        "target not found" dialog.
+        """
+
+        for entry in self.build.LAUNCHERS:
+            with self.subTest(launcher=entry["name"]):
+                exe_dir = entry["output"].parent
+                target = Path(
+                    ntpath.normpath(ntpath.join(exe_dir, entry["target"]))
+                )
+                cwd = Path(
+                    ntpath.normpath(ntpath.join(exe_dir, entry["cwd"]))
+                )
+                self.assertTrue(
+                    target.is_file(), f"launcher target missing: {target}"
+                )
+                self.assertTrue(
+                    cwd.is_dir(), f"launcher cwd missing: {cwd}"
+                )
 
     def test_launchers_use_python_from_path(self) -> None:
         source = (LAUNCHERS_DIR / "launcher.c").read_text(encoding="utf-8")
@@ -124,10 +164,15 @@ class IconTest(unittest.TestCase):
                     self.assertLessEqual(offset + length, len(data))
                 self.assertEqual(set(sizes), set(self.icons.SIZES))
 
-    def test_the_two_icons_are_different(self) -> None:
-        self.assertNotEqual(
-            self._icon_bytes("lvgl-verify-loop-viewer"), self._icon_bytes("sifli-host")
-        )
+    def test_the_icons_are_all_different(self) -> None:
+        blobs = {}
+        for name in self.icons.ICON_NAMES:
+            data = self._icon_bytes(name)
+            for other, blob in blobs.items():
+                self.assertNotEqual(
+                    data, blob, f"{name} and {other} share one icon"
+                )
+            blobs[name] = data
 
 
 if __name__ == "__main__":

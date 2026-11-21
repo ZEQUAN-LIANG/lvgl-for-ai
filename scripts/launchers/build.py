@@ -33,10 +33,20 @@ LAUNCHERS = (
     {
         "name": "sifli-host",
         "title": "SiFli Host",
-        "target": r"..\chip-adapt\sifli\host\server.py",
-        "cwd": r"..\chip-adapt\sifli\host",
+        "target": r"..\host\server.py",
+        "cwd": r"..\host",
         "args": ("--open",),
-        "output": REPO_ROOT / "chip-adapt" / "sifli" / "tools" / "SiFli-Host.exe",
+        "output": REPO_ROOT / "chip-adapt" / "sifli" / "launcher" / "SiFli-Host.exe",
+    },
+    {
+        "name": "perf-tape",
+        "title": "PERF TAPE",
+        "target": r"..\host\launch.py",
+        "cwd": r"..\host",
+        "args": (),
+        "output": (
+            REPO_ROOT / "chip-adapt" / "esp32" / "launcher" / "PerfTape.exe"
+        ),
     },
 )
 

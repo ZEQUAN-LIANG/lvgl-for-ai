@@ -16,7 +16,8 @@ sessions/
 /chip-adapt/vendor/*
 !/chip-adapt/vendor/README.md
 /chip-adapt/exports/
-/chip-adapt/sifli/tools/SiFli-Host.exe
+/chip-adapt/sifli/launcher/SiFli-Host.exe
+/chip-adapt/esp32/launcher/PerfTape.exe
 /chip-adapt/sifli/host/.cache/
 /chip-adapt/sifli/host/logs/
 /chip-adapt/sifli/host/config.json

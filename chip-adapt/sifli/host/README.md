@@ -36,7 +36,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/sifli/host/script
 python -I chip-adapt/sifli/host/server.py --open
 
 # 或双击无黑框入口（需要 pythonw.exe 或 pyw.exe 在 PATH）
-chip-adapt/sifli/tools/SiFli-Host.exe
+chip-adapt/sifli/launcher/SiFli-Host.exe
 ```
 
 `SiFli-Host.exe` 由 `python -I scripts/launchers/build.py` 生成，启动器源码与图标在

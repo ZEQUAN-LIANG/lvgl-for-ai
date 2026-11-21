@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Tuple
 
 ICON_DIR = Path(__file__).resolve().parent / "icons"
-ICON_NAMES = ("lvgl-verify-loop-viewer", "sifli-host")
+ICON_NAMES = ("lvgl-verify-loop-viewer", "sifli-host", "perf-tape")
 SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
 DESIGN = 1024.0
 SUPERSAMPLE = 4
@@ -175,12 +175,65 @@ def _draw_host(canvas: Canvas, size: int) -> None:
     fill_circle(canvas, 512, 512, 30, NAVY)
 
 
+def fill_segment(
+    canvas: Canvas,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
+    thickness: float,
+    color: Color,
+) -> None:
+    """Stamp overlapping discs along a segment to draw a round-capped line."""
+
+    radius = thickness / 2.0
+    dx = x2 - x1
+    dy = y2 - y1
+    length = math.hypot(dx, dy)
+    steps = max(1, int(length / max(1.0, radius * 0.4)))
+    for index in range(steps + 1):
+        t = index / steps
+        fill_circle(canvas, x1 + dx * t, y1 + dy * t, radius, color)
+
+
+def _draw_perf_tape(canvas: Canvas, size: int) -> None:
+    """A Bluetooth rune on a rounded badge: the launcher opens the BLE panel."""
+
+    _draw_background(canvas)
+    fill_rounded_rect(canvas, 150, 150, 874, 874, 120, NAVY)
+    stroke = 84.0 if size > 32 else 116.0
+    top = (512.0, 236.0)
+    bottom = (512.0, 788.0)
+    center = (512.0, 512.0)
+    upper_left = (312.0, 374.0)
+    upper_right = (712.0, 374.0)
+    lower_left = (312.0, 650.0)
+    lower_right = (712.0, 650.0)
+    # Spine plus the four bowls that make the rune read as an angular "B".
+    for start, end, color in (
+        (top, center, CYAN),
+        (top, upper_left, CYAN),
+        (upper_left, center, CYAN),
+        (top, upper_right, VIOLET),
+        (upper_right, center, VIOLET),
+        (center, lower_left, VIOLET),
+        (lower_left, bottom, VIOLET),
+        (center, lower_right, CYAN),
+        (lower_right, bottom, CYAN),
+    ):
+        fill_segment(canvas, start[0], start[1], end[0], end[1], stroke, color)
+    fill_circle(canvas, top[0], top[1], stroke * 0.60, AMBER)
+    fill_circle(canvas, bottom[0], bottom[1], stroke * 0.60, AMBER)
+
+
 def render_icon(name: str, size: int) -> bytes:
     canvas = Canvas(size * SUPERSAMPLE)
     if name == "lvgl-verify-loop-viewer":
         _draw_viewer(canvas, size)
     elif name == "sifli-host":
         _draw_host(canvas, size)
+    elif name == "perf-tape":
+        _draw_perf_tape(canvas, size)
     else:
         raise ValueError(f"unknown icon: {name}")
     return _downsample(canvas, size)

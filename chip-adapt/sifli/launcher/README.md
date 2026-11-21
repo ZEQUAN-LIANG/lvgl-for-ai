@@ -1,4 +1,4 @@
-# SiFli tools
+# SiFli launcher
 
 `SiFli-Host.exe` 是黄山派上位机的 Windows 双击入口，等价于：
 
@@ -16,4 +16,4 @@ python -I scripts/launchers/build.py
 ```
 
 `SiFli-Host.exe` 是构建产物，不要手改；图标由 `scripts/launchers/icons.py` 生成。
-两个双击启动器都不进 Git，首次构建或清理后重新运行上面的命令即可。
+双击启动器都不进 Git，首次构建或清理后重新运行上面的命令即可。

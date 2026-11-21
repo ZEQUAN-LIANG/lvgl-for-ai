@@ -15,7 +15,7 @@ LVGL headless 宿主分开：`console/` 负责预览/取证，本目录负责把
 | 外部大件 | `chip-adapt/vendor/` | 否（仅 README） | 否 | 按 `vendor/README.md` 下载 |
 | 上位机运行时依赖 | `chip-adapt/sifli/host/vendor/`、`host/web/vendor/` | 否 | 否 | `bootstrap.ps1` |
 | 生成物 | `chip-adapt/exports/`、`host/.cache/`、`host/logs/` | 否 | 否 | `export.py`（SiFli）/ `arduino/build.py`（ESP32）/ host 运行 |
-| 双击启动器 | `bin/LVGL-AI-Viewer.exe`、`chip-adapt/sifli/tools/SiFli-Host.exe` | 否（构建生成） | 否 | `scripts/launchers/build.py` |
+| 双击启动器 | `bin/LVGL-AI-Viewer.exe`、`chip-adapt/sifli/launcher/SiFli-Host.exe`、`chip-adapt/esp32/launcher/PerfTape.exe` | 否（构建生成） | 否 | `scripts/launchers/build.py` |
 | 系统级工具 | `%USERPROFILE%\.sifli` 或 `SIFLI_SDK_TOOLS_PATH` | 否 | 否 | SDK `install.ps1` |
 
 - `chip-adapt/docs/sifli.html`：SDK 图形能力知识索引，不是操作手册。
@@ -33,7 +33,7 @@ LVGL headless 宿主分开：`console/` 负责预览/取证，本目录负责把
 | --- | --- | --- |
 | 导出应用到 SDK 工程 | `sifli/README.md` | `python -I chip-adapt/sifli/export.py <app> --dry-run`（默认增量） |
 | 构建 / 烧录 / 看串口 | `sifli/host/README.md` | `python -I chip-adapt/sifli/host/server.py --open` |
-| 直接点开上位机 / 重建启动器 | `sifli/tools/` | 双击 `SiFli-Host.exe`；`python -I scripts/launchers/build.py` |
+| 直接点开上位机 / 重建启动器 | `sifli/launcher/` | 双击 `SiFli-Host.exe`；`python -I scripts/launchers/build.py` |
 | 改导出规则或模板 | `sifli/export.py`、`sifli/asset_plan.py`、`sifli/templates/` | `python -I chip-adapt/sifli/run_tests.py` |
 | 改 SiFli 上位机 | `sifli/host/` | `python -I chip-adapt/sifli/host/tests/run_tests.py` |
 | ESP32-C6 页面 / Wi-Fi / 蓝牙 / 串口 | `esp32/host/README.md` | `python -I chip-adapt/esp32/host/host.py serve --fake --open` |
@@ -137,7 +137,7 @@ python -I chip-adapt/sifli/run_tests.py
 # 上位机测试（fake serial，不需要板子）
 python -I chip-adapt/sifli/host/tests/run_tests.py
 
-# 重建两个双击启动器（MinGW gcc + windres）
+# 重建双击启动器（MinGW gcc + windres）
 python -I scripts/launchers/build.py
 
 # headless 验证导出副本（先安装 9.4 源码与 PNG 依赖）

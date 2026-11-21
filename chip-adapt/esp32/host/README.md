@@ -45,6 +45,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File chip-adapt/esp32/host/script
 ```text
 chip-adapt/esp32/host/
   host.py            HTTP server / CLI / 路由
+  launch.py          双击入口脚本：拉起 host 再打开 PERF TAPE 面板
   paths.py           共享、transport、device、perf、flash 的 sys.path
   transport/         ble_link.py、dual_backend.py、dual_broker.py
   device/            page_control.py、device_control.py、command_session.py、fake_serial.py
