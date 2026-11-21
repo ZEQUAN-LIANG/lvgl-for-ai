@@ -323,7 +323,39 @@ def _inspect_package(zip_path: Path, version: str) -> list[str]:
                         f"{zip_path.name}: VERSION.json tool_version is "
                         f"{packaged!r}, expected {version!r}"
                     )
+                errors.extend(
+                    _check_packaged_commit(zip_path, payload.get("git_commit"))
+                )
     return errors
+
+
+def _check_packaged_commit(zip_path: Path, packaged: Any) -> list[str]:
+    tagged = _tagged_commit()
+    if not tagged or not isinstance(packaged, str):
+        return []
+    if tagged.startswith(packaged) or packaged.startswith(tagged):
+        return []
+    return [
+        f"{zip_path.name}: VERSION.json records commit {packaged[:8]}, "
+        f"but the version tag points at {tagged[:8]}; the package was built "
+        "before the release commit, so commit first and rebuild"
+    ]
+
+
+def _tagged_commit() -> str:
+    tag = f"v{paths.TOOL_VERSION}^{{commit}}"
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "rev-parse", tag],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except OSError:
+        return ""
+    text = result.stdout.strip()
+    return text if result.returncode == 0 else ""
 
 
 def _backup_root() -> Path:

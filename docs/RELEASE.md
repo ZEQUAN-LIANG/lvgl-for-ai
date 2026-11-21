@@ -53,7 +53,20 @@ python -I scripts/tests/run_tests.py --tier all
 python -I scripts/contract_snapshot.py compare      # 期望 differences: 0
 ```
 
-## 3. 构建发布包
+## 3. 先提交版本号改动
+
+包内 `scripts/meta/VERSION.json` 会记下**构建时**的 HEAD 提交，`release_bundle.git_commit()`
+直接取 `git rev-parse HEAD`。所以必须先把第 1 步的版本号改动提交掉，再构建；否则包里的
+`git_commit` 会指向版本号 bump 之前的提交，溯源指向错误。
+
+```bash
+git add -A
+git commit -m "release: lvgl-verify-loop 0.2.3"
+```
+
+判定：`git status` 干净。
+
+## 4. 构建发布包
 
 ```bash
 python -I scripts/release_all.py --out dist/release --json
@@ -71,7 +84,7 @@ python -I scripts/release_all.py --out dist/release --json
 发布包内已内置 `smoke_package()` 冒烟：`--no-build` 与 `--prebuilt` 两条路径各跑一次
 `intro.json`、`bin/lvgl.cmd run`、`assets doctor` 与 `serve` 起来取一次 URL。冒烟失败即构建失败。
 
-## 4. 校验发布包
+## 5. 校验发布包
 
 ```bash
 python -I scripts/publish_check.py --stage package --json
@@ -86,7 +99,7 @@ python -I scripts/publish_check.py --stage package --json
 - 包内 `scripts/meta/VERSION.json` 的 `tool_version` 等于本次版本号；
 - 包内 `SKILL.md` 与 `docs/skill/SKILL.md` 内容一致。
 
-## 5. 真实安装验证（skill 整体流程）
+## 6. 真实安装验证（skill 整体流程）
 
 把 zip 解到真实的 skill 安装位置，用 skill 入口跑一轮完整用户流程。这一步是唯一能证明
 「用户拿到包真的能用」的检查，前四步都替代不了它：
@@ -111,19 +124,23 @@ python -I scripts/publish_check.py --stage install --json
 
 `--keep-backup` 保留备份目录便于回滚；默认删除。
 
-## 6. 打 tag 并推送
+## 7. 打 tag 并推送
+
+标签必须指向第 3 步那个已提交、且被第 4 步构建进包的提交：
 
 ```bash
-git add -A && git commit -m "release: lvgl-verify-loop 0.2.3"
 git tag -a v0.2.3 -m "lvgl-verify-loop 0.2.3"
 git push origin dev
 git push origin v0.2.3
 ```
 
+判定：`git rev-parse v0.2.3^{commit}` 与包内 `scripts/meta/VERSION.json` 的 `git_commit`
+一致。若不一致，说明构建发生在提交之前，回到第 3 步。
+
 历史惯例：`v0.2.0` / `v0.2.1` / `v0.2.2` 都打在 `dev` 上，线上 Release 的 target 也是 `dev`。
 tag 名是 `v<版本号>`。
 
-## 7. 发布到 Gitee
+## 8. 发布到 Gitee
 
 ```bash
 python -I scripts/upload_release.py --version 0.2.3 --replace --json
@@ -140,7 +157,7 @@ python -I scripts/upload_release.py --version 0.2.3 --replace --json
 
 判定：`--json` 输出里 `gitee` 字段是 Release 页面 URL，且页面上有 5 个资产。
 
-## 8. 镜像到 GitHub
+## 9. 镜像到 GitHub
 
 ```bash
 python -I scripts/sync_github.py --dry-run
@@ -156,7 +173,7 @@ python -I scripts/sync_github.py
 判定：输出 `synced <N> branches and <M> tags`，且 `git ls-remote --heads github` 的
 `dev` 与本机 `origin/dev` 同一个 commit。
 
-## 9. GitHub 发布 Release
+## 10. GitHub 发布 Release
 
 ```bash
 python -I scripts/upload_release.py --version 0.2.3 --target github --replace --json
@@ -165,7 +182,7 @@ python -I scripts/upload_release.py --version 0.2.3 --target github --replace --
 与第 7 步同一个脚本、同一份资产，只是打到 GitHub。新 Release 会自动创建，`target_commitish`
 默认 `dev`。正文与 Gitee 用同一份 `RELEASE_NOTES.md`。
 
-## 10. 收尾核对
+## 11. 收尾核对
 
 两边页面都要有：两个 zip、两个 `.sha256`、一个 `release.json`，且 zip 的 sha256 与本地一致。
 
