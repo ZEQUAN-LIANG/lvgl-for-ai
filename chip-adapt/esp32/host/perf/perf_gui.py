@@ -1,10 +1,3 @@
-"""Desktop control panel for the PERF TAPE monitor.
-
-This is a tkinter client for the ESP32 host's local HTTP API.  It never opens
-a COM port: frames and layout commands still go through ``host.py`` and its
-``SerialBroker``, so the host remains the only serial owner.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -48,12 +41,10 @@ ERR_TEXT = "#e7a08a"
 
 
 class HostError(RuntimeError):
-    """A local host request failed or returned an error payload."""
+    pass
 
 
 class HostClient:
-    """Small JSON client for the already-running ESP32 host."""
-
     def __init__(self, base_url: str, timeout: float = 8.0) -> None:
         self.base_url = normalize_url(base_url)
         self.timeout = timeout
@@ -103,9 +94,7 @@ class HostClient:
     def serial_status(self) -> dict[str, Any]:
         return self._request("/api/status")
 
-    def start(
-        self, mode: str, interval: float, layout: str
-    ) -> dict[str, Any]:
+    def start(self, mode: str, interval: float, layout: str) -> dict[str, Any]:
         return self._request(
             "/api/perf/start",
             {"mode": mode, "interval": interval, "layout": layout},
@@ -147,8 +136,6 @@ def http_error_message(exc: urllib.error.HTTPError) -> str:
 
 
 class ScreenPainter:
-    """Draw in 172x320 / 320x172 screen coordinates."""
-
     def __init__(
         self,
         canvas: tk.Canvas,
@@ -281,11 +268,11 @@ class PerfGui:
         self.drain_after: Optional[str] = None
         self.resize_after: Optional[str] = None
 
-        self.mono = self.pick_font(
-            "Cascadia Mono", "Consolas", "Courier New"
-        )
+        self.mono = self.pick_font("Cascadia Mono", "Consolas", "Courier New")
         self.cond = self.pick_font(
-            "Bahnschrift SemiCondensed", "Bahnschrift", "Arial Narrow",
+            "Bahnschrift SemiCondensed",
+            "Bahnschrift",
+            "Arial Narrow",
             "Segoe UI",
         )
         self.sans = self.pick_font(
@@ -324,9 +311,7 @@ class PerfGui:
                 return name
         return candidates[-1]
 
-    def font(
-        self, family: str, size: int, bold: bool = False
-    ) -> tkfont.Font:
+    def font(self, family: str, size: int, bold: bool = False) -> tkfont.Font:
         key = (family, size, bold)
         font = self.fonts.get(key)
         if font is None:
@@ -667,9 +652,7 @@ class PerfGui:
                 takefocus=False,
             )
             pad = (0, 4) if column == 0 else (4, 0)
-            button.grid(
-                row=0, column=column, sticky="ew", padx=pad
-            )
+            button.grid(row=0, column=column, sticky="ew", padx=pad)
             self.layout_buttons[key] = button
 
         tk.Label(
@@ -905,7 +888,9 @@ class PerfGui:
         self.update_controls()
 
     def set_layout_ui(self, layout: str) -> None:
-        self.dims_var.set("320 × 172" if layout == "landscape" else "172 × 320")
+        self.dims_var.set(
+            "320 × 172" if layout == "landscape" else "172 × 320"
+        )
         for key, button in self.layout_buttons.items():
             if key == layout:
                 button.configure(
@@ -1111,9 +1096,7 @@ class PerfGui:
         self.stat_vars["threads"].set(
             f"{sample.get('thread_count')}T" if sample else "--"
         )
-        self.stat_vars["seq"].set(
-            str(sample.get("seq")) if sample else "--"
-        )
+        self.stat_vars["seq"].set(str(sample.get("seq")) if sample else "--")
         error = perf.get("last_error")
         if error:
             self.set_error(str(error))
@@ -1140,9 +1123,7 @@ class PerfGui:
         self.down_history.append(
             max(0, min(100, int(down * 100 / (40 * 1024))))
         )
-        self.up_history.append(
-            max(0, min(100, int(up * 100 / (8 * 1024))))
-        )
+        self.up_history.append(max(0, min(100, int(up * 100 / (8 * 1024)))))
         for history in (
             self.cpu_history,
             self.down_history,
@@ -1176,9 +1157,7 @@ class PerfGui:
                 self.cpu_history.clear()
                 self.down_history.clear()
                 self.up_history.clear()
-                self.append_log(
-                    f"armed · {self.mode} · {self.layout}", "ok"
-                )
+                self.append_log(f"armed · {self.mode} · {self.layout}", "ok")
             else:
                 self.set_error(str(data))
         elif kind == "stop":
@@ -1319,18 +1298,31 @@ class PerfGui:
         threads = thread_count(sample)
         p.text(8, 30, "CPU LOAD", 8, MUTED, self.mono)
         trend = self.cpu_trend()
-        p.text(132, 30, trend, 8, ACCENT if trend != "±0" else DIM,
-               self.mono, anchor="ne")
+        p.text(
+            132,
+            30,
+            trend,
+            8,
+            ACCENT if trend != "±0" else DIM,
+            self.mono,
+            anchor="ne",
+        )
         p.text(164, 30, f" · {threads}T", 8, DIM, self.mono, anchor="ne")
         cpu_text = "--" if cpu is None else f"{int(cpu):02d}"
         p.text(8, 33, cpu_text, 60, cpu_color, self.cond, bold=True)
         if cpu is not None:
-            unit_x = min(8 + p.measure(cpu_text, 60, self.cond, True) + 1,
-                         118)
+            unit_x = min(8 + p.measure(cpu_text, 60, self.cond, True) + 1, 118)
             p.text(unit_x, 49, "%", 8, MUTED, self.mono)
         freq = number_or_none(sample.get("freq_mhz"))
-        p.text(153, 49, f"{freq / 1000:.2f}" if freq else "--", 14, INK,
-               self.cond, anchor="ne")
+        p.text(
+            153,
+            49,
+            f"{freq / 1000:.2f}" if freq else "--",
+            14,
+            INK,
+            self.cond,
+            anchor="ne",
+        )
         p.text(154, 53, "GHz", 8, MUTED, self.mono)
         temp = number_or_none(sample.get("temp_c"))
         temp_text = "--" if temp is None else str(int(temp))
@@ -1356,8 +1348,7 @@ class PerfGui:
 
         gpu = number_or_none(sample.get("gpu"))
         p.text(94, 152, "GPU", 8, MUTED, self.mono)
-        p.text(164, 152, gpu_temp_text(sample), 8, DIM, self.mono,
-               anchor="ne")
+        p.text(164, 152, gpu_temp_text(sample), 8, DIM, self.mono, anchor="ne")
         p.text(94, 157, percent_text(gpu), 26, INK, self.cond, bold=True)
         if gpu is not None:
             p.text(132, 162, "%", 8, MUTED, self.mono)
@@ -1379,16 +1370,30 @@ class PerfGui:
 
         p.line(0, 256, 172, 256, LINE)
         p.text(8, 260, "THREADS", 8, MUTED, self.mono)
-        p.text(164, 260, f"PEAK {thread_peak(sample)}%", 8, DIM,
-               self.mono, anchor="ne")
+        p.text(
+            164,
+            260,
+            f"PEAK {thread_peak(sample)}%",
+            8,
+            DIM,
+            self.mono,
+            anchor="ne",
+        )
         self.draw_threads(p, sample, 8, 275, 156, 4, 18, 18)
 
         p.line(0, 296, 172, 296, LINE)
         state = self.footer_state(perf, sample)
         p.rect(8, 305, 4, 4, ACCENT)
         p.text(15, 303, state, 8, MUTED, self.mono)
-        p.text(52, 303, self.footer_period(perf, sample), 8, DIM,
-               self.mono, anchor="n")
+        p.text(
+            52,
+            303,
+            self.footer_period(perf, sample),
+            8,
+            DIM,
+            self.mono,
+            anchor="n",
+        )
         p.text(164, 303, "C6/01", 8, DIM, self.mono, anchor="ne")
 
     def draw_landscape(
@@ -1415,13 +1420,19 @@ class PerfGui:
         threads = thread_count(sample)
         p.text(8, 24, "CPU LOAD", 8, MUTED, self.mono)
         trend = self.cpu_trend()
-        p.text(102, 24, trend, 8, ACCENT if trend != "±0" else DIM,
-               self.mono, anchor="ne")
+        p.text(
+            102,
+            24,
+            trend,
+            8,
+            ACCENT if trend != "±0" else DIM,
+            self.mono,
+            anchor="ne",
+        )
         p.text(134, 24, f" · {threads}T", 8, DIM, self.mono, anchor="ne")
         cpu_text = "--" if cpu is None else f"{int(cpu):02d}"
         cpu_size = 46 if cpu is not None and cpu >= 100 else 52
-        p.text(8, 32, cpu_text, cpu_size, cpu_color,
-               self.cond, bold=True)
+        p.text(8, 32, cpu_text, cpu_size, cpu_color, self.cond, bold=True)
         if cpu is not None:
             unit_x = min(
                 8 + p.measure(cpu_text, cpu_size, self.cond, True) + 1, 82
@@ -1429,8 +1440,15 @@ class PerfGui:
             p.text(unit_x, 39, "%", 8, MUTED, self.mono)
         p.line(84, 37, 84, 82, LINE_SOFT)
         freq = number_or_none(sample.get("freq_mhz"))
-        p.text(115, 36, f"{freq / 1000:.2f}" if freq else "--", 14, INK,
-               self.cond, anchor="ne")
+        p.text(
+            115,
+            36,
+            f"{freq / 1000:.2f}" if freq else "--",
+            14,
+            INK,
+            self.cond,
+            anchor="ne",
+        )
         p.text(116, 40, "GHz", 8, MUTED, self.mono)
         temp = number_or_none(sample.get("temp_c"))
         temp_text = "--" if temp is None else str(int(temp))
@@ -1448,16 +1466,30 @@ class PerfGui:
 
         p.line(0, 130, 320, 130, LINE)
         p.text(8, 134, "THREADS", 8, MUTED, self.mono)
-        p.text(312, 134, f"PEAK {thread_peak(sample)}%", 8, DIM,
-               self.mono, anchor="ne")
+        p.text(
+            312,
+            134,
+            f"PEAK {thread_peak(sample)}%",
+            8,
+            DIM,
+            self.mono,
+            anchor="ne",
+        )
         self.draw_threads(p, sample, 8, 143, 304, 4, 12, 34)
 
         p.line(0, 156, 320, 156, LINE)
         state = self.footer_state(perf, sample)
         p.rect(8, 164, 3, 3, ACCENT)
         p.text(14, 161, state, 8, MUTED, self.mono)
-        p.text(160, 161, self.footer_period(perf, sample), 8, DIM,
-               self.mono, anchor="n")
+        p.text(
+            160,
+            161,
+            self.footer_period(perf, sample),
+            8,
+            DIM,
+            self.mono,
+            anchor="n",
+        )
         p.text(312, 161, "C6/01", 8, DIM, self.mono, anchor="ne")
 
     def draw_metric_landscape(
@@ -1489,15 +1521,38 @@ class PerfGui:
         self, p: ScreenPainter, sample: dict[str, Any]
     ) -> None:
         p.text(252, 24, "NET", 8, MUTED, self.mono)
-        p.text(314, 24, ping_text(sample, short=True), 8, DIM, self.mono,
-               anchor="ne")
+        p.text(
+            314,
+            24,
+            ping_text(sample, short=True),
+            8,
+            DIM,
+            self.mono,
+            anchor="ne",
+        )
         p.text(254, 40, "↓", 8, MUTED, self.mono)
-        p.text(292, 34, mib_text(sample.get("down_kib_s")), 14, INK,
-               self.cond, bold=True, anchor="ne")
+        p.text(
+            292,
+            34,
+            mib_text(sample.get("down_kib_s")),
+            14,
+            INK,
+            self.cond,
+            bold=True,
+            anchor="ne",
+        )
         p.text(294, 39, "MB/S", 8, DIM, self.mono)
         p.text(254, 57, "↑", 8, ACCENT, self.mono)
-        p.text(292, 51, mib_text(sample.get("up_kib_s")), 14, INK,
-               self.cond, bold=True, anchor="ne")
+        p.text(
+            292,
+            51,
+            mib_text(sample.get("up_kib_s")),
+            14,
+            INK,
+            self.cond,
+            bold=True,
+            anchor="ne",
+        )
         p.text(294, 56, "MB/S", 8, DIM, self.mono)
         p.line(248, 28, 248, 72, LINE_SOFT)
         self.draw_net_chart(p, 248, 72, 72, 18)
@@ -1520,8 +1575,9 @@ class PerfGui:
             grid_x = x + index * width / 60
             p.line(grid_x, top, grid_x, bottom, LINE, 1)
         threshold = top + (100 - 80) * (bottom - top) / 100
-        p.line(x, threshold, x + width - 1, threshold, "#4a4131", 1,
-               dash=(2, 3))
+        p.line(
+            x, threshold, x + width - 1, threshold, "#4a4131", 1, dash=(2, 3)
+        )
 
         values = self.history_window(self.cpu_history)
         points = [(x, bottom)]
@@ -1552,8 +1608,15 @@ class PerfGui:
             anchor="ne",
         )
         p.text(x + 6, bottom_label_y, "-18S", 8, DIM, self.mono)
-        p.text(x + width - 6, bottom_label_y, "NOW", 8, DIM, self.mono,
-               anchor="ne")
+        p.text(
+            x + width - 6,
+            bottom_label_y,
+            "NOW",
+            8,
+            DIM,
+            self.mono,
+            anchor="ne",
+        )
 
     def draw_net_chart(
         self, p: ScreenPainter, x: int, y: int, width: int, height: int
@@ -1565,13 +1628,11 @@ class PerfGui:
         up = self.history_window(self.up_history)
         amp = height / 2 - 1
         down_points = [
-            (x + index * (width - 1) / 59,
-             mid - value * amp / 100)
+            (x + index * (width - 1) / 59, mid - value * amp / 100)
             for index, value in enumerate(down)
         ]
         up_points = [
-            (x + index * (width - 1) / 59,
-             mid + value * amp / 100)
+            (x + index * (width - 1) / 59, mid + value * amp / 100)
             for index, value in enumerate(up)
         ]
         for points, color in ((down_points, INK), (up_points, ACCENT)):
@@ -1675,9 +1736,7 @@ class PerfGui:
         )
         if tray.start():
             self.tray = tray
-            self.append_log(
-                "tray icon ready; closing hides the window", "dim"
-            )
+            self.append_log("tray icon ready; closing hides the window", "dim")
         else:
             self.append_log("tray icon unavailable; close exits", "dim")
 
@@ -1824,9 +1883,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
 def main(argv: Optional[list[str]] = None) -> int:
     args = parse_args(argv)
     root = tk.Tk()
-    app = PerfGui(
-        root, HostClient(args.url), tray_enabled=not args.no_tray
-    )
+    app = PerfGui(root, HostClient(args.url), tray_enabled=not args.no_tray)
     if args.smoke_ms > 0:
         root.after(args.smoke_ms, lambda: app.quit(close_link=False))
     root.mainloop()

@@ -1,16 +1,3 @@
-"""Shared flasher web assets and plan storage.
-
-Both the ESP32-C6 host and the SiFli host serve the same standalone flasher
-page (``chip-adapt/host/flash_web/``).  The page only talks to a small HTTP
-contract; each host supplies its own browser-invisible backend:
-
-* ESP32-C6 -> ``esptool`` (ROM bootloader protocol)
-* SiFli    -> ``sftool``  (SF32 UART protocol)
-
-Keeping the static assets and the plan cache here avoids a second copy of the
-web UI when a new board port adds another backend.
-"""
-
 from __future__ import annotations
 
 import mimetypes
@@ -38,7 +25,6 @@ _CONTENT_TYPES = {
 
 
 def asset_path(relative: str) -> Path | None:
-    """Resolve a request path below ``WEB_DIR``; reject traversal."""
     value = (relative or "index.html").strip().replace("\\", "/")
     parts = [part for part in value.split("/") if part not in ("", ".")]
     if not parts:
@@ -62,7 +48,6 @@ def content_type(path: Path) -> str:
 
 
 def public_plan(plan: dict[str, Any]) -> dict[str, Any]:
-    """Return the fields the browser needs, without internal paths."""
     payload: dict[str, Any] = {
         "plan_id": plan["plan_id"],
         "source": plan.get("source", ""),
@@ -83,8 +68,6 @@ def public_plan(plan: dict[str, Any]) -> dict[str, Any]:
 
 
 class PlanStore:
-    """Small in-memory plan cache shared by a host's flash endpoints."""
-
     def __init__(
         self,
         *,

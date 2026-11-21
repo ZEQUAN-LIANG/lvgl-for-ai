@@ -39,9 +39,7 @@ def write_build(root: Path) -> Path:
     (build / "bootloader").mkdir(parents=True)
     (build / "partition_table").mkdir()
     (build / "bootloader" / "bootloader.bin").write_bytes(b"B" * 64)
-    (build / "partition_table" / "partition-table.bin").write_bytes(
-        b"P" * 64
-    )
+    (build / "partition_table" / "partition-table.bin").write_bytes(b"P" * 64)
     (build / "app.bin").write_bytes(b"A" * 64)
     (build / "flash_args").write_text(
         "--flash_mode dio --flash_freq 80m --flash_size 4MB "
@@ -187,7 +185,13 @@ class FlashPlanTest(unittest.TestCase):
         preview = self.controller.plan({"path": str(archive)})
         self.assertEqual(
             preview["entries"],
-            [{"name": "ESP32-C6-LCD-1.47-Test.bin", "address": "0x0", "size": 128}],
+            [
+                {
+                    "name": "ESP32-C6-LCD-1.47-Test.bin",
+                    "address": "0x0",
+                    "size": 128,
+                }
+            ],
         )
 
     def test_single_bin_defaults_to_zero(self) -> None:
@@ -234,9 +238,7 @@ class FlashUploadTest(unittest.TestCase):
 
     def test_sanitizes_name(self) -> None:
         result = self.controller.save_upload("..\\..\\evil.bin", b"1234")
-        uploaded = (
-            self.controller.uploads_root / result["token"] / "evil.bin"
-        )
+        uploaded = self.controller.uploads_root / result["token"] / "evil.bin"
         self.assertTrue(uploaded.is_file())
         self.assertEqual(result["size"], 4)
         self.assertEqual(len(result["sha256"]), 64)
@@ -288,9 +290,7 @@ class FlashCommandTest(unittest.TestCase):
 
     def test_progress_formats(self) -> None:
         legacy = _Progress(1)
-        self.assertEqual(
-            legacy.percent_for("Writing at 0x0000... (50 %)"), 50
-        )
+        self.assertEqual(legacy.percent_for("Writing at 0x0000... (50 %)"), 50)
         modern = _Progress(1)
         self.assertEqual(
             modern.percent_for("Writing at 0x0000 ━━ 12.3% 256/1024"), 12
@@ -436,9 +436,7 @@ class FlashHttpTest(unittest.TestCase):
         self.assertEqual(job.get("percent"), 100)
 
     def test_env_reports_fake(self) -> None:
-        status, payload = request_json(
-            "GET", f"{self.base}/api/flash/env"
-        )
+        status, payload = request_json("GET", f"{self.base}/api/flash/env")
         self.assertEqual(status, 200)
         env = payload["env"]
         self.assertTrue(env["fake"])

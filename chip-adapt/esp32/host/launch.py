@@ -1,15 +1,3 @@
-"""One-click launcher: run the ESP32-C6 host, then open the PERF TAPE GUI.
-
-The host owns the BLE and UART links and serves the local HTTP API; the
-PERF TAPE panel is only a client of that API, so both have to run before
-the panel can talk to the board.  This module starts the host in its own
-process when nothing answers on the port, waits for it to come up, and
-then runs the GUI in this process.
-
-Running it from an existing host is fine: a reachable host is reused and
-left running when the window closes.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -43,11 +31,6 @@ LOG_NAME = "launcher-host.log"
 
 
 def probe(url: str, timeout: float = 1.5) -> Optional[dict[str, Any]]:
-    """Return the host's ``/api/status`` payload, or ``None``.
-
-    The ``transport`` field tells our host apart from an unrelated service
-    that happens to hold the port.
-    """
 
     try:
         with urllib.request.urlopen(
@@ -62,7 +45,6 @@ def probe(url: str, timeout: float = 1.5) -> Optional[dict[str, Any]]:
 
 
 def windowed_python() -> str:
-    """Prefer ``pythonw`` so no console window flashes for the host."""
 
     executable = Path(sys.executable)
     candidate = executable.with_name("pythonw.exe")
@@ -78,7 +60,6 @@ def open_host_log() -> Any:
 
 
 def start_host(args: argparse.Namespace) -> tuple[subprocess.Popen, Any]:
-    """Spawn ``host.py serve`` and return the process plus its log handle."""
 
     command = [
         windowed_python(),
@@ -128,7 +109,6 @@ def stop_host(process: Optional[subprocess.Popen]) -> None:
 
 
 def message_box(text: str, title: str = "PERF TAPE") -> None:
-    """Surface a failure even though the launcher has no console."""
 
     try:
         ctypes.windll.user32.MessageBoxW(None, text, title, 0x10)
@@ -136,9 +116,7 @@ def message_box(text: str, title: str = "PERF TAPE") -> None:
         pass
 
 
-def run_gui(
-    url: str, *, tray: bool, note: str, smoke_ms: int = 0
-) -> int:
+def run_gui(url: str, *, tray: bool, note: str, smoke_ms: int = 0) -> int:
     root = tk.Tk()
     app = PerfGui(root, HostClient(url), tray_enabled=tray)
     app.append_log(note, "ok")
@@ -181,7 +159,9 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         default=START_TIMEOUT_S,
         help=f"seconds to wait for the host (default: {START_TIMEOUT_S})",
     )
-    parser.add_argument("--smoke-ms", type=int, default=0, help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--smoke-ms", type=int, default=0, help=argparse.SUPPRESS
+    )
     return parser.parse_args(argv)
 
 

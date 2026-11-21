@@ -1,11 +1,3 @@
-"""Build and flash orchestration.
-
-The flashing engine is the official ``sftool.exe``.  The host does not
-reimplement the SiFli UART protocol, and it does not drive ``sftool-gui``:
-that program is a Tauri app, not a CLI shell.  Human one-click flashing uses
-the official Web Flasher page; CLI/AI flashing uses ``sftool`` directly.
-"""
-
 from __future__ import annotations
 
 import json
@@ -326,13 +318,6 @@ def _apply_host_caches(env: dict[str, str], host: Path | None) -> None:
 
 
 def _apply_china_mirror(env: dict[str, str]) -> None:
-    """Point uv at the same China mirrors as the SDK install preset.
-
-    ``SIFLI_SDK_MIRROR_CHINA=1`` is the switch the SDK's install.ps1 reads,
-    so the host reuses it instead of inventing a second toggle.  Values the
-    caller set explicitly in ``UV_DEFAULT_INDEX`` /
-    ``UV_PYTHON_DOWNLOADS_JSON_URL`` win.
-    """
     enabled = env.get(_CHINA_MIRROR_ENV, "").strip().lower()
     if enabled not in _CHINA_MIRROR_TRUTHY:
         return
@@ -371,8 +356,6 @@ def toolchain_env(config: dict[str, Any]) -> dict[str, str]:
         if bin_dir.name == "bin" and "arm-none-eabi" in text:
             env["RTT_EXEC_PATH"] = str(bin_dir)
             break
-    # GetLinkScript only searches for gcc/keil linker scripts when RTT_CC is
-    # set; without it the SDK silently returns no linker script.
     env["RTT_CC"] = "gcc"
     if venv is not None and venv.is_dir():
         env["ENV_ROOT"] = str(venv)
@@ -409,8 +392,6 @@ def _uv_lock_command(
     config: dict[str, Any],
     board: str,
 ) -> list[str] | None:
-    # ``uv run --project`` uses the SDK's uv lock, so the build needs no
-    # activated export.ps1 environment.
     sdk = Path(config.get("sdk_root", ""))
     lock_dir = sdk / "tools" / "locks" / "default"
     uv = shutil.which("uv")
@@ -854,7 +835,6 @@ def _zip_staging(staging: Path, target: Path) -> None:
 
 
 def _prune_firmware_cache(cache: Path, keep: int = 20) -> None:
-    # Old ZIPs are only used by an already-open flasher tab.
     stale = sorted(
         cache.glob("*.zip"),
         key=lambda item: item.stat().st_mtime,
@@ -941,7 +921,6 @@ def environment(config: dict[str, Any]) -> dict[str, Any]:
 
 
 def probe_sftool_version(sftool: Path | None) -> str:
-    """Return ``sftool --version`` as a short string, or ``""``."""
     if sftool is None:
         return ""
     try:
@@ -967,7 +946,6 @@ def flash_plan(
     build_dir: str | Path | None = None,
     board: str | None = None,
 ) -> dict[str, Any]:
-    """Resolve ``sftool_param.json`` into the shared flasher plan shape."""
     board_name = str(board or config.get("board") or "sf32lb52-lchspi-ulp")
     project: Path | None = None
     if build_dir:
@@ -1044,7 +1022,6 @@ def _app_from_exports(
 
 
 def flash_environment(config: dict[str, Any]) -> dict[str, Any]:
-    """Backend metadata consumed by the shared flasher page."""
     payload = environment(config)
     label = str(payload.get("sftool_found") or "")
     sftool = Path(label) if label else None
@@ -1063,14 +1040,10 @@ def flash_environment(config: dict[str, Any]) -> dict[str, Any]:
                 "chip": chip,
                 "board": board,
                 "detail": (
-                    f"sftool {version} · {label}"
-                    if found
-                    else "未找到 sftool"
+                    f"sftool {version} · {label}" if found else "未找到 sftool"
                 ),
             },
-            "default_baud": int(
-                config.get("flash_baud") or 1_000_000
-            ),
+            "default_baud": int(config.get("flash_baud") or 1_000_000),
             "baud_rates": list(
                 config.get("baud_rates")
                 or [1_000_000, 921_600, 460_800, 230_400, 115_200]
@@ -1092,7 +1065,6 @@ def flash_environment(config: dict[str, Any]) -> dict[str, Any]:
     )
     if not found:
         payload["hint"] = (
-            "sftool not found; install the SiFli SDK tools "
-            "or set SFTOOL_BIN"
+            "sftool not found; install the SiFli SDK tools or set SFTOOL_BIN"
         )
     return payload

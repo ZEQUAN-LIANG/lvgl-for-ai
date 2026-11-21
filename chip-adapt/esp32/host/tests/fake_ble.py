@@ -1,5 +1,3 @@
-"""Small fake bleak objects for the BLE link tests."""
-
 from __future__ import annotations
 
 import asyncio
@@ -38,9 +36,7 @@ class FakeScanner:
         _ = timeout
         if self.error is not None:
             raise self.error
-        return {
-            device.address: (device, adv) for device, adv in self.devices
-        }
+        return {device.address: (device, adv) for device, adv in self.devices}
 
 
 class FakeClient:

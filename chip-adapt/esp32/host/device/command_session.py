@@ -1,10 +1,3 @@
-"""Serialized request/reply exchange over the shared broker.
-
-Both page switching and wireless configuration use the same serial line.  A
-single ``CommandSession`` lock keeps a ``send``/``expect`` pair from being
-interleaved with another controller's pair.
-"""
-
 from __future__ import annotations
 
 import threading
@@ -39,7 +32,9 @@ class CommandSession:
             result = self._broker.expect(
                 pattern,
                 since=cursor,
-                timeout_ms=self._timeout_ms if timeout_ms is None else timeout_ms,
+                timeout_ms=self._timeout_ms
+                if timeout_ms is None
+                else timeout_ms,
                 regex=True,
             )
         if not result.get("ok"):

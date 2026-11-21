@@ -34,7 +34,10 @@ class FakeBroker:
     ) -> dict[str, int]:
         del private
         self.sent.append((source, data.decode("utf-8")))
-        return {"bytes": len(data), "total_tx": sum(len(item[1]) for item in self.sent)}
+        return {
+            "bytes": len(data),
+            "total_tx": sum(len(item[1]) for item in self.sent),
+        }
 
 
 def provider(
@@ -65,10 +68,16 @@ class PerfControllerTest(unittest.TestCase):
         self.assertEqual(self.broker.sent[0][1], "PERF LANDSCAPE\n")
         self.assertEqual(self.broker.sent[1][1], "PERF DEMO\n")
         self.wait_for(
-            lambda: len(
-                [line for _, line in self.broker.sent if line.startswith("PERF v=1")]
+            lambda: (
+                len(
+                    [
+                        line
+                        for _, line in self.broker.sent
+                        if line.startswith("PERF v=1")
+                    ]
+                )
+                >= 2
             )
-            >= 2
         )
         status = self.controller.status()
         self.assertTrue(status["running"])
@@ -167,9 +176,7 @@ class PerfHttpTest(unittest.TestCase):
         self.assertIn("PERF TAPE", html)
         self.assertIn("/api/perf/status", html)
 
-        status, payload = request_json(
-            "GET", f"{self.base}/api/perf/status"
-        )
+        status, payload = request_json("GET", f"{self.base}/api/perf/status")
         self.assertEqual(status, 200)
         self.assertFalse(payload["running"])
 

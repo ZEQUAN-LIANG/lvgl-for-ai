@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""SiFli-SDK adapter: export a user app as a Huangshan Pi project.
-
-The adapter owns the export pipeline, including ezip conversion. Sources are
-copied as-is; an app must already use APIs available in LVGL 9.4. Apps that use
-9.5/9.6-only APIs are rejected with a diagnostic instead of being rewritten.
-"""
 
 from __future__ import annotations
 

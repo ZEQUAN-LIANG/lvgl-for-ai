@@ -60,7 +60,9 @@ class BleLinkTest(unittest.TestCase):
         self.assertEqual(link.status()["chunk"], 20)
         payload = bytes(range(45))
         self.assertEqual(link.write(payload), 45)
-        self.assertEqual(clients[0].writes, [payload[:20], payload[20:40], payload[40:]])
+        self.assertEqual(
+            clients[0].writes, [payload[:20], payload[20:40], payload[40:]]
+        )
 
     def test_disconnect_raises_on_empty_read(self) -> None:
         link, clients = self.make_link()
@@ -75,7 +77,9 @@ class BleLinkTest(unittest.TestCase):
         link = BleLink(
             {"ble_scan_timeout_s": 0.1, "ble_connect_timeout_s": 0.2},
             scanner_factory=lambda: FakeScanner([]),
-            client_factory=lambda device, **kwargs: FakeClient(device, **kwargs),
+            client_factory=lambda device, **kwargs: FakeClient(
+                device, **kwargs
+            ),
         )
         with self.assertRaises(SerialError) as context:
             link.open()

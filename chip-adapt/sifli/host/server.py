@@ -1,10 +1,3 @@
-"""HTTP broker and web UI for the SiFli Huangshan Pi host.
-
-Run with ``python -I chip-adapt/sifli/host/server.py --open`` (or double-click
-``chip-adapt/sifli/launcher/SiFli-Host.exe``).  The server owns the COM port; the browser, CLI and an AI
-agent all use the same HTTP/JSON API and the same byte cursor.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -87,7 +80,6 @@ class HostServer(ThreadingHTTPServer):
         return round(time.time() - self.started_at, 3)
 
     def run_flash_job(self, job: Job, request: FlashRequest) -> None:
-        """Run a flash job and release the flash gate when it ends."""
         try:
             self.runner.flash(job, request)
         finally:
@@ -230,7 +222,6 @@ class HostHandler(BaseHTTPRequestHandler):
         path: str,
         query: dict[str, list[str]],
     ) -> None:
-        # Consume the body for every POST so keep-alive framing stays valid.
         body = read_json_body(
             self.rfile,
             self.headers.get("Content-Length"),
@@ -304,12 +295,6 @@ class HostHandler(BaseHTTPRequestHandler):
         return writer
 
     def _request_base_url(self) -> str:
-        """Use the host the browser actually used (127.0.0.1 vs localhost).
-
-        The official Web Flasher fetches the firmware ZIP from the page's
-        origin.  If the page was opened on ``localhost`` but the ZIP URL said
-        ``127.0.0.1``, the fetch would be cross-origin and CORS would block it.
-        """
 
         host = (self.headers.get("Host") or "").strip()
         port = int(self.server.server_address[1])

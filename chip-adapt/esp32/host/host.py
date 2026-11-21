@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-"""A small ESP32-C6 serial host and control web UI.
-
-It reuses the SiFli host's ``SerialBroker`` (one owner of the COM port) and adds
-page switching, Wi-Fi/Bluetooth configuration and system commands on top.  Run
-``serve --fake`` to demo the web page without a board; run ``serve --port COMx``
-for the real board.
-"""
 
 from __future__ import annotations
 
@@ -106,9 +99,7 @@ class HostState:
         if transport == "ble":
             self.config["serial_enabled"] = False
         self.transport = transport
-        self.ble_name = str(
-            self.config.get("ble_name") or DEFAULT_BLE_NAME
-        )
+        self.ble_name = str(self.config.get("ble_name") or DEFAULT_BLE_NAME)
         if fake:
             self.broker = SerialBroker(
                 self.config, backend_factory=lambda: FakeSerialBackend()
@@ -137,9 +128,7 @@ class HostState:
                     "kind": "serial",
                 }
             ]
-        ports = [
-            {**item, "kind": "serial"} for item in serial_ports()
-        ]
+        ports = [{**item, "kind": "serial"} for item in serial_ports()]
         if self.transport in ("dual", "ble"):
             ports.insert(
                 0,
@@ -211,7 +200,6 @@ class HostHandler(BaseHTTPRequestHandler):
     server: HostServer
 
     def log_message(self, format: str, *args: Any) -> None:
-        # Keep the host's stdout readable; serial logs are the real evidence.
         return
 
     def _body(self) -> dict[str, Any]:
@@ -340,7 +328,9 @@ class HostHandler(BaseHTTPRequestHandler):
 
     def _upload_firmware(self) -> None:
         if not self._origin_allowed():
-            raise HostError("cross-origin upload rejected", code="forbidden", status=403)
+            raise HostError(
+                "cross-origin upload rejected", code="forbidden", status=403
+            )
         state = self.server.state
         query = parse_qs(urlparse(self.path).query)
         name = (query.get("name") or ["firmware.bin"])[0]
@@ -694,9 +684,7 @@ class HostHandler(BaseHTTPRequestHandler):
                 self._json({"ok": True, "send": result})
                 return
             if path == "/api/wifi/scan":
-                self._json(
-                    {"ok": True, "networks": state.device.wifi_scan()}
-                )
+                self._json({"ok": True, "networks": state.device.wifi_scan()})
                 return
             if path == "/api/wifi/connect":
                 result = state.device.wifi_connect(
@@ -707,7 +695,10 @@ class HostHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/wifi/disconnect":
                 self._json(
-                    {"ok": True, "disconnected": state.device.wifi_disconnect()}
+                    {
+                        "ok": True,
+                        "disconnected": state.device.wifi_disconnect(),
+                    }
                 )
                 return
             if path == "/api/wifi/auto":
@@ -886,7 +877,9 @@ def cmd_flash(args: argparse.Namespace) -> int:
         candidate = ""
     port = candidate
     if not port:
-        print("choose a serial port with --port; BLE cannot be used for flashing")
+        print(
+            "choose a serial port with --port; BLE cannot be used for flashing"
+        )
         return 1
     payload = request_json(
         "POST",
@@ -952,10 +945,7 @@ def serve(args: argparse.Namespace) -> int:
     print(f"perf: {url}perf/")
     print(f"mode: {'fake (COM99)' if args.fake else state.transport}")
     if state.transport in ("dual", "ble"):
-        print(
-            f"ble: {state.ble_name}  "
-            f"serial: {serial_port or 'auto'}"
-        )
+        print(f"ble: {state.ble_name}  serial: {serial_port or 'auto'}")
     environment = state.flash.environment()
     esptool = environment["esptool"]
     if args.fake:
@@ -1007,7 +997,9 @@ def main(argv: list[str] | None = None) -> int:
         default="",
         help="UART port for dual/serial (empty = auto-detect)",
     )
-    serve_parser.add_argument("--port", default="", help="alias for --serial-port")
+    serve_parser.add_argument(
+        "--port", default="", help="alias for --serial-port"
+    )
     serve_parser.add_argument("--baud", type=int, default=DEFAULT_BAUD)
     serve_parser.add_argument("--ble-name", default=DEFAULT_BLE_NAME)
     serve_parser.add_argument("--link-wait", type=float, default=0.5)

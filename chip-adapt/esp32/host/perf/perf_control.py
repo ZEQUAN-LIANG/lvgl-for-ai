@@ -1,10 +1,3 @@
-"""In-process control of the PERF TAPE monitor.
-
-The browser page talks to this controller through ``host.py``.  The controller
-still writes through the host's ``SerialBroker``: it never opens a second COM
-port and the host remains the only serial owner.
-"""
-
 from __future__ import annotations
 
 import platform
@@ -40,8 +33,6 @@ class PerfError(RuntimeError):
 
 
 class PerfController:
-    """Run the demo/live frame loop in one background thread."""
-
     def __init__(
         self,
         broker: Any,
@@ -135,7 +126,9 @@ class PerfController:
         try:
             interval = float(interval)
         except (TypeError, ValueError) as exc:
-            raise PerfError("interval must be a number", code="bad_interval") from exc
+            raise PerfError(
+                "interval must be a number", code="bad_interval"
+            ) from exc
         if not (MIN_INTERVAL_S <= interval <= MAX_INTERVAL_S):
             raise PerfError(
                 f"interval must be {MIN_INTERVAL_S:g}..{MAX_INTERVAL_S:g} s",
@@ -143,7 +136,9 @@ class PerfController:
             )
         if mode == "live" and platform.system() != "Windows":
             raise PerfError(
-                "live collection requires Windows", code="unsupported", status=400
+                "live collection requires Windows",
+                code="unsupported",
+                status=400,
             )
         if not self._broker.is_open:
             raise PerfError(
@@ -239,7 +234,7 @@ class PerfController:
                         self._last_sent_at = self._clock()
                         self._period_ms = period_ms
                         self._state = "running"
-            except Exception as exc:  # keep the page alive and show the reason
+            except Exception as exc:
                 with self._lock:
                     if generation == self._generation:
                         self._state = "error"

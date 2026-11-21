@@ -1,10 +1,3 @@
-"""In-memory serial backend for demos and tests.
-
-It emulates the firmware command set so the host and web page can be exercised
-without an ESP32 connected.  It is not a second protocol client: the shared
-``SerialBroker`` still owns the read/write loop.
-"""
-
 from __future__ import annotations
 
 import queue
@@ -50,7 +43,9 @@ class FakeSerialBackend(SerialBackend):
     def open(self, port: str, baud: int, *, read_timeout_ms: int = 50) -> None:
         self.port = port
         self.is_open = True
-        self._emit("@READY app=perf_monitor pages=" + ",".join(self._pages) + "\n")
+        self._emit(
+            "@READY app=perf_monitor pages=" + ",".join(self._pages) + "\n"
+        )
 
     def close(self) -> None:
         self.is_open = False
@@ -154,7 +149,9 @@ class FakeSerialBackend(SerialBackend):
         if command == "wifi scan":
             self._log("[wifi] scan start\n")
             time.sleep(0.35)
-            self._log(f"[wifi] scan done {len(self._wifi_networks)} networks\n")
+            self._log(
+                f"[wifi] scan done {len(self._wifi_networks)} networks\n"
+            )
             entries = ";".join(
                 f"{item['ssid']}|{item['rssi']}|{item['security']}"
                 for item in self._wifi_networks
@@ -189,7 +186,9 @@ class FakeSerialBackend(SerialBackend):
             if not self._bt_enabled:
                 self._bt_discoverable = False
                 self._bt_connected = 0
-            self._log(f"[bt] {'enabled' if self._bt_enabled else 'disabled'}\n")
+            self._log(
+                f"[bt] {'enabled' if self._bt_enabled else 'disabled'}\n"
+            )
             self._emit(f"@OK BT {'on' if self._bt_enabled else 'off'}\n")
             return
         if command.startswith("bt name "):
@@ -222,7 +221,8 @@ class FakeSerialBackend(SerialBackend):
         self._log(f"[wifi] connecting to {ssid}\n")
         time.sleep(0.6)
         match = next(
-            (item for item in self._wifi_networks if item["ssid"] == ssid), None
+            (item for item in self._wifi_networks if item["ssid"] == ssid),
+            None,
         )
         self._wifi_state = "connected"
         self._wifi_ssid = ssid

@@ -26,9 +26,7 @@ class FakeDualBackend(SerialBackend):
         self.writes: list[bytes] = []
         self._queue: queue.Queue[bytes] = queue.Queue()
 
-    def open(
-        self, port: str, baud: int, *, read_timeout_ms: int = 50
-    ) -> None:
+    def open(self, port: str, baud: int, *, read_timeout_ms: int = 50) -> None:
         _ = port, baud, read_timeout_ms
         self.is_open = True
 

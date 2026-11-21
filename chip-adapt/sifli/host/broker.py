@@ -1,18 +1,3 @@
-"""Serial broker: one owner of the COM port, many readers.
-
-The broker keeps a bounded byte ring keyed by a monotonically increasing
-sequence number.  The web UI, CLI and an AI agent all read the same stream by
-cursor, so none of them can steal bytes from another reader.  Writes are
-serialized through the broker as well.
-
-Locking boundaries:
-
-* ``_lifecycle`` serializes open/close/release calls.
-* ``_lock`` protects state, the ring buffer and the log handle.  ``_cond`` is
-  that same lock's condition variable and wakes cursor readers.
-* ``SerialLog`` and ``RingBuffer`` never lock; the broker holds ``_lock``.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -142,11 +127,6 @@ class SerialBroker:
             }
 
     def _resolve_port(self, port: str | None) -> str:
-        """Map a caller-supplied port to the backend's device id.
-
-        Serial brokers keep the historical COM-port behavior; transports such
-        as BLE can override this without changing ``open()``.
-        """
 
         return pick_port(port)
 
@@ -260,11 +240,6 @@ class SerialBroker:
         return self.open(port, baud)
 
     def handoff_to_flasher(self) -> dict[str, Any]:
-        """Release the port to the official Web Flasher.
-
-        Auto-reconnect is deliberately not armed: the browser needs a user
-        gesture to select the port, and a retry loop would grab it first.
-        """
 
         return self._release()
 

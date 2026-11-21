@@ -1,10 +1,3 @@
-"""SiFli export asset planning.
-
-The module owns everything between an app's asset manifest and the generated
-resource files: manifest validation, PNG dimensions, ezip conversion, symbol
-renaming, cache math and the assets header/source text.
-"""
-
 from __future__ import annotations
 
 import json
@@ -174,11 +167,6 @@ def plan_assets(
 
 
 def profile_path(app: str, root: str | Path | None = None) -> Path:
-    """Per-app SiFli export declaration, kept outside ``user/app``.
-
-    With *root* (the repository root an export was asked for) the profile
-    lives in that tree, which is what tests and out-of-tree exports need.
-    """
 
     if root is None:
         return layout.APPS_DIR / f"{app}.json"
@@ -188,8 +176,8 @@ def profile_path(app: str, root: str | Path | None = None) -> Path:
 def _load_asset_manifest(
     source_dir: Path, pngs: list[Path], *, profile: Path | None = None
 ) -> dict[str, Any]:
-    manifest_path = profile if profile is not None else profile_path(
-        source_dir.name
+    manifest_path = (
+        profile if profile is not None else profile_path(source_dir.name)
     )
     files = {path.name: path for path in pngs}
     if not manifest_path.is_file():
@@ -342,8 +330,7 @@ def _load_asset_manifest(
     if missing:
         raise ExportError(
             "asset_unlisted",
-            f"{manifest_path} does not declare: "
-            f"{', '.join(sorted(missing))}",
+            f"{manifest_path} does not declare: {', '.join(sorted(missing))}",
             detail={"files": sorted(missing), "profile": str(manifest_path)},
         )
     cache = payload.get("cache", {})

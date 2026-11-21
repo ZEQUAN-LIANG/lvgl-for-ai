@@ -1,10 +1,3 @@
-"""UART + BLE dual link backend for the ESP32-C6 host.
-
-BLE is preferred when connected; the USB serial link is the automatic
-fallback.  Both links feed one byte queue so the shared ``SerialBroker`` keeps
-a single ring buffer, cursor and log across link switches.
-"""
-
 from __future__ import annotations
 
 import queue
@@ -41,11 +34,6 @@ _ESP32_PORT_RE = re.compile(
 
 
 def preferred_serial_port() -> str:
-    """Return the most likely ESP32 USB serial port, or ``""``.
-
-    Explicit user configuration is handled by the caller; this helper only
-    looks at the operating system's port list.
-    """
 
     try:
         ports = list_ports()
@@ -69,8 +57,6 @@ def preferred_serial_port() -> str:
 
 
 class DualBackend(SerialBackend):
-    """One ``SerialBackend`` that multiplexes BLE and USB serial."""
-
     transport = "dual"
 
     def __init__(
@@ -100,16 +86,12 @@ class DualBackend(SerialBackend):
         self._baud = int(self.config.get("default_baud", 115200))
         self._read_timeout_ms = 50
         self._link_wait_s = float(self.config.get("link_wait_s", 0.5))
-        self._serial_enabled = bool(
-            self.config.get("serial_enabled", True)
-        )
+        self._serial_enabled = bool(self.config.get("serial_enabled", True))
         self._ble_enabled = bool(self.config.get("ble_enabled", True))
         self._explicit_serial = str(
             self.config.get("serial_port") or ""
         ).strip()
-        self._ble_name = str(
-            self.config.get("ble_name") or DEFAULT_BLE_NAME
-        )
+        self._ble_name = str(self.config.get("ble_name") or DEFAULT_BLE_NAME)
 
     def status(self) -> dict[str, Any]:
         with self._lock:
@@ -147,9 +129,7 @@ class DualBackend(SerialBackend):
         read_timeout_ms: int = 50,
     ) -> None:
         if not self._serial_enabled and not self._ble_enabled:
-            raise SerialError(
-                "both UART and BLE are disabled", code="no_link"
-            )
+            raise SerialError("both UART and BLE are disabled", code="no_link")
         self.close()
         _ = port
         self._baud = int(baud or self._baud or 115200)
@@ -166,9 +146,11 @@ class DualBackend(SerialBackend):
             self._start(self._ble_loop, "dual-ble")
         with self._cond:
             self._cond.wait_for(
-                lambda: self._serial_open
-                or (self._ble is not None and self._ble.ready)
-                or self._stop.is_set(),
+                lambda: (
+                    self._serial_open
+                    or (self._ble is not None and self._ble.ready)
+                    or self._stop.is_set()
+                ),
                 timeout=max(0.0, self._link_wait_s),
             )
 
@@ -318,8 +300,6 @@ class DualBackend(SerialBackend):
                 except SerialError as exc:
                     with self._lock:
                         self._ble_error = str(exc)
-                    # Fall back only before any bytes reached the peer: a partial
-                    # multi-chunk write must not be replayed on UART.
                     if exc.code != "ble_disconnected":
                         raise
             with self._lock:

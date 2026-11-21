@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""Send PERF TAPE frames to the ESP32-C6 host.
-
-The host owns the serial port.  This agent sends through the existing
-``POST /api/send`` endpoint instead of opening COM itself.
-
-Examples:
-  python -I chip-adapt/esp32/host/perf/perf_agent.py --demo --dry-run --once
-  python -I chip-adapt/esp32/host/perf/perf_agent.py --live --interval 0.3
-  python -I chip-adapt/esp32/host/perf/perf_agent.py --layout landscape --live
-"""
 
 from __future__ import annotations
 
@@ -325,7 +315,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             try:
                 response = send_line(args.host, command)
             except (error.URLError, TimeoutError, OSError, ValueError) as exc:
-                print(f"perf_agent: layout command failed: {exc}", file=sys.stderr)
+                print(
+                    f"perf_agent: layout command failed: {exc}",
+                    file=sys.stderr,
+                )
                 return 1
             if not response.get("ok"):
                 print(

@@ -1,10 +1,3 @@
-"""Windows notification-area icon for the tkinter GUI.
-
-The GUI keeps running when its window is closed; the tray icon restores it or
-exits.  This uses only ``ctypes`` so the host stays dependency-free beyond the
-already vendored BLE/serial packages.
-"""
-
 from __future__ import annotations
 
 import ctypes
@@ -187,8 +180,6 @@ shell32.Shell_NotifyIconW.restype = wintypes.BOOL
 
 
 class TrayIcon:
-    """A small notification-area icon with Show and Exit actions."""
-
     def __init__(
         self,
         title: str,

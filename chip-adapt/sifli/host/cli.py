@@ -1,11 +1,3 @@
-"""CLI for the SiFli Huangshan Pi serial/flash host.
-
-Every command talks to the local broker over HTTP.  If the broker is not
-running, the CLI starts ``server.py`` in the background (disable with
-``--no-autostart``).  ``--json`` prints one machine-readable object, which is
-the intended AI surface.
-"""
-
 from __future__ import annotations
 
 import argparse

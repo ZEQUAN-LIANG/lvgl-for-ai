@@ -1,10 +1,3 @@
-"""Paths shared by the ESP32-C6 host prototype.
-
-The host reuses the SiFli host's serial broker so there is exactly one
-``pyserial`` code path (and one vendored pyserial).  Only the board-specific
-build/flash pieces are new.
-"""
-
 from __future__ import annotations
 
 import sys

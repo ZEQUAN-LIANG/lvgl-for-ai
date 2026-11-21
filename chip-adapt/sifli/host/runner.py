@@ -1,10 +1,3 @@
-"""Build/flash job orchestration, independent of HTTP.
-
-The server only parses a request body into ``BuildRequest`` / ``FlashRequest``
-and hands the job to ``JobRunner``.  Keeping the orchestration here makes the
-serial detach/reconnect and state-recording rules testable without a handler.
-"""
-
 from __future__ import annotations
 
 import traceback

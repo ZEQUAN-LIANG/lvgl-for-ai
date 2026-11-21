@@ -1,11 +1,3 @@
-"""Wi-Fi, Bluetooth and system commands over the same serial console.
-
-The firmware is expected to implement the line protocol documented in the host
-README.  Values are URL-encoded when they can contain spaces (SSID, password,
-Bluetooth name); responses use ``|`` between fields and ``;`` between scan
-results so the parser stays simple.
-"""
-
 from __future__ import annotations
 
 from typing import Any

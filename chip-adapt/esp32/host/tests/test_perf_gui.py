@@ -82,9 +82,7 @@ class HostClientTest(unittest.TestCase):
             result = client.close_link()
         self.assertTrue(result["ok"])
         request = urlopen.call_args[0][0]
-        self.assertEqual(
-            request.full_url, "http://127.0.0.1:8767/api/close"
-        )
+        self.assertEqual(request.full_url, "http://127.0.0.1:8767/api/close")
         self.assertEqual(request.get_method(), "POST")
         self.assertEqual(urlopen.call_args[1]["timeout"], 2.0)
 
@@ -92,7 +90,9 @@ class HostClientTest(unittest.TestCase):
         response = FakeResponse(
             {"ok": False, "error": "serial_not_open", "message": "no port"}
         )
-        with mock.patch("perf_gui.urllib.request.urlopen", return_value=response):
+        with mock.patch(
+            "perf_gui.urllib.request.urlopen", return_value=response
+        ):
             client = perf_gui.HostClient("http://127.0.0.1:8767")
             with self.assertRaises(perf_gui.HostError) as context:
                 client.stop()
@@ -129,9 +129,7 @@ class FormatterTest(unittest.TestCase):
 
     def test_ping_text(self) -> None:
         self.assertEqual(perf_gui.ping_text({"ping_ms": 15}), "PING 15 MS")
-        self.assertEqual(
-            perf_gui.ping_text({"ping_ms": 1500}), "PING 1500"
-        )
+        self.assertEqual(perf_gui.ping_text({"ping_ms": 1500}), "PING 1500")
         self.assertEqual(
             perf_gui.ping_text({"ping_ms": 15}, short=True), "PING 15"
         )

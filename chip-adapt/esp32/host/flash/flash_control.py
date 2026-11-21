@@ -1,12 +1,3 @@
-"""esptool-backed firmware flashing for the ESP32-C6 host.
-
-The host owns the COM port through ``SerialBroker``; flashing releases it,
-runs the official ``esptool`` CLI, and reattaches when asked.  Firmware can be
-an explicit BIN list, an ESP-IDF build directory with ``flash_args``, or a ZIP
-(Waveshare demo or an ESP-IDF build archive).  ZIPs are scanned first and only
-the referenced BINs are extracted, because the demo archive expands to ~260 MB.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -53,7 +44,9 @@ _PROGRESS_RE = re.compile(r"\((\d{1,3})\s*%\)")
 _PROGRESS_RE_5 = re.compile(r"(\d+(?:\.\d+)?)\s*%")
 _ADDRESS_RE = re.compile(r"^(0x[0-9a-fA-F]+|[0-9]+)$")
 _TOKEN_RE = re.compile(r"^[0-9a-f]{12}$")
-_VERSION_CACHE: dict[tuple[str, ...], tuple[float, tuple[int, int, int] | None]] = {}
+_VERSION_CACHE: dict[
+    tuple[str, ...], tuple[float, tuple[int, int, int] | None]
+] = {}
 _VERSION_TTL_S = 60.0
 
 
@@ -79,7 +72,9 @@ class Esptool:
     version: tuple[int, int, int]
 
 
-def _run_probe(command: list[str], timeout: float = 20.0) -> subprocess.CompletedProcess:
+def _run_probe(
+    command: list[str], timeout: float = 20.0
+) -> subprocess.CompletedProcess:
     return subprocess.run(
         command,
         stdin=subprocess.DEVNULL,
@@ -115,10 +110,14 @@ def _probe_version(
     return version
 
 
-def _esptool_candidates(config: dict[str, Any]) -> Iterable[tuple[tuple[str, ...], str]]:
+def _esptool_candidates(
+    config: dict[str, Any],
+) -> Iterable[tuple[tuple[str, ...], str]]:
     seen: set[tuple[str, ...]] = set()
 
-    def add(prefix: tuple[str, ...], label: str) -> Iterable[tuple[tuple[str, ...], str]]:
+    def add(
+        prefix: tuple[str, ...], label: str
+    ) -> Iterable[tuple[tuple[str, ...], str]]:
         if prefix in seen:
             return ()
         seen.add(prefix)
@@ -147,8 +146,6 @@ def _esptool_candidates(config: dict[str, Any]) -> Iterable[tuple[tuple[str, ...
     else:
         vendor_python = vendor / "bin" / "python"
         vendor_exes = (vendor / "bin" / "esptool",)
-    # Prefer ``python -m esptool``: the pip console launcher spawns a child
-    # Python process, so terminating the launcher can orphan the real flasher.
     if vendor_python.is_file():
         yield from add(
             (str(vendor_python), "-m", "esptool"),
@@ -238,8 +235,22 @@ def _safe_name(name: str) -> str:
     if not base or base in (".", ".."):
         base = "firmware.bin"
     if base.split(".")[0].upper() in {
-        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4",
-        "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3",
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        "COM1",
+        "COM2",
+        "COM3",
+        "COM4",
+        "COM5",
+        "COM6",
+        "COM7",
+        "COM8",
+        "COM9",
+        "LPT1",
+        "LPT2",
+        "LPT3",
     }:
         base = "_" + base
     return base[:120]
@@ -272,7 +283,9 @@ def _zip_rel_name(info: zipfile.ZipInfo) -> str:
         raise FlashError(f"unsafe zip entry: {info.filename}", code="bad_zip")
     mode = (info.external_attr >> 16) & 0o170000
     if mode == 0o120000:
-        raise FlashError(f"zip entry is a symlink: {info.filename}", code="bad_zip")
+        raise FlashError(
+            f"zip entry is a symlink: {info.filename}", code="bad_zip"
+        )
     return "/".join(parts)
 
 
@@ -288,7 +301,9 @@ def _extract_member(
     destination = _ensure_inside(target, target / relative)
     size = int(info.file_size or 0)
     if size <= 0:
-        raise FlashError(f"empty firmware image: {info.filename}", code="bad_zip")
+        raise FlashError(
+            f"empty firmware image: {info.filename}", code="bad_zip"
+        )
     if size > MAX_IMAGE_BYTES:
         raise FlashError(
             f"firmware image too large: {info.filename}",
@@ -459,7 +474,9 @@ def _directory_plan(directory: Path, address: Any) -> dict[str, Any]:
         notes = "ESP-IDF flasher_args.json"
     if parsed is not None:
         entries = [
-            _entry(_ensure_inside(directory, directory / name), addr, directory)
+            _entry(
+                _ensure_inside(directory, directory / name), addr, directory
+            )
             for addr, name in parsed["pairs"]
         ]
         return {
@@ -471,9 +488,7 @@ def _directory_plan(directory: Path, address: Any) -> dict[str, Any]:
             "source": "idf",
             "notes": notes,
         }
-    images = sorted(
-        path for path in directory.glob("*.bin") if path.is_file()
-    )
+    images = sorted(path for path in directory.glob("*.bin") if path.is_file())
     if not images:
         raise FlashError(
             f"no .bin or flash_args found in {directory}",
@@ -566,7 +581,9 @@ def _zip_plan(
                 saved = _extract_member(archive, info, target, budget)
                 entries.append(
                     {
-                        "path": Path(os.path.relpath(saved, target)).as_posix(),
+                        "path": Path(
+                            os.path.relpath(saved, target)
+                        ).as_posix(),
                         "name": saved.name,
                         "address": format_address(addr),
                         "size": saved.stat().st_size,
@@ -590,7 +607,9 @@ def _zip_plan(
         candidates = firmware
         notes = "Waveshare 示例固件"
         if not candidates:
-            candidates = [name for name in names if name.lower().endswith(".bin")]
+            candidates = [
+                name for name in names if name.lower().endswith(".bin")
+            ]
             notes = "zip 内 BIN"
         if not candidates:
             raise FlashError(
@@ -709,12 +728,12 @@ class _Progress:
             percent: int | None = None
             match = None
             if "Writing at" in line:
-                match = _PROGRESS_RE.search(line) or _PROGRESS_RE_5.search(line)
+                match = _PROGRESS_RE.search(line) or _PROGRESS_RE_5.search(
+                    line
+                )
             if match:
                 value = min(100.0, max(0.0, float(match.group(1))))
-                percent = int(
-                    (self.done + value / 100.0) / self.total * 100
-                )
+                percent = int((self.done + value / 100.0) / self.total * 100)
             if "Hash of data verified." in line:
                 self.done = min(self.total, self.done + 1)
                 percent = int(self.done / self.total * 100)
@@ -829,7 +848,6 @@ def _stop_process(process: subprocess.Popen) -> None:
 
 
 def preferred_flash_port() -> str:
-    """Pick a likely ESP32 USB-serial port; return ``""`` when unsure."""
     try:
         from broker import ports as serial_ports
 
@@ -874,16 +892,22 @@ def build_flash_command(
     before = str(options.get("before") or "default_reset")
     after = str(options.get("after") or "hard_reset")
     if before not in BEFORE_CHOICES:
-        raise FlashError(f"unsupported reset mode: {before}", code="bad_option")
+        raise FlashError(
+            f"unsupported reset mode: {before}", code="bad_option"
+        )
     if after not in AFTER_CHOICES:
-        raise FlashError(f"unsupported after-reset mode: {after}", code="bad_option")
+        raise FlashError(
+            f"unsupported after-reset mode: {after}", code="bad_option"
+        )
     if major >= 5:
         before = before.replace("_", "-")
         after = after.replace("_", "-")
     try:
         rate = int(baud)
     except (TypeError, ValueError) as exc:
-        raise FlashError(f"invalid baud rate: {baud}", code="bad_option") from exc
+        raise FlashError(
+            f"invalid baud rate: {baud}", code="bad_option"
+        ) from exc
     if rate <= 0:
         raise FlashError(f"invalid baud rate: {baud}", code="bad_option")
     command = [
@@ -932,8 +956,8 @@ class FlashController:
         self.broker = broker
         self.fake = bool(fake)
         cache = self.config.get("flash_cache_dir")
-        self.cache_root = Path(cache) if cache else (
-            self.host_dir / ".cache" / "flash"
+        self.cache_root = (
+            Path(cache) if cache else (self.host_dir / ".cache" / "flash")
         )
         self.uploads_root = self.cache_root / "uploads"
         self.work_root = self.cache_root / "work"
@@ -958,9 +982,7 @@ class FlashController:
             suggestions.append(
                 {"label": "Waveshare 示例固件", "path": str(demo)}
             )
-        default_baud = int(
-            self.config.get("flash_baud") or DEFAULT_FLASH_BAUD
-        )
+        default_baud = int(self.config.get("flash_baud") or DEFAULT_FLASH_BAUD)
         try:
             status = self.broker.status()
         except Exception:  # noqa: BLE001 - status is best effort
@@ -970,9 +992,7 @@ class FlashController:
         if transport == "serial":
             current_port = str(status.get("port") or "")
         else:
-            current_port = str(
-                (links.get("serial") or {}).get("port") or ""
-            )
+            current_port = str((links.get("serial") or {}).get("port") or "")
         if (
             os.name == "nt"
             and current_port
@@ -1006,8 +1026,7 @@ class FlashController:
             "default_baud": default_baud,
             "baud_rates": [115200, 230400, 460800, 921600],
             "max_upload_bytes": int(
-                self.config.get("flash_max_upload_bytes")
-                or MAX_UPLOAD_BYTES
+                self.config.get("flash_max_upload_bytes") or MAX_UPLOAD_BYTES
             ),
             "sources": ["upload", "path", "build_dir"],
             "source_hint": (
@@ -1080,7 +1099,9 @@ class FlashController:
 
     def _upload(self, token: str) -> Path:
         if not _TOKEN_RE.match(str(token)):
-            raise FlashError("unknown upload token", code="upload_not_found", status=404)
+            raise FlashError(
+                "unknown upload token", code="upload_not_found", status=404
+            )
         directory = self.uploads_root / token
         meta_path = directory / "upload.json"
         if not meta_path.is_file():
@@ -1092,7 +1113,11 @@ class FlashController:
         try:
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
-            raise FlashError("upload metadata is unreadable", code="upload_not_found", status=404) from exc
+            raise FlashError(
+                "upload metadata is unreadable",
+                code="upload_not_found",
+                status=404,
+            ) from exc
         path = directory / str(meta.get("name") or "")
         if not path.is_file():
             raise FlashError(
@@ -1363,9 +1388,7 @@ class FlashController:
                 job,
                 command,
                 cwd=Path(plan["work_dir"]),
-                timeout_s=float(
-                    self.config.get("flash_timeout_s") or 300
-                ),
+                timeout_s=float(self.config.get("flash_timeout_s") or 300),
                 progress=progress,
             )
             if code != 0:

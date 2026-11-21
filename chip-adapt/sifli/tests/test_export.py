@@ -46,8 +46,12 @@ class SifliExportTest(unittest.TestCase):
         self.user_app.mkdir(parents=True)
         self.profiles = self.root / "chip-adapt" / "sifli" / "apps"
         self.profiles.mkdir(parents=True)
-        for name in ("app.c", "app.h", "app_registry_lookup.h",
-                     "lvgl_compat.h"):
+        for name in (
+            "app.c",
+            "app.h",
+            "app_registry_lookup.h",
+            "lvgl_compat.h",
+        ):
             shutil.copy2(REPO / "user" / "app" / name, self.user_app / name)
         watch = self.user_app / "sift_watch"
         watch.mkdir()
@@ -155,12 +159,14 @@ class SifliExportTest(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertEqual(ported.split("\n", 1)[1], original)
 
-        header = (self.output / "src" / "app" / "lvgl_verify_loop_sdk.h").read_text(
-            encoding="utf-8"
-        )
+        header = (
+            self.output / "src" / "app" / "lvgl_verify_loop_sdk.h"
+        ).read_text(encoding="utf-8")
         self.assertIn("LVGL_VERIFY_LOOP_EZIP_ASSETS", header)
         self.assertFalse(
-            (self.output / "src" / "app" / "lvgl_verify_loop_94_compat.h").exists()
+            (
+                self.output / "src" / "app" / "lvgl_verify_loop_94_compat.h"
+            ).exists()
         )
 
     def test_images_follow_asset_manifest(self):
@@ -223,8 +229,6 @@ class SifliExportTest(unittest.TestCase):
         self.assertIn("--lvgl 9.4", cli_commands[0])
 
     def test_runtime_verification_points_the_tool_at_the_exported_copy(self):
-        # The variable name must match what the control layer reads
-        # (paths.apps_dir_from_env); a near-miss verifies the wrong sources.
         result = self._export("sift_watch", output_dir=self.output)
         readme = (self.output / "README.md").read_text(encoding="utf-8")
         commands = [

@@ -169,7 +169,9 @@ class DualBackendTest(unittest.TestCase):
         self.assertTrue(wait_until(lambda: self.ble.ready))
         self.ble.open_enabled = False
         self.ble.ready = False
-        self.assertTrue(wait_until(lambda: backend.status()["active"] == "serial"))
+        self.assertTrue(
+            wait_until(lambda: backend.status()["active"] == "serial")
+        )
         backend.write(b"PERF PORTRAIT\n")
         self.assertEqual(self.serial.writes, [b"PERF PORTRAIT\n"])
 
@@ -178,9 +180,13 @@ class DualBackendTest(unittest.TestCase):
         self.assertTrue(wait_until(lambda: self.ble.ready))
         self.ble.open_enabled = False
         self.ble.ready = False
-        self.assertTrue(wait_until(lambda: backend.status()["active"] == "serial"))
+        self.assertTrue(
+            wait_until(lambda: backend.status()["active"] == "serial")
+        )
         self.ble.open_enabled = True
-        self.assertTrue(wait_until(lambda: backend.status()["active"] == "ble"))
+        self.assertTrue(
+            wait_until(lambda: backend.status()["active"] == "ble")
+        )
         backend.write(b"PERF DEMO\n")
         self.assertTrue(self.ble.writes)
 
@@ -200,7 +206,9 @@ class DualBackendTest(unittest.TestCase):
 
     def test_reads_merge_both_links(self) -> None:
         backend = self.make_backend()
-        self.assertTrue(wait_until(lambda: self.serial.is_open and self.ble.ready))
+        self.assertTrue(
+            wait_until(lambda: self.serial.is_open and self.ble.ready)
+        )
         self.serial.emit(b"usb")
         self.ble.emit(b"ble")
         received = b""
@@ -212,7 +220,9 @@ class DualBackendTest(unittest.TestCase):
 
     def test_status_exposes_both_links(self) -> None:
         backend = self.make_backend()
-        self.assertTrue(wait_until(lambda: self.serial.is_open and self.ble.ready))
+        self.assertTrue(
+            wait_until(lambda: self.serial.is_open and self.ble.ready)
+        )
         status = backend.status()
         self.assertEqual(status["active"], "ble")
         self.assertTrue(status["serial"]["open"])

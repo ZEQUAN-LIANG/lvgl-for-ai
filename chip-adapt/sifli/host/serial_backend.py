@@ -1,12 +1,3 @@
-"""Serial backend built on pyserial.
-
-pyserial is vendored under ``host/vendor`` (BSD-3-Clause) so the host works
-with ``python -I`` and does not need a global pip install.  The Huangshan Pi
-wires the CH340N RTS line to the SoC reset circuit; the port is opened with
-hardware flow control disabled and RTS/DTR low, matching the official Web
-Flasher.
-"""
-
 from __future__ import annotations
 
 import os
@@ -176,7 +167,6 @@ class PyserialBackend(SerialBackend):
             raise _map_open_error(port, exc) from exc
 
         try:
-            # Do not leave the board in reset after opening.
             handle.rts = False
             handle.dtr = False
             handle.reset_input_buffer()
@@ -250,7 +240,6 @@ class PyserialBackend(SerialBackend):
             ) from exc
 
     def reset(self, pulse_ms: int = 100) -> None:
-        # The Huangshan Pi / DevKit-ULP reset circuit is driven by RTS.
         self.set_rts(True)
         time.sleep(max(10, int(pulse_ms)) / 1000.0)
         self.set_rts(False)

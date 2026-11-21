@@ -29,8 +29,6 @@ class FakeResponse:
 
 
 class ProbeTest(unittest.TestCase):
-    """``probe`` is what decides "reuse the running host" vs "start one"."""
-
     def test_returns_status_of_our_host(self) -> None:
         payload = {"ok": True, "transport": "dual"}
         with mock.patch(
@@ -44,8 +42,6 @@ class ProbeTest(unittest.TestCase):
             self.assertIsNone(launch.probe("http://127.0.0.1:8767"))
 
     def test_none_for_a_foreign_service(self) -> None:
-        # A web server on the port answers JSON but is not our host; the
-        # launcher must not mistake it for one and skip starting the host.
         with mock.patch(
             "launch.urllib.request.urlopen",
             return_value=FakeResponse({"hello": "world"}),
@@ -72,11 +68,12 @@ class CommandTest(unittest.TestCase):
 
     def test_host_command_targets_host_serve(self) -> None:
         args = launch.parse_args(["--port", "8799"])
-        with mock.patch(
-            "launch.open_host_log", return_value=mock.MagicMock()
-        ), mock.patch(
-            "launch.subprocess.Popen", return_value=mock.MagicMock()
-        ) as popen:
+        with (
+            mock.patch("launch.open_host_log", return_value=mock.MagicMock()),
+            mock.patch(
+                "launch.subprocess.Popen", return_value=mock.MagicMock()
+            ) as popen,
+        ):
             launch.start_host(args)
         command = popen.call_args[0][0]
         self.assertEqual(Path(command[2]).name, "host.py")
@@ -89,18 +86,18 @@ class CommandTest(unittest.TestCase):
         args = launch.parse_args(
             ["--fake", "--transport", "ble", "--port", "8799"]
         )
-        with mock.patch(
-            "launch.open_host_log", return_value=mock.MagicMock()
-        ), mock.patch(
-            "launch.subprocess.Popen", return_value=mock.MagicMock()
-        ) as popen:
+        with (
+            mock.patch("launch.open_host_log", return_value=mock.MagicMock()),
+            mock.patch(
+                "launch.subprocess.Popen", return_value=mock.MagicMock()
+            ) as popen,
+        ):
             launch.start_host(args)
         command = popen.call_args[0][0]
         self.assertIn("--fake", command)
         self.assertEqual(command[command.index("--transport") + 1], "ble")
 
     def test_host_python_is_windowed(self) -> None:
-        # The host must not flash a console window when the exe starts it.
         name = Path(launch.windowed_python()).name
         self.assertIn(name, ("pythonw.exe", "python.exe"))
 
@@ -117,8 +114,9 @@ class WaitForHostTest(unittest.TestCase):
             self.assertFalse(launch.wait_for_host("http://x", process, 5.0))
 
     def test_false_after_timeout(self) -> None:
-        with mock.patch("launch.probe", return_value=None), mock.patch(
-            "launch.time.sleep"
+        with (
+            mock.patch("launch.probe", return_value=None),
+            mock.patch("launch.time.sleep"),
         ):
             self.assertFalse(launch.wait_for_host("http://x", None, 0.0))
 

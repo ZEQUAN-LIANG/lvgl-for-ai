@@ -1,11 +1,3 @@
-"""Configuration for the SiFli Huangshan Pi serial host.
-
-The host is deliberately chip-specific: the SDK lives under
-``chip-adapt/vendor`` while official toolchain and sftool installs stay in
-``~/.sifli`` (or ``SIFLI_SDK_TOOLS_PATH``).  Nothing here imports ``core``;
-the LVGL harness and this host are separate.
-"""
-
 from __future__ import annotations
 
 import json

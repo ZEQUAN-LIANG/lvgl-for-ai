@@ -1,18 +1,3 @@
-"""Page switching over the firmware's serial console.
-
-Protocol (one line per command, replies start with ``@``):
-
-    pages       -> @PAGES home,status,about
-    page NAME   -> @OK PAGE NAME / @ERR PAGE unknown=NAME
-    page next   -> @OK PAGE NAME
-    page prev   -> @OK PAGE NAME
-    state       -> @STATE page=NAME
-    ping        -> @PONG
-
-The controller only uses the shared ``CommandSession``; it does not own a
-serial port of its own.
-"""
-
 from __future__ import annotations
 
 from typing import Any

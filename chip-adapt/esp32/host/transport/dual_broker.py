@@ -1,5 +1,3 @@
-"""SerialBroker variant for the UART + BLE dual link."""
-
 from __future__ import annotations
 
 import sys
@@ -21,13 +19,6 @@ from dual_backend import DualBackend  # noqa: E402
 
 
 class DualBroker(SerialBroker):
-    """Keep the serial broker contract while ``DualBackend`` picks a link.
-
-    ``_resolve_port`` returns the literal ``"dual"`` so ``open()`` does not
-    try to normalize a COM port.  The real serial port is reported in
-    ``status()["links"]["serial"]["port"]`` and preserved for flashing.
-    """
-
     def __init__(
         self,
         config: dict[str, Any],
@@ -71,9 +62,7 @@ class DualBroker(SerialBroker):
 
     def detach_for_flash(self) -> dict[str, Any]:
         links = self.link_status()
-        serial_port = str(
-            (links.get("serial") or {}).get("port") or ""
-        )
+        serial_port = str((links.get("serial") or {}).get("port") or "")
         result = super().detach_for_flash()
         result["serial_port"] = serial_port
         return result

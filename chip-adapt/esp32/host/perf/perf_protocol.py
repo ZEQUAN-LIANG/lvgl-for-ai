@@ -1,10 +1,3 @@
-"""Encoder for the PERF TAPE serial protocol.
-
-The device-side parser lives in ``user/app/perf_monitor/perf_protocol.c``.
-Keep the field names, units, and limits in sync with that file and
-``user/app/perf_monitor/README.md``.
-"""
-
 from __future__ import annotations
 
 import math
@@ -59,10 +52,6 @@ def _check_optional(
 
 
 def encode(sample: PerfSample) -> str:
-    """Return one LF-less protocol line.
-
-    Unknown optional fields are omitted.  The result is always <= 320 bytes.
-    """
 
     seq = _check(sample.seq % 65536, 0, 65535, "seq")
     cpu = _check(sample.cpu, 0, 100, "cpu")
@@ -127,7 +116,6 @@ def current_hhmm() -> int:
 
 
 def demo_sample(seq: int, tick: int) -> PerfSample:
-    """Deterministic, plausible data for --demo and tests."""
 
     cpu = 45 + 16 * math.sin(tick / 7.0) + 6 * math.sin(tick / 2.1)
     cpu = max(2, min(99, int(cpu)))

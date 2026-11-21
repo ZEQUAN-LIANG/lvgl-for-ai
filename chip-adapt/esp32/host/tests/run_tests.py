@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Run the ESP32-C6 host tests without needing a board."""
 
 from __future__ import annotations
 

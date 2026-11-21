@@ -1,10 +1,3 @@
-"""BLE transport for the ESP32-C6 host.
-
-The link speaks the same newline-delimited protocol as the USB serial link,
-using the Nordic UART Service (NUS) UUIDs.  It owns a dedicated asyncio loop
-thread for ``bleak`` and exposes a small blocking API to ``DualBackend``.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -50,12 +43,6 @@ def _uuid_matches(uuids: Any) -> bool:
 
 
 class BleLink:
-    """Blocking facade over one bleak connection.
-
-    ``open()`` scans, connects and subscribes.  ``read()`` drains the
-    notification queue and raises ``SerialError`` after a disconnect.
-    """
-
     def __init__(
         self,
         config: dict[str, Any] | None = None,
@@ -82,21 +69,15 @@ class BleLink:
         self._subscribed = False
         self._last_error = ""
         self._scan_timeout_s = float(
-            self.config.get(
-                "ble_scan_timeout_s", DEFAULT_SCAN_TIMEOUT_S
-            )
+            self.config.get("ble_scan_timeout_s", DEFAULT_SCAN_TIMEOUT_S)
         )
         self._connect_timeout_s = float(
-            self.config.get(
-                "ble_connect_timeout_s", DEFAULT_CONNECT_TIMEOUT_S
-            )
+            self.config.get("ble_connect_timeout_s", DEFAULT_CONNECT_TIMEOUT_S)
         )
         self._write_timeout_s = float(
             self.config.get("ble_write_timeout_s", DEFAULT_WRITE_TIMEOUT_S)
         )
-        self._read_timeout_ms = int(
-            self.config.get("read_timeout_ms", 50)
-        )
+        self._read_timeout_ms = int(self.config.get("read_timeout_ms", 50))
 
     @property
     def ready(self) -> bool:
@@ -179,7 +160,9 @@ class BleLink:
             self._read_timeout_ms = int(read_timeout_ms)
         target = str(name or self._name).strip()
         if not target:
-            raise SerialError("BLE device name is empty", code="ble_name_empty")
+            raise SerialError(
+                "BLE device name is empty", code="ble_name_empty"
+            )
         self._name = target
         if self._scanner_factory is None or self._client_factory is None:
             self._load_bleak()
@@ -222,9 +205,7 @@ class BleLink:
         self._address = str(getattr(device, "address", "") or "")
         mtu = int(getattr(client, "mtu_size", 0) or 0)
         self._mtu = mtu if mtu >= 23 else 23
-        self._chunk = max(
-            MIN_CHUNK, min(self._mtu - 3, MAX_CHUNK)
-        )
+        self._chunk = max(MIN_CHUNK, min(self._mtu - 3, MAX_CHUNK))
         self._ready = True
         self._subscribed = True
 
@@ -252,8 +233,6 @@ class BleLink:
             scanner = self._scanner_factory()
             return await scanner.discover(timeout=self._scan_timeout_s)
         assert self._bleak is not None
-        # Filtering by service UUID at the OS layer hides live devices: Windows
-        # sometimes reports a stale UUID.  ``_find_device`` matches instead.
         return await self._bleak.BleakScanner.discover(
             timeout=self._scan_timeout_s,
             return_adv=True,
@@ -366,7 +345,6 @@ class BleLink:
 
 
 def _iter_discovered(found: Any):
-    """Normalize bleak's discover() return shapes and fake scanners."""
 
     if isinstance(found, dict):
         for value in found.values():
