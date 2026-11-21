@@ -157,6 +157,7 @@ class EngineLink:
                     self.command("quit", timeout=self.quit_timeout)
                 except ToolError:
                     pass
+            self._close_stdin(proc)
             try:
                 proc.wait(timeout=self.quit_timeout)
             except subprocess.TimeoutExpired:
@@ -183,6 +184,16 @@ class EngineLink:
                     pass
             self._close_pipes(proc)
             self._proc = None
+
+    @staticmethod
+    def _close_stdin(proc: subprocess.Popen[str]) -> None:
+        close = getattr(proc.stdin, "close", None)
+        if close is None:
+            return
+        try:
+            close()
+        except (OSError, ValueError):
+            pass
 
     @staticmethod
     def _close_pipes(proc: subprocess.Popen[str]) -> None:
