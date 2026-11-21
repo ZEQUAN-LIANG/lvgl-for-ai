@@ -36,12 +36,7 @@ extend-exclude = [
 [tool.ruff.lint]
 select = ["E", "F", "W", "B"]
 ignore = [
-    # Every tool inserts the tool root into sys.path before importing the
-    # package, so module-level imports after that bootstrap are deliberate.
     "E402",
-    # ruff format already wraps code to line-length.  What remains are HTML
-    # templates, docstring examples and long string literals that cannot be
-    # folded without changing what they say.
     "E501",
 ]
 
